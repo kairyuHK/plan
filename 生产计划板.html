@@ -132,7 +132,7 @@
     align-items: center; justify-content: center;
     gap: 1px; padding: 6px 2px;
   }
-  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; margin-bottom: 6px; }
   .date-month, .date-day, .date-dow {
     font-size: 18px; font-weight: 300; line-height: 1;
     font-family: 'PingFang SC', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans GB', 'Microsoft YaHei Light', 'Yu Gothic Light', system-ui, sans-serif;
@@ -178,7 +178,7 @@
 
     /* 日期栏：年顶部左对齐，月日星期居中 */
     .timeline-head { justify-content: flex-start; align-items: center; padding: 6px 1px 4px; gap: 1px; }
-    .date-year { font-size: 7px; align-self: flex-start; padding-left: 3px; line-height: 1.4; }
+    .date-year { font-size: 7px; align-self: flex-start; padding-left: 3px; line-height: 1.4; margin-bottom: 3px; }
     .date-month, .date-day, .date-dow { font-size: 11px; text-align: center; line-height: 1.3; }
 
     /* 主板横向滚动 */
@@ -196,7 +196,7 @@
     /* 线头：按钮竖排，夕盛/数字横排 */
     .line-head { height: 80px; padding: 3px 4px; gap: 2px; }
     .line-head-row1 { gap: 3px; align-items: flex-start; }
-    .line-num { font-size: 11px; white-space: nowrap; }
+    .line-num { font-size: 9px; white-space: nowrap; }
     .line-label { font-size: 6px; letter-spacing: 1px; }
     .head-btns { flex-direction: column; gap: 2px; }
     .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
@@ -204,9 +204,9 @@
 
     /* 配置栏 */
     .line-config { gap: 2px; }
-    .cfg { padding: 1px 3px; border-radius: 3px; }
-    .cfg-label { font-size: 6px; }
-    .cfg-input { font-size: 9px; }
+    .cfg { padding: 1px 2px; border-radius: 3px; }
+    .cfg-label { font-size: 5px; }
+    .cfg-input { font-size: 8px; }
 
     /* 底部统计 */
     .line-foot { padding: 3px 4px; }
@@ -840,7 +840,7 @@ function buildLine(num) {
           <input class="cfg-input start-time" type="time" value="08:00">
         </div>
         <div class="cfg">
-          <span class="cfg-label">切换（分钟）</span>
+          <span class="cfg-label">切换</span>
           <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
         </div>
       </div>
