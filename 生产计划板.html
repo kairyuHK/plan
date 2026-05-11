@@ -169,26 +169,56 @@
   }
 
   @media (max-width: 900px) {
-    html, body { font-size: 11px; }
+    html, body { font-size: 10px; }
     .brand-sub { display: none; }
     .topbar { padding: 0 10px; gap: 6px; }
-    .topbar-right { gap: 6px; font-size: 10px; }
+    .topbar-right { gap: 5px; font-size: 9px; }
     #totalAll { display: none; }
-    :root { --time-col-w: 40px; --hour-px: 110px; }
+    :root { --time-col-w: 36px; --hour-px: 100px; }
+
+    /* 日期栏缩小居中 */
+    .timeline-head { gap: 0; padding: 3px 1px; align-items: center; }
+    .date-year { font-size: 7px; text-align: center; }
+    .date-month, .date-day, .date-dow { font-size: 12px; text-align: center; line-height: 1.15; }
+
+    /* 主板横向滚动，6列均分 */
     .main { overflow-x: auto; }
     .board {
       display: grid;
-      grid-template-columns: repeat(6, minmax(110px, 1fr));
-      min-width: 660px;
+      grid-template-columns: repeat(6, minmax(72px, 1fr));
+      min-width: 432px;
       overflow: visible;
       gap: 1px;
       background: var(--border);
     }
     .line { flex: unset; width: auto; }
-    .main::-webkit-scrollbar { height: 4px; }
+
+    /* 线头缩小 */
+    .line-head { height: 86px; padding: 4px 5px; gap: 3px; }
+    .line-num { font-size: 14px; }
+    .line-label { font-size: 7px; letter-spacing: 1px; }
+    .head-btns { gap: 2px; }
+    .head-btn { height: 17px; padding: 0 4px; font-size: 8px; border-radius: 4px; gap: 1px; }
+    .head-btn .ic { font-size: 9px; }
+
+    /* 配置栏缩小 */
+    .line-config { gap: 3px; }
+    .cfg { padding: 2px 3px; border-radius: 4px; }
+    .cfg-label { font-size: 7px; }
+    .cfg-input { font-size: 10px; }
+
+    /* 底部统计缩小 */
+    .line-foot { padding: 4px 5px; }
+    .foot-row { margin-bottom: 2px; }
+    .foot-label { font-size: 8px; }
+    .foot-val { font-size: 10px; }
+    .foot-val.time, .foot-val.finish { font-size: 11px; }
+    .foot-val .unit { font-size: 7px; }
+
+    .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+    .pager { display: none; }
   }
-  @media (max-width: 900px) { .pager { display: none; } }
 
   .line-head {
     height: 110px; flex-shrink: 0;
