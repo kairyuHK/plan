@@ -204,9 +204,9 @@
 
     /* 配置栏 */
     .line-config { gap: 2px; }
-    .cfg { padding: 0px 2px; border-radius: 3px; line-height: 1; }
-    .cfg-label { font-size: 5px; line-height: 1.4; }
-    .cfg-input { font-size: 8px; padding: 0; line-height: 1.2; }
+    .cfg { padding: 1px 3px; border-radius: 3px; display: flex; align-items: center; gap: 2px; }
+    .cfg-label { font-size: 6px; flex-shrink: 0; white-space: nowrap; }
+    .cfg-input { font-size: 8px; padding: 0; line-height: 1; flex: 1; min-width: 0; }
 
     /* 底部统计 */
     .line-foot { padding: 3px 4px; }
@@ -830,8 +830,8 @@ function buildLine(num) {
           <div class="line-label">LINE</div>
         </div>
         <div class="head-btns">
-          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
           <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
         </div>
       </div>
       <div class="line-config">
