@@ -203,10 +203,11 @@
     .head-btn .ic { font-size: 7px; }
 
     /* 配置栏 */
-    .line-config { gap: 2px; }
-    .cfg { padding: 1px 3px; border-radius: 3px; display: flex; align-items: center; gap: 2px; }
+    .line-config { gap: 2px; grid-template-columns: 44% 56%; }
+    .cfg { padding: 1px 3px; border-radius: 3px; display: flex; align-items: center; gap: 2px; overflow: hidden; }
     .cfg-label { font-size: 6px; flex-shrink: 0; white-space: nowrap; }
-    .cfg-input { font-size: 8px; padding: 0; line-height: 1; flex: 1; min-width: 0; }
+    .cfg-input { font-size: 8px; padding: 0; line-height: 1; flex: 1; min-width: 0; max-width: 100%; }
+    .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; }
 
     /* 底部统计 */
     .line-foot { padding: 3px 4px; }
