@@ -4,23 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>流水线生产计划板</title>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
   :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --panel-2: #1c2129;
-    --border: #2a313c;
-    --border-strong: #3a4452;
-    --text: #e6edf3;
-    --text-dim: #8b949e;
-    --text-mute: #6e7681;
-    --accent: #ffb000;
-    --green: #3fb950;
-    --red: #f85149;
-    --blue: #58a6ff;
-    --rest: #a371f7;
+    --bg: #111827;
+    --panel: #1f2937;
+    --panel-2: #1a2332;
+    --border: #374151;
+    --border-strong: #4b5563;
+    --text: #f9fafb;
+    --text-dim: #9ca3af;
+    --text-mute: #6b7280;
+    --accent: #f97316;
+    --green: #34d399;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --rest: #a78bfa;
     --hour-px: 140px;
     --time-col-w: 56px;
   }
@@ -29,17 +34,16 @@
     height: 100%;
     background: var(--bg);
     color: var(--text);
-    font-family: 'SF Mono', 'JetBrains Mono', Menlo, 'Courier New', Consolas, monospace;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     overflow: hidden;
   }
   body::before {
     content: '';
     position: fixed; inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-    background-size: 24px 24px;
+    background:
+      radial-gradient(ellipse at 15% 50%, rgba(249,115,22,0.05) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 15%, rgba(52,211,153,0.05) 0%, transparent 55%);
     pointer-events: none;
     z-index: 0;
   }
@@ -50,111 +54,113 @@
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
-    padding: 0 16px; gap: 12px;
+    padding: 0 16px; gap: 10px;
   }
   .brand {
     display: flex; align-items: center; gap: 10px;
-    font-weight: 700; letter-spacing: 2px; font-size: 14px;
+    font-weight: 700; font-size: 14px;
   }
   .brand .dot {
-    width: 10px; height: 10px;
-    background: var(--accent); border-radius: 50%;
-    box-shadow: 0 0 10px var(--accent);
+    width: 9px; height: 9px;
+    background: var(--accent); border-radius: 3px;
+    box-shadow: 0 0 10px rgba(249,115,22,0.6);
     animation: pulse 2s ease-in-out infinite;
   }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
   .brand-sub {
-    color: var(--text-dim); font-weight: 400;
-    letter-spacing: 1px; font-size: 11px;
+    color: var(--text-mute); font-weight: 400;
+    font-size: 11px;
     padding-left: 10px;
     border-left: 1px solid var(--border-strong);
-    margin-left: 4px;
+    margin-left: 2px;
   }
   .topbar-right {
     margin-left: auto; display: flex; align-items: center;
-    gap: 10px; color: var(--text-dim);
-    font-size: 11px; letter-spacing: 1px;
+    gap: 8px; color: var(--text-dim); font-size: 11px;
   }
-  .clock { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .clock { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; }
   .top-btn {
-    height: 32px; padding: 0 12px;
+    height: 30px; padding: 0 13px;
     background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
     cursor: pointer;
-    font-size: 12px; font-weight: 700; line-height: 1;
-    letter-spacing: 2px;
+    font-size: 12px; font-weight: 600;
+    border-radius: 6px;
     transition: all 0.15s;
     font-family: inherit;
   }
-  .top-btn:hover, .top-btn:active { background: var(--accent); color: var(--bg); }
-  .top-btn.clear { border-color: var(--red); color: var(--red); }
-  .top-btn.clear:hover, .top-btn.clear:active { background: var(--red); color: var(--bg); }
+  .top-btn:hover { background: var(--border); color: var(--text); }
+  .top-btn.accent { border-color: var(--accent); color: var(--accent); }
+  .top-btn.accent:hover { background: var(--accent); color: var(--bg); }
+  .top-btn.clear:hover { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.08); }
+
+  .export-wrap { position: relative; }
+  .export-menu {
+    display: none;
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 8px; overflow: hidden; min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 200;
+  }
+  .export-menu.show { display: block; }
+  .export-menu button {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 14px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 13px; font-family: inherit;
+    cursor: pointer; text-align: left; transition: background 0.1s;
+  }
+  .export-menu button:hover { background: var(--border); }
 
   .main {
     position: relative; z-index: 1;
     height: calc(100vh - 52px);
-    display: flex;
-    overflow: hidden;
+    display: flex; overflow: hidden;
   }
   .timeline {
-    width: var(--time-col-w);
-    flex-shrink: 0;
+    width: var(--time-col-w); flex-shrink: 0;
     background: var(--panel);
-    border-right: 1px solid var(--border-strong);
-    overflow: hidden;
-    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden; display: flex; flex-direction: column;
   }
   .timeline-head {
-    height: 110px;
-    flex-shrink: 0;
+    height: 110px; flex-shrink: 0;
     background: var(--panel);
     border-bottom: 2px solid var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-dim);
-    font-size: 10px;
-    letter-spacing: 2px;
-    writing-mode: vertical-rl;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px; padding: 6px 2px;
   }
+  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .date-month, .date-day, .date-dow {
+    font-size: 18px; font-weight: 300; line-height: 1;
+    font-family: 'PingFang SC', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans GB', 'Microsoft YaHei Light', 'Yu Gothic Light', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .date-month { }
+  .date-day { }
+  .date-dow { margin-top: 1px; }
+  .dow-weekday { color: var(--text-mute); }
+  .dow-sat { color: var(--blue); }
+  .dow-red { color: var(--red); }
   .timeline-body { flex: 1; overflow: hidden; position: relative; }
   .timeline-inner { position: relative; }
   .tick {
-    position: absolute;
-    left: 0; right: 0;
-    height: 0;
+    position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--border);
     display: flex; align-items: center; justify-content: flex-end;
-    padding-right: 6px;
-    color: var(--text-mute);
-    font-size: 10px;
-    font-variant-numeric: tabular-nums;
+    padding-right: 6px; color: var(--text-mute);
+    font-size: 10px; font-variant-numeric: tabular-nums;
   }
-  .tick.hour {
-    border-top-color: var(--border-strong);
-    color: var(--text-dim);
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .tick.hour-20 {
-    border-top: 2px solid var(--accent);
-    color: var(--accent);
-    font-size: 16px;
-    font-weight: 800;
-    text-shadow: 0 0 8px rgba(255,176,0,0.4);
-  }
-  .tick .label {
-    background: var(--panel);
-    padding: 1px 4px;
-    transform: translateY(-50%);
-  }
+  .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 600; }
+  .tick.hour-20 { border-top: 2px solid var(--accent); color: var(--accent); font-size: 14px; font-weight: 800; }
+  .tick .label { background: var(--panel); padding: 1px 4px; transform: translateY(-50%); border-radius: 3px; }
 
   .board {
-    flex: 1;
-    display: grid;
+    flex: 1; display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 1px;
-    background: var(--border);
-    overflow: hidden;
+    gap: 1px; background: var(--border); overflow: hidden;
   }
   .line {
     background: var(--bg);
@@ -163,576 +169,280 @@
   }
 
   @media (max-width: 900px) {
-    html, body { font-size: 14px; }
+    html, body { font-size: 11px; }
     .brand-sub { display: none; }
-    .topbar { padding: 0 12px; gap: 8px; }
-    .topbar-right { gap: 8px; font-size: 10px; }
+    .topbar { padding: 0 10px; gap: 6px; }
+    .topbar-right { gap: 6px; font-size: 10px; }
     #totalAll { display: none; }
-    :root { --time-col-w: 48px; --hour-px: 130px; }
+    :root { --time-col-w: 40px; --hour-px: 110px; }
+    .main { overflow-x: auto; }
     .board {
-      display: flex;
-      grid-template-columns: none;
-      overflow-x: auto; overflow-y: hidden;
-      scroll-snap-type: x mandatory;
-      gap: 0;
-      background: var(--bg);
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      min-width: 660px;
+      overflow: visible;
+      gap: 1px;
+      background: var(--border);
     }
-    .line {
-      flex: 0 0 calc(100vw - var(--time-col-w));
-      width: calc(100vw - var(--time-col-w));
-      scroll-snap-align: start;
-      border-right: 1px solid var(--border);
-    }
-    .board::-webkit-scrollbar { height: 4px; }
-    .board::-webkit-scrollbar-thumb { background: var(--border-strong); }
+    .line { flex: unset; width: auto; }
+    .main::-webkit-scrollbar { height: 4px; }
+    .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
   }
+  @media (max-width: 900px) { .pager { display: none; } }
 
   .line-head {
-    height: 110px;
-    flex-shrink: 0;
-    padding: 8px 10px;
-    background: var(--panel);
+    height: 110px; flex-shrink: 0;
+    padding: 8px 10px; background: var(--panel);
     border-bottom: 2px solid var(--accent);
     display: flex; flex-direction: column; gap: 6px;
   }
-  .line-head-row1 {
-    display: flex; align-items: center; gap: 6px;
-  }
-  .line-num {
-    font-size: 20px; font-weight: 800;
-    color: var(--accent); line-height: 1;
-  }
-  .line-label {
-    color: var(--text-dim); font-size: 9px;
-    letter-spacing: 2px;
-  }
-  .head-btns {
-    margin-left: auto;
-    display: flex; gap: 4px;
-  }
+  .line-head-row1 { display: flex; align-items: center; gap: 6px; }
+  .line-num { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; }
+  .line-label { color: var(--text-mute); font-size: 9px; letter-spacing: 2px; }
+  .head-btns { margin-left: auto; display: flex; gap: 4px; }
   .head-btn {
-    height: 28px; padding: 0 8px;
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    cursor: pointer;
-    font-size: 11px; font-weight: 600; line-height: 1;
-    letter-spacing: 1px;
-    transition: all 0.15s;
-    font-family: inherit;
-    display: inline-flex; align-items: center; gap: 3px;
+    height: 26px; padding: 0 9px;
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-dim); cursor: pointer;
+    font-size: 11px; font-weight: 600;
+    border-radius: 6px; transition: all 0.15s;
+    font-family: inherit; display: inline-flex; align-items: center; gap: 3px;
   }
-  .head-btn:hover, .head-btn:active { background: var(--accent); color: var(--bg); }
+  .head-btn:hover { background: var(--border); color: var(--text); }
+  .head-btn.add-job { border-color: var(--accent); color: var(--accent); }
+  .head-btn.add-job:hover { background: var(--accent); color: var(--bg); }
   .head-btn.rest { border-color: var(--rest); color: var(--rest); }
-  .head-btn.rest:hover, .head-btn.rest:active { background: var(--rest); color: var(--bg); }
-  .head-btn .ic { font-size: 13px; font-weight: 300; }
+  .head-btn.rest:hover { background: var(--rest); color: var(--bg); }
+  .head-btn .ic { font-size: 14px; font-weight: 300; }
 
-  .line-config {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-  }
-  .cfg {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 3px 6px;
-  }
-  .cfg-label {
-    color: var(--text-mute); font-size: 9px;
-    letter-spacing: 1px; display: block;
-  }
+  .line-config { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .cfg { background: var(--bg); border: 1px solid var(--border); padding: 3px 7px; border-radius: 6px; }
+  .cfg-label { color: var(--text-mute); font-size: 9px; display: block; }
   .cfg-input {
     width: 100%; background: transparent; border: none;
     color: var(--blue); font-size: 13px; font-weight: 700;
-    font-family: inherit; outline: none;
-    font-variant-numeric: tabular-nums;
+    font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
   }
-  .cfg-input::-webkit-outer-spin-button,
-  .cfg-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .cfg-input[type=number] { -moz-appearance: textfield; }
-  .cfg-input::-webkit-calendar-picker-indicator {
-    filter: invert(0.6); cursor: pointer;
-  }
+  .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 
-  .cards-wrap {
-    flex: 1;
-    overflow-y: auto; overflow-x: hidden;
-    position: relative;
-  }
-  .cards-wrap::-webkit-scrollbar { width: 6px; }
-  .cards-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
-  .cards-grid {
-    position: relative;
-    width: 100%;
-  }
-  .grid-line {
-    position: absolute;
-    left: 0; right: 0;
-    height: 0;
-    border-top: 1px dashed var(--border);
-    pointer-events: none;
-  }
+  .cards-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+  .cards-wrap::-webkit-scrollbar { width: 4px; }
+  .cards-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  .cards-grid { position: relative; width: 100%; }
+  .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--border); pointer-events: none; }
   .grid-line.hour { border-top: 1px solid var(--border-strong); }
-  .grid-line.hour-20 {
-    border-top: 1px solid var(--accent);
-    opacity: 0.4;
-  }
+  .grid-line.hour-20 { border-top: 1px solid var(--accent); opacity: 0.3; }
 
-  /* ============ 卡片 ============ */
   .card {
-    position: absolute;
-    left: 6px; right: 6px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+    position: absolute; left: 6px; right: 6px;
+    background: var(--panel);
     border-left: 4px solid var(--border-strong);
+    border-radius: 0 8px 8px 0;
     padding: 4px 8px;
     transition: box-shadow 0.15s;
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    z-index: 1;
-    display: flex; flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    z-index: 1; display: flex; flex-direction: column;
   }
-  .card.dragging { opacity: 0.4; z-index: 100; }
-  .card.error {
-    border-color: var(--red);
-    border-left-color: var(--red);
-  }
-
-  /* 默认状态：紧凑视图，只显示品名行 */
-  .card-compact {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    height: 100%;
-    min-height: 24px;
-  }
-  .card-expanded {
-    display: none;
-  }
+  .card.dragging { opacity: 0.3; z-index: 100; }
+  .card.error { border-left-color: var(--red); box-shadow: 0 2px 8px rgba(248,113,113,0.2); }
+  .card-compact { display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 100%; min-height: 24px; }
+  .card-expanded { display: none; }
   .card.active .card-compact { display: none; }
-  .card.active .card-expanded {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  /* active 时展开显示 */
+  .card.active .card-expanded { display: flex; flex-direction: column; gap: 5px; }
   .card.active {
     z-index: 50;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 0 2px var(--accent);
-    height: auto !important;
-    min-height: 160px;
-    padding: 6px 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--accent);
+    border-radius: 0 10px 10px 0;
+    height: auto !important; min-height: 160px; padding: 6px 8px;
   }
-  .card.error.active {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 0 2px var(--red);
-  }
+  .card.error.active { box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--red); }
   .card.rest.active { min-height: 110px; }
 
   .drag-handle {
-    cursor: grab;
-    color: var(--text-mute);
-    font-size: 13px; line-height: 1;
-    padding: 2px 4px;
-    user-select: none;
-    -webkit-user-select: none;
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    flex-shrink: 0;
-    touch-action: none;
+    cursor: grab; color: var(--text-mute);
+    font-size: 13px; line-height: 1; padding: 2px 3px;
+    user-select: none; -webkit-user-select: none;
+    border: 1px solid var(--border); border-radius: 4px;
+    flex-shrink: 0; touch-action: none;
   }
-  .drag-handle:hover, .drag-handle:active {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--bg);
-  }
+  .drag-handle:hover { color: var(--accent); border-color: var(--accent); }
 
-  /* 紧凑视图里的品名 */
-  .compact-name {
-    flex: 1;
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
-  .compact-qty {
-    color: var(--text-dim);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-  }
-  .compact-time {
-    color: var(--blue);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-  }
-  /* 高度很矮时隐藏次要信息 */
-  @container (max-height: 30px) {
-    .compact-qty, .compact-time { display: none; }
-  }
+  .compact-name { flex: 1; color: var(--text); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .compact-qty { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .compact-time { color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
-  /* ============ 展开视图 ============ */
-  .card-top {
-    display: flex; align-items: center; gap: 5px;
-    flex-shrink: 0;
-  }
-  .card-name-display {
-    flex: 1;
-    color: var(--text);
-    font-size: 14px;
-    font-weight: 700;
-    padding: 3px 4px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  .card-top { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .card-name-display { flex: 1; color: var(--text); font-size: 13px; font-weight: 700; padding: 3px 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card-del {
     background: transparent; border: 1px solid var(--border);
     color: var(--text-mute); cursor: pointer;
-    padding: 0; width: 22px; height: 22px;
-    font-size: 13px; line-height: 1;
-    transition: all 0.15s;
-    font-family: inherit;
-    flex-shrink: 0;
+    padding: 0; width: 22px; height: 22px; font-size: 13px; line-height: 1;
+    transition: all 0.15s; font-family: inherit; flex-shrink: 0; border-radius: 6px;
   }
-  .card-del:hover, .card-del:active {
-    color: var(--red);
-    border-color: var(--red);
-    background: rgba(248,81,73,0.08);
-  }
+  .card-del:hover { color: var(--red); border-color: var(--red); background: rgba(248,113,113,0.1); }
 
-  .card-fields {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .field {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 3px 5px;
-  }
-  /* 品名速度栏：实际跑的——黄色高亮 */
-  .field.name-spd {
-    border-color: rgba(255,176,0,0.35);
-    background: rgba(255,176,0,0.06);
-  }
-  .field-label {
-    color: var(--text-mute); font-size: 8px;
-    letter-spacing: 1px; display: block;
-    white-space: nowrap;
-  }
+  .card-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; flex-shrink: 0; }
+  .field { background: var(--bg); border: 1px solid var(--border); padding: 3px 6px; border-radius: 6px; }
+  .field.name-spd { border-color: rgba(249,115,22,0.4); background: rgba(249,115,22,0.06); }
+  .field-label { color: var(--text-mute); font-size: 8px; letter-spacing: 0.5px; display: block; white-space: nowrap; }
   .field.name-spd .field-label { color: var(--accent); }
   .field-input {
     width: 100%; background: transparent; border: none;
     color: var(--text); font-size: 13px; font-weight: 700;
-    font-family: inherit; outline: none;
-    font-variant-numeric: tabular-nums;
-    padding: 1px 0;
+    font-family: inherit; outline: none; font-variant-numeric: tabular-nums; padding: 1px 0;
   }
   .field.name-spd .field-input { color: var(--accent); }
   .field-input::placeholder { color: var(--text-mute); font-weight: 400; }
-  .field-input::-webkit-outer-spin-button,
-  .field-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .field-input[type=number] { -moz-appearance: textfield; }
-  .field-input::-webkit-calendar-picker-indicator {
-    filter: invert(0.6); cursor: pointer;
-  }
+  .field-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 
   .card-meta {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    color: var(--accent);
-    font-weight: 800;
-    flex-shrink: 0;
-    padding-top: 4px;
-    border-top: 1px dashed var(--border);
-    gap: 8px;
+    font-size: 12px; font-variant-numeric: tabular-nums;
+    color: var(--accent); font-weight: 700; flex-shrink: 0;
+    padding-top: 4px; border-top: 1px solid var(--border); gap: 8px;
   }
-  .card-meta .duration {
-    color: var(--accent);
-    background: rgba(255,176,0,0.1);
-    padding: 2px 6px;
-    border-radius: 2px;
-    white-space: nowrap;
-  }
-  .card-meta .range {
-    color: var(--blue);
-    font-size: 11px;
-    white-space: nowrap;
-  }
+  .card-meta .duration { color: var(--accent); background: rgba(249,115,22,0.1); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .card-meta .range { color: var(--blue); font-size: 11px; white-space: nowrap; }
 
   .card.rest {
-    background: linear-gradient(90deg, rgba(163,113,247,0.12), rgba(163,113,247,0.05));
+    background: linear-gradient(135deg, rgba(167,139,250,0.1), rgba(167,139,250,0.04));
     border-left-color: var(--rest);
-    border-color: rgba(163,113,247,0.3);
   }
   .card.rest .compact-name { color: var(--rest); }
+  .card.rest .compact-time { color: var(--rest); }
   .card.rest .card-name-display { color: var(--rest); }
   .card.rest .card-meta { color: var(--rest); }
   .card.rest .card-meta .range { color: var(--rest); }
   .rest-tag {
-    display: inline-block;
-    background: var(--rest);
-    color: var(--bg);
-    font-size: 9px; font-weight: 800;
-    letter-spacing: 1px;
-    padding: 2px 5px; line-height: 1;
-    flex-shrink: 0;
+    display: inline-block; background: var(--rest); color: var(--bg);
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    padding: 2px 5px; line-height: 1; border-radius: 3px; flex-shrink: 0;
   }
 
-  .line-foot {
-    flex-shrink: 0;
-    background: var(--panel);
-    border-top: 1px solid var(--border-strong);
-    padding: 8px 10px;
-  }
-  .foot-row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 3px;
-  }
+  .line-foot { flex-shrink: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 8px 10px; }
+  .foot-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
   .foot-row:last-child { margin-bottom: 0; }
-  .foot-label {
-    color: var(--text-dim); font-size: 10px; letter-spacing: 1px;
-  }
-  .foot-val {
-    font-size: 13px; font-weight: 800;
-    font-variant-numeric: tabular-nums; color: var(--text);
-  }
+  .foot-label { color: var(--text-mute); font-size: 10px; }
+  .foot-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
   .foot-val.time { color: var(--accent); font-size: 14px; }
   .foot-val.finish { color: var(--blue); font-size: 14px; }
-  .foot-val .unit {
-    color: var(--text-mute); font-size: 10px;
-    font-weight: 400; margin-left: 2px;
-  }
+  .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
 
   .pager {
-    display: none;
-    position: fixed;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    gap: 6px;
-    background: rgba(13,17,23,0.85);
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    backdrop-filter: blur(8px);
+    display: none; position: fixed; bottom: 8px; left: 50%;
+    transform: translateX(-50%); z-index: 20; gap: 6px;
+    background: rgba(17,24,39,0.9); padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 20px; backdrop-filter: blur(8px);
   }
-  .pager .pip {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--border-strong);
-    transition: all 0.2s;
-  }
-  .pager .pip.active {
-    background: var(--accent);
-    width: 18px;
-    border-radius: 3px;
-  }
+  .pager .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
+  .pager .pip.active { background: var(--accent); width: 18px; border-radius: 3px; }
   @media (max-width: 900px) { .pager { display: flex; } }
 
-  /* ============ 弹窗 ============ */
   .modal-mask {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 100;
-    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    z-index: 100; display: none;
     align-items: center; justify-content: center;
-    padding: 20px;
-    backdrop-filter: blur(4px);
+    padding: 20px; backdrop-filter: blur(6px);
   }
   .modal-mask.show { display: flex; }
   .modal {
-    background: var(--panel);
-    border: 1px solid var(--border-strong);
-    width: 100%; max-width: 640px;
-    max-height: 85vh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
+    background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 12px; width: 100%; max-width: 640px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.6);
   }
-  .modal-head {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 12px;
-  }
-  .modal-title {
-    font-size: 14px; font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--accent);
-  }
-  .modal-sub {
-    color: var(--text-dim);
-    font-size: 11px; letter-spacing: 1px;
-  }
+  .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .modal-title { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .modal-sub { color: var(--text-mute); font-size: 11px; margin-top: 2px; }
   .modal-close {
-    margin-left: auto;
-    width: 30px; height: 30px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 16px;
-    font-family: inherit;
-    line-height: 1;
+    margin-left: auto; width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); cursor: pointer; font-size: 16px;
+    font-family: inherit; line-height: 1; border-radius: 6px; transition: all 0.15s;
   }
-  .modal-close:hover { color: var(--red); border-color: var(--red); }
-  .modal-body {
-    flex: 1; overflow-y: auto;
-    padding: 16px 20px;
-  }
-  .modal-body::-webkit-scrollbar { width: 6px; }
-  .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  .modal-close:hover { color: var(--red); border-color: var(--red); background: rgba(248,113,113,0.08); }
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .modal-body::-webkit-scrollbar { width: 4px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
+  /* 品名库表单 — 统一两行两列 */
   .lib-add-form {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr auto auto;
-    gap: 6px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     margin-bottom: 14px;
     padding-bottom: 14px;
     border-bottom: 1px dashed var(--border);
   }
-  @media (max-width: 700px) {
-    .lib-add-form {
-      grid-template-columns: 1fr 1fr;
-    }
-    .lib-add-form .color-picker { grid-column: span 2; }
-    .lib-add-form .lib-add-btn { grid-column: span 2; padding: 10px; }
-  }
   .lib-add-form input[type=text],
   .lib-add-form input[type=number] {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px 10px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    outline: none;
-    min-width: 0;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 10px;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    outline: none; min-width: 0; border-radius: 6px; width: 100%;
   }
   .lib-add-form input:focus { border-color: var(--accent); }
+  .lib-add-form input::placeholder { color: var(--text-mute); font-weight: 400; }
   .color-picker {
-    display: flex; flex-wrap: wrap;
-    gap: 4px; align-items: center;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 4px 6px;
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 6px 8px; border-radius: 6px;
   }
-  .color-swatch {
-    width: 18px; height: 18px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform 0.1s;
-  }
-  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-swatch:hover { transform: scale(1.2); }
   .color-swatch.selected { border-color: var(--text); }
   .lib-add-btn {
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    padding: 0 14px;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    cursor: pointer;
+    background: var(--accent); color: var(--bg); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; width: 100%; transition: opacity 0.15s;
   }
   .lib-add-btn:hover { opacity: 0.85; }
-  .lib-add-btn.editing {
-    background: var(--blue);
-  }
-  .lib-list {
-    display: flex; flex-direction: column; gap: 6px;
-  }
+  .lib-add-btn.editing { background: var(--blue); }
+
+  .lib-list { display: flex; flex-direction: column; gap: 6px; }
   .lib-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    padding: 9px 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
     border-left: 4px solid var(--lib-color, var(--border-strong));
   }
-  .lib-item-name {
-    flex: 1; font-weight: 700; font-size: 14px;
-    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .lib-item-info {
-    color: var(--text-dim); font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    line-height: 1.4;
-    flex-shrink: 0;
-  }
+  .lib-item-name { flex: 1; font-weight: 700; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; flex-shrink: 0; }
   .lib-item-info .ns { color: var(--accent); font-weight: 700; }
-  .lib-item-btns {
-    display: flex; gap: 4px;
-    flex-shrink: 0;
-  }
-  .lib-item-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-mute);
-    width: 26px; height: 26px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 12px;
-  }
+  .lib-item-btns { display: flex; gap: 4px; flex-shrink: 0; }
+  .lib-item-btn { background: transparent; border: 1px solid var(--border); color: var(--text-mute); width: 28px; height: 28px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 6px; transition: all 0.15s; }
   .lib-item-btn.edit:hover { color: var(--blue); border-color: var(--blue); }
   .lib-item-btn.del:hover { color: var(--red); border-color: var(--red); }
-  .lib-empty {
-    text-align: center;
-    color: var(--text-mute);
-    padding: 30px 10px;
-    border: 1px dashed var(--border);
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
-  .pick-list {
-    display: flex; flex-direction: column; gap: 6px;
-  }
+  .lib-empty { text-align: center; color: var(--text-mute); padding: 32px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12px; }
+
+  .pick-list { display: flex; flex-direction: column; gap: 6px; }
   .pick-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    padding: 12px 14px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
     border-left: 4px solid var(--lib-color, var(--border-strong));
-    cursor: pointer;
-    transition: all 0.15s;
+    cursor: pointer; transition: all 0.15s;
   }
-  .pick-item:hover, .pick-item:active {
-    background: var(--panel-2);
-    border-color: var(--accent);
-  }
-  .pick-item-name {
-    flex: 1; font-weight: 700; font-size: 15px;
-  }
-  .pick-item-info {
-    color: var(--text-dim); font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    line-height: 1.4;
-  }
+  .pick-item:hover { background: var(--panel); border-color: var(--accent); }
+  .pick-item-name { flex: 1; font-weight: 700; font-size: 15px; }
+  .pick-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; }
   .pick-item-info .ns { color: var(--accent); font-weight: 700; }
-  .pick-empty {
-    text-align: center; color: var(--text-mute);
-    padding: 40px 10px; font-size: 13px;
-    border: 1px dashed var(--border);
-  }
+  .pick-empty { text-align: center; color: var(--text-mute); padding: 40px 10px; font-size: 13px; border: 1px dashed var(--border); border-radius: 8px; }
   .pick-empty button {
     display: block; margin: 12px auto 0;
     background: var(--accent); color: var(--bg);
-    border: none; padding: 10px 18px;
-    font-family: inherit; font-size: 13px; font-weight: 700;
-    cursor: pointer; letter-spacing: 1px;
+    border: none; padding: 10px 18px; border-radius: 6px;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+
+  @media print {
+    .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
+    #clearAll, #openLib, #totalAll, body::before { display: none !important; }
+    html, body { overflow: visible !important; height: auto !important; }
+    .main { overflow: visible !important; height: auto !important; }
+    .cards-wrap { overflow: visible !important; }
+    .cards-grid { height: auto !important; }
   }
 </style>
 </head>
@@ -747,6 +457,14 @@
   <div class="topbar-right">
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
     <button class="top-btn" id="openLib">品名库</button>
+    <div class="export-wrap">
+      <button class="top-btn accent" id="exportBtn">导出 ▾</button>
+      <div class="export-menu" id="exportMenu">
+        <button onclick="doPrint()">🖨️ 打印</button>
+        <button onclick="doExportPng()">🖼️ 导出图片</button>
+        <button onclick="doExportCsv()">📊 导出 Excel</button>
+      </div>
+    </div>
     <span id="totalAll">共 0 个 · 0:00:00</span>
     <span class="clock" id="clock">--:--:--</span>
   </div>
@@ -754,7 +472,7 @@
 
 <div class="main">
   <div class="timeline">
-    <div class="timeline-head">TIME</div>
+    <div class="timeline-head" id="timelineHead"></div>
     <div class="timeline-body" id="timelineBody">
       <div class="timeline-inner" id="timelineInner"></div>
     </div>
@@ -818,7 +536,7 @@ const COLORS = [
 let library = [];
 let currentPickTargetLine = null;
 let activeCard = null;
-let editingLibId = null;  // 当前正在编辑的品名库 ID
+let editingLibId = null;
 let saveTimer = null;
 
 const board = document.getElementById('board');
@@ -826,7 +544,6 @@ const pager = document.getElementById('pager');
 const timelineInner = document.getElementById('timelineInner');
 const timelineBody = document.getElementById('timelineBody');
 
-// ============ 品名库 ============
 function loadLibrary() {
   try {
     const raw = localStorage.getItem(STORAGE_LIB);
@@ -919,7 +636,6 @@ function renderGridLines(grid) {
   }
 }
 
-// ============ 品名库 UI ============
 const libModal = document.getElementById('libModal');
 const libList = document.getElementById('libList');
 const libNameInput = document.getElementById('libName');
@@ -1002,29 +718,16 @@ libAddBtn.addEventListener('click', () => {
   const people = parseInt(libPeopleInput.value) || 0;
   if (!name) { libNameInput.focus(); return; }
   if (!speed || speed <= 0) { libSpeedInput.focus(); return; }
-
   if (editingLibId) {
-    // 更新
     const item = findLibItem(editingLibId);
-    if (item) {
-      item.name = name;
-      item.speed = speed;
-      item.lineSpeed = lineSpeed;
-      item.people = people;
-      item.color = selectedColor;
-    }
+    if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.color = selectedColor; }
     cancelEditLib();
   } else {
     library.push({ id: uid(), name, speed, lineSpeed, people, color: selectedColor });
-    libNameInput.value = '';
-    libSpeedInput.value = '';
-    libLineSpeedInput.value = '';
-    libPeopleInput.value = '';
+    libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = '';
   }
   saveLibrary();
   renderLibList();
-  // 修改后所有牌子上引用此品名的牌的颜色/默认值不会自动更新（保留用户已修改的数据）
-  // 但要重算耗时（因为可能改了品名速度）—— 让用户重新选才更新最稳妥
   libNameInput.focus();
 });
 libNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') libSpeedInput.focus(); });
@@ -1032,9 +735,7 @@ libSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libLineS
 libLineSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libPeopleInput.focus(); });
 libPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libAddBtn.click(); });
 document.getElementById('openLib').addEventListener('click', () => {
-  cancelEditLib();
-  renderColorPicker();
-  renderLibList();
+  cancelEditLib(); renderColorPicker(); renderLibList();
   libModal.classList.add('show');
   setTimeout(() => libNameInput.focus(), 100);
 });
@@ -1048,14 +749,10 @@ document.querySelectorAll('[data-close]').forEach(btn => {
 });
 document.querySelectorAll('.modal-mask').forEach(m => {
   m.addEventListener('click', e => {
-    if (e.target === m) {
-      m.classList.remove('show');
-      if (m.id === 'libModal') cancelEditLib();
-    }
+    if (e.target === m) { m.classList.remove('show'); if (m.id === 'libModal') cancelEditLib(); }
   });
 });
 
-// ============ 选择面板 ============
 const pickModal = document.getElementById('pickModal');
 const pickList = document.getElementById('pickList');
 const pickSub = document.getElementById('pickSub');
@@ -1063,11 +760,7 @@ function openPicker(line) {
   currentPickTargetLine = line;
   pickSub.textContent = `添加到 ${line.querySelector('.line-num').textContent} 号线`;
   if (library.length === 0) {
-    pickList.innerHTML = `
-      <div class="pick-empty">
-        品名库是空的<br>
-        <button id="goLibBtn">先去添加品名</button>
-      </div>`;
+    pickList.innerHTML = `<div class="pick-empty">品名库是空的<br><button id="goLibBtn">先去添加品名</button></div>`;
     document.getElementById('goLibBtn').addEventListener('click', () => {
       pickModal.classList.remove('show');
       document.getElementById('openLib').click();
@@ -1093,16 +786,16 @@ function openPicker(line) {
   pickModal.classList.add('show');
 }
 
-// ============ 流水线 ============
 function buildLine(num) {
   const line = document.createElement('div');
   line.className = 'line';
   line.dataset.line = num;
+  const displayNum = num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
   line.innerHTML = `
     <div class="line-head">
       <div class="line-head-row1">
         <div>
-          <div class="line-num">${String(num).padStart(2,'0')}</div>
+          <div class="line-num">${displayNum}</div>
           <div class="line-label">LINE</div>
         </div>
         <div class="head-btns">
@@ -1116,7 +809,7 @@ function buildLine(num) {
           <input class="cfg-input start-time" type="time" value="08:00">
         </div>
         <div class="cfg">
-          <span class="cfg-label">间隔分</span>
+          <span class="cfg-label">切换（分钟）</span>
           <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
         </div>
       </div>
@@ -1142,15 +835,12 @@ function buildLine(num) {
   const grid = line.querySelector('.cards-grid');
   grid.style.height = getTotalPx() + 'px';
   renderGridLines(grid);
-
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
   line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
-
   return line;
 }
 
@@ -1158,9 +848,7 @@ let scrollSyncing = false;
 function syncScroll(top, source) {
   if (scrollSyncing) return;
   scrollSyncing = true;
-  document.querySelectorAll('.cards-wrap').forEach(w => {
-    if (w !== source) w.scrollTop = top;
-  });
+  document.querySelectorAll('.cards-wrap').forEach(w => { if (w !== source) w.scrollTop = top; });
   timelineBody.scrollTop = top;
   scrollSyncing = false;
 }
@@ -1171,8 +859,6 @@ timelineBody.addEventListener('scroll', () => {
   scrollSyncing = false;
 });
 
-// ============ 创建牌子 ============
-// 品名牌：使用品名库的品名（牌子上不可改）
 function addJobCard(grid, libItem, savedData) {
   const node = document.createElement('div');
   node.className = 'card';
@@ -1181,7 +867,6 @@ function addJobCard(grid, libItem, savedData) {
   node.dataset.name = libItem.name;
   node.dataset.color = libItem.color;
   node.style.borderLeftColor = libItem.color;
-  // savedData 是从存储里恢复来的之前编辑过的数据
   const speedVal = savedData?.speed != null ? savedData.speed : libItem.speed;
   const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (libItem.lineSpeed > 0 ? libItem.lineSpeed : '');
   const qtyVal = savedData?.qty != null ? savedData.qty : '';
@@ -1225,14 +910,10 @@ function addJobCard(grid, libItem, savedData) {
   `;
   wireCardEvents(node, 'job');
   grid.appendChild(node);
-  if (!savedData) {
-    setActiveCard(node);
-    setTimeout(() => node.querySelector('.qty').focus(), 50);
-  }
+  if (!savedData) { setActiveCard(node); setTimeout(() => node.querySelector('.qty').focus(), 50); }
   recalc(grid.closest('.line'));
 }
 
-// 休息牌
 function addRestCard(grid, savedData) {
   const node = document.createElement('div');
   node.className = 'card rest';
@@ -1275,11 +956,8 @@ function addRestCard(grid, savedData) {
   recalc(grid.closest('.line'));
 }
 
-// ============ 牌子置顶/事件 ============
 function setActiveCard(card) {
-  if (activeCard && activeCard !== card) {
-    activeCard.classList.remove('active');
-  }
+  if (activeCard && activeCard !== card) activeCard.classList.remove('active');
   activeCard = card;
   if (card) card.classList.add('active');
 }
@@ -1287,82 +965,46 @@ function setActiveCard(card) {
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
   const handles = node.querySelectorAll('.drag-handle');
-
   node.addEventListener('mousedown', () => setActiveCard(node));
   node.addEventListener('touchstart', () => setActiveCard(node), { passive: true });
-
   let inputsToWatch;
   if (type === 'job') {
-    inputsToWatch = [
-      node.querySelector('.speed'),
-      node.querySelector('.line-speed'),
-      node.querySelector('.qty'),
-      node.querySelector('.people'),
-    ];
+    inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
   } else {
-    inputsToWatch = [
-      node.querySelector('.rest-min'),
-      node.querySelector('.rest-fixed'),
-      node.querySelector('.rest-name-input'),
-    ];
+    inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
   inputsToWatch.forEach(inp => {
     if (inp) inp.addEventListener('input', () => {
-      // 休息名同步紧凑视图
-      if (inp.classList.contains('rest-name-input')) {
-        node.querySelector('.compact-name').textContent = inp.value || '休息';
-      }
+      if (inp.classList.contains('rest-name-input')) node.querySelector('.compact-name').textContent = inp.value || '休息';
       recalc(node.closest('.line'));
       scheduleSaveBoard();
     });
   });
-
   delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const line = node.closest('.line');
     if (activeCard === node) activeCard = null;
-    node.remove();
-    recalc(line);
-    scheduleSaveBoard();
+    node.remove(); recalc(line); scheduleSaveBoard();
   });
-
-  // 两个拖拽手柄（紧凑和展开各一个）
   handles.forEach(handle => {
-    handle.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
-      node.setAttribute('draggable', 'true');
-    });
+    handle.addEventListener('mousedown', (e) => { e.stopPropagation(); node.setAttribute('draggable', 'true'); });
     handle.addEventListener('mouseup', () => node.setAttribute('draggable', 'false'));
   });
-
-  node.addEventListener('dragstart', (e) => {
-    node.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-  });
+  node.addEventListener('dragstart', (e) => { node.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
   node.addEventListener('dragend', () => {
-    node.classList.remove('dragging');
-    node.setAttribute('draggable', 'false');
-    document.querySelectorAll('.line').forEach(l => recalc(l));
-    scheduleSaveBoard();
+    node.classList.remove('dragging'); node.setAttribute('draggable', 'false');
+    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
   });
-
   handles.forEach(handle => setupTouchDrag(node, handle));
 }
 
 function setupTouchDrag(node, handle) {
   let touching = false;
-  handle.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    touching = true;
-    setActiveCard(node);
-    node.classList.add('dragging');
-  }, { passive: false });
+  handle.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); touching = true; setActiveCard(node); node.classList.add('dragging'); }, { passive: false });
   handle.addEventListener('touchmove', (e) => {
     if (!touching) return;
     e.preventDefault();
-    const y = e.touches[0].clientY;
-    const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY; const x = e.touches[0].clientX;
     node.style.pointerEvents = 'none';
     const el = document.elementFromPoint(x, y);
     node.style.pointerEvents = '';
@@ -1373,24 +1015,20 @@ function setupTouchDrag(node, handle) {
   }, { passive: false });
   handle.addEventListener('touchend', () => {
     if (!touching) return;
-    touching = false;
-    node.classList.remove('dragging');
-    document.querySelectorAll('.line').forEach(l => recalc(l));
-    scheduleSaveBoard();
+    touching = false; node.classList.remove('dragging');
+    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
   });
 }
 
 function insertCardInGrid(grid, node, clientY) {
   const after = getDragAfter(grid, clientY);
-  if (after == null) grid.appendChild(node);
-  else grid.insertBefore(node, after);
+  if (after == null) grid.appendChild(node); else grid.insertBefore(node, after);
 }
 function getDragAfter(grid, y) {
   const cards = [...grid.querySelectorAll('.card:not(.dragging)')];
   for (const c of cards) {
     const box = c.getBoundingClientRect();
-    const mid = box.top + box.height / 2;
-    if (y < mid) return c;
+    if (y < box.top + box.height / 2) return c;
   }
   return null;
 }
@@ -1402,55 +1040,30 @@ document.addEventListener('dragover', (e) => {
   if (!grid) return;
   insertCardInGrid(grid, dragging, e.clientY);
 });
-
 document.addEventListener('mousedown', (e) => {
-  if (!e.target.closest('.card')) {
-    if (activeCard) {
-      activeCard.classList.remove('active');
-      activeCard = null;
-    }
-  }
+  if (!e.target.closest('.card')) { if (activeCard) { activeCard.classList.remove('active'); activeCard = null; } }
 });
 
-// ============ 计算 + 布局 ============
 function recalc(line) {
   const grid = line.querySelector('.cards-grid');
   const startSec = parseClock(line.querySelector('.start-time').value);
   const gapMin = parseFloat(line.querySelector('.gap').value) || 0;
   const gapSec = gapMin * 60;
   const baseSec = TIME_START_HOUR * 3600;
-
-  let totalQty = 0;
-  let totalSec = 0;
-  let cursor = startSec;
-  let lastEnd = null;
-
+  let totalQty = 0, totalSec = 0, cursor = startSec, lastEnd = null;
   const cards = grid.querySelectorAll('.card');
   cards.forEach((card, i) => {
     const type = card.dataset.type;
     const tStart = card.querySelector('.t-start');
     const tEnd = card.querySelector('.t-end');
-    let cardStart = null;
-    let cardEnd = null;
-    let duration = 0;
-
+    let cardStart = null, cardEnd = null, duration = 0;
     if (type === 'job') {
-      // 耗时 = 数量 / 品名速度
       const speed = parseFloat(card.querySelector('.speed').value) || 0;
       const qty = parseFloat(card.querySelector('.qty').value) || 0;
       if (speed > 0 && qty > 0) duration = (qty / speed) * 60;
       card.querySelector('.duration').textContent = '耗时 ' + fmtDuration(duration);
-
-      if (cursor != null && duration > 0) {
-        cardStart = cursor;
-        cardEnd = cursor + duration;
-        cursor = cardEnd + gapSec;
-        lastEnd = cardEnd;
-      }
-      totalQty += qty;
-      totalSec += duration;
-
-      // 紧凑视图：数量+耗时
+      if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
+      totalQty += qty; totalSec += duration;
       card.querySelector('.compact-qty').textContent = qty > 0 ? `${qty}个` : '';
       card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '';
     } else if (type === 'rest') {
@@ -1458,44 +1071,25 @@ function recalc(line) {
       duration = restMin * 60;
       const fixedSec = parseClock(card.querySelector('.rest-fixed').value);
       let realStart;
-      if (fixedSec != null) {
-        realStart = (cursor != null && cursor > fixedSec) ? cursor : fixedSec;
-      } else {
-        realStart = cursor;
-      }
-      if (realStart != null && duration > 0) {
-        cardStart = realStart;
-        cardEnd = realStart + duration;
-        cursor = cardEnd;
-        lastEnd = cardEnd;
-      }
+      if (fixedSec != null) { realStart = (cursor != null && cursor > fixedSec) ? cursor : fixedSec; } else { realStart = cursor; }
+      if (realStart != null && duration > 0) { cardStart = realStart; cardEnd = realStart + duration; cursor = cardEnd; lastEnd = cardEnd; }
       card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '';
     }
-
     if (cardStart != null && cardEnd != null) {
-      tStart.textContent = fmtClock(cardStart);
-      tEnd.textContent = fmtClock(cardEnd);
-      const top = secToPx(cardStart);
-      const height = secToPx(cardEnd) - secToPx(cardStart);
-      card.style.top = top + 'px';
-      card.style.height = Math.max(height, 24) + 'px';
-      const tooEarly = cardStart < baseSec;
-      const tooLate = cardEnd > TIME_END_HOUR * 3600;
-      card.classList.toggle('error', tooEarly || tooLate);
+      tStart.textContent = fmtClock(cardStart); tEnd.textContent = fmtClock(cardEnd);
+      const top = secToPx(cardStart); const height = secToPx(cardEnd) - secToPx(cardStart);
+      card.style.top = top + 'px'; card.style.height = Math.max(height, 24) + 'px';
+      card.classList.toggle('error', cardStart < baseSec || cardEnd > TIME_END_HOUR * 3600);
     } else {
-      card.style.top = (i * 28) + 'px';
-      card.style.height = '26px';
-      tStart.textContent = '—';
-      tEnd.textContent = '—';
+      card.style.top = (i * 28) + 'px'; card.style.height = '26px';
+      tStart.textContent = '—'; tEnd.textContent = '—';
       if (type === 'job') card.querySelector('.duration').textContent = '耗时 —';
       card.classList.remove('error');
     }
   });
-
   line.querySelector('.qty-total').innerHTML = `${totalQty.toLocaleString()}<span class="unit">个</span>`;
   line.querySelector('.time-total').textContent = fmtDuration(totalSec);
   line.querySelector('.finish-total').textContent = (lastEnd != null) ? fmtClock(lastEnd) : '—';
-
   recalcGlobal();
 }
 
@@ -1505,8 +1099,7 @@ function recalcGlobal() {
     line.querySelectorAll('.card[data-type="job"]').forEach(card => {
       const speed = parseFloat(card.querySelector('.speed').value) || 0;
       const qty = parseFloat(card.querySelector('.qty').value) || 0;
-      cnt++;
-      q += qty;
+      cnt++; q += qty;
       if (speed > 0 && qty > 0) s += (qty / speed) * 60;
     });
   });
@@ -1514,42 +1107,17 @@ function recalcGlobal() {
     `共 ${cnt} 张 · ${q.toLocaleString()} 个 · ${fmtDuration(s) === '—' ? '0:00' : fmtDuration(s)}`;
 }
 
-// ============ 保存/恢复 计划板 ============
-function scheduleSaveBoard() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveBoard, 400);
-}
-
+function scheduleSaveBoard() { clearTimeout(saveTimer); saveTimer = setTimeout(saveBoard, 400); }
 function saveBoard() {
-  const state = {
-    lines: []
-  };
+  const state = { lines: [] };
   document.querySelectorAll('.line').forEach(line => {
-    const lineData = {
-      startTime: line.querySelector('.start-time').value,
-      gap: line.querySelector('.gap').value,
-      cards: []
-    };
+    const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, cards: [] };
     line.querySelectorAll('.card').forEach(card => {
       const type = card.dataset.type;
       if (type === 'job') {
-        lineData.cards.push({
-          type: 'job',
-          libId: card.dataset.libId,
-          name: card.dataset.name,
-          color: card.dataset.color,
-          speed: card.querySelector('.speed').value,
-          lineSpeed: card.querySelector('.line-speed').value,
-          qty: card.querySelector('.qty').value,
-          people: card.querySelector('.people').value,
-        });
+        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: card.querySelector('.speed').value, lineSpeed: card.querySelector('.line-speed').value, qty: card.querySelector('.qty').value, people: card.querySelector('.people').value });
       } else if (type === 'rest') {
-        lineData.cards.push({
-          type: 'rest',
-          name: card.querySelector('.rest-name-input').value,
-          min: card.querySelector('.rest-min').value,
-          fixed: card.querySelector('.rest-fixed').value,
-        });
+        lineData.cards.push({ type: 'rest', name: card.querySelector('.rest-name-input').value, min: card.querySelector('.rest-min').value, fixed: card.querySelector('.rest-fixed').value });
       }
     });
     state.lines.push(lineData);
@@ -1559,13 +1127,8 @@ function saveBoard() {
 
 function loadBoard() {
   let state;
-  try {
-    const raw = localStorage.getItem(STORAGE_BOARD);
-    if (!raw) return;
-    state = JSON.parse(raw);
-  } catch (e) { return; }
+  try { const raw = localStorage.getItem(STORAGE_BOARD); if (!raw) return; state = JSON.parse(raw); } catch (e) { return; }
   if (!state || !state.lines) return;
-
   const lineEls = document.querySelectorAll('.line');
   state.lines.forEach((lineData, idx) => {
     const lineEl = lineEls[idx];
@@ -1575,15 +1138,7 @@ function loadBoard() {
     const grid = lineEl.querySelector('.cards-grid');
     (lineData.cards || []).forEach(c => {
       if (c.type === 'job') {
-        // 找品名库里的同 ID（拿颜色/品名等当前值），找不到就用保存时的 name/color 重建一个临时项
-        const libItem = findLibItem(c.libId) || {
-          id: c.libId,
-          name: c.name || '未知品名',
-          color: c.color || '#8b949e',
-          speed: parseFloat(c.speed) || 0,
-          lineSpeed: parseFloat(c.lineSpeed) || 0,
-          people: parseFloat(c.people) || 0,
-        };
+        const libItem = findLibItem(c.libId) || { id: c.libId, name: c.name || '未知品名', color: c.color || '#8b949e', speed: parseFloat(c.speed) || 0, lineSpeed: parseFloat(c.lineSpeed) || 0, people: parseFloat(c.people) || 0 };
         addJobCard(grid, libItem, c);
       } else if (c.type === 'rest') {
         addRestCard(grid, c);
@@ -1593,34 +1148,125 @@ function loadBoard() {
   });
 }
 
-// 清空所有
 document.getElementById('clearAll').addEventListener('click', () => {
   if (!confirm('确定清空所有牌子吗？(品名库不会被清空)')) return;
-  document.querySelectorAll('.cards-grid').forEach(g => {
-    g.querySelectorAll('.card').forEach(c => c.remove());
-  });
+  document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
   activeCard = null;
-  document.querySelectorAll('.line').forEach(l => {
-    l.querySelector('.start-time').value = '08:00';
-    l.querySelector('.gap').value = '0';
-    recalc(l);
-  });
+  document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; recalc(l); });
   saveBoard();
 });
 
+// ============ 导出功能 ============
+const exportBtn = document.getElementById('exportBtn');
+const exportMenu = document.getElementById('exportMenu');
+exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportMenu.classList.toggle('show'); });
+document.addEventListener('click', () => exportMenu.classList.remove('show'));
+
+function doPrint() {
+  exportMenu.classList.remove('show');
+  window.print();
+}
+
+async function doExportPng() {
+  exportMenu.classList.remove('show');
+  if (typeof html2canvas === 'undefined') {
+    alert('截图功能需要网络连接（加载 html2canvas），请确认网络后重试。');
+    return;
+  }
+  const orig = exportBtn.textContent;
+  exportBtn.textContent = '截图中…';
+  exportBtn.disabled = true;
+  try {
+    const canvas = await html2canvas(document.querySelector('.main'), {
+      backgroundColor: '#111827', scale: 2, useCORS: true, logging: false,
+    });
+    const link = document.createElement('a');
+    link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    alert('截图失败：' + err.message);
+  } finally {
+    exportBtn.textContent = orig;
+    exportBtn.disabled = false;
+  }
+}
+
+function doExportCsv() {
+  exportMenu.classList.remove('show');
+  const rows = [['流水线', '类型', '品名/说明', '数量', '品名速度', '流水线速度', '人数', '耗时', '开始时间', '结束时间']];
+  document.querySelectorAll('.line').forEach(line => {
+    const lineNum = line.dataset.line;
+    line.querySelectorAll('.card').forEach(card => {
+      if (card.dataset.type === 'job') {
+        rows.push([lineNum, '品名', card.dataset.name, card.querySelector('.qty').value, card.querySelector('.speed').value, card.querySelector('.line-speed').value, card.querySelector('.people').value, card.querySelector('.duration').textContent.replace('耗时 ',''), card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+      } else if (card.dataset.type === 'rest') {
+        rows.push([lineNum, '休息', card.querySelector('.rest-name-input').value, '', '', '', '', card.querySelector('.rest-min').value + '分钟', card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+      }
+    });
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.csv`;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
 function tick() {
   const d = new Date();
-  const t = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-  document.getElementById('clock').textContent = t;
+  document.getElementById('clock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 }
-setInterval(tick, 1000);
-tick();
+setInterval(tick, 1000); tick();
+
+const DOW_JP = ['日','月','火','水','木','金','土'];
+const JP_FIXED_HOLIDAYS = new Set([
+  '01-01','02-11','02-23','04-29','05-03','05-04','05-05','08-11','11-03','11-23'
+]);
+function getNthWeekdayDate(year, month, weekday, n) {
+  let count = 0;
+  for (let d = 1; d <= 31; d++) {
+    const dt = new Date(year, month - 1, d);
+    if (dt.getMonth() !== month - 1) break;
+    if (dt.getDay() === weekday && ++count === n) return d;
+  }
+  return -1;
+}
+function isJpHoliday(date) {
+  const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
+  const md = `${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if (JP_FIXED_HOLIDAYS.has(md)) return true;
+  if (m === 1  && d === getNthWeekdayDate(y, 1,  1, 2)) return true;
+  if (m === 3  && (d === 20 || d === 21)) return true;
+  if (m === 7  && d === getNthWeekdayDate(y, 7,  1, 3)) return true;
+  if (m === 9  && d === getNthWeekdayDate(y, 9,  1, 3)) return true;
+  if (m === 9  && (d === 22 || d === 23)) return true;
+  if (m === 10 && d === getNthWeekdayDate(y, 10, 1, 2)) return true;
+  if (date.getDay() === 1) {
+    const sun = new Date(y, m - 1, d - 1);
+    const smd = `${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
+    if (JP_FIXED_HOLIDAYS.has(smd)) return true;
+  }
+  return false;
+}
+function updateDateHeader() {
+  const d = new Date();
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate(), dow = d.getDay();
+  const isHoliday = isJpHoliday(d);
+  const dowClass = (dow === 0 || isHoliday) ? 'dow-red' : dow === 6 ? 'dow-sat' : 'dow-weekday';
+  document.getElementById('timelineHead').innerHTML =
+    `<span class="date-year">${y}年</span>` +
+    `<span class="date-month ${dowClass}">${String(m).padStart(2,'0')}月</span>` +
+    `<span class="date-day ${dowClass}">${String(day).padStart(2,'0')}日</span>` +
+    `<span class="date-dow ${dowClass}">（${DOW_JP[dow]}）</span>`;
+}
+updateDateHeader();
+setInterval(updateDateHeader, 60000);
 
 loadLibrary();
 renderTimeline();
-for (let i = 1; i <= LINE_COUNT; i++) {
-  board.appendChild(buildLine(i));
-}
+for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
 for (let i = 0; i < LINE_COUNT; i++) {
   const pip = document.createElement('div');
   pip.className = 'pip' + (i === 0 ? ' active' : '');
@@ -1629,24 +1275,16 @@ for (let i = 0; i < LINE_COUNT; i++) {
 board.addEventListener('scroll', () => {
   if (window.innerWidth > 900) return;
   const idx = Math.round(board.scrollLeft / board.clientWidth);
-  pager.querySelectorAll('.pip').forEach((p, i) => {
-    p.classList.toggle('active', i === idx);
-  });
+  pager.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('active', i === idx));
 });
 window.addEventListener('resize', () => {
   renderTimeline();
-  document.querySelectorAll('.cards-grid').forEach(g => {
-    g.style.height = getTotalPx() + 'px';
-    renderGridLines(g);
-  });
+  document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = getTotalPx() + 'px'; renderGridLines(g); });
   document.querySelectorAll('.line').forEach(l => recalc(l));
 });
 
-// 恢复保存的内容
 loadBoard();
 recalcGlobal();
-
-// 离开前再保存一次
 window.addEventListener('beforeunload', saveBoard);
 </script>
 
