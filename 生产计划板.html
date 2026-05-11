@@ -174,46 +174,47 @@
     .topbar { padding: 0 10px; gap: 6px; }
     .topbar-right { gap: 5px; font-size: 9px; }
     #totalAll { display: none; }
-    :root { --time-col-w: 36px; --hour-px: 100px; }
+    :root { --time-col-w: 34px; --hour-px: 100px; }
 
-    /* 日期栏缩小居中 */
-    .timeline-head { gap: 0; padding: 3px 1px; align-items: center; }
-    .date-year { font-size: 7px; text-align: center; }
-    .date-month, .date-day, .date-dow { font-size: 12px; text-align: center; line-height: 1.15; }
+    /* 日期栏：年顶部左对齐，月日星期居中 */
+    .timeline-head { justify-content: flex-start; align-items: center; padding: 6px 1px 4px; gap: 1px; }
+    .date-year { font-size: 7px; align-self: flex-start; padding-left: 3px; line-height: 1.4; }
+    .date-month, .date-day, .date-dow { font-size: 11px; text-align: center; line-height: 1.3; }
 
-    /* 主板横向滚动，6列均分 */
+    /* 主板横向滚动 */
     .main { overflow-x: auto; }
     .board {
       display: grid;
-      grid-template-columns: repeat(6, minmax(72px, 1fr));
-      min-width: 432px;
+      grid-template-columns: repeat(6, minmax(66px, 1fr));
+      min-width: 396px;
       overflow: visible;
       gap: 1px;
       background: var(--border);
     }
     .line { flex: unset; width: auto; }
 
-    /* 线头缩小 */
-    .line-head { height: 86px; padding: 4px 5px; gap: 3px; }
-    .line-num { font-size: 14px; }
-    .line-label { font-size: 7px; letter-spacing: 1px; }
-    .head-btns { gap: 2px; }
-    .head-btn { height: 17px; padding: 0 4px; font-size: 8px; border-radius: 4px; gap: 1px; }
-    .head-btn .ic { font-size: 9px; }
+    /* 线头：按钮竖排，夕盛/数字横排 */
+    .line-head { height: 80px; padding: 3px 4px; gap: 2px; }
+    .line-head-row1 { gap: 3px; align-items: flex-start; }
+    .line-num { font-size: 11px; white-space: nowrap; }
+    .line-label { font-size: 6px; letter-spacing: 1px; }
+    .head-btns { flex-direction: column; gap: 2px; }
+    .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
+    .head-btn .ic { font-size: 7px; }
 
-    /* 配置栏缩小 */
-    .line-config { gap: 3px; }
-    .cfg { padding: 2px 3px; border-radius: 4px; }
-    .cfg-label { font-size: 7px; }
-    .cfg-input { font-size: 10px; }
+    /* 配置栏 */
+    .line-config { gap: 2px; }
+    .cfg { padding: 1px 3px; border-radius: 3px; }
+    .cfg-label { font-size: 6px; }
+    .cfg-input { font-size: 9px; }
 
-    /* 底部统计缩小 */
-    .line-foot { padding: 4px 5px; }
-    .foot-row { margin-bottom: 2px; }
-    .foot-label { font-size: 8px; }
-    .foot-val { font-size: 10px; }
-    .foot-val.time, .foot-val.finish { font-size: 11px; }
-    .foot-val .unit { font-size: 7px; }
+    /* 底部统计 */
+    .line-foot { padding: 3px 4px; }
+    .foot-row { margin-bottom: 1px; }
+    .foot-label { font-size: 7px; }
+    .foot-val { font-size: 9px; }
+    .foot-val.time, .foot-val.finish { font-size: 10px; }
+    .foot-val .unit { font-size: 6px; }
 
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
