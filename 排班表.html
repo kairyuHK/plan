@@ -1,1 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフト管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Variables ── */
+:root {
+  --work-bg: #dbeafe; --work-fg: #1d4ed8;
+  --rest-bg: #ffedd5; --rest-fg: #c2410c;
+  --today-bg: #c2410c; --today-fg: #ffffff;
+  --sat-fg: #3b82f6;  --sun-fg: #ef4444;
+  --alloff-col-bg: #fff7ed;
+  --header-bg: #0f172a; --header-fg: #ffffff;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --radius: 10px;
+}
+
+body {
+  font-family: 'Inter', 'Noto Sans JP', sans-serif;
+  background: #f0f4f8;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── App shell ── */
+.app { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* ── Header ── */
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+}
+.app-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+.period-badge {
+  background: var(--header-bg); color: var(--header-fg);
+  padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  cursor: pointer; user-select: none;
+}
+.period-badge:hover { opacity: 0.85; }
+
+/* ── Toolbar ── */
+.toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s;
+  font-family: inherit;
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.97); }
+.btn-primary   { background: #1d4ed8; color: #fff; }
+.btn-secondary { background: var(--surface); color: var(--muted); border: 1.5px solid var(--border); }
+.btn-success   { background: #16a34a; color: #fff; }
+.btn-warning   { background: #d97706; color: #fff; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  background: var(--surface); border: 2px dashed #cbd5e1; border-radius: var(--radius);
+  padding: 22px; text-align: center; margin-bottom: 14px;
+  color: var(--muted); font-size: 13px; cursor: pointer; transition: border-color 0.2s;
+}
+.upload-zone:hover, .upload-zone.drag-over { border-color: #1d4ed8; }
+.upload-zone .icon { font-size: 30px; margin-bottom: 6px; }
+.upload-zone strong { color: var(--text); }
+#fileInput { display: none; }
+
+/* ── Keyword bar ── */
+.keyword-bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: var(--surface); border-radius: var(--radius); padding: 10px 14px;
+  border: 1px solid var(--border); margin-bottom: 14px; font-size: 13px;
+}
+.keyword-bar label { color: var(--muted); font-weight: 500; white-space: nowrap; }
+.keyword-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.keyword-tag {
+  background: #dbeafe; color: #1d4ed8; border-radius: 6px;
+  padding: 3px 10px; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 4px;
+}
+.keyword-tag .remove { cursor: pointer; opacity: 0.6; font-style: normal; }
+.keyword-tag .remove:hover { opacity: 1; }
+.keyword-input {
+  border: 1.5px solid #dbeafe; border-radius: 6px; padding: 5px 10px;
+  font-size: 13px; background: #f8fafc; color: #1d4ed8; outline: none;
+  width: 140px; font-family: inherit;
+}
+
+/* ── OCR progress ── */
+.ocr-progress { display: none; margin-bottom: 12px; }
+.ocr-progress.active { display: block; }
+.progress-bar-wrap { background: #e2e8f0; border-radius: 20px; height: 6px; overflow: hidden; }
+.progress-bar { background: #1d4ed8; height: 100%; width: 0%; transition: width 0.3s; border-radius: 20px; }
+.progress-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── Table container ── */
+.table-wrap {
+  background: var(--surface); border-radius: var(--radius);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table { border-collapse: collapse; min-width: 100%; font-size: 12px; }
+
+/* Sticky name column */
+.col-name { position: sticky; left: 0; z-index: 2; min-width: 96px; background: var(--surface); }
+thead .col-name { background: var(--header-bg); z-index: 3; }
+
+/* Header */
+thead tr { background: var(--header-bg); color: var(--header-fg); }
+th {
+  padding: 10px 5px; text-align: center; font-weight: 600;
+  white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);
+  user-select: none;
+}
+th.col-name { text-align: left; padding-left: 14px; font-size: 13px; }
+.date-num { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.date-day { font-size: 10px; font-weight: 400; opacity: 0.85; }
+th.day-sat .date-day { color: #93c5fd; opacity: 1; }
+th.day-sun .date-day { color: #fca5a5; opacity: 1; }
+th.today-col { background: var(--today-bg); }
+th.col-alloff-header { background: #92400e; }
+
+/* Body */
+tbody tr { border-bottom: 1px solid #f1f5f9; }
+tbody tr:hover td:not(.col-name) { background: #f8fafc; }
+td {
+  padding: 7px 5px; text-align: center;
+  border-right: 1px solid #f1f5f9; vertical-align: middle;
+}
+td.col-name {
+  text-align: left; padding-left: 14px; font-weight: 600; font-size: 13px;
+  border-right: 2px solid var(--border);
+}
+td.col-alloff-cell { background: var(--alloff-col-bg) !important; }
+
+/* Cells */
+.cell {
+  display: inline-block; width: 32px; padding: 3px 0;
+  border-radius: 5px; font-weight: 700; font-size: 12px; line-height: 1.4;
+}
+.cell-work { background: var(--work-bg); color: var(--work-fg); }
+.cell-rest { background: var(--rest-bg); color: var(--rest-fg); }
+td.today-col .cell { outline: 2px solid var(--today-bg); outline-offset: 1px; }
+
+/* Edit mode */
+body.edit-mode td:not(.col-name) { cursor: pointer; }
+body.edit-mode td:not(.col-name):hover .cell { opacity: 0.72; }
+
+/* ── Legend ── */
+.legend {
+  display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap;
+  font-size: 12px; color: var(--muted); align-items: center;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Alerts ── */
+.alert {
+  border-radius: var(--radius); padding: 10px 14px; font-size: 13px;
+  margin-bottom: 12px; line-height: 1.5;
+}
+.alert-warn { background: #fef9c3; border: 1.5px solid #fcd34d; color: #78350f; }
+.alert-info { background: #dbeafe; border: 1.5px solid #93c5fd; color: #1e3a8a; }
+
+/* ── Period editor ── */
+.period-editor {
+  display: none; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px;
+  font-size: 13px; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.period-editor.visible { display: flex; }
+.period-editor select {
+  border: 1.5px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  font-size: 13px; background: #f8fafc; font-family: inherit; outline: none;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .app { padding: 12px 8px 40px; }
+  .app-title { font-size: 17px; }
+  .period-badge { font-size: 11px; padding: 5px 12px; }
+  .btn { padding: 7px 12px; font-size: 12px; }
+  table { font-size: 11px; }
+  .col-name { min-width: 80px; }
+  td.col-name { font-size: 12px; padding-left: 10px; }
+  .cell { width: 28px; font-size: 11px; }
+  th { padding: 8px 4px; }
+  .date-num { font-size: 12px; }
+  .keyword-bar { padding: 8px 10px; }
+  .keyword-input { width: 110px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div class="app-title">📅 シフト管理</div>
+    <div class="period-badge" id="periodBadge" onclick="togglePeriodEditor()" title="クリックして期間を変更">—</div>
+  </div>
+
+  <!-- Period editor (hidden by default) -->
+  <div class="period-editor" id="periodEditor">
+    <label style="color:var(--muted);font-weight:500">期間変更:</label>
+    <select id="periodYear"></select>年
+    <select id="periodMonth"></select>月16日〜翌月15日
+    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyPeriodChange()">適用</button>
+    <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="togglePeriodEditor()">閉じる</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📤 画像アップロード</button>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <button class="btn btn-secondary" id="editBtn" onclick="toggleEditMode()">✏️ 手動編集</button>
+    <button class="btn btn-success" onclick="exportPNG()">📸 PNG出力</button>
+    <button class="btn btn-secondary" onclick="clearData()" style="color:#ef4444;border-color:#fecaca">🗑 リセット</button>
+  </div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="icon">🖼️</div>
+    <div><strong>シフト表の画像をドラッグ＆ドロップ</strong></div>
+    <div style="margin-top:4px;font-size:12px">複数枚可 · PNG / JPG対応 · OCRで自動読み取り</div>
+  </div>
+
+  <div class="keyword-bar">
+    <label>🔍 従業員名:</label>
+    <div class="keyword-tags" id="keywordTags"></div>
+    <input class="keyword-input" id="keywordInput" placeholder="名前を入力…" autocomplete="off">
+    <button class="btn btn-primary" style="padding:6px 12px;font-size:12px" onclick="runExtraction()">抽出実行</button>
+  </div>
+
+  <div class="ocr-progress" id="ocrProgress">
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-label" id="progressLabel">OCR処理中…</div>
+  </div>
+
+  <div id="alertContainer"></div>
+
+  <div class="table-wrap" id="tableWrap">
+    <div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">
+      画像をアップロードするか、✏️ 手動編集でシフトを入力してください
+    </div>
+  </div>
+
+  <div class="legend" id="legend" style="display:none">
+    <span style="font-weight:600;color:#475569">凡例:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--work-bg);border:1px solid #93c5fd"></div>出勤</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--rest-bg);border:1px solid #fdba74"></div>休暇</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--today-bg);border-radius:50%"></div>今日</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--alloff-col-bg);border:1px solid #fdba74"></div>複数人休み列</div>
+    <div class="legend-item" style="color:var(--sat-fg);font-weight:600">土</div>
+    <div class="legend-item" style="color:var(--sun-fg);font-weight:600">日・祝</div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 1. JAPANESE HOLIDAYS 2024-2026
+// ═══════════════════════════════════════════
+const HOLIDAYS = new Set([
+  // 2024
+  '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23',
+  '2024-03-20','2024-04-29','2024-05-03','2024-05-04','2024-05-05',
+  '2024-05-06','2024-07-15','2024-08-11','2024-08-12','2024-09-16',
+  '2024-09-22','2024-09-23','2024-10-14','2024-11-03','2024-11-04',
+  '2024-11-23',
+  // 2025
+  '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+  '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05',
+  '2025-05-06','2025-07-21','2025-08-11','2025-09-15','2025-09-23',
+  '2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+  // 2026
+  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
+  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-07-20',
+  '2026-08-11','2026-09-21','2026-09-23','2026-10-12','2026-11-03',
+  '2026-11-23',
+]);
+
+const DAY_LABELS = ['日','月','火','水','木','金','土'];
+
+// ═══════════════════════════════════════════
+// 2. CALENDAR UTILITIES
+// ═══════════════════════════════════════════
+
+function toISO(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getPeriodDates(year, month) {
+  const dates = [];
+  const start = new Date(year, month - 1, 16);
+  const endMonth = month === 12 ? 1 : month + 1;
+  const endYear  = month === 12 ? year + 1 : year;
+  const end = new Date(endYear, endMonth - 1, 15);
+  const cur = new Date(start);
+  while (cur <= end) {
+    dates.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function getDayLabel(date) { return DAY_LABELS[date.getDay()]; }
+
+function isSunOrHoliday(date) {
+  return date.getDay() === 0 || HOLIDAYS.has(toISO(date));
+}
+
+function isSaturday(date) { return date.getDay() === 6; }
+
+function isToday(iso) { return iso === toISO(new Date()); }
+
+function periodLabel(year, month) {
+  const endMonth = month === 12 ? 1 : month + 1;
+  const endYear  = month === 12 ? year + 1 : year;
+  return `${year}年${month}月16日 〜 ${endYear}年${endMonth}月15日`;
+}
+
+// ═══════════════════════════════════════════
+// 3. STATE + localStorage
+// ═══════════════════════════════════════════
+const STORAGE_KEY = 'shift-schedule-v1';
+
+let state = {
+  period: null,
+  employees: [],
+  schedule: {},
+};
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try { state = JSON.parse(raw); } catch (_) {}
+}
+
+function ensureEmployeeDates(name) {
+  if (!state.schedule[name]) state.schedule[name] = {};
+  const dates = getPeriodDates(state.period.year, state.period.month);
+  dates.forEach(d => {
+    const iso = toISO(d);
+    if (!state.schedule[name][iso]) state.schedule[name][iso] = 'work';
+  });
+}
+
+function setPeriod(year, month) {
+  state.period = { year, month };
+  document.getElementById('periodBadge').textContent = periodLabel(year, month);
+}
+
+function setDefaultPeriod() {
+  const now = new Date();
+  const day = now.getDate();
+  let year  = now.getFullYear();
+  let month = now.getMonth() + 1;
+  if (day <= 15) {
+    month -= 1;
+    if (month === 0) { month = 12; year -= 1; }
+  }
+  setPeriod(year, month);
+}
+
+// ── Period editor UI ──
+function togglePeriodEditor() {
+  const ed = document.getElementById('periodEditor');
+  ed.classList.toggle('visible');
+  if (ed.classList.contains('visible')) populatePeriodSelects();
+}
+
+function populatePeriodSelects() {
+  const yEl = document.getElementById('periodYear');
+  const mEl = document.getElementById('periodMonth');
+  const cur = state.period || { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  yEl.innerHTML = '';
+  for (let y = 2024; y <= 2027; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === cur.year) opt.selected = true;
+    yEl.appendChild(opt);
+  }
+  mEl.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    if (m === cur.month) opt.selected = true;
+    mEl.appendChild(opt);
+  }
+}
+
+function applyPeriodChange() {
+  const year  = parseInt(document.getElementById('periodYear').value);
+  const month = parseInt(document.getElementById('periodMonth').value);
+  setPeriod(year, month);
+  // Re-ensure all employees have dates for new period
+  state.employees.forEach(name => ensureEmployeeDates(name));
+  saveState();
+  renderTable();
+  togglePeriodEditor();
+  showAlert(`期間を ${periodLabel(year, month)} に変更しました。`, 'info');
+}
+
+// ═══════════════════════════════════════════
+// 4. TABLE RENDERER
+// ═══════════════════════════════════════════
+
+function detectSameDayOff() {
+  const restCounts = {};
+  const dates = getPeriodDates(state.period.year, state.period.month);
+  dates.forEach(d => { restCounts[toISO(d)] = 0; });
+  state.employees.forEach(name => {
+    const sched = state.schedule[name] || {};
+    Object.entries(sched).forEach(([iso, val]) => {
+      if (val === 'rest' && restCounts[iso] !== undefined) restCounts[iso]++;
+    });
+  });
+  const total   = state.employees.length;
+  const multiOff = new Set(Object.entries(restCounts).filter(([,c]) => c >= 2).map(([iso]) => iso));
+  const allOff   = new Set(Object.entries(restCounts).filter(([,c]) => c === total && c > 0).map(([iso]) => iso));
+  return { multiOff, allOff };
+}
+
+function renderTable() {
+  if (!state.period || state.employees.length === 0) return;
+  const dates = getPeriodDates(state.period.year, state.period.month);
+  const { multiOff, allOff } = detectSameDayOff();
+
+  // thead
+  let headRow = `<tr><th class="col-name">従業員</th>`;
+  dates.forEach(d => {
+    const iso = toISO(d);
+    let cls = '';
+    if (isSunOrHoliday(d))    cls = 'day-sun';
+    else if (isSaturday(d))   cls = 'day-sat';
+    if (isToday(iso))         cls += ' today-col';
+    if (allOff.has(iso))      cls += ' col-alloff-header';
+    headRow += `<th class="${cls.trim()}"><div class="date-num">${d.getDate()}</div><div class="date-day">${getDayLabel(d)}</div></th>`;
+  });
+  headRow += `</tr>`;
+
+  // tbody
+  let bodyRows = '';
+  state.employees.forEach(name => {
+    const sched = state.schedule[name] || {};
+    bodyRows += `<tr><td class="col-name">${escHtml(name)}</td>`;
+    dates.forEach(d => {
+      const iso = toISO(d);
+      const val = sched[iso] || 'work';
+      const cellCls = val === 'rest' ? 'cell-rest' : 'cell-work';
+      const label   = val === 'rest' ? '休' : '出';
+      let tdCls = '';
+      if (isToday(iso))        tdCls += ' today-col';
+      if (multiOff.has(iso))   tdCls += ' col-alloff-cell';
+      bodyRows += `<td class="${tdCls.trim()}" data-name="${escAttr(name)}" data-iso="${iso}"><span class="cell ${cellCls}">${label}</span></td>`;
+    });
+    bodyRows += `</tr>`;
+  });
+
+  document.getElementById('tableWrap').innerHTML =
+    `<table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table>`;
+  document.getElementById('legend').style.display = 'flex';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Cell click handler (edit mode)
+document.getElementById('tableWrap').addEventListener('click', e => {
+  if (!document.body.classList.contains('edit-mode')) return;
+  const td = e.target.closest('td[data-name]');
+  if (!td) return;
+  const name = td.dataset.name;
+  const iso  = td.dataset.iso;
+  if (!state.schedule[name]) return;
+  state.schedule[name][iso] = state.schedule[name][iso] === 'rest' ? 'work' : 'rest';
+  saveState();
+  renderTable();
+});
+
+// ═══════════════════════════════════════════
+// 5. EDIT MODE + EMPLOYEE MANAGEMENT + INIT
+// ═══════════════════════════════════════════
+
+let editMode = false;
+
+function toggleEditMode() {
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('editBtn');
+  btn.textContent = editMode ? '✅ 編集完了' : '✏️ 手動編集';
+  btn.className   = editMode ? 'btn btn-warning' : 'btn btn-secondary';
+
+  if (editMode && !state.period) {
+    setDefaultPeriod();
+    showAddEmployeePrompt();
+  } else if (editMode && state.employees.length === 0) {
+    showAddEmployeePrompt();
+  }
+  if (!editMode) saveState();
+}
+
+function showAddEmployeePrompt() {
+  const input = prompt('従業員名を入力してください（複数の場合はカンマ区切り）:');
+  if (!input) return;
+  const names = input.split(/[,、，\s]+/).map(n => n.trim()).filter(Boolean);
+  let added = false;
+  names.forEach(n => {
+    if (!state.employees.includes(n)) {
+      state.employees.push(n);
+      ensureEmployeeDates(n);
+      if (!keywords.includes(n)) { keywords.push(n); }
+      added = true;
+    }
+  });
+  if (added) refreshKeywordTags();
+  renderTable();
+}
+
+function clearData() {
+  if (!confirm('すべてのシフトデータをリセットしますか？')) return;
+  state = { period: null, employees: [], schedule: {} };
+  keywords.length = 0;
+  ocrRawText = '';
+  refreshKeywordTags();
+  localStorage.removeItem(STORAGE_KEY);
+  setDefaultPeriod();
+  document.getElementById('tableWrap').innerHTML =
+    '<div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">画像をアップロードするか、✏️ 手動編集でシフトを入力してください</div>';
+  document.getElementById('legend').style.display = 'none';
+}
+
+function showAlert(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  const c = document.getElementById('alertContainer');
+  c.innerHTML = '';
+  c.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 6000);
+}
+
+// ── Keyword tags UI ──
+const keywords = [];
+
+function refreshKeywordTags() {
+  document.getElementById('keywordTags').innerHTML = keywords.map((k, i) =>
+    `<span class="keyword-tag">${escHtml(k)}<span class="remove" onclick="removeKeyword(${i})">×</span></span>`
+  ).join('');
+}
+
+function removeKeyword(i) {
+  keywords.splice(i, 1);
+  refreshKeywordTags();
+}
+
+document.getElementById('keywordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const v = e.target.value.trim();
+    if (v && !keywords.includes(v)) { keywords.push(v); refreshKeywordTags(); }
+    e.target.value = '';
+  }
+});
+
+// ── init ──
+function init() {
+  loadState();
+  if (state.period) {
+    document.getElementById('periodBadge').textContent = periodLabel(state.period.year, state.period.month);
+    state.employees.forEach(n => { if (!keywords.includes(n)) keywords.push(n); });
+    refreshKeywordTags();
+    renderTable();
+  } else {
+    setDefaultPeriod();
+  }
+
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    handleFiles([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+  });
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    handleFiles([...e.target.files]);
+    e.target.value = '';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// ═══════════════════════════════════════════
+// 6. OCR (Tesseract.js)
+// ═══════════════════════════════════════════
+
+let ocrRawText = '';
+
+async function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  const progress = document.getElementById('ocrProgress');
+  const bar      = document.getElementById('progressBar');
+  const label    = document.getElementById('progressLabel');
+  progress.classList.add('active');
+  bar.style.width = '0%';
+  ocrRawText = '';
+
+  let worker;
+  try {
+    worker = await Tesseract.createWorker('jpn+eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          bar.style.width = (m.progress * 100).toFixed(0) + '%';
+        }
+      }
+    });
+
+    for (let i = 0; i < files.length; i++) {
+      label.textContent = `OCR処理中… ${i + 1} / ${files.length} 枚目`;
+      const { data: { text } } = await worker.recognize(files[i]);
+      ocrRawText += '\n' + text;
+    }
+  } catch (err) {
+    showAlert('OCRエラー: ' + err.message, 'warn');
+    return;
+  } finally {
+    if (worker) await worker.terminate();
+  }
+
+  bar.style.width = '100%';
+  label.textContent = `完了！ ${files.length}枚を読み込みました。キーワードを確認して「抽出実行」を押してください。`;
+  setTimeout(() => progress.classList.remove('active'), 4000);
+
+  detectPeriodFromText(ocrRawText);
+  showAlert(`OCR完了。従業員名を入力して「抽出実行」を押してください。`, 'info');
+}
+
+function detectPeriodFromText(text) {
+  // Match "2025年4月" / "2025/4" / "2025-4"
+  const m = text.match(/(\d{4})[年\/\-](\d{1,2})[月\/\-]?/);
+  if (m) {
+    const year  = parseInt(m[1]);
+    const month = parseInt(m[2]);
+    if (year >= 2020 && year <= 2030 && month >= 1 && month <= 12) {
+      setPeriod(year, month);
+      return;
+    }
+  }
+  // Reiwa era: R7 = 2025
+  const r = text.match(/R(\d{1,2})[年](\d{1,2})[月]/);
+  if (r) {
+    const year  = 2018 + parseInt(r[1]);
+    const month = parseInt(r[2]);
+    if (year >= 2020 && year <= 2030 && month >= 1 && month <= 12) {
+      setPeriod(year, month);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// 7. KEYWORD-BASED SCHEDULE EXTRACTION
+// ═══════════════════════════════════════════
+
+const REST_TOKENS = /[休×✕✗xXOFF－ー▲△]/u;
+const WORK_TOKENS = /[出○◯∪◎勤●]/u;
+
+function extractScheduleFromText(text, names) {
+  const dates = getPeriodDates(state.period.year, state.period.month);
+  const result = {};
+
+  names.forEach(name => {
+    const lines = text.split('\n').filter(l => l.includes(name));
+    if (lines.length === 0) {
+      result[name] = null;
+      return;
+    }
+    const line = lines[0];
+    const tokens = line.split(/[\s|｜\t,，　]+/).filter(Boolean);
+    const nameIdx = tokens.findIndex(t => t.includes(name));
+    const dataTokens = nameIdx >= 0 ? tokens.slice(nameIdx + 1) : tokens;
+
+    const sched = {};
+    dates.forEach((d, i) => {
+      const tok = dataTokens[i] || '';
+      if (REST_TOKENS.test(tok)) {
+        sched[toISO(d)] = 'rest';
+      } else {
+        sched[toISO(d)] = 'work';
+      }
+    });
+    result[name] = sched;
+  });
+
+  return result;
+}
+
+function runExtraction() {
+  if (!ocrRawText) {
+    showAlert('先に画像をアップロードしてください。', 'warn');
+    return;
+  }
+  if (keywords.length === 0) {
+    showAlert('従業員名（キーワード）を入力してから「抽出実行」を押してください。', 'warn');
+    return;
+  }
+  if (!state.period) setDefaultPeriod();
+
+  const extracted = extractScheduleFromText(ocrRawText, keywords);
+  const notFound  = [];
+
+  keywords.forEach(name => {
+    if (!state.employees.includes(name)) state.employees.push(name);
+    if (extracted[name]) {
+      state.schedule[name] = extracted[name];
+    } else {
+      ensureEmployeeDates(name);
+      notFound.push(name);
+    }
+  });
+
+  saveState();
+  renderTable();
+
+  if (notFound.length > 0) {
+    showAlert(`⚠️ 見つからなかった名前: ${notFound.join('、')}。手動編集モードで修正してください。`, 'warn');
+  } else {
+    showAlert(`✅ ${keywords.length}名のシフトを抽出しました。内容を確認し、必要に応じて手動修正してください。`, 'info');
+  }
+}
+
+// ═══════════════════════════════════════════
+// 8. PNG EXPORT
+// ═══════════════════════════════════════════
+
+async function exportPNG() {
+  const tableEl = document.getElementById('tableWrap');
+  if (!tableEl.querySelector('table')) {
+    showAlert('エクスポートするシフト表がありません。', 'warn');
+    return;
+  }
+
+  const btn = document.querySelector('.btn-success');
+  const origText = btn.textContent;
+  btn.textContent = '⏳ 出力中…';
+  btn.disabled = true;
+
+  const originalStyle = tableEl.style.cssText;
+  tableEl.style.overflow = 'visible';
+  tableEl.style.maxWidth = 'none';
+  tableEl.style.borderRadius = '0';
+
+  try {
+    const canvas = await html2canvas(tableEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+    const link = document.createElement('a');
+    const { year, month } = state.period || { year: 0, month: 0 };
+    link.download = `shift-${year}${String(month).padStart(2,'0')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showAlert('📸 PNG出力完了！', 'info');
+  } catch (err) {
+    showAlert('出力エラー: ' + err.message, 'warn');
+  } finally {
+    tableEl.style.cssText = originalStyle;
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
