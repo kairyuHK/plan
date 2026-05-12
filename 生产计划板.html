@@ -390,7 +390,7 @@
     .head-btn { width: 100%; justify-content: center; height: 20px; }
   }
 
-  @media (max-width: 1080px) and (orientation: landscape) {
+  @media (max-width: 900px) and (orientation: landscape) {
     /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
     .timeline-head { height: 108px; }
     .line-head { height: 108px; padding-bottom: 12px; }
@@ -521,6 +521,11 @@
   body.mob-ls .head-btns { flex-direction: row; }
   body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
   body.mob-ls .head-btn .ic { font-size: 9px; }
+
+  @media (orientation: landscape) {
+    .line-num.xiusheng { font-size: 15px; }
+  }
+  body.mob-ls .line-num.xiusheng { font-size: 15px; }
 
   @media print {
     .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
@@ -878,11 +883,12 @@ function buildLine(num) {
   line.className = 'line';
   line.dataset.line = num;
   const displayNum = num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
+  const lineNumClass = num === 1 ? 'line-num xiusheng' : 'line-num';
   line.innerHTML = `
     <div class="line-head">
       <div class="line-head-row1">
         <div>
-          <div class="line-num">${displayNum}</div>
+          <div class="${lineNumClass}">${displayNum}</div>
           <div class="line-label">LINE</div>
         </div>
         <div class="head-btns">
@@ -1385,7 +1391,7 @@ board.addEventListener('scroll', () => {
   pager.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('active', i === idx));
 });
 function syncMobLayout() {
-  const isLandscape = window.innerWidth <= 1080 && window.innerWidth > window.innerHeight;
+  const isLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
   document.body.classList.toggle('mob-ls', isLandscape);
 }
 
