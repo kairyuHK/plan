@@ -93,7 +93,10 @@
   .top-btn:hover { background: var(--border); color: var(--text); }
   .top-btn.accent { border-color: var(--accent); color: var(--accent); }
   .top-btn.accent:hover { background: var(--accent); color: var(--bg); }
-  .top-btn.clear:hover { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.08); }
+  .top-btn.clear { border-color: var(--red); color: var(--red); }
+  .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
+  #openLib { border-color: var(--rest); color: var(--rest); }
+  #openLib:hover { background: var(--rest); color: var(--bg); }
 
   .export-wrap { position: relative; }
   .export-menu {
@@ -149,8 +152,8 @@
   .tick {
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: flex-end;
-    padding-right: 6px; color: var(--text-mute);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-mute);
     font-size: 10px; font-variant-numeric: tabular-nums;
   }
   .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 600; }
@@ -196,7 +199,7 @@
     .line { flex: unset; width: auto; }
 
     /* 线头：按钮竖排，夕盛/数字横排 */
-    .line-head { height: 80px; padding: 3px 4px; gap: 2px; }
+    .line-head { height: 80px; padding: 3px 4px; gap: 2px; overflow: hidden; }
     .line-head-row1 { gap: 3px; align-items: flex-start; }
     .line-num { font-size: 9px; white-space: nowrap; }
     .line-label { font-size: 6px; letter-spacing: 1px; }
@@ -259,6 +262,7 @@
     font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
   }
   .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+  .cfg:last-child .cfg-input { text-align: right; }
 
   .cards-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
   .cards-wrap::-webkit-scrollbar { width: 4px; }
@@ -373,6 +377,12 @@
   .pager .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
   .pager .pip.active { background: var(--accent); width: 18px; border-radius: 3px; }
   @media (max-width: 900px) { .pager { display: flex; } }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    .line-config { display: none; }
+    .card { z-index: 2; }
+    .grid-line { z-index: 0; }
+  }
 
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.65);
