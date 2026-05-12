@@ -383,17 +383,18 @@
     .card { z-index: 2; }
     .grid-line { z-index: 0; }
     /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
-    .line-head { padding: 4px 4px 5px; gap: 3px; }
+    .timeline-head { height: 88px; }
+    .line-head { padding: 4px 4px 5px; gap: 3px; height: 88px; }
     .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
     .line-num { text-align: center; }
     .line-label { text-align: center; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
-    .head-btn { width: 100%; justify-content: center; height: 15px; }
+    .head-btn { width: 100%; justify-content: center; height: 24px; }
   }
 
   @media (max-width: 900px) and (orientation: landscape) {
     /* 横屏：起始/切换栏底部与分界线留出空隙 */
-    .line-head { padding-bottom: 6px; }
+    .line-head { padding-bottom: 10px; }
   }
 
   .modal-mask {
