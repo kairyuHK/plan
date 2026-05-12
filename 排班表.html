@@ -436,7 +436,10 @@ function renderCalendar() {
 
       const dateNum = d.getDate();
       const showMonth = dateNum === 16 || dateNum === 1;
-      html += `<div class="${cls}">`;
+      const cellStyle = bothRest
+        ? ` style="background:repeating-linear-gradient(-45deg,#fffbeb 0px,#fffbeb 6px,#fef3c7 6px,#fef3c7 12px)"`
+        : '';
+      html += `<div class="${cls}"${cellStyle}>`;
       if (bothRest) html += `<span class="both-rest-badge">全休</span>`;
       const monthPfx = showMonth ? `<span class="cal-month-prefix">${d.getMonth() + 1}月</span>` : '';
       html += `<div class="cal-date-wrap">${monthPfx}<span class="cal-date-num">${dateNum}</span></div>`;
@@ -510,22 +513,50 @@ function showAlert(msg, type = 'info') {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 5000);
 }
 
+function buildStripeDataURL() {
+  const tile = document.createElement('canvas');
+  tile.width = 12; tile.height = 12;
+  const tc = tile.getContext('2d');
+  tc.fillStyle = '#fffbeb';
+  tc.fillRect(0, 0, 12, 12);
+  tc.strokeStyle = '#fcd34d';
+  tc.lineWidth = 4;
+  tc.beginPath();
+  tc.moveTo(-6, 6);  tc.lineTo(6,  -6);
+  tc.moveTo(0,  12); tc.lineTo(12,  0);
+  tc.moveTo(6,  18); tc.lineTo(18,  6);
+  tc.stroke();
+  return tile.toDataURL('image/png');
+}
+
 async function exportPNG() {
   if (!document.getElementById('calendarWrap').querySelector('.calendar')) {
     showAlert('エクスポートするシフト表がありません。', 'warn'); return;
   }
+
+  // Build stripe PNG data URI so html2canvas can render it
+  const stripeURL = buildStripeDataURL();
+
+  // Temporarily replace CSS-class background on both-rest cells with inline PNG
+  const bothRestCells = [];
+  document.querySelectorAll('.cal-cell.both-rest').forEach(cell => {
+    cell.classList.remove('both-rest');
+    cell.style.backgroundImage  = `url('${stripeURL}')`;
+    cell.style.backgroundSize   = '12px 12px';
+    cell.style.backgroundRepeat = 'repeat';
+    cell.style.backgroundColor  = '#fffbeb';
+    bothRestCells.push(cell);
+  });
+
   const root    = document.getElementById('appRoot');
   const toolbar = document.getElementById('toolbar');
   const pe      = document.getElementById('periodEditor');
   const ac      = document.getElementById('alertContainer');
   const btn     = document.querySelector('.btn-success');
   const orig    = btn.textContent;
-
-  // Fix gradient-text clipping which html2canvas can't render
   const titleEl = document.querySelector('.app-title');
   titleEl.style.background = 'none';
   titleEl.style.webkitTextFillColor = '#1e3a8a';
-
   toolbar.style.display = 'none';
   pe.style.display = 'none';
   ac.style.display = 'none';
@@ -543,6 +574,13 @@ async function exportPNG() {
   } catch(err) {
     showAlert('出力エラー: ' + err.message, 'warn');
   } finally {
+    bothRestCells.forEach(cell => {
+      cell.classList.add('both-rest');
+      cell.style.backgroundImage  = '';
+      cell.style.backgroundSize   = '';
+      cell.style.backgroundRepeat = '';
+      cell.style.backgroundColor  = '';
+    });
     titleEl.style.background = '';
     titleEl.style.webkitTextFillColor = '';
     toolbar.style.display = '';
