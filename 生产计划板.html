@@ -158,12 +158,12 @@
   }
   .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 600; }
   .tick.hour-20 { border-top: 2px solid var(--accent); color: var(--accent); font-size: 14px; font-weight: 800; }
-  .tick .label { background: var(--panel); padding: 1px 4px; transform: translateY(-50%); border-radius: 3px; }
+  .tick .label { background: var(--panel); padding: 1px 4px; border-radius: 3px; }
 
   .board {
     flex: 1; display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 0; background: var(--bg); overflow: hidden;
+    gap: 1px; background: var(--border); overflow: hidden;
   }
   .line {
     background: var(--bg);
@@ -264,9 +264,11 @@
   .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
   .cfg:last-child .cfg-input { text-align: right; }
 
-  .cards-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
-  .cards-wrap::-webkit-scrollbar { width: 4px; }
+  .cards-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: none; }
+  .cards-wrap::-webkit-scrollbar { width: 0; }
   .cards-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  .line:last-child .cards-wrap { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  .line:last-child .cards-wrap::-webkit-scrollbar { width: 4px; }
   .cards-grid { position: relative; width: 100%; }
   .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--border); pointer-events: none; }
   .grid-line.hour { border-top: 1px solid var(--border-strong); }
@@ -383,19 +385,20 @@
     .card { z-index: 2; }
     .grid-line { z-index: 0; }
     /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
-    .timeline-head { height: 88px; }
-    .line-head { padding: 4px 4px 5px; gap: 3px; height: 88px; }
+    .timeline-head { height: 80px; }
+    .line-head { padding: 4px 4px 8px; gap: 3px; height: 80px; }
     .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
     .line-num { text-align: center; }
     .line-label { text-align: center; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
-    .head-btn { width: 100%; justify-content: center; height: 24px; }
+    .head-btn { width: 100%; justify-content: center; height: 20px; }
   }
 
   @media (max-width: 900px) and (orientation: landscape) {
     /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
-    .timeline-head { height: 90px; }
-    .line-head { height: 90px; padding-bottom: 14px; }
+    .timeline-head { height: 100px; }
+    .line-head { height: 100px; padding-bottom: 14px; }
+    .cfg-input { height: 16px; }
   }
 
   .modal-mask {
@@ -493,10 +496,6 @@
     background: var(--accent); color: var(--bg);
     border: none; padding: 10px 18px; border-radius: 6px;
     font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-
-  @media (min-width: 901px) {
-    .line:nth-child(5) { border-right: 1px solid var(--border); }
   }
 
   @media print {
