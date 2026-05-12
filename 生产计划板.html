@@ -136,8 +136,9 @@
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 1px; padding: 6px 2px;
+    position: relative;
   }
-  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; margin-bottom: 6px; }
+  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; position: absolute; top: 6px; left: 4px; }
   .date-month, .date-day, .date-dow {
     font-size: 18px; font-weight: 300; line-height: 1;
     font-family: 'PingFang SC', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans GB', 'Microsoft YaHei Light', 'Yu Gothic Light', system-ui, sans-serif;
@@ -151,6 +152,7 @@
   .dow-red { color: var(--red); }
   .timeline-body { flex: 1; overflow: hidden; position: relative; }
   .timeline-inner { position: relative; }
+  .timeline-foot { flex-shrink: 0; height: var(--foot-h, 82px); background: var(--panel); border-top: 1px solid var(--border); }
   .tick {
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--border);
@@ -184,8 +186,8 @@
 
     /* 日期栏：年贴顶左，月日星期靠下 */
     .timeline-head { justify-content: flex-start; align-items: center; padding: 2px 1px 6px; gap: 1px; height: 80px; }
-    .date-year { font-size: 7px; align-self: flex-start; padding-left: 2px; line-height: 1.4; margin-bottom: 0; }
-    .date-month { font-size: 14px; text-align: center; line-height: 1.3; margin-top: auto; }
+    .date-year { position: static; font-size: 7px; align-self: flex-start; padding-left: 2px; line-height: 1.4; margin-bottom: 0; }
+    .date-month { font-size: 14px; text-align: center; line-height: 1.3; margin-top: 4px; }
     .date-day  { font-size: 14px; text-align: center; line-height: 1.3; }
     .date-dow  { font-size: 14px; text-align: center; line-height: 1.3; margin-bottom: 0; }
 
@@ -337,6 +339,8 @@
     font-family: inherit; outline: none; font-variant-numeric: tabular-nums; padding: 1px 0;
   }
   .field.name-spd .field-input { color: var(--accent); }
+  .field-input[readonly] { color: var(--text-dim); cursor: default; }
+  .field.name-spd .field-input[readonly] { color: var(--text-dim); }
   .field-input::placeholder { color: var(--text-mute); font-weight: 400; }
   .field-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 
@@ -542,6 +546,7 @@
     <div class="timeline-body" id="timelineBody">
       <div class="timeline-inner" id="timelineInner"></div>
     </div>
+    <div class="timeline-foot" id="timelineFoot"></div>
   </div>
   <div class="board" id="board"></div>
 </div>
@@ -667,7 +672,7 @@ function getTotalPx() {
 
 function renderTimeline() {
   const totalPx = getTotalPx();
-  timelineInner.style.height = totalPx + 'px';
+  timelineInner.style.height = (totalPx + 16) + 'px';
   timelineInner.innerHTML = '';
   const totalMin = (TIME_END_HOUR - TIME_START_HOUR) * 60;
   for (let m = 0; m <= totalMin; m += TIME_TICK_MIN) {
@@ -899,7 +904,7 @@ function buildLine(num) {
     </div>
   `;
   const grid = line.querySelector('.cards-grid');
-  grid.style.height = getTotalPx() + 'px';
+  grid.style.height = (getTotalPx() + 16) + 'px';
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
@@ -953,11 +958,11 @@ function addJobCard(grid, libItem, savedData) {
       <div class="card-fields">
         <div class="field name-spd">
           <span class="field-label">品名速度★</span>
-          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal">
+          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal" readonly>
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
-          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal">
+          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal" readonly>
         </div>
         <div class="field">
           <span class="field-label">数量 个</span>
@@ -965,7 +970,7 @@ function addJobCard(grid, libItem, savedData) {
         </div>
         <div class="field">
           <span class="field-label">人数</span>
-          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric">
+          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric" readonly>
         </div>
       </div>
       <div class="card-meta">
@@ -1035,7 +1040,7 @@ function wireCardEvents(node, type) {
   node.addEventListener('touchstart', () => setActiveCard(node), { passive: true });
   let inputsToWatch;
   if (type === 'job') {
-    inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
+    inputsToWatch = [node.querySelector('.qty')];
   } else {
     inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
@@ -1333,6 +1338,10 @@ setInterval(updateDateHeader, 60000);
 loadLibrary();
 renderTimeline();
 for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
+(function syncFootH() {
+  const foot = document.querySelector('.line-foot');
+  if (foot) document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
+})();
 for (let i = 0; i < LINE_COUNT; i++) {
   const pip = document.createElement('div');
   pip.className = 'pip' + (i === 0 ? ' active' : '');
@@ -1345,8 +1354,10 @@ board.addEventListener('scroll', () => {
 });
 window.addEventListener('resize', () => {
   renderTimeline();
-  document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = getTotalPx() + 'px'; renderGridLines(g); });
+  document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
   document.querySelectorAll('.line').forEach(l => recalc(l));
+  const foot = document.querySelector('.line-foot');
+  if (foot) document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
 });
 
 loadBoard();
