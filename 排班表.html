@@ -4,144 +4,194 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>シフト管理</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --today-bg: #c2410c;
-  --sat-fg: #3b82f6; --sun-fg: #ef4444;
-  --header-bg: #0f172a; --header-fg: #ffffff;
+  --sat-fg: #2563eb; --sun-fg: #dc2626;
+  --header-bg: #0f172a;
   --surface: #ffffff;
-  --border: #e2e8f0;
+  --border: #dde3ed;
   --text: #1e293b;
   --muted: #64748b;
-  --radius: 10px;
+  --radius: 12px;
+  --shadow: 0 4px 16px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06);
 }
 
 body {
   font-family: 'Inter', 'Noto Sans JP', sans-serif;
-  background: #f0f4f8;
+  background: linear-gradient(150deg, #dde8f5 0%, #f0f4f8 45%, #e4ecf7 100%);
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
 }
 
-.app { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+.app { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
 
+/* ── Header ── */
 .app-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border);
 }
-.app-title { font-size: 20px; font-weight: 700; }
+.app-title {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
 .period-badge {
-  background: var(--header-bg); color: var(--header-fg);
-  padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
-  cursor: pointer; user-select: none;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #e2e8f0;
+  padding: 7px 18px; border-radius: 24px; font-size: 13px; font-weight: 600;
+  cursor: pointer; user-select: none; letter-spacing: 0.2px;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.25);
+  transition: opacity 0.15s;
 }
 .period-badge:hover { opacity: 0.85; }
 
+/* ── Period editor ── */
 .period-editor {
   display: none; background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px;
   font-size: 13px; gap: 10px; align-items: center; flex-wrap: wrap;
+  box-shadow: var(--shadow);
 }
 .period-editor.visible { display: flex; }
 .period-editor select {
-  border: 1.5px solid var(--border); border-radius: 6px; padding: 5px 8px;
+  border: 1.5px solid var(--border); border-radius: 7px; padding: 5px 8px;
   font-size: 13px; background: #f8fafc; font-family: inherit; outline: none;
 }
 
-.toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+/* ── Toolbar ── */
+.toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-  cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s;
-  font-family: inherit;
+  padding: 9px 18px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  font-family: inherit; letter-spacing: 0.2px;
 }
-.btn:hover { opacity: 0.88; }
-.btn:active { transform: scale(0.97); }
-.btn-primary   { background: #1d4ed8; color: #fff; }
-.btn-secondary { background: var(--surface); color: var(--muted); border: 1.5px solid var(--border); }
-.btn-success   { background: #16a34a; color: #fff; }
-.btn-warning   { background: #d97706; color: #fff; }
+.btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn:active { transform: scale(0.97) translateY(0); }
+.btn-primary   { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.35); }
+.btn-secondary { background: var(--surface); color: var(--muted); border: 1.5px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.btn-success   { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,0.35); }
+.btn-warning   { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; box-shadow: 0 2px 8px rgba(217,119,6,0.35); }
+.btn-edit      { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,0.35); }
+.btn-danger    { background: linear-gradient(135deg, #f43f5e, #dc2626); color: #fff; box-shadow: 0 2px 8px rgba(244,63,94,0.35); }
 
-/* Calendar */
+/* ── Calendar wrap ── */
 .calendar-wrap {
   background: var(--surface); border-radius: var(--radius);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden;
-  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden; border: 1px solid var(--border);
 }
-
 .calendar { width: 100%; }
 
 .cal-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: grid; grid-template-columns: repeat(7, 1fr);
   border-bottom: 1px solid var(--border);
 }
 .cal-row:last-child { border-bottom: none; }
-.cal-row.month-boundary { border-top: 2.5px solid #94a3b8; }
+.cal-row.month-boundary {
+  border-top: 3px solid #94a3b8;
+  background: linear-gradient(90deg, #f1f5f9 0%, transparent 10%);
+}
 
+/* ── Day header ── */
 .cal-head {
-  background: var(--header-bg); color: var(--header-fg);
-  text-align: center; padding: 10px 4px; font-weight: 700; font-size: 15px;
-  border-right: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  color: #cbd5e1;
+  text-align: center; padding: 11px 4px; font-weight: 700; font-size: 14px;
+  border-right: 1px solid rgba(255,255,255,0.06); letter-spacing: 0.5px;
 }
 .cal-head:last-child { border-right: none; }
 .cal-head.sun { color: #fca5a5; }
 .cal-head.sat { color: #93c5fd; }
 
+/* ── Calendar cell ── */
 .cal-cell {
+  position: relative;
   border-right: 1px solid var(--border);
-  min-height: 90px; padding: 4px 3px;
-  display: flex; flex-direction: column; gap: 2px;
+  min-height: 88px; padding: 5px 4px 4px;
+  display: flex; flex-direction: column; gap: 3px;
+  transition: background 0.15s;
 }
 .cal-cell:last-child { border-right: none; }
 .cal-cell.empty { background: #f8fafc; }
 
-/* Date number area — flex row so month prefix sits beside date */
-.cal-date-wrap {
-  display: flex; align-items: center; justify-content: center; gap: 1px;
-  min-height: 22px;
-}
-.cal-month-prefix {
-  font-size: 10px; font-weight: 800; color: #ef4444;
-  line-height: 1; flex-shrink: 0;
-}
-.cal-date-num {
-  font-size: 13px; font-weight: 700; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  min-width: 22px; padding: 2px;
-}
-.cal-cell.sun .cal-date-num { color: var(--sun-fg); }
-.cal-cell.sat .cal-date-num { color: var(--sat-fg); }
-.cal-cell.today .cal-date-num {
-  background: var(--today-bg); color: #fff; border-radius: 50%;
-  width: 26px; height: 26px; padding: 0; font-size: 12px;
+/* Subtle tints for weekend columns */
+.cal-cell.sun  { background: #fff7f7; }
+.cal-cell.sat  { background: #f5f8ff; }
+.cal-cell.today {
+  background: #fff8f5;
 }
 
+/* ── Both employees resting ── */
+.cal-cell.both-rest {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fffbeb 0px, #fffbeb 6px,
+    #fef3c7 6px, #fef3c7 12px
+  ) !important;
+}
+.both-rest-badge {
+  position: absolute; top: 4px; right: 4px;
+  font-size: 8px; font-weight: 800; letter-spacing: 0.3px;
+  color: #78350f;
+  background: linear-gradient(135deg, #fde68a, #fbbf24);
+  padding: 1px 5px; border-radius: 4px; line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+
+/* ── Date number area ── */
+.cal-month-prefix {
+  font-size: 11px; font-weight: 900; color: #ef4444;
+  line-height: 1; flex-shrink: 0; letter-spacing: -0.2px;
+}
+.cal-date-wrap {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1px; min-height: 20px;
+}
+.cal-date-num {
+  font-size: 13px; font-weight: 800; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 20px; padding: 1px;
+}
+.cal-cell.sun .cal-date-num  { color: var(--sun-fg); }
+.cal-cell.sat .cal-date-num  { color: var(--sat-fg); }
+.cal-cell.today .cal-date-num {
+  background: var(--today-bg); color: #fff; border-radius: 50%;
+  width: 20px; height: 20px; padding: 0; font-size: 10px;
+  box-shadow: 0 2px 5px rgba(194,65,12,0.40);
+}
+
+/* ── Shift rows ── */
 .shift-row {
-  display: flex; align-items: center;
-  border-radius: 4px; padding: 1px 2px;
+  display: flex; align-items: stretch;
+  border-radius: 5px; overflow: hidden;
 }
 .shift-row-emp1 { background: #dbeafe; }
 .shift-row-emp2 { background: #fce7f3; }
 
 .shift-slot {
-  flex: 1; text-align: center; border-radius: 4px;
-  font-weight: 800; font-size: 12px; padding: 3px 0; line-height: 1.3;
-  user-select: none; letter-spacing: 0.5px;
+  flex: 1; text-align: center;
+  font-weight: 900; font-size: 12px; padding: 4px 0; line-height: 1.2;
+  user-select: none; letter-spacing: 1px;
 }
-/* Work = deep blue text; Rest = orange text */
+/* 出 = deep blue text; 休 = orange text */
 .cell-emp1-work { background: #93c5fd; color: #1e3a8a; }
-.cell-emp1-rest { background: #bfdbfe; color: #ea580c; }
+.cell-emp1-rest { background: #bfdbfe; color: #c2410c; }
 .cell-emp2-work { background: #f9a8d4; color: #1e3a8a; }
-.cell-emp2-rest { background: #fbcfe8; color: #ea580c; }
+.cell-emp2-rest { background: #fbcfe8; color: #c2410c; }
 
 body.edit-mode .shift-slot { cursor: pointer; }
-body.edit-mode .shift-slot:hover { opacity: 0.65; }
+body.edit-mode .shift-slot:hover { opacity: 0.60; }
 
+/* ── Alert ── */
 .alert {
   border-radius: var(--radius); padding: 10px 14px; font-size: 13px;
   margin-bottom: 12px; line-height: 1.5;
@@ -149,21 +199,34 @@ body.edit-mode .shift-slot:hover { opacity: 0.65; }
 .alert-warn { background: #fef9c3; border: 1.5px solid #fcd34d; color: #78350f; }
 .alert-info { background: #dbeafe; border: 1.5px solid #93c5fd; color: #1e3a8a; }
 
+/* ── Legend card ── */
+.legend-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+  margin-top: 14px; box-shadow: var(--shadow);
+}
 .legend {
-  display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap;
+  display: flex; gap: 14px; flex-wrap: wrap;
   font-size: 12px; color: var(--muted); align-items: center;
 }
-.legend-item { display: flex; align-items: center; gap: 5px; }
-.legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.legend-title { font-weight: 700; color: #475569; font-size: 12px; margin-right: 4px; }
+.legend-item  { display: flex; align-items: center; gap: 5px; }
+.legend-dot   { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+.legend-stripe {
+  width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+  background: repeating-linear-gradient(-45deg, #fffbeb 0px, #fffbeb 3px, #fef3c7 3px, #fef3c7 6px);
+  border: 1px solid #fcd34d;
+}
 
 @media (max-width: 640px) {
   .app { padding: 12px 8px 40px; }
-  .app-title { font-size: 17px; }
-  .cal-cell { min-height: 70px; padding: 3px 2px; }
+  .app-title { font-size: 18px; }
+  .cal-cell { min-height: 68px; padding: 3px 2px; }
   .cal-date-num { font-size: 11px; }
-  .shift-slot { font-size: 10px; }
+  .shift-slot { font-size: 10px; padding: 3px 0; }
   .cal-head { font-size: 12px; padding: 8px 2px; }
   .cal-month-prefix { font-size: 9px; }
+  .both-rest-badge { font-size: 7px; padding: 1px 3px; }
 }
 </style>
 </head>
@@ -176,7 +239,7 @@ body.edit-mode .shift-slot:hover { opacity: 0.65; }
   </div>
 
   <div class="period-editor" id="periodEditor">
-    <label style="color:var(--muted);font-weight:500">期間変更:</label>
+    <label style="color:var(--muted);font-weight:600">期間変更:</label>
     <select id="periodYear"></select>年
     <select id="periodMonth"></select>月16日〜翌月15日
     <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyPeriodChange()">適用</button>
@@ -184,28 +247,33 @@ body.edit-mode .shift-slot:hover { opacity: 0.65; }
   </div>
 
   <div class="toolbar" id="toolbar">
-    <button class="btn btn-secondary" id="editBtn" onclick="toggleEditMode()">✏️ 手動編集</button>
+    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 手動編集</button>
     <button class="btn btn-success" onclick="exportPNG()">📸 PNG出力</button>
-    <button class="btn btn-secondary" onclick="clearData()" style="color:#ef4444;border-color:#fecaca">🗑 リセット</button>
+    <button class="btn btn-danger" onclick="clearData()">🗑 リセット</button>
   </div>
 
   <div id="alertContainer"></div>
 
   <div class="calendar-wrap" id="calendarWrap">
-    <div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">
+    <div style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">
       ✏️ 手動編集を押してシフトを入力してください
     </div>
   </div>
 
-  <div class="legend" id="legend" style="display:none">
-    <span style="font-weight:600;color:#475569">凡例:</span>
-    <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>従業員1 出勤</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#bfdbfe"></div>従業員1 休暇</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#f9a8d4"></div>従業員2 出勤</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#fbcfe8"></div>従業員2 休暇</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--today-bg);border-radius:50%"></div>今日</div>
-    <div class="legend-item" style="color:var(--sat-fg);font-weight:600">土</div>
-    <div class="legend-item" style="color:var(--sun-fg);font-weight:600">日・祝</div>
+  <div id="legendCard" style="display:none">
+    <div class="legend-card">
+      <div class="legend">
+        <span class="legend-title">凡例</span>
+        <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>従業員1 出</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#bfdbfe"></div>従業員1 休</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f9a8d4"></div>従業員2 出</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fbcfe8"></div>従業員2 休</div>
+        <div class="legend-item"><div class="legend-stripe"></div>全休</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--today-bg);border-radius:50%"></div>今日</div>
+        <div class="legend-item" style="color:var(--sat-fg);font-weight:700">土</div>
+        <div class="legend-item" style="color:var(--sun-fg);font-weight:700">日・祝</div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -250,7 +318,6 @@ function periodLabel(year, month) {
   return `${year}年${month}月16日 〜 ${endY}年${endM}月15日`;
 }
 
-// ── State ──
 const STORAGE_KEY = 'shift-schedule-v2';
 let state = { period: null, employees: ['従業員A', '従業員B'], schedule: {} };
 
@@ -279,7 +346,6 @@ function setDefaultPeriod() {
   setPeriod(year, month);
 }
 
-// ── Period editor ──
 function togglePeriodEditor() {
   const ed = document.getElementById('periodEditor');
   ed.classList.toggle('visible');
@@ -311,7 +377,6 @@ function applyPeriodChange() {
   showAlert(`期間を ${periodLabel(year, month)} に変更しました。`, 'info');
 }
 
-// ── Calendar render ──
 function renderCalendar() {
   if (!state.period) return;
   const dates = getPeriodDates(state.period.year, state.period.month);
@@ -326,16 +391,13 @@ function renderCalendar() {
   dates.forEach(d => {
     const dow = d.getDay();
     const curMonth = d.getMonth();
-
     if (prevMonth !== null && curMonth !== prevMonth && week.some(x => x !== null)) {
       weeks.push(week);
       boundaryFlags.push(true);
       week = Array(7).fill(null);
     }
-
     week[dow] = d;
     prevMonth = curMonth;
-
     if (dow === 6) {
       weeks.push(week);
       boundaryFlags.push(false);
@@ -349,7 +411,6 @@ function renderCalendar() {
 
   let html = '<div class="calendar">';
 
-  // Header row
   html += '<div class="cal-row">';
   DAY_LABELS.forEach((lbl, i) => {
     const cls = i === 0 ? ' sun' : i === 6 ? ' sat' : '';
@@ -357,13 +418,12 @@ function renderCalendar() {
   });
   html += '</div>';
 
-  // Week rows
   weeks.forEach((wk, rowIdx) => {
     const bCls = boundaryFlags[rowIdx] ? ' month-boundary' : '';
     html += `<div class="cal-row${bCls}">`;
-    wk.forEach((d, i) => {
+    wk.forEach((d) => {
       if (!d) { html += '<div class="cal-cell empty"></div>'; return; }
-      const iso  = toISO(d);
+      const iso = toISO(d);
       let cls = 'cal-cell';
       if (isSunOrHoliday(d)) cls += ' sun';
       else if (isSaturday(d)) cls += ' sat';
@@ -371,14 +431,14 @@ function renderCalendar() {
 
       const s1 = (state.schedule[name1] || {})[iso] || 'work';
       const s2 = (state.schedule[name2] || {})[iso] || 'work';
+      const bothRest = s1 === 'rest' && s2 === 'rest';
+      if (bothRest) cls += ' both-rest';
 
       const dateNum = d.getDate();
       const showMonth = dateNum === 16 || dateNum === 1;
-      const monthNum = d.getMonth() + 1;
-
-      // Date row: month prefix (red) + date number, side by side
-      const monthPfx = showMonth ? `<span class="cal-month-prefix">${monthNum}月</span>` : '';
       html += `<div class="${cls}">`;
+      if (bothRest) html += `<span class="both-rest-badge">全休</span>`;
+      const monthPfx = showMonth ? `<span class="cal-month-prefix">${d.getMonth() + 1}月</span>` : '';
       html += `<div class="cal-date-wrap">${monthPfx}<span class="cal-date-num">${dateNum}</span></div>`;
       html += `<div class="shift-row shift-row-emp1">` +
               `<div class="shift-slot ${s1==='rest'?'cell-emp1-rest':'cell-emp1-work'}" data-name="${escAttr(name1)}" data-iso="${iso}">${s1==='rest'?'休':'出'}</div></div>`;
@@ -391,7 +451,7 @@ function renderCalendar() {
 
   html += '</div>';
   document.getElementById('calendarWrap').innerHTML = html;
-  document.getElementById('legend').style.display = 'flex';
+  document.getElementById('legendCard').style.display = '';
 }
 
 function escHtml(s) {
@@ -401,7 +461,6 @@ function escAttr(s) {
   return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// Click to toggle shift
 document.getElementById('calendarWrap').addEventListener('click', e => {
   if (!document.body.classList.contains('edit-mode')) return;
   const slot = e.target.closest('.shift-slot[data-name]');
@@ -412,7 +471,6 @@ document.getElementById('calendarWrap').addEventListener('click', e => {
   saveState(); renderCalendar();
 });
 
-// ── Edit mode ──
 let editMode = false;
 
 function toggleEditMode() {
@@ -420,7 +478,7 @@ function toggleEditMode() {
   document.body.classList.toggle('edit-mode', editMode);
   const btn = document.getElementById('editBtn');
   btn.textContent = editMode ? '✅ 編集完了' : '✏️ 手動編集';
-  btn.className   = editMode ? 'btn btn-warning' : 'btn btn-secondary';
+  btn.className   = editMode ? 'btn btn-warning' : 'btn btn-edit';
   if (editMode) {
     if (!state.period) setDefaultPeriod();
     state.employees.forEach(ensureEmployeeDates);
@@ -430,7 +488,6 @@ function toggleEditMode() {
   }
 }
 
-// ── Clear ──
 function clearData() {
   if (!confirm('すべてのシフトデータをリセットしますか？')) return;
   state = { period: null, employees: ['従業員A', '従業員B'], schedule: {} };
@@ -438,14 +495,13 @@ function clearData() {
   editMode = false;
   document.body.classList.remove('edit-mode');
   const btn = document.getElementById('editBtn');
-  btn.textContent = '✏️ 手動編集'; btn.className = 'btn btn-secondary';
+  btn.textContent = '✏️ 手動編集'; btn.className = 'btn btn-edit';
   setDefaultPeriod();
   document.getElementById('calendarWrap').innerHTML =
-    '<div style="padding:40px;text-align:center;color:#94a3b8;font-size:13px">✏️ 手動編集を押してシフトを入力してください</div>';
-  document.getElementById('legend').style.display = 'none';
+    '<div style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">✏️ 手動編集を押してシフトを入力してください</div>';
+  document.getElementById('legendCard').style.display = 'none';
 }
 
-// ── Alert ──
 function showAlert(msg, type = 'info') {
   const el = document.createElement('div');
   el.className = `alert alert-${type}`; el.textContent = msg;
@@ -454,27 +510,30 @@ function showAlert(msg, type = 'info') {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 5000);
 }
 
-// ── PNG Export (captures full app: header + calendar + legend) ──
 async function exportPNG() {
   if (!document.getElementById('calendarWrap').querySelector('.calendar')) {
     showAlert('エクスポートするシフト表がありません。', 'warn'); return;
   }
-  const root = document.getElementById('appRoot');
+  const root    = document.getElementById('appRoot');
   const toolbar = document.getElementById('toolbar');
-  const periodEditor = document.getElementById('periodEditor');
-  const alertContainer = document.getElementById('alertContainer');
-  const btn = document.querySelector('.btn-success');
-  const orig = btn.textContent;
+  const pe      = document.getElementById('periodEditor');
+  const ac      = document.getElementById('alertContainer');
+  const btn     = document.querySelector('.btn-success');
+  const orig    = btn.textContent;
 
-  // Temporarily hide UI controls that shouldn't appear in the export
+  // Fix gradient-text clipping which html2canvas can't render
+  const titleEl = document.querySelector('.app-title');
+  titleEl.style.background = 'none';
+  titleEl.style.webkitTextFillColor = '#1e3a8a';
+
   toolbar.style.display = 'none';
-  periodEditor.style.display = 'none';
-  alertContainer.style.display = 'none';
+  pe.style.display = 'none';
+  ac.style.display = 'none';
   btn.textContent = '⏳ 出力中…'; btn.disabled = true;
 
   try {
     const canvas = await html2canvas(root, {
-      scale: 2, useCORS: true, backgroundColor: '#f0f4f8', logging: false
+      scale: 2, useCORS: true, backgroundColor: '#e8edf5', logging: false
     });
     const link = document.createElement('a');
     const { year, month } = state.period || { year: 0, month: 0 };
@@ -484,16 +543,15 @@ async function exportPNG() {
   } catch(err) {
     showAlert('出力エラー: ' + err.message, 'warn');
   } finally {
+    titleEl.style.background = '';
+    titleEl.style.webkitTextFillColor = '';
     toolbar.style.display = '';
-    periodEditor.classList.contains('visible')
-      ? (periodEditor.style.display = '')
-      : (periodEditor.style.display = '');
-    alertContainer.style.display = '';
+    pe.style.display = '';
+    ac.style.display = '';
     btn.textContent = orig; btn.disabled = false;
   }
 }
 
-// ── Init ──
 function init() {
   loadState();
   if (!state.period) setDefaultPeriod();
