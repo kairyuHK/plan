@@ -97,6 +97,8 @@
   .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
   #openLib { border-color: var(--rest); color: var(--rest); }
   #openLib:hover { background: var(--rest); color: var(--bg); }
+  #fullscreenBtn { display: none; border-color: var(--blue); color: var(--blue); }
+  #fullscreenBtn:hover { background: rgba(96,165,250,0.15); }
 
   .export-wrap { position: relative; }
   .export-menu {
@@ -152,7 +154,7 @@
   .tick {
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: flex-start; justify-content: center;
     color: var(--text-mute);
     font-size: 10px; font-variant-numeric: tabular-nums;
   }
@@ -177,6 +179,7 @@
     .topbar { padding: 0 10px; gap: 6px; }
     .topbar-right { gap: 5px; font-size: 9px; }
     #totalAll { display: none; }
+    #fullscreenBtn { display: inline-flex; align-items: center; }
     :root { --time-col-w: 44px; --hour-px: 100px; }
 
     /* 日期栏：年贴顶左，月日星期靠下 */
@@ -378,15 +381,15 @@
   }
   .pager .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
   .pager .pip.active { background: var(--accent); width: 18px; border-radius: 3px; }
-  @media (max-width: 900px) { .pager { display: flex; } }
+  @media (max-width: 900px) { .pager { display: none; } }
 
   @media (max-width: 900px) and (orientation: portrait) {
     .line-config { display: none; }
     .card { z-index: 2; }
     .grid-line { z-index: 0; }
     /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
-    .timeline-head { height: 80px; }
-    .line-head { padding: 4px 4px 8px; gap: 3px; height: 80px; }
+    .timeline-head { height: 88px; }
+    .line-head { padding: 4px 4px 8px; gap: 3px; height: 88px; }
     .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
     .line-num { text-align: center; }
     .line-label { text-align: center; }
@@ -396,8 +399,8 @@
 
   @media (max-width: 900px) and (orientation: landscape) {
     /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
-    .timeline-head { height: 100px; }
-    .line-head { height: 100px; padding-bottom: 14px; }
+    .timeline-head { height: 108px; }
+    .line-head { height: 108px; padding-bottom: 12px; }
     .cfg-input { height: 16px; }
   }
 
@@ -528,6 +531,7 @@
       </div>
     </div>
     <span id="totalAll">共 0 个 · 0:00:00</span>
+    <button class="top-btn" id="fullscreenBtn" title="全屏">全屏</button>
     <span class="clock" id="clock">--:--:--</span>
   </div>
 </div>
@@ -1348,6 +1352,28 @@ window.addEventListener('resize', () => {
 loadBoard();
 recalcGlobal();
 window.addEventListener('beforeunload', saveBoard);
+
+// ============ 全屏 ============
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+if (fullscreenBtn) {
+  fullscreenBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        await (document.documentElement.requestFullscreen?.() ?? document.documentElement.webkitRequestFullscreen?.());
+      } else {
+        await (document.exitFullscreen?.() ?? document.webkitExitFullscreen?.());
+      }
+    } catch(e) {}
+  });
+  const syncFsBtn = () => {
+    const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    fullscreenBtn.textContent = inFs ? '缩小' : '全屏';
+    fullscreenBtn.style.borderColor = inFs ? 'var(--accent)' : '';
+    fullscreenBtn.style.color = inFs ? 'var(--accent)' : '';
+  };
+  document.addEventListener('fullscreenchange', syncFsBtn);
+  document.addEventListener('webkitfullscreenchange', syncFsBtn);
+}
 </script>
 
 </body>
