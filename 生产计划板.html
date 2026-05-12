@@ -508,6 +508,18 @@
     font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
   }
 
+  /* JS驱动横屏类，比CSS orientation媒体查询更可靠（解决旋转锁定设备问题） */
+  body.mob-ls .timeline-head { height: 108px; }
+  body.mob-ls .line-head { height: 108px; padding-bottom: 12px; }
+  body.mob-ls .cfg-input { height: 16px; }
+  body.mob-ls .line-foot { display: none; }
+  body.mob-ls .timeline-foot { display: none; }
+  body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: center; gap: 3px; }
+  body.mob-ls .line-label { display: none; }
+  body.mob-ls .line-num { font-size: 6px; white-space: nowrap; }
+  body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
+  body.mob-ls .head-btn .ic { font-size: 9px; }
+
   @media print {
     .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
     #clearAll, #openLib, #totalAll, body::before { display: none !important; }
@@ -1370,7 +1382,13 @@ board.addEventListener('scroll', () => {
   const idx = Math.round(board.scrollLeft / board.clientWidth);
   pager.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('active', i === idx));
 });
+function syncMobLayout() {
+  const isLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+  document.body.classList.toggle('mob-ls', isLandscape);
+}
+
 window.addEventListener('resize', () => {
+  syncMobLayout();
   renderTimeline();
   document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
   document.querySelectorAll('.line').forEach(l => recalc(l));
@@ -1380,6 +1398,7 @@ window.addEventListener('resize', () => {
 
 loadBoard();
 recalcGlobal();
+syncMobLayout();
 window.addEventListener('beforeunload', saveBoard);
 
 </script>
