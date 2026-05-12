@@ -220,14 +220,6 @@
     .cfg:last-child .cfg-input { text-align: right; }
     .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; }
 
-    /* 底部统计 */
-    .line-foot { padding: 3px 4px; }
-    .foot-row { margin-bottom: 1px; }
-    .foot-label { font-size: 7px; }
-    .foot-val { font-size: 9px; }
-    .foot-val.time, .foot-val.finish { font-size: 10px; }
-    .foot-val .unit { font-size: 6px; }
-
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
     .pager { display: none; }
@@ -406,6 +398,14 @@
     .timeline-head { height: 108px; }
     .line-head { height: 108px; padding-bottom: 12px; }
     .cfg-input { height: 16px; }
+    /* 横屏隐藏底部统计栏 */
+    .line-foot { display: none; }
+    .timeline-foot { display: none; }
+  }
+
+  @media (max-width: 900px) {
+    /* 展开卡片时可超出列边界 */
+    .card.active { min-width: 200px; right: auto; }
   }
 
   .modal-mask {
@@ -1028,9 +1028,25 @@ function addRestCard(grid, savedData) {
 }
 
 function setActiveCard(card) {
-  if (activeCard && activeCard !== card) activeCard.classList.remove('active');
+  if (activeCard && activeCard !== card) {
+    activeCard.classList.remove('active');
+    if (window.innerWidth <= 900) {
+      const prevWrap = activeCard.closest('.cards-wrap');
+      const prevLine = activeCard.closest('.line');
+      if (prevWrap) prevWrap.style.overflow = '';
+      if (prevLine) prevLine.style.overflow = '';
+    }
+  }
   activeCard = card;
-  if (card) card.classList.add('active');
+  if (card) {
+    card.classList.add('active');
+    if (window.innerWidth <= 900) {
+      const wrap = card.closest('.cards-wrap');
+      const line = card.closest('.line');
+      if (wrap) wrap.style.overflow = 'visible';
+      if (line) line.style.overflow = 'visible';
+    }
+  }
 }
 
 function wireCardEvents(node, type) {
@@ -1054,7 +1070,7 @@ function wireCardEvents(node, type) {
   delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const line = node.closest('.line');
-    if (activeCard === node) activeCard = null;
+    if (activeCard === node) setActiveCard(null);
     node.remove(); recalc(line); scheduleSaveBoard();
   });
   handles.forEach(handle => {
@@ -1112,7 +1128,7 @@ document.addEventListener('dragover', (e) => {
   insertCardInGrid(grid, dragging, e.clientY);
 });
 document.addEventListener('mousedown', (e) => {
-  if (!e.target.closest('.card')) { if (activeCard) { activeCard.classList.remove('active'); activeCard = null; } }
+  if (!e.target.closest('.card')) { setActiveCard(null); }
 });
 
 function recalc(line) {
