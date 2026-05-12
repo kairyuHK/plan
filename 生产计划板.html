@@ -179,12 +179,12 @@
     #totalAll { display: none; }
     :root { --time-col-w: 44px; --hour-px: 100px; }
 
-    /* 日期栏：年顶部左对齐，月日星期上下左右居中 */
-    .timeline-head { justify-content: flex-start; align-items: center; padding: 6px 1px 4px; gap: 1px; height: 80px; }
-    .date-year { font-size: 7px; align-self: flex-start; padding-left: 3px; line-height: 1.4; margin-bottom: 3px; }
+    /* 日期栏：年贴顶左，月日星期靠下 */
+    .timeline-head { justify-content: flex-start; align-items: center; padding: 2px 1px 6px; gap: 1px; height: 80px; }
+    .date-year { font-size: 7px; align-self: flex-start; padding-left: 2px; line-height: 1.4; margin-bottom: 0; }
     .date-month { font-size: 14px; text-align: center; line-height: 1.3; margin-top: auto; }
     .date-day  { font-size: 14px; text-align: center; line-height: 1.3; }
-    .date-dow  { font-size: 14px; text-align: center; line-height: 1.3; margin-bottom: auto; }
+    .date-dow  { font-size: 14px; text-align: center; line-height: 1.3; margin-bottom: 0; }
 
     /* 主板横向滚动 */
     .main { overflow-x: auto; }
@@ -382,6 +382,18 @@
     .line-config { display: none; }
     .card { z-index: 2; }
     .grid-line { z-index: 0; }
+    /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
+    .line-head { padding: 4px 4px 5px; gap: 3px; }
+    .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
+    .line-num { text-align: center; }
+    .line-label { text-align: center; }
+    .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
+    .head-btn { width: 100%; justify-content: center; height: 15px; }
+  }
+
+  @media (max-width: 900px) and (orientation: landscape) {
+    /* 横屏：起始/切换栏底部与分界线留出空隙 */
+    .line-head { padding-bottom: 6px; }
   }
 
   .modal-mask {
