@@ -97,9 +97,6 @@
   .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
   #openLib { border-color: var(--rest); color: var(--rest); }
   #openLib:hover { background: var(--rest); color: var(--bg); }
-  #fullscreenBtn { display: none; border-color: var(--blue); color: var(--blue); }
-  #fullscreenBtn:hover { background: rgba(96,165,250,0.15); }
-
   .export-wrap { position: relative; }
   .export-menu {
     display: none;
@@ -181,7 +178,6 @@
     .topbar { padding: 0 10px; gap: 6px; }
     .topbar-right { gap: 5px; font-size: 9px; }
     #totalAll { display: none; }
-    #fullscreenBtn { display: inline-flex; align-items: center; }
     :root { --time-col-w: 44px; --hour-px: 100px; }
 
     /* 日期栏：年贴顶左，月日星期靠下 */
@@ -402,6 +398,9 @@
     /* 横屏隐藏底部统计栏 */
     .line-foot { display: none; }
     .timeline-foot { display: none; }
+    /* 横屏线头数字横排且字体缩小 */
+    .line-head-row1 { flex-direction: row; align-items: center; }
+    .line-num { font-size: 13px; white-space: nowrap; }
   }
 
   @media (max-width: 900px) {
@@ -536,7 +535,6 @@
       </div>
     </div>
     <span id="totalAll">共 0 个 · 0:00:00</span>
-    <button class="top-btn" id="fullscreenBtn" title="全屏">全屏</button>
     <span class="clock" id="clock">--:--:--</span>
   </div>
 </div>
@@ -1381,27 +1379,6 @@ loadBoard();
 recalcGlobal();
 window.addEventListener('beforeunload', saveBoard);
 
-// ============ 全屏 ============
-const fullscreenBtn = document.getElementById('fullscreenBtn');
-if (fullscreenBtn) {
-  fullscreenBtn.addEventListener('click', async () => {
-    try {
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        await (document.documentElement.requestFullscreen?.() ?? document.documentElement.webkitRequestFullscreen?.());
-      } else {
-        await (document.exitFullscreen?.() ?? document.webkitExitFullscreen?.());
-      }
-    } catch(e) {}
-  });
-  const syncFsBtn = () => {
-    const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    fullscreenBtn.textContent = inFs ? '缩小' : '全屏';
-    fullscreenBtn.style.borderColor = inFs ? 'var(--accent)' : '';
-    fullscreenBtn.style.color = inFs ? 'var(--accent)' : '';
-  };
-  document.addEventListener('fullscreenchange', syncFsBtn);
-  document.addEventListener('webkitfullscreenchange', syncFsBtn);
-}
 </script>
 
 </body>
