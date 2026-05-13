@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流水线生产计划板</title>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  :root {
+    --bg: #111827;
+    --panel: #1f2937;
+    --panel-2: #1a2332;
+    --border: #374151;
+    --border-strong: #4b5563;
+    --text: #f9fafb;
+    --text-dim: #9ca3af;
+    --text-mute: #6b7280;
+    --accent: #f97316;
+    --green: #34d399;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --rest: #a78bfa;
+    --hour-px: 140px;
+    --time-col-w: 56px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 50%, rgba(249,115,22,0.05) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 15%, rgba(52,211,153,0.05) 0%, transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .topbar {
+    position: relative; z-index: 10;
+    height: 52px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 16px; gap: 10px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 14px;
+  }
+  .brand .dot {
+    width: 9px; height: 9px;
+    background: var(--accent); border-radius: 3px;
+    box-shadow: 0 0 10px rgba(249,115,22,0.6);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .brand-sub {
+    color: var(--text-mute); font-weight: 400;
+    font-size: 11px;
+    padding-left: 10px;
+    border-left: 1px solid var(--border-strong);
+    margin-left: 2px;
+  }
+  .topbar-right {
+    margin-left: auto; display: flex; align-items: center;
+    gap: 8px; color: var(--text-dim); font-size: 11px;
+  }
+  .clock { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; }
+  .top-btn {
+    height: 30px; padding: 0 13px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 12px; font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .top-btn:hover { background: var(--border); color: var(--text); }
+  .top-btn.accent { border-color: var(--accent); color: var(--accent); }
+  .top-btn.accent:hover { background: var(--accent); color: var(--bg); }
+  .top-btn.clear { border-color: var(--red); color: var(--red); }
+  .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
+  #openLib { border-color: var(--rest); color: var(--rest); }
+  #openLib:hover { background: var(--rest); color: var(--bg); }
+  .export-wrap { position: relative; }
+  .export-menu {
+    display: none;
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 8px; overflow: hidden; min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 200;
+  }
+  .export-menu.show { display: block; }
+  .export-menu button {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 14px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 13px; font-family: inherit;
+    cursor: pointer; text-align: left; transition: background 0.1s;
+  }
+  .export-menu button:hover { background: var(--border); }
+
+  .main {
+    position: relative; z-index: 1;
+    height: calc(100vh - 52px);
+    display: flex; overflow: hidden;
+  }
+  .timeline {
+    width: var(--time-col-w); flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .timeline-head {
+    height: 110px; flex-shrink: 0;
+    background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px; padding: 6px 2px;
+    position: relative;
+  }
+  .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; position: absolute; top: 6px; left: 4px; }
+  .date-month, .date-day, .date-dow {
+    font-size: 18px; font-weight: 300; line-height: 1;
+    font-family: 'PingFang SC', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans GB', 'Microsoft YaHei Light', 'Yu Gothic Light', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .date-month { }
+  .date-day { }
+  .date-dow { margin-top: 1px; }
+  .dow-weekday { color: var(--text-mute); }
+  .dow-sat { color: var(--blue); }
+  .dow-red { color: var(--red); }
+  .timeline-body { flex: 1; overflow: hidden; position: relative; }
+  .timeline-inner { position: relative; }
+  .timeline-foot { flex-shrink: 0; height: var(--foot-h, 82px); background: var(--panel); border-top: 1px solid var(--border); }
+  .tick {
+    position: absolute; left: 0; right: 0; height: 0;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: center;
+    color: var(--text-mute);
+    font-size: 10px; font-variant-numeric: tabular-nums;
+  }
+  .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 600; }
+  .tick.hour-20 { border-top: 2px solid var(--accent); color: var(--accent); font-size: 14px; font-weight: 800; }
+  .tick .label { background: var(--panel); padding: 1px 4px; border-radius: 3px; }
+
+  .board {
+    flex: 1; display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px; background: var(--border); overflow: hidden;
+  }
+  .line {
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    overflow: hidden; min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    html, body { font-size: 10px; }
+    .brand-sub { display: none; }
+    .topbar { padding: 0 10px; gap: 6px; }
+    .topbar-right { gap: 5px; font-size: 9px; }
+    #totalAll { display: none; }
+    :root { --time-col-w: 44px; --hour-px: 100px; }
+
+    /* 日期栏：年贴顶左，月日星期靠下 */
+    .timeline-head { justify-content: flex-start; align-items: center; padding: 2px 1px 6px; gap: 1px; height: 80px; }
+    .date-year { position: static; font-size: 7px; align-self: flex-start; padding-left: 2px; line-height: 1.4; margin-bottom: 0; }
+    .date-month { font-size: 14px; text-align: center; line-height: 1.3; margin-top: 4px; }
+    .date-day  { font-size: 14px; text-align: center; line-height: 1.3; }
+    .date-dow  { font-size: 14px; text-align: center; line-height: 1.3; margin-bottom: 0; }
+
+    /* 主板横向滚动 */
+    .main { overflow-x: auto; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(66px, 1fr));
+      grid-auto-rows: 1fr;
+      min-width: 396px;
+      overflow: visible;
+      gap: 1px;
+      background: var(--border);
+    }
+    .line { flex: unset; width: auto; }
+
+    /* 线头：按钮竖排，夕盛/数字横排 */
+    .line-head { height: 80px; padding: 3px 4px; gap: 2px; overflow: hidden; }
+    .line-head-row1 { gap: 3px; align-items: flex-start; }
+    .line-num { font-size: 9px; white-space: nowrap; }
+    .line-label { font-size: 6px; letter-spacing: 1px; }
+    .head-btns { flex-direction: column; gap: 2px; }
+    .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
+    .head-btn .ic { font-size: 7px; }
+
+    /* 配置栏 */
+    .line-config { gap: 2px; grid-template-columns: 1fr 1fr; align-items: stretch; }
+    .cfg { padding: 2px 3px; border-radius: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden; }
+    .cfg-label { font-size: 6px; flex-shrink: 0; white-space: nowrap; }
+    .cfg-input { font-size: 8px; padding: 0; line-height: 1; width: 100%; min-width: 0; margin-top: auto; }
+    .cfg:last-child .cfg-input { text-align: right; }
+    .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+
+    .main::-webkit-scrollbar { height: 3px; }
+    .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+    .pager { display: none; }
+  }
+
+  .line-head {
+    height: 110px; flex-shrink: 0;
+    padding: 8px 10px; background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .line-head-row1 { display: flex; align-items: center; gap: 6px; }
+  .line-num { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .line-label { color: var(--text-mute); font-size: 9px; letter-spacing: 2px; }
+  .head-btns { margin-left: auto; display: flex; gap: 4px; }
+  .head-btn {
+    height: 26px; padding: 0 9px;
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-dim); cursor: pointer;
+    font-size: 11px; font-weight: 600;
+    border-radius: 6px; transition: all 0.15s;
+    font-family: inherit; display: inline-flex; align-items: center; gap: 3px;
+  }
+  .head-btn:hover { background: var(--border); color: var(--text); }
+  .head-btn.add-job { border-color: var(--accent); color: var(--accent); }
+  .head-btn.add-job:hover { background: var(--accent); color: var(--bg); }
+  .head-btn.rest { border-color: var(--rest); color: var(--rest); }
+  .head-btn.rest:hover { background: var(--rest); color: var(--bg); }
+  .head-btn .ic { font-size: 14px; font-weight: 300; }
+
+  .line-config { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .cfg { background: var(--bg); border: 1px solid var(--border); padding: 3px 7px; border-radius: 6px; }
+  .cfg-label { color: var(--text-mute); font-size: 9px; display: block; }
+  .cfg-input {
+    width: 100%; background: transparent; border: none;
+    color: var(--blue); font-size: 13px; font-weight: 700;
+    font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
+  }
+  .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+  .cfg:last-child .cfg-input { text-align: right; }
+
+  .cards-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: none; }
+  .cards-wrap::-webkit-scrollbar { width: 0; }
+  .cards-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  .line:last-child .cards-wrap { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  .line:last-child .cards-wrap::-webkit-scrollbar { width: 4px; }
+  .cards-grid { position: relative; width: 100%; }
+  .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--border); pointer-events: none; }
+  .grid-line.hour { border-top: 1px solid var(--border-strong); }
+  .grid-line.hour-20 { border-top: 1px solid var(--accent); opacity: 0.3; }
+
+  .card {
+    position: absolute; left: 6px; right: 6px;
+    background: var(--panel);
+    border-left: 4px solid var(--border-strong);
+    border-radius: 0 8px 8px 0;
+    padding: 4px 8px;
+    transition: box-shadow 0.15s;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    z-index: 1; display: flex; flex-direction: column;
+  }
+  .card.dragging { opacity: 0.3; z-index: 100; }
+  .card.error { border-left-color: var(--red); box-shadow: 0 2px 8px rgba(248,113,113,0.2); }
+  .card-compact { display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 100%; min-height: 24px; }
+  .card-expanded { display: none; }
+  .card.active .card-compact { display: none; }
+  .card.active .card-expanded { display: flex; flex-direction: column; gap: 5px; }
+  .card.active {
+    z-index: 50;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--accent);
+    border-radius: 0 10px 10px 0;
+    height: auto !important; min-height: 160px; padding: 6px 8px;
+  }
+  .card.error.active { box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--red); }
+  .card.rest.active { min-height: 110px; }
+
+  .drag-handle {
+    cursor: grab; color: var(--text-mute);
+    font-size: 13px; line-height: 1; padding: 2px 3px;
+    user-select: none; -webkit-user-select: none;
+    border: 1px solid var(--border); border-radius: 4px;
+    flex-shrink: 0; touch-action: none;
+  }
+  .drag-handle:hover { color: var(--accent); border-color: var(--accent); }
+
+  .compact-name { flex: 1; color: var(--text); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .compact-qty { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .compact-time { color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  .card-top { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .card-name-display { flex: 1; color: var(--text); font-size: 13px; font-weight: 700; padding: 3px 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-del {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-mute); cursor: pointer;
+    padding: 0; width: 22px; height: 22px; font-size: 13px; line-height: 1;
+    transition: all 0.15s; font-family: inherit; flex-shrink: 0; border-radius: 6px;
+  }
+  .card-del:hover { color: var(--red); border-color: var(--red); background: rgba(248,113,113,0.1); }
+
+  .card-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; flex-shrink: 0; }
+  .field { background: var(--bg); border: 1px solid var(--border); padding: 3px 6px; border-radius: 6px; }
+  .field.name-spd { border-color: rgba(249,115,22,0.4); background: rgba(249,115,22,0.06); }
+  .field-label { color: var(--text-mute); font-size: 8px; letter-spacing: 0.5px; display: block; white-space: nowrap; }
+  .field.name-spd .field-label { color: var(--accent); }
+  .field-input {
+    width: 100%; background: transparent; border: none;
+    color: var(--text); font-size: 13px; font-weight: 700;
+    font-family: inherit; outline: none; font-variant-numeric: tabular-nums; padding: 1px 0;
+  }
+  .field.name-spd .field-input { color: var(--accent); }
+  .field-input[readonly] { color: var(--text-dim); cursor: default; }
+  .field.name-spd .field-input[readonly] { color: var(--text-dim); }
+  .field-input::placeholder { color: var(--text-mute); font-weight: 400; }
+  .field-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+
+  .card-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; font-variant-numeric: tabular-nums;
+    color: var(--accent); font-weight: 700; flex-shrink: 0;
+    padding-top: 4px; border-top: 1px solid var(--border); gap: 8px;
+  }
+  .card-meta .duration { color: var(--accent); background: rgba(249,115,22,0.1); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .card-meta .range { color: var(--blue); font-size: 11px; white-space: nowrap; }
+
+  .card.rest {
+    background: linear-gradient(135deg, rgba(167,139,250,0.1), rgba(167,139,250,0.04));
+    border-left-color: var(--rest);
+  }
+  .card.rest .compact-name { color: var(--rest); }
+  .card.rest .compact-time { color: var(--rest); }
+  .card.rest .card-name-display { color: var(--rest); }
+  .card.rest .card-meta { color: var(--rest); }
+  .card.rest .card-meta .range { color: var(--rest); }
+  .rest-tag {
+    display: inline-block; background: var(--rest); color: var(--bg);
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    padding: 2px 5px; line-height: 1; border-radius: 3px; flex-shrink: 0;
+  }
+
+  .line-foot { flex-shrink: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 8px 10px; }
+  .foot-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+  .foot-row:last-child { margin-bottom: 0; }
+  .foot-label { color: var(--text-mute); font-size: 10px; }
+  .foot-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+  .foot-val.time { color: var(--accent); font-size: 14px; }
+  .foot-val.finish { color: var(--blue); font-size: 14px; }
+  .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
+
+  .pager {
+    display: none; position: fixed; bottom: 8px; left: 50%;
+    transform: translateX(-50%); z-index: 20; gap: 6px;
+    background: rgba(17,24,39,0.9); padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 20px; backdrop-filter: blur(8px);
+  }
+  .pager .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
+  .pager .pip.active { background: var(--accent); width: 18px; border-radius: 3px; }
+  @media (max-width: 900px) { .pager { display: none; } }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    .line-config { display: none; }
+    .card { z-index: 2; }
+    .grid-line { z-index: 0; }
+    /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
+    .timeline-head { height: 88px; }
+    .line-head { padding: 4px 4px 8px; gap: 3px; height: 88px; }
+    .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
+    .line-num { text-align: center; }
+    .line-label { text-align: center; }
+    .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
+    .head-btn { width: 100%; justify-content: center; height: 20px; }
+  }
+
+  @media (max-width: 900px) and (orientation: landscape) {
+    /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
+    .timeline-head { height: 108px; }
+    .line-head { height: 108px; padding-bottom: 12px; }
+    .cfg-input { height: 16px; }
+    /* 横屏隐藏底部统计栏 */
+    .line-foot { display: none; }
+    .timeline-foot { display: none; }
+    /* 横屏线头数字横排且字体缩小 */
+    .line-head-row1 { flex-direction: row; align-items: center; gap: 3px; }
+    .line-label { display: none; }
+    .line-num { font-size: 7px; white-space: nowrap; }
+    .head-btns { flex-direction: row; }
+    .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
+    .head-btn .ic { font-size: 9px; }
+  }
+
+  @media (max-width: 900px) {
+    /* 展开卡片时可超出列边界 */
+    .card.active { min-width: 200px; right: auto; }
+  }
+
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    z-index: 100; display: none;
+    align-items: center; justify-content: center;
+    padding: 20px; backdrop-filter: blur(6px);
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 12px; width: 100%; max-width: 640px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+  .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .modal-title { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .modal-sub { color: var(--text-mute); font-size: 11px; margin-top: 2px; }
+  .modal-close {
+    margin-left: auto; width: 30px; height: 30px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); cursor: pointer; font-size: 16px;
+    font-family: inherit; line-height: 1; border-radius: 6px; transition: all 0.15s;
+  }
+  .modal-close:hover { color: var(--red); border-color: var(--red); background: rgba(248,113,113,0.08); }
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .modal-body::-webkit-scrollbar { width: 4px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+  /* 品名库表单 — 统一两行两列 */
+  .lib-add-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .lib-add-form input[type=text],
+  .lib-add-form input[type=number] {
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 10px;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    outline: none; min-width: 0; border-radius: 6px; width: 100%;
+  }
+  .lib-add-form input:focus { border-color: var(--accent); }
+  .lib-add-form input::placeholder { color: var(--text-mute); font-weight: 400; }
+  .color-picker {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 6px 8px; border-radius: 6px;
+  }
+  .color-swatch { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.selected { border-color: var(--text); }
+  .lib-add-btn {
+    background: var(--accent); color: var(--bg); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; width: 100%; transition: opacity 0.15s;
+  }
+  .lib-add-btn:hover { opacity: 0.85; }
+  .lib-add-btn.editing { background: var(--blue); }
+
+  .lib-list { display: flex; flex-direction: column; gap: 6px; }
+  .lib-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    border-left: 4px solid var(--lib-color, var(--border-strong));
+  }
+  .lib-item-name { flex: 1; font-weight: 700; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lib-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; flex-shrink: 0; }
+  .lib-item-info .ns { color: var(--accent); font-weight: 700; }
+  .lib-item-btns { display: flex; gap: 4px; flex-shrink: 0; }
+  .lib-item-btn { background: transparent; border: 1px solid var(--border); color: var(--text-mute); width: 28px; height: 28px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 6px; transition: all 0.15s; }
+  .lib-item-btn.edit:hover { color: var(--blue); border-color: var(--blue); }
+  .lib-item-btn.del:hover { color: var(--red); border-color: var(--red); }
+  .lib-empty { text-align: center; color: var(--text-mute); padding: 32px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12px; }
+
+  .pick-list { display: flex; flex-direction: column; gap: 6px; }
+  .pick-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    border-left: 4px solid var(--lib-color, var(--border-strong));
+    cursor: pointer; transition: all 0.15s;
+  }
+  .pick-item:hover { background: var(--panel); border-color: var(--accent); }
+  .pick-item-name { flex: 1; font-weight: 700; font-size: 15px; }
+  .pick-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; }
+  .pick-item-info .ns { color: var(--accent); font-weight: 700; }
+  .pick-empty { text-align: center; color: var(--text-mute); padding: 40px 10px; font-size: 13px; border: 1px dashed var(--border); border-radius: 8px; }
+  .pick-empty button {
+    display: block; margin: 12px auto 0;
+    background: var(--accent); color: var(--bg);
+    border: none; padding: 10px 18px; border-radius: 6px;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+
+  /* JS驱动横屏类，比CSS orientation媒体查询更可靠（解决旋转锁定设备问题） */
+  body.mob-ls .timeline-head { height: 108px; }
+  body.mob-ls .line-head { height: 108px; padding-bottom: 12px; }
+  body.mob-ls .cfg-input { height: 16px; }
+  body.mob-ls .line-foot { display: none; }
+  body.mob-ls .timeline-foot { display: none; }
+  body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: center; gap: 3px; }
+  body.mob-ls .line-label { display: none; }
+  body.mob-ls .line-num { font-size: 6px; white-space: nowrap; }
+  body.mob-ls .head-btns { flex-direction: row; }
+  body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
+  body.mob-ls .head-btn .ic { font-size: 9px; }
+
+  @media (orientation: landscape) {
+    .line-num.xiusheng { font-size: 15px; }
+  }
+  body.mob-ls .line-num.xiusheng { font-size: 15px; }
+
+  @media print {
+    .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
+    #clearAll, #openLib, #totalAll, body::before { display: none !important; }
+    html, body { overflow: visible !important; height: auto !important; }
+    .main { overflow: visible !important; height: auto !important; }
+    .cards-wrap { overflow: visible !important; }
+    .cards-grid { height: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <span>计划板</span>
+    <span class="brand-sub">流水线生产计划板</span>
+  </div>
+  <div class="topbar-right">
+    <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
+    <button class="top-btn" id="openLib">品名库</button>
+    <div class="export-wrap">
+      <button class="top-btn accent" id="exportBtn">导出 ▾</button>
+      <div class="export-menu" id="exportMenu">
+        <button onclick="doPrint()">🖨️ 打印</button>
+        <button onclick="doExportPng()">🖼️ 导出图片</button>
+        <button onclick="doExportCsv()">📊 导出 Excel</button>
+      </div>
+    </div>
+    <span id="totalAll">共 0 个 · 0:00:00</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="timeline">
+    <div class="timeline-head" id="timelineHead"></div>
+    <div class="timeline-body" id="timelineBody">
+      <div class="timeline-inner" id="timelineInner"></div>
+    </div>
+    <div class="timeline-foot" id="timelineFoot"></div>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+
+<div class="pager" id="pager"></div>
+
+<div class="modal-mask" id="libModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">品名库管理</div>
+        <div class="modal-sub">流水线速度=参考 / 品名速度=实际跑的(算耗时用)</div>
+      </div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-body">
+      <div class="lib-add-form">
+        <input type="text" id="libName" placeholder="品名…" maxlength="30">
+        <input type="number" id="libSpeed" min="0" step="0.01" placeholder="品名速度★" inputmode="decimal">
+        <input type="number" id="libLineSpeed" min="0" step="0.01" placeholder="流水线速度" inputmode="decimal">
+        <input type="number" id="libPeople" min="0" step="1" placeholder="人数" inputmode="numeric">
+        <div class="color-picker" id="libColorPicker"></div>
+        <button class="lib-add-btn" id="libAddBtn">添加</button>
+      </div>
+      <div class="lib-list" id="libList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="pickModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">选择品名</div>
+        <div class="modal-sub" id="pickSub">添加到 流水线</div>
+      </div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-body">
+      <div class="pick-list" id="pickList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LINE_COUNT = 6;
+const STORAGE_LIB = 'productLibrary_v3';
+const STORAGE_BOARD = 'productionBoard_v1';
+const TIME_START_HOUR = 8;
+const TIME_END_HOUR = 22;
+const TIME_TICK_MIN = 15;
+
+const COLORS = [
+  '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149',
+  '#ff7b72','#79c0ff','#d2a8ff','#7ee787','#ffa657','#8b949e',
+];
+
+let library = [];
+let currentPickTargetLine = null;
+let activeCard = null;
+let editingLibId = null;
+let saveTimer = null;
+
+const board = document.getElementById('board');
+const pager = document.getElementById('pager');
+const timelineInner = document.getElementById('timelineInner');
+const timelineBody = document.getElementById('timelineBody');
+
+function loadLibrary() {
+  try {
+    const raw = localStorage.getItem(STORAGE_LIB);
+    if (raw) library = JSON.parse(raw) || [];
+  } catch (e) { library = []; }
+  library.forEach(item => {
+    if (item.people == null) item.people = 0;
+    if (item.lineSpeed == null) item.lineSpeed = 0;
+  });
+}
+function saveLibrary() {
+  try { localStorage.setItem(STORAGE_LIB, JSON.stringify(library)); } catch (e) {}
+}
+function findLibItem(id) {
+  return library.find(x => x.id === id);
+}
+
+function fmtDuration(seconds) {
+  if (!isFinite(seconds) || seconds <= 0) return '—';
+  const s = Math.round(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+function parseClock(str) {
+  if (!str || !/^\d{1,2}:\d{2}$/.test(str)) return null;
+  const [h, m] = str.split(':').map(Number);
+  if (h > 23 || m > 59) return null;
+  return h * 3600 + m * 60;
+}
+function fmtClock(totalSec) {
+  if (!isFinite(totalSec) || totalSec < 0) return '—';
+  const dayOffset = Math.floor(totalSec / 86400);
+  const rem = totalSec % 86400;
+  const h = Math.floor(rem / 3600);
+  const m = Math.floor((rem % 3600) / 60);
+  const base = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  return dayOffset > 0 ? `${base}+${dayOffset}d` : base;
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function secToPx(sec) {
+  const baseSec = TIME_START_HOUR * 3600;
+  const hourPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-px'));
+  return ((sec - baseSec) / 3600) * hourPx;
+}
+function getTotalPx() {
+  const hourPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-px'));
+  return (TIME_END_HOUR - TIME_START_HOUR) * hourPx;
+}
+
+function renderTimeline() {
+  const totalPx = getTotalPx();
+  timelineInner.style.height = (totalPx + 16) + 'px';
+  timelineInner.innerHTML = '';
+  const totalMin = (TIME_END_HOUR - TIME_START_HOUR) * 60;
+  for (let m = 0; m <= totalMin; m += TIME_TICK_MIN) {
+    const hour = TIME_START_HOUR + Math.floor(m / 60);
+    const min = m % 60;
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    if (min === 0) tick.classList.add('hour');
+    if (hour === 20 && min === 0) tick.classList.add('hour-20');
+    tick.style.top = secToPx((hour * 60 + min) * 60) + 'px';
+    if (min === 0) {
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = `${String(hour).padStart(2,'0')}:00`;
+      tick.appendChild(label);
+    }
+    timelineInner.appendChild(tick);
+  }
+}
+function renderGridLines(grid) {
+  grid.querySelectorAll('.grid-line').forEach(el => el.remove());
+  const totalMin = (TIME_END_HOUR - TIME_START_HOUR) * 60;
+  for (let m = 0; m <= totalMin; m += TIME_TICK_MIN) {
+    const hour = TIME_START_HOUR + Math.floor(m / 60);
+    const min = m % 60;
+    const ln = document.createElement('div');
+    ln.className = 'grid-line';
+    if (min === 0) ln.classList.add('hour');
+    if (hour === 20 && min === 0) ln.classList.add('hour-20');
+    ln.style.top = secToPx((hour * 60 + min) * 60) + 'px';
+    grid.appendChild(ln);
+  }
+}
+
+const libModal = document.getElementById('libModal');
+const libList = document.getElementById('libList');
+const libNameInput = document.getElementById('libName');
+const libSpeedInput = document.getElementById('libSpeed');
+const libLineSpeedInput = document.getElementById('libLineSpeed');
+const libPeopleInput = document.getElementById('libPeople');
+const libColorPicker = document.getElementById('libColorPicker');
+const libAddBtn = document.getElementById('libAddBtn');
+let selectedColor = COLORS[0];
+
+function renderColorPicker() {
+  libColorPicker.innerHTML = '';
+  COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
+    sw.style.background = c;
+    sw.addEventListener('click', () => { selectedColor = c; renderColorPicker(); });
+    libColorPicker.appendChild(sw);
+  });
+}
+function renderLibList() {
+  if (library.length === 0) {
+    libList.innerHTML = '<div class="lib-empty">还没有品名，添加你的第一个品名</div>';
+    return;
+  }
+  libList.innerHTML = '';
+  library.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'lib-item';
+    row.style.setProperty('--lib-color', item.color);
+    const peopleText = item.people > 0 ? `${item.people} 人` : '—';
+    const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
+    row.innerHTML = `
+      <div class="lib-item-name">${escapeHtml(item.name)}</div>
+      <div class="lib-item-info">品名 <span class="ns">${item.speed}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
+      <div class="lib-item-btns">
+        <button class="lib-item-btn edit" title="编辑">✎</button>
+        <button class="lib-item-btn del" title="删除">×</button>
+      </div>
+    `;
+    row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
+    row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
+      library = library.filter(x => x.id !== item.id);
+      saveLibrary();
+      if (editingLibId === item.id) cancelEditLib();
+      renderLibList();
+    });
+    libList.appendChild(row);
+  });
+}
+
+function startEditLib(id) {
+  const item = findLibItem(id);
+  if (!item) return;
+  editingLibId = id;
+  libNameInput.value = item.name;
+  libSpeedInput.value = item.speed;
+  libLineSpeedInput.value = item.lineSpeed || '';
+  libPeopleInput.value = item.people || '';
+  selectedColor = item.color;
+  renderColorPicker();
+  libAddBtn.textContent = '保存修改';
+  libAddBtn.classList.add('editing');
+  libNameInput.focus();
+}
+function cancelEditLib() {
+  editingLibId = null;
+  libNameInput.value = '';
+  libSpeedInput.value = '';
+  libLineSpeedInput.value = '';
+  libPeopleInput.value = '';
+  libAddBtn.textContent = '添加';
+  libAddBtn.classList.remove('editing');
+}
+
+libAddBtn.addEventListener('click', () => {
+  const name = libNameInput.value.trim();
+  const speed = parseFloat(libSpeedInput.value);
+  const lineSpeed = parseFloat(libLineSpeedInput.value) || 0;
+  const people = parseInt(libPeopleInput.value) || 0;
+  if (!name) { libNameInput.focus(); return; }
+  if (!speed || speed <= 0) { libSpeedInput.focus(); return; }
+  if (editingLibId) {
+    const item = findLibItem(editingLibId);
+    if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.color = selectedColor; }
+    cancelEditLib();
+  } else {
+    library.push({ id: uid(), name, speed, lineSpeed, people, color: selectedColor });
+    libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = '';
+  }
+  saveLibrary();
+  renderLibList();
+  libNameInput.focus();
+});
+libNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') libSpeedInput.focus(); });
+libSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libLineSpeedInput.focus(); });
+libLineSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libPeopleInput.focus(); });
+libPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libAddBtn.click(); });
+document.getElementById('openLib').addEventListener('click', () => {
+  cancelEditLib(); renderColorPicker(); renderLibList();
+  libModal.classList.add('show');
+  setTimeout(() => libNameInput.focus(), 100);
+});
+
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mask = btn.closest('.modal-mask');
+    mask.classList.remove('show');
+    if (mask.id === 'libModal') cancelEditLib();
+  });
+});
+document.querySelectorAll('.modal-mask').forEach(m => {
+  m.addEventListener('click', e => {
+    if (e.target === m) { m.classList.remove('show'); if (m.id === 'libModal') cancelEditLib(); }
+  });
+});
+
+const pickModal = document.getElementById('pickModal');
+const pickList = document.getElementById('pickList');
+const pickSub = document.getElementById('pickSub');
+function openPicker(line) {
+  currentPickTargetLine = line;
+  pickSub.textContent = `添加到 ${line.querySelector('.line-num').textContent} 号线`;
+  if (library.length === 0) {
+    pickList.innerHTML = `<div class="pick-empty">品名库是空的<br><button id="goLibBtn">先去添加品名</button></div>`;
+    document.getElementById('goLibBtn').addEventListener('click', () => {
+      pickModal.classList.remove('show');
+      document.getElementById('openLib').click();
+    });
+  } else {
+    pickList.innerHTML = '';
+    library.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'pick-item';
+      row.style.setProperty('--lib-color', item.color);
+      const peopleText = item.people > 0 ? `${item.people} 人` : '—';
+      const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
+      row.innerHTML = `
+        <div class="pick-item-name">${escapeHtml(item.name)}</div>
+        <div class="pick-item-info">品名 <span class="ns">${item.speed}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>`;
+      row.addEventListener('click', () => {
+        addJobCard(currentPickTargetLine.querySelector('.cards-grid'), item);
+        pickModal.classList.remove('show');
+      });
+      pickList.appendChild(row);
+    });
+  }
+  pickModal.classList.add('show');
+}
+
+function buildLine(num) {
+  const line = document.createElement('div');
+  line.className = 'line';
+  line.dataset.line = num;
+  const displayNum = num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
+  const lineNumClass = num === 1 ? 'line-num xiusheng' : 'line-num';
+  line.innerHTML = `
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="${lineNumClass}">${displayNum}</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid"></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">0<span class="unit">个</span></span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">—</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">—</span>
+      </div>
+    </div>
+  `;
+  const grid = line.querySelector('.cards-grid');
+  grid.style.height = (getTotalPx() + 16) + 'px';
+  renderGridLines(grid);
+  line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
+  line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
+  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  const wrap = line.querySelector('.cards-wrap');
+  wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
+  return line;
+}
+
+let scrollSyncing = false;
+function syncScroll(top, source) {
+  if (scrollSyncing) return;
+  scrollSyncing = true;
+  document.querySelectorAll('.cards-wrap').forEach(w => { if (w !== source) w.scrollTop = top; });
+  timelineBody.scrollTop = top;
+  scrollSyncing = false;
+}
+timelineBody.addEventListener('scroll', () => {
+  if (scrollSyncing) return;
+  scrollSyncing = true;
+  document.querySelectorAll('.cards-wrap').forEach(w => w.scrollTop = timelineBody.scrollTop);
+  scrollSyncing = false;
+});
+
+function addJobCard(grid, libItem, savedData) {
+  const node = document.createElement('div');
+  node.className = 'card';
+  node.dataset.type = 'job';
+  node.dataset.libId = libItem.id;
+  node.dataset.name = libItem.name;
+  node.dataset.color = libItem.color;
+  node.style.borderLeftColor = libItem.color;
+  const speedVal = savedData?.speed != null ? savedData.speed : libItem.speed;
+  const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (libItem.lineSpeed > 0 ? libItem.lineSpeed : '');
+  const qtyVal = savedData?.qty != null ? savedData.qty : '';
+  const peopleVal = savedData?.people != null ? savedData.people : (libItem.people > 0 ? libItem.people : '');
+  node.innerHTML = `
+    <div class="card-compact">
+      <span class="drag-handle">⋮⋮</span>
+      <span class="compact-name">${escapeHtml(libItem.name)}</span>
+      <span class="compact-qty"></span>
+      <span class="compact-time"></span>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="drag-handle">⋮⋮</span>
+        <span class="card-name-display">${escapeHtml(libItem.name)}</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal" readonly>
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal" readonly>
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="${qtyVal}" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric" readonly>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 —</span>
+        <span class="range"><span class="t-start">—</span> → <span class="t-end">—</span></span>
+      </div>
+    </div>
+  `;
+  wireCardEvents(node, 'job');
+  grid.appendChild(node);
+  if (!savedData) { setActiveCard(node); setTimeout(() => node.querySelector('.qty').focus(), 50); }
+  recalc(grid.closest('.line'));
+}
+
+function addRestCard(grid, savedData) {
+  const node = document.createElement('div');
+  node.className = 'card rest';
+  node.dataset.type = 'rest';
+  const nameVal = savedData?.name != null ? savedData.name : '午休';
+  const minVal = savedData?.min != null ? savedData.min : 60;
+  const fixedVal = savedData?.fixed || '';
+  node.innerHTML = `
+    <div class="card-compact">
+      <span class="drag-handle">⋮⋮</span>
+      <span class="rest-tag">休息</span>
+      <span class="compact-name">${escapeHtml(nameVal)}</span>
+      <span class="compact-time"></span>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="drag-handle">⋮⋮</span>
+        <span class="rest-tag">休息</span>
+        <input class="card-name-display rest-name-input" type="text" value="${escapeHtml(nameVal)}" maxlength="20" style="background:transparent;border:none;color:var(--rest);font-family:inherit;font-size:14px;font-weight:700;outline:none;flex:1;min-width:0;padding:3px 4px;">
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field">
+          <span class="field-label">时长分</span>
+          <input class="field-input rest-min" type="number" min="0" step="1" value="${minVal}" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">指定开始</span>
+          <input class="field-input rest-fixed" type="time" value="${fixedVal}">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="range"><span class="t-start">—</span> → <span class="t-end">—</span></span>
+      </div>
+    </div>
+  `;
+  wireCardEvents(node, 'rest');
+  grid.appendChild(node);
+  if (!savedData) setActiveCard(node);
+  recalc(grid.closest('.line'));
+}
+
+function setActiveCard(card) {
+  if (activeCard && activeCard !== card) {
+    activeCard.classList.remove('active');
+    if (window.innerWidth <= 900) {
+      const prevWrap = activeCard.closest('.cards-wrap');
+      const prevLine = activeCard.closest('.line');
+      if (prevWrap) prevWrap.style.overflow = '';
+      if (prevLine) prevLine.style.overflow = '';
+    }
+  }
+  activeCard = card;
+  if (card) {
+    card.classList.add('active');
+    if (window.innerWidth <= 900) {
+      const wrap = card.closest('.cards-wrap');
+      const line = card.closest('.line');
+      if (wrap) wrap.style.overflow = 'visible';
+      if (line) line.style.overflow = 'visible';
+    }
+  }
+}
+
+function wireCardEvents(node, type) {
+  const delBtn = node.querySelector('.card-del');
+  const handles = node.querySelectorAll('.drag-handle');
+  node.addEventListener('mousedown', () => setActiveCard(node));
+  node.addEventListener('touchstart', () => setActiveCard(node), { passive: true });
+  let inputsToWatch;
+  if (type === 'job') {
+    inputsToWatch = [node.querySelector('.qty')];
+  } else {
+    inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
+  }
+  inputsToWatch.forEach(inp => {
+    if (inp) inp.addEventListener('input', () => {
+      if (inp.classList.contains('rest-name-input')) node.querySelector('.compact-name').textContent = inp.value || '休息';
+      recalc(node.closest('.line'));
+      scheduleSaveBoard();
+    });
+  });
+  delBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const line = node.closest('.line');
+    if (activeCard === node) setActiveCard(null);
+    node.remove(); recalc(line); scheduleSaveBoard();
+  });
+  handles.forEach(handle => {
+    handle.addEventListener('mousedown', (e) => { e.stopPropagation(); node.setAttribute('draggable', 'true'); });
+    handle.addEventListener('mouseup', () => node.setAttribute('draggable', 'false'));
+  });
+  node.addEventListener('dragstart', (e) => { node.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+  node.addEventListener('dragend', () => {
+    node.classList.remove('dragging'); node.setAttribute('draggable', 'false');
+    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
+  });
+  handles.forEach(handle => setupTouchDrag(node, handle));
+}
+
+function setupTouchDrag(node, handle) {
+  let touching = false;
+  handle.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); touching = true; setActiveCard(node); node.classList.add('dragging'); }, { passive: false });
+  handle.addEventListener('touchmove', (e) => {
+    if (!touching) return;
+    e.preventDefault();
+    const y = e.touches[0].clientY; const x = e.touches[0].clientX;
+    node.style.pointerEvents = 'none';
+    const el = document.elementFromPoint(x, y);
+    node.style.pointerEvents = '';
+    if (!el) return;
+    const grid = el.closest('.cards-grid');
+    if (!grid) return;
+    insertCardInGrid(grid, node, y);
+  }, { passive: false });
+  handle.addEventListener('touchend', () => {
+    if (!touching) return;
+    touching = false; node.classList.remove('dragging');
+    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
+  });
+}
+
+function insertCardInGrid(grid, node, clientY) {
+  const after = getDragAfter(grid, clientY);
+  if (after == null) grid.appendChild(node); else grid.insertBefore(node, after);
+}
+function getDragAfter(grid, y) {
+  const cards = [...grid.querySelectorAll('.card:not(.dragging)')];
+  for (const c of cards) {
+    const box = c.getBoundingClientRect();
+    if (y < box.top + box.height / 2) return c;
+  }
+  return null;
+}
+document.addEventListener('dragover', (e) => {
+  const dragging = document.querySelector('.card.dragging');
+  if (!dragging) return;
+  e.preventDefault();
+  const grid = e.target.closest('.cards-grid');
+  if (!grid) return;
+  insertCardInGrid(grid, dragging, e.clientY);
+});
+document.addEventListener('mousedown', (e) => {
+  if (!e.target.closest('.card')) { setActiveCard(null); }
+});
+
+function recalc(line) {
+  const grid = line.querySelector('.cards-grid');
+  const startSec = parseClock(line.querySelector('.start-time').value);
+  const gapMin = parseFloat(line.querySelector('.gap').value) || 0;
+  const gapSec = gapMin * 60;
+  const baseSec = TIME_START_HOUR * 3600;
+  let totalQty = 0, totalSec = 0, cursor = startSec, lastEnd = null;
+  const cards = grid.querySelectorAll('.card');
+  cards.forEach((card, i) => {
+    const type = card.dataset.type;
+    const tStart = card.querySelector('.t-start');
+    const tEnd = card.querySelector('.t-end');
+    let cardStart = null, cardEnd = null, duration = 0;
+    if (type === 'job') {
+      const speed = parseFloat(card.querySelector('.speed').value) || 0;
+      const qty = parseFloat(card.querySelector('.qty').value) || 0;
+      if (speed > 0 && qty > 0) duration = (qty / speed) * 60;
+      card.querySelector('.duration').textContent = '耗时 ' + fmtDuration(duration);
+      if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
+      totalQty += qty; totalSec += duration;
+      card.querySelector('.compact-qty').textContent = qty > 0 ? `${qty}个` : '';
+      card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '';
+    } else if (type === 'rest') {
+      const restMin = parseFloat(card.querySelector('.rest-min').value) || 0;
+      duration = restMin * 60;
+      const fixedSec = parseClock(card.querySelector('.rest-fixed').value);
+      let realStart;
+      if (fixedSec != null) { realStart = (cursor != null && cursor > fixedSec) ? cursor : fixedSec; } else { realStart = cursor; }
+      if (realStart != null && duration > 0) { cardStart = realStart; cardEnd = realStart + duration; cursor = cardEnd; lastEnd = cardEnd; }
+      card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '';
+    }
+    if (cardStart != null && cardEnd != null) {
+      tStart.textContent = fmtClock(cardStart); tEnd.textContent = fmtClock(cardEnd);
+      const top = secToPx(cardStart); const height = secToPx(cardEnd) - secToPx(cardStart);
+      card.style.top = top + 'px'; card.style.height = Math.max(height, 24) + 'px';
+      card.classList.toggle('error', cardStart < baseSec || cardEnd > TIME_END_HOUR * 3600);
+    } else {
+      card.style.top = (i * 28) + 'px'; card.style.height = '26px';
+      tStart.textContent = '—'; tEnd.textContent = '—';
+      if (type === 'job') card.querySelector('.duration').textContent = '耗时 —';
+      card.classList.remove('error');
+    }
+  });
+  line.querySelector('.qty-total').innerHTML = `${totalQty.toLocaleString()}<span class="unit">个</span>`;
+  line.querySelector('.time-total').textContent = fmtDuration(totalSec);
+  line.querySelector('.finish-total').textContent = (lastEnd != null) ? fmtClock(lastEnd) : '—';
+  recalcGlobal();
+}
+
+function recalcGlobal() {
+  let q = 0, s = 0, cnt = 0;
+  document.querySelectorAll('.line').forEach(line => {
+    line.querySelectorAll('.card[data-type="job"]').forEach(card => {
+      const speed = parseFloat(card.querySelector('.speed').value) || 0;
+      const qty = parseFloat(card.querySelector('.qty').value) || 0;
+      cnt++; q += qty;
+      if (speed > 0 && qty > 0) s += (qty / speed) * 60;
+    });
+  });
+  document.getElementById('totalAll').textContent =
+    `共 ${cnt} 张 · ${q.toLocaleString()} 个 · ${fmtDuration(s) === '—' ? '0:00' : fmtDuration(s)}`;
+}
+
+function scheduleSaveBoard() { clearTimeout(saveTimer); saveTimer = setTimeout(saveBoard, 400); }
+function saveBoard() {
+  const state = { lines: [] };
+  document.querySelectorAll('.line').forEach(line => {
+    const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, cards: [] };
+    line.querySelectorAll('.card').forEach(card => {
+      const type = card.dataset.type;
+      if (type === 'job') {
+        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: card.querySelector('.speed').value, lineSpeed: card.querySelector('.line-speed').value, qty: card.querySelector('.qty').value, people: card.querySelector('.people').value });
+      } else if (type === 'rest') {
+        lineData.cards.push({ type: 'rest', name: card.querySelector('.rest-name-input').value, min: card.querySelector('.rest-min').value, fixed: card.querySelector('.rest-fixed').value });
+      }
+    });
+    state.lines.push(lineData);
+  });
+  try { localStorage.setItem(STORAGE_BOARD, JSON.stringify(state)); } catch (e) {}
+}
+
+function loadBoard() {
+  let state;
+  try { const raw = localStorage.getItem(STORAGE_BOARD); if (!raw) return; state = JSON.parse(raw); } catch (e) { return; }
+  if (!state || !state.lines) return;
+  const lineEls = document.querySelectorAll('.line');
+  state.lines.forEach((lineData, idx) => {
+    const lineEl = lineEls[idx];
+    if (!lineEl) return;
+    if (lineData.startTime) lineEl.querySelector('.start-time').value = lineData.startTime;
+    if (lineData.gap != null) lineEl.querySelector('.gap').value = lineData.gap;
+    const grid = lineEl.querySelector('.cards-grid');
+    (lineData.cards || []).forEach(c => {
+      if (c.type === 'job') {
+        const libItem = findLibItem(c.libId) || { id: c.libId, name: c.name || '未知品名', color: c.color || '#8b949e', speed: parseFloat(c.speed) || 0, lineSpeed: parseFloat(c.lineSpeed) || 0, people: parseFloat(c.people) || 0 };
+        addJobCard(grid, libItem, c);
+      } else if (c.type === 'rest') {
+        addRestCard(grid, c);
+      }
+    });
+    recalc(lineEl);
+  });
+}
+
+document.getElementById('clearAll').addEventListener('click', () => {
+  if (!confirm('确定清空所有牌子吗？(品名库不会被清空)')) return;
+  document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
+  activeCard = null;
+  document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; recalc(l); });
+  saveBoard();
+});
+
+// ============ 导出功能 ============
+const exportBtn = document.getElementById('exportBtn');
+const exportMenu = document.getElementById('exportMenu');
+exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportMenu.classList.toggle('show'); });
+document.addEventListener('click', () => exportMenu.classList.remove('show'));
+
+function doPrint() {
+  exportMenu.classList.remove('show');
+  window.print();
+}
+
+async function doExportPng() {
+  exportMenu.classList.remove('show');
+  if (typeof html2canvas === 'undefined') {
+    alert('截图功能需要网络连接（加载 html2canvas），请确认网络后重试。');
+    return;
+  }
+  const orig = exportBtn.textContent;
+  exportBtn.textContent = '截图中…';
+  exportBtn.disabled = true;
+  try {
+    const canvas = await html2canvas(document.querySelector('.main'), {
+      backgroundColor: '#111827', scale: 2, useCORS: true, logging: false,
+    });
+    const link = document.createElement('a');
+    link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    alert('截图失败：' + err.message);
+  } finally {
+    exportBtn.textContent = orig;
+    exportBtn.disabled = false;
+  }
+}
+
+function doExportCsv() {
+  exportMenu.classList.remove('show');
+  const rows = [['流水线', '类型', '品名/说明', '数量', '品名速度', '流水线速度', '人数', '耗时', '开始时间', '结束时间']];
+  document.querySelectorAll('.line').forEach(line => {
+    const lineNum = line.dataset.line;
+    line.querySelectorAll('.card').forEach(card => {
+      if (card.dataset.type === 'job') {
+        rows.push([lineNum, '品名', card.dataset.name, card.querySelector('.qty').value, card.querySelector('.speed').value, card.querySelector('.line-speed').value, card.querySelector('.people').value, card.querySelector('.duration').textContent.replace('耗时 ',''), card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+      } else if (card.dataset.type === 'rest') {
+        rows.push([lineNum, '休息', card.querySelector('.rest-name-input').value, '', '', '', '', card.querySelector('.rest-min').value + '分钟', card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+      }
+    });
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.csv`;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
+function tick() {
+  const d = new Date();
+  document.getElementById('clock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+setInterval(tick, 1000); tick();
+
+const DOW_JP = ['日','月','火','水','木','金','土'];
+const JP_FIXED_HOLIDAYS = new Set([
+  '01-01','02-11','02-23','04-29','05-03','05-04','05-05','08-11','11-03','11-23'
+]);
+function getNthWeekdayDate(year, month, weekday, n) {
+  let count = 0;
+  for (let d = 1; d <= 31; d++) {
+    const dt = new Date(year, month - 1, d);
+    if (dt.getMonth() !== month - 1) break;
+    if (dt.getDay() === weekday && ++count === n) return d;
+  }
+  return -1;
+}
+function isJpHoliday(date) {
+  const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
+  const md = `${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if (JP_FIXED_HOLIDAYS.has(md)) return true;
+  if (m === 1  && d === getNthWeekdayDate(y, 1,  1, 2)) return true;
+  if (m === 3  && (d === 20 || d === 21)) return true;
+  if (m === 7  && d === getNthWeekdayDate(y, 7,  1, 3)) return true;
+  if (m === 9  && d === getNthWeekdayDate(y, 9,  1, 3)) return true;
+  if (m === 9  && (d === 22 || d === 23)) return true;
+  if (m === 10 && d === getNthWeekdayDate(y, 10, 1, 2)) return true;
+  if (date.getDay() === 1) {
+    const sun = new Date(y, m - 1, d - 1);
+    const smd = `${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
+    if (JP_FIXED_HOLIDAYS.has(smd)) return true;
+  }
+  return false;
+}
+function updateDateHeader() {
+  const d = new Date();
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate(), dow = d.getDay();
+  const isHoliday = isJpHoliday(d);
+  const dowClass = (dow === 0 || isHoliday) ? 'dow-red' : dow === 6 ? 'dow-sat' : 'dow-weekday';
+  document.getElementById('timelineHead').innerHTML =
+    `<span class="date-year">${y}年</span>` +
+    `<span class="date-month ${dowClass}">${String(m).padStart(2,'0')}月</span>` +
+    `<span class="date-day ${dowClass}">${String(day).padStart(2,'0')}日</span>` +
+    `<span class="date-dow ${dowClass}">（${DOW_JP[dow]}）</span>`;
+}
+updateDateHeader();
+setInterval(updateDateHeader, 60000);
+
+loadLibrary();
+renderTimeline();
+for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
+(function syncFootH() {
+  const foot = document.querySelector('.line-foot');
+  if (foot) document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
+})();
+for (let i = 0; i < LINE_COUNT; i++) {
+  const pip = document.createElement('div');
+  pip.className = 'pip' + (i === 0 ? ' active' : '');
+  pager.appendChild(pip);
+}
+board.addEventListener('scroll', () => {
+  if (window.innerWidth > 900) return;
+  const idx = Math.round(board.scrollLeft / board.clientWidth);
+  pager.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('active', i === idx));
+});
+function syncMobLayout() {
+  const isLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+  document.body.classList.toggle('mob-ls', isLandscape);
+}
+
+window.addEventListener('resize', () => {
+  syncMobLayout();
+  renderTimeline();
+  document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
+  document.querySelectorAll('.line').forEach(l => recalc(l));
+  const foot = document.querySelector('.line-foot');
+  if (foot) document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
+});
+
+loadBoard();
+recalcGlobal();
+syncMobLayout();
+window.addEventListener('beforeunload', saveBoard);
+
+</script>
+
+</body>
+</html>
