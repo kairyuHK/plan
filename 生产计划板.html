@@ -93,6 +93,11 @@
   .top-btn:hover { background: var(--border); color: var(--text); }
   .top-btn.accent { border-color: var(--accent); color: var(--accent); }
   .top-btn.accent:hover { background: var(--accent); color: var(--bg); }
+  /* 顶部按钮颜色覆盖 */
+  #linesBtn { border-color: var(--accent); color: var(--accent); }
+  #linesBtn:hover { background: var(--accent); color: var(--bg); }
+  #exportBtn { border-color: var(--blue); color: var(--blue); }
+  #exportBtn:hover { background: var(--blue); color: var(--bg); }
   .top-btn.clear { border-color: var(--red); color: var(--red); }
   .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
   #openLib { border-color: var(--rest); color: var(--rest); }
@@ -275,7 +280,7 @@
     border-radius: 0 8px 8px 0;
     padding: 4px 8px;
     transition: box-shadow 0.15s;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     z-index: 1; display: flex; flex-direction: column;
   }
@@ -1132,10 +1137,39 @@ function setActiveCard(card) {
   activeCard = card;
   if (card) {
     card.classList.add('active');
-    requestAnimationFrame(() => positionCardPopup(card));
+    requestAnimationFrame(() => {
+      ensureRoomForPopup(card);
+      positionCardPopup(card);
+    });
   }
 }
 
+// 若卡片下方空间不足容纳弹窗，向下滚动 wrap 让卡片视觉上移
+function ensureRoomForPopup(card) {
+  const popup = card.querySelector('.card-expanded');
+  if (!popup) return;
+  popup.style.top = '0px'; popup.style.left = '0px';
+  const popupRect = popup.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const margin = 8;
+  const spaceBelow = vh - cardRect.bottom - 6;
+  const needed = popupRect.height + margin;
+  if (spaceBelow >= needed) return;
+  const wrap = card.closest('.cards-wrap');
+  if (!wrap) return;
+  const deficit = needed - spaceBelow;
+  const room = wrap.scrollHeight - wrap.clientHeight - wrap.scrollTop;
+  const adjust = Math.min(deficit, Math.max(0, room));
+  if (adjust > 0) {
+    scrollSyncing = true;
+    document.querySelectorAll('.cards-wrap').forEach(w => w.scrollTop += adjust);
+    timelineBody.scrollTop += adjust;
+    scrollSyncing = false;
+  }
+}
+
+// 弹窗始终贴在卡片下方；若仍不下放则贴底（可与卡片重叠），永不放在卡片上方
 function positionCardPopup(card) {
   const popup = card.querySelector('.card-expanded');
   if (!popup) return;
@@ -1145,8 +1179,9 @@ function positionCardPopup(card) {
   const vw = window.innerWidth, vh = window.innerHeight;
   const margin = 8;
   let top = cardRect.bottom + 6;
-  if (top + popupRect.height + margin > vh) top = cardRect.top - popupRect.height - 6;
-  if (top < margin) top = Math.max(margin, Math.min(cardRect.top, vh - popupRect.height - margin));
+  if (top + popupRect.height + margin > vh) {
+    top = Math.max(margin, vh - popupRect.height - margin);
+  }
   let left = cardRect.left;
   if (left + popupRect.width + margin > vw) left = vw - popupRect.width - margin;
   if (left < margin) left = margin;
