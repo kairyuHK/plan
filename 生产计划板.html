@@ -587,7 +587,8 @@
   body.mob-ls .timeline-foot { display: none; }
   body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: center; gap: 3px; }
   body.mob-ls .line-label { display: none; }
-  body.mob-ls .line-num { font-size: 15px; white-space: nowrap; }
+  body.mob-ls .line-num,
+  body.mob-ls .line-num.xiusheng { font-size: 15px; white-space: nowrap; }
   body.mob-ls .head-btns { flex-direction: row; }
   body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
   body.mob-ls .head-btn .ic { font-size: 9px; }
@@ -1827,7 +1828,7 @@ board.addEventListener('scroll', () => {
   pager.querySelectorAll('.pip').forEach((p, i) => p.classList.toggle('active', i === idx));
 });
 function syncMobLayout() {
-  const isLandscape = window.innerWidth <= 900 && window.innerWidth > window.innerHeight;
+  const isLandscape = window.innerHeight <= 500 && window.innerWidth > window.innerHeight;
   document.body.classList.toggle('mob-ls', isLandscape);
 }
 
