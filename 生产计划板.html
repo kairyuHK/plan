@@ -232,6 +232,13 @@
     padding: 8px 10px; background: var(--panel);
     border-bottom: 2px solid var(--accent);
     display: flex; flex-direction: column; gap: 6px;
+    position: relative;
+  }
+  /* 桌面端：head-btns 与 line-config 绝对定位，使所有线的按钮和起始/切换框水平对齐 */
+  @media (min-width: 901px) {
+    .head-btns { position: absolute; top: 8px; right: 10px; margin-left: 0; }
+    .line-config { position: absolute; bottom: 8px; left: 10px; right: 10px; }
+    .line-num.xiusheng { font-size: 17px; }
   }
   .line-head-row1 { display: flex; align-items: center; gap: 6px; }
   .line-num { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -295,10 +302,10 @@
   }
   .card.rest.active { box-shadow: 0 0 0 2px var(--rest), 0 2px 12px rgba(167,139,250,0.45); }
   .card.error.active { box-shadow: 0 0 0 2px var(--red), 0 2px 12px rgba(248,113,113,0.45); }
-  /* 弹出窗口：定位由 JS 计算，固定贴近卡片 */
-  .card.active .card-expanded {
+  /* 弹出窗口：JS 将其移到 body 下，固定定位避免被任何祖先 overflow 裁切 */
+  .card-expanded.popup-detached {
     display: flex; flex-direction: column; gap: 6px;
-    position: fixed; z-index: 200;
+    position: fixed; z-index: 1000;
     width: 280px; max-width: calc(100vw - 16px);
     max-height: calc(100vh - 16px); overflow-y: auto;
     background: var(--panel);
@@ -306,9 +313,11 @@
     border-radius: 10px;
     padding: 10px 12px;
     box-shadow: 0 16px 48px rgba(0,0,0,0.75);
+    color: var(--text);
+    font-family: inherit; font-size: 13px;
   }
-  .card.rest.active .card-expanded { border-color: var(--rest); }
-  .card.error.active .card-expanded { border-color: var(--red); }
+  .card-expanded.popup-detached.is-rest { border-color: var(--rest); }
+  .card-expanded.popup-detached.is-error { border-color: var(--red); }
   .card.dragging { opacity: 0.45; outline: 2px dashed var(--accent); outline-offset: -2px; cursor: grabbing; transform: scale(1.02); transition: transform 0.1s; }
   .drop-indicator {
     position: absolute; left: 4px; right: 4px; height: 4px;
@@ -435,10 +444,10 @@
     /* 横屏隐藏底部统计栏 */
     .line-foot { display: none; }
     .timeline-foot { display: none; }
-    /* 横屏线头数字横排且字体缩小 */
+    /* 横屏线头：数字横排，所有线号统一字号 */
     .line-head-row1 { flex-direction: row; align-items: center; gap: 3px; }
     .line-label { display: none; }
-    .line-num { font-size: 7px; white-space: nowrap; }
+    .line-num { font-size: 15px; white-space: nowrap; }
     .head-btns { flex-direction: row; }
     .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
     .head-btn .ic { font-size: 9px; }
@@ -551,15 +560,10 @@
   body.mob-ls .timeline-foot { display: none; }
   body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: center; gap: 3px; }
   body.mob-ls .line-label { display: none; }
-  body.mob-ls .line-num { font-size: 6px; white-space: nowrap; }
+  body.mob-ls .line-num { font-size: 15px; white-space: nowrap; }
   body.mob-ls .head-btns { flex-direction: row; }
   body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
   body.mob-ls .head-btn .ic { font-size: 9px; }
-
-  @media (orientation: landscape) {
-    .line-num.xiusheng { font-size: 15px; }
-  }
-  body.mob-ls .line-num.xiusheng { font-size: 15px; }
 
   @media print {
     .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
@@ -875,12 +879,12 @@ function propagateLibChange(libId) {
     card.dataset.color = item.color;
     card.style.borderLeftColor = item.color;
     const compactName = card.querySelector('.compact-name');
-    const display = card.querySelector('.card-name-display');
+    const display = popupQ(card, '.card-name-display');
     if (compactName) compactName.textContent = item.name;
     if (display) display.textContent = item.name;
-    const speedInp = card.querySelector('.speed');
-    const lineSpdInp = card.querySelector('.line-speed');
-    const peopleInp = card.querySelector('.people');
+    const speedInp = popupQ(card, '.speed');
+    const lineSpdInp = popupQ(card, '.line-speed');
+    const peopleInp = popupQ(card, '.people');
     if (speedInp) speedInp.value = item.speed;
     if (lineSpdInp) lineSpdInp.value = item.lineSpeed > 0 ? item.lineSpeed : '';
     if (peopleInp) peopleInp.value = item.people > 0 ? item.people : '';
@@ -1132,11 +1136,47 @@ function addRestCard(grid, savedData) {
   }
 }
 
+// 弹窗查询助手：当 popup 被移到 body 下时，从 card._popup 查找
+function popupQ(card, sel) {
+  if (card._popup) {
+    const inPopup = card._popup.querySelector(sel);
+    if (inPopup) return inPopup;
+  }
+  return card.querySelector(sel);
+}
+
+function detachPopup(card) {
+  const popup = card.querySelector(':scope > .card-expanded');
+  if (popup && popup.parentElement === card) {
+    card._popup = popup;
+    popup.classList.add('popup-detached');
+    popup.classList.toggle('is-rest', card.classList.contains('rest'));
+    popup.classList.toggle('is-error', card.classList.contains('error'));
+    document.body.appendChild(popup);
+  }
+}
+function reattachPopup(card) {
+  if (card._popup) {
+    card._popup.classList.remove('popup-detached', 'is-rest', 'is-error');
+    card.appendChild(card._popup);
+    card._popup = null;
+  }
+}
+function syncPopupState(card) {
+  if (!card._popup) return;
+  card._popup.classList.toggle('is-rest', card.classList.contains('rest'));
+  card._popup.classList.toggle('is-error', card.classList.contains('error'));
+}
+
 function setActiveCard(card) {
-  if (activeCard && activeCard !== card) activeCard.classList.remove('active');
+  if (activeCard && activeCard !== card) {
+    activeCard.classList.remove('active');
+    reattachPopup(activeCard);
+  }
   activeCard = card;
   if (card) {
     card.classList.add('active');
+    detachPopup(card);
     requestAnimationFrame(() => {
       ensureRoomForPopup(card);
       positionCardPopup(card);
@@ -1146,7 +1186,7 @@ function setActiveCard(card) {
 
 // 若卡片下方空间不足容纳弹窗，向下滚动 wrap 让卡片视觉上移
 function ensureRoomForPopup(card) {
-  const popup = card.querySelector('.card-expanded');
+  const popup = card._popup || card.querySelector('.card-expanded');
   if (!popup) return;
   popup.style.top = '0px'; popup.style.left = '0px';
   const popupRect = popup.getBoundingClientRect();
@@ -1171,7 +1211,7 @@ function ensureRoomForPopup(card) {
 
 // 弹窗始终贴在卡片下方；若仍不下放则贴底（可与卡片重叠），永不放在卡片上方
 function positionCardPopup(card) {
-  const popup = card.querySelector('.card-expanded');
+  const popup = card._popup || card.querySelector('.card-expanded');
   if (!popup) return;
   popup.style.top = '0px'; popup.style.left = '0px';
   const cardRect = card.getBoundingClientRect();
@@ -1370,24 +1410,24 @@ function recalc(line) {
   const cards = grid.querySelectorAll('.card');
   cards.forEach((card, i) => {
     const type = card.dataset.type;
-    const tStart = card.querySelector('.t-start');
-    const tEnd = card.querySelector('.t-end');
+    const tStart = popupQ(card, '.t-start');
+    const tEnd = popupQ(card, '.t-end');
     let cardStart = null, cardEnd = null, duration = 0;
     if (type === 'job') {
-      const speed = parseFloat(card.querySelector('.speed').value) || 0;
-      const qty = parseFloat(card.querySelector('.qty').value) || 0;
-      const people = parseFloat(card.querySelector('.people').value) || 0;
+      const speed = parseFloat(popupQ(card, '.speed').value) || 0;
+      const qty = parseFloat(popupQ(card, '.qty').value) || 0;
+      const people = parseFloat(popupQ(card, '.people').value) || 0;
       if (speed > 0 && qty > 0) duration = (qty / speed) * 60;
-      card.querySelector('.duration').textContent = '耗时 ' + fmtDuration(duration);
+      popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
       if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
       totalQty += qty; totalSec += duration;
       const peopleEl = card.querySelector('.compact-people');
       if (peopleEl) peopleEl.textContent = people > 0 ? `${people}人` : '—';
       card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '—';
     } else if (type === 'rest') {
-      const restMin = parseFloat(card.querySelector('.rest-min').value) || 0;
+      const restMin = parseFloat(popupQ(card, '.rest-min').value) || 0;
       duration = restMin * 60;
-      const fixedSec = parseClock(card.querySelector('.rest-fixed').value);
+      const fixedSec = parseClock(popupQ(card, '.rest-fixed').value);
       let realStart;
       if (fixedSec != null) { realStart = (cursor != null && cursor > fixedSec) ? cursor : fixedSec; } else { realStart = cursor; }
       if (realStart != null && duration > 0) { cardStart = realStart; cardEnd = realStart + duration; cursor = cardEnd; lastEnd = cardEnd; }
@@ -1410,9 +1450,10 @@ function recalc(line) {
       card.style.top = top + 'px'; card.style.height = '26px';
       prevVisualBottom = top + 26;
       tStart.textContent = '—'; tEnd.textContent = '—';
-      if (type === 'job') card.querySelector('.duration').textContent = '耗时 —';
+      if (type === 'job') popupQ(card, '.duration').textContent = '耗时 —';
       card.classList.remove('error');
     }
+    syncPopupState(card);
   });
   line.querySelector('.qty-total').innerHTML = `${totalQty.toLocaleString()}<span class="unit">个</span>`;
   line.querySelector('.time-total').textContent = fmtDuration(totalSec);
@@ -1424,8 +1465,8 @@ function recalcGlobal() {
   let q = 0, s = 0, cnt = 0;
   document.querySelectorAll('.line').forEach(line => {
     line.querySelectorAll('.card[data-type="job"]').forEach(card => {
-      const speed = parseFloat(card.querySelector('.speed').value) || 0;
-      const qty = parseFloat(card.querySelector('.qty').value) || 0;
+      const speed = parseFloat(popupQ(card, '.speed').value) || 0;
+      const qty = parseFloat(popupQ(card, '.qty').value) || 0;
       cnt++; q += qty;
       if (speed > 0 && qty > 0) s += (qty / speed) * 60;
     });
@@ -1442,9 +1483,9 @@ function saveBoard() {
     line.querySelectorAll('.card').forEach(card => {
       const type = card.dataset.type;
       if (type === 'job') {
-        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: card.querySelector('.speed').value, lineSpeed: card.querySelector('.line-speed').value, qty: card.querySelector('.qty').value, people: card.querySelector('.people').value });
+        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: popupQ(card, '.speed').value, lineSpeed: popupQ(card, '.line-speed').value, qty: popupQ(card, '.qty').value, people: popupQ(card, '.people').value });
       } else if (type === 'rest') {
-        lineData.cards.push({ type: 'rest', name: card.querySelector('.rest-name-input').value, min: card.querySelector('.rest-min').value, fixed: card.querySelector('.rest-fixed').value });
+        lineData.cards.push({ type: 'rest', name: popupQ(card, '.rest-name-input').value, min: popupQ(card, '.rest-min').value, fixed: popupQ(card, '.rest-fixed').value });
       }
     });
     state.lines.push(lineData);
@@ -1607,9 +1648,9 @@ function doExportCsv() {
     const lineNum = line.dataset.line;
     line.querySelectorAll('.card').forEach(card => {
       if (card.dataset.type === 'job') {
-        rows.push([lineNum, '品名', card.dataset.name, card.querySelector('.qty').value, card.querySelector('.speed').value, card.querySelector('.line-speed').value, card.querySelector('.people').value, card.querySelector('.duration').textContent.replace('耗时 ',''), card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+        rows.push([lineNum, '品名', card.dataset.name, popupQ(card, '.qty').value, popupQ(card, '.speed').value, popupQ(card, '.line-speed').value, popupQ(card, '.people').value, popupQ(card, '.duration').textContent.replace('耗时 ',''), popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
       } else if (card.dataset.type === 'rest') {
-        rows.push([lineNum, '休息', card.querySelector('.rest-name-input').value, '', '', '', '', card.querySelector('.rest-min').value + '分钟', card.querySelector('.t-start').textContent, card.querySelector('.t-end').textContent]);
+        rows.push([lineNum, '休息', popupQ(card, '.rest-name-input').value, '', '', '', '', popupQ(card, '.rest-min').value + '分钟', popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
       }
     });
   });
@@ -1624,6 +1665,7 @@ function doExportCsv() {
 
 function doExportHtml() {
   exportMenu.classList.remove('show');
+  setActiveCard(null); // 让任何被 detach 的弹窗先归位到卡片内
   saveBoard();
   const libData = localStorage.getItem(STORAGE_LIB) || '[]';
   const boardData = localStorage.getItem(STORAGE_BOARD) || '{}';
