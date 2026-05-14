@@ -281,18 +281,50 @@
   }
   .card.dragging { opacity: 0.3; z-index: 100; }
   .card.error { border-left-color: var(--red); box-shadow: 0 2px 8px rgba(248,113,113,0.2); }
-  .card-compact { display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 100%; min-height: 24px; }
+  .card-compact { display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 100%; min-height: 24px; padding: 0 6px; touch-action: none; cursor: pointer; }
   .card-expanded { display: none; }
-  .card.active .card-compact { display: none; }
-  .card.active .card-expanded { display: flex; flex-direction: column; gap: 5px; }
+  .card.active .card-compact { display: flex; }
   .card.active {
-    z-index: 50;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--accent);
-    border-radius: 0 10px 10px 0;
-    height: auto !important; min-height: 160px; padding: 6px 8px;
+    z-index: 5;
+    box-shadow: 0 0 0 2px var(--accent), 0 2px 12px rgba(249,115,22,0.45);
   }
-  .card.error.active { box-shadow: 0 4px 24px rgba(0,0,0,0.65), 0 0 0 2px var(--red); }
-  .card.rest.active { min-height: 110px; }
+  .card.rest.active { box-shadow: 0 0 0 2px var(--rest), 0 2px 12px rgba(167,139,250,0.45); }
+  .card.error.active { box-shadow: 0 0 0 2px var(--red), 0 2px 12px rgba(248,113,113,0.45); }
+  /* 弹出窗口：定位由 JS 计算，固定贴近卡片 */
+  .card.active .card-expanded {
+    display: flex; flex-direction: column; gap: 6px;
+    position: fixed; z-index: 200;
+    width: 280px; max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px); overflow-y: auto;
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.75);
+  }
+  .card.rest.active .card-expanded { border-color: var(--rest); }
+  .card.error.active .card-expanded { border-color: var(--red); }
+  .card.dragging { opacity: 0.45; outline: 2px dashed var(--accent); outline-offset: -2px; cursor: grabbing; transform: scale(1.02); transition: transform 0.1s; }
+  .drop-indicator {
+    position: absolute; left: 4px; right: 4px; height: 4px;
+    background: var(--accent); border-radius: 2px;
+    box-shadow: 0 0 12px var(--accent), 0 0 4px var(--accent);
+    z-index: 100; pointer-events: none;
+    transform: translateY(-50%);
+  }
+  .drop-indicator::before, .drop-indicator::after {
+    content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+    width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .drop-indicator::before { left: -3px; }
+  .drop-indicator::after { right: -3px; }
+  .compact-people {
+    flex: 1; color: var(--accent);
+    font-size: 13px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
 
   .drag-handle {
     cursor: grab; color: var(--text-mute);
@@ -407,10 +439,7 @@
     .head-btn .ic { font-size: 9px; }
   }
 
-  @media (max-width: 900px) {
-    /* 展开卡片时可超出列边界 */
-    .card.active { min-width: 200px; right: auto; }
-  }
+  /* 移动端弹出窗口与桌面一致：浮动定位贴近卡片，由 JS 计算 */
 
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.65);
@@ -549,8 +578,13 @@
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
     <button class="top-btn" id="openLib">品名库</button>
     <div class="export-wrap">
+      <button class="top-btn" id="linesBtn">生产线 ▾</button>
+      <div class="export-menu" id="linesMenu"></div>
+    </div>
+    <div class="export-wrap">
       <button class="top-btn accent" id="exportBtn">导出 ▾</button>
       <div class="export-menu" id="exportMenu">
+        <button onclick="doExportHtml()">💾 保存网页</button>
         <button onclick="doPrint()">🖨️ 打印</button>
         <button onclick="doExportPng()">🖼️ 导出图片</button>
         <button onclick="doExportCsv()">📊 导出 Excel</button>
@@ -618,7 +652,7 @@ const STORAGE_LIB = 'productLibrary_v3';
 const STORAGE_BOARD = 'productionBoard_v1';
 const TIME_START_HOUR = 8;
 const TIME_END_HOUR = 22;
-const TIME_TICK_MIN = 15;
+const TIME_TICK_MIN = 10;
 
 const COLORS = [
   '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149',
@@ -630,6 +664,7 @@ let currentPickTargetLine = null;
 let activeCard = null;
 let editingLibId = null;
 let saveTimer = null;
+let hiddenLines = new Set();
 
 const board = document.getElementById('board');
 const pager = document.getElementById('pager');
@@ -813,7 +848,9 @@ libAddBtn.addEventListener('click', () => {
   if (editingLibId) {
     const item = findLibItem(editingLibId);
     if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.color = selectedColor; }
+    const editedId = editingLibId;
     cancelEditLib();
+    propagateLibChange(editedId);
   } else {
     library.push({ id: uid(), name, speed, lineSpeed, people, color: selectedColor });
     libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = '';
@@ -822,6 +859,31 @@ libAddBtn.addEventListener('click', () => {
   renderLibList();
   libNameInput.focus();
 });
+
+function propagateLibChange(libId) {
+  const item = findLibItem(libId);
+  if (!item) return;
+  const affectedLines = new Set();
+  document.querySelectorAll(`.card[data-type="job"]`).forEach(card => {
+    if (card.dataset.libId !== libId) return;
+    card.dataset.name = item.name;
+    card.dataset.color = item.color;
+    card.style.borderLeftColor = item.color;
+    const compactName = card.querySelector('.compact-name');
+    const display = card.querySelector('.card-name-display');
+    if (compactName) compactName.textContent = item.name;
+    if (display) display.textContent = item.name;
+    const speedInp = card.querySelector('.speed');
+    const lineSpdInp = card.querySelector('.line-speed');
+    const peopleInp = card.querySelector('.people');
+    if (speedInp) speedInp.value = item.speed;
+    if (lineSpdInp) lineSpdInp.value = item.lineSpeed > 0 ? item.lineSpeed : '';
+    if (peopleInp) peopleInp.value = item.people > 0 ? item.people : '';
+    affectedLines.add(card.closest('.line'));
+  });
+  affectedLines.forEach(l => l && recalc(l));
+  if (affectedLines.size) scheduleSaveBoard();
+}
 libNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') libSpeedInput.focus(); });
 libSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libLineSpeedInput.focus(); });
 libLineSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libPeopleInput.focus(); });
@@ -944,13 +1006,16 @@ function syncScroll(top, source) {
   document.querySelectorAll('.cards-wrap').forEach(w => { if (w !== source) w.scrollTop = top; });
   timelineBody.scrollTop = top;
   scrollSyncing = false;
+  repositionActivePopup();
 }
 timelineBody.addEventListener('scroll', () => {
   if (scrollSyncing) return;
   scrollSyncing = true;
   document.querySelectorAll('.cards-wrap').forEach(w => w.scrollTop = timelineBody.scrollTop);
   scrollSyncing = false;
+  repositionActivePopup();
 });
+window.addEventListener('scroll', repositionActivePopup, true);
 
 function addJobCard(grid, libItem, savedData) {
   const node = document.createElement('div');
@@ -966,25 +1031,22 @@ function addJobCard(grid, libItem, savedData) {
   const peopleVal = savedData?.people != null ? savedData.people : (libItem.people > 0 ? libItem.people : '');
   node.innerHTML = `
     <div class="card-compact">
-      <span class="drag-handle">⋮⋮</span>
-      <span class="compact-name">${escapeHtml(libItem.name)}</span>
-      <span class="compact-qty"></span>
-      <span class="compact-time"></span>
+      <span class="compact-people">—</span>
+      <span class="compact-time">—</span>
     </div>
     <div class="card-expanded">
       <div class="card-top">
-        <span class="drag-handle">⋮⋮</span>
         <span class="card-name-display">${escapeHtml(libItem.name)}</span>
         <button class="card-del">×</button>
       </div>
       <div class="card-fields">
         <div class="field name-spd">
           <span class="field-label">品名速度★</span>
-          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal" readonly>
+          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal">
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
-          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal" readonly>
+          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal">
         </div>
         <div class="field">
           <span class="field-label">数量 个</span>
@@ -992,7 +1054,7 @@ function addJobCard(grid, libItem, savedData) {
         </div>
         <div class="field">
           <span class="field-label">人数</span>
-          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric" readonly>
+          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric">
         </div>
       </div>
       <div class="card-meta">
@@ -1003,8 +1065,23 @@ function addJobCard(grid, libItem, savedData) {
   `;
   wireCardEvents(node, 'job');
   grid.appendChild(node);
-  if (!savedData) { setActiveCard(node); setTimeout(() => node.querySelector('.qty').focus(), 50); }
   recalc(grid.closest('.line'));
+  if (!savedData) {
+    scrollCardIntoView(node);
+    setActiveCard(node);
+    setTimeout(() => node.querySelector('.qty').focus({ preventScroll: true }), 80);
+  }
+}
+
+function scrollCardIntoView(card) {
+  const wrap = card.closest('.cards-wrap');
+  if (!wrap) return;
+  const cardTop = parseFloat(card.style.top) || 0;
+  const cardH = parseFloat(card.style.height) || 26;
+  const wrapH = wrap.clientHeight;
+  const s = wrap.scrollTop;
+  if (cardTop < s + 8) wrap.scrollTop = Math.max(0, cardTop - 20);
+  else if (cardTop + cardH > s + wrapH - 8) wrap.scrollTop = Math.max(0, cardTop + cardH - wrapH + 20);
 }
 
 function addRestCard(grid, savedData) {
@@ -1016,14 +1093,12 @@ function addRestCard(grid, savedData) {
   const fixedVal = savedData?.fixed || '';
   node.innerHTML = `
     <div class="card-compact">
-      <span class="drag-handle">⋮⋮</span>
       <span class="rest-tag">休息</span>
       <span class="compact-name">${escapeHtml(nameVal)}</span>
       <span class="compact-time"></span>
     </div>
     <div class="card-expanded">
       <div class="card-top">
-        <span class="drag-handle">⋮⋮</span>
         <span class="rest-tag">休息</span>
         <input class="card-name-display rest-name-input" type="text" value="${escapeHtml(nameVal)}" maxlength="20" style="background:transparent;border:none;color:var(--rest);font-family:inherit;font-size:14px;font-weight:700;outline:none;flex:1;min-width:0;padding:3px 4px;">
         <button class="card-del">×</button>
@@ -1045,40 +1120,49 @@ function addRestCard(grid, savedData) {
   `;
   wireCardEvents(node, 'rest');
   grid.appendChild(node);
-  if (!savedData) setActiveCard(node);
   recalc(grid.closest('.line'));
+  if (!savedData) {
+    scrollCardIntoView(node);
+    setActiveCard(node);
+  }
 }
 
 function setActiveCard(card) {
-  if (activeCard && activeCard !== card) {
-    activeCard.classList.remove('active');
-    if (window.innerWidth <= 900) {
-      const prevWrap = activeCard.closest('.cards-wrap');
-      const prevLine = activeCard.closest('.line');
-      if (prevWrap) prevWrap.style.overflow = '';
-      if (prevLine) prevLine.style.overflow = '';
-    }
-  }
+  if (activeCard && activeCard !== card) activeCard.classList.remove('active');
   activeCard = card;
   if (card) {
     card.classList.add('active');
-    if (window.innerWidth <= 900) {
-      const wrap = card.closest('.cards-wrap');
-      const line = card.closest('.line');
-      if (wrap) wrap.style.overflow = 'visible';
-      if (line) line.style.overflow = 'visible';
-    }
+    requestAnimationFrame(() => positionCardPopup(card));
   }
+}
+
+function positionCardPopup(card) {
+  const popup = card.querySelector('.card-expanded');
+  if (!popup) return;
+  popup.style.top = '0px'; popup.style.left = '0px';
+  const cardRect = card.getBoundingClientRect();
+  const popupRect = popup.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const margin = 8;
+  let top = cardRect.bottom + 6;
+  if (top + popupRect.height + margin > vh) top = cardRect.top - popupRect.height - 6;
+  if (top < margin) top = Math.max(margin, Math.min(cardRect.top, vh - popupRect.height - margin));
+  let left = cardRect.left;
+  if (left + popupRect.width + margin > vw) left = vw - popupRect.width - margin;
+  if (left < margin) left = margin;
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+}
+
+function repositionActivePopup() {
+  if (activeCard) positionCardPopup(activeCard);
 }
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
-  const handles = node.querySelectorAll('.drag-handle');
-  node.addEventListener('mousedown', () => setActiveCard(node));
-  node.addEventListener('touchstart', () => setActiveCard(node), { passive: true });
   let inputsToWatch;
   if (type === 'job') {
-    inputsToWatch = [node.querySelector('.qty')];
+    inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
   } else {
     inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
@@ -1095,39 +1179,14 @@ function wireCardEvents(node, type) {
     if (activeCard === node) setActiveCard(null);
     node.remove(); recalc(line); scheduleSaveBoard();
   });
-  handles.forEach(handle => {
-    handle.addEventListener('mousedown', (e) => { e.stopPropagation(); node.setAttribute('draggable', 'true'); });
-    handle.addEventListener('mouseup', () => node.setAttribute('draggable', 'false'));
-  });
-  node.addEventListener('dragstart', (e) => { node.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-  node.addEventListener('dragend', () => {
-    node.classList.remove('dragging'); node.setAttribute('draggable', 'false');
-    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
-  });
-  handles.forEach(handle => setupTouchDrag(node, handle));
+  attachCardInteraction(node);
 }
 
-function setupTouchDrag(node, handle) {
-  let touching = false;
-  handle.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); touching = true; setActiveCard(node); node.classList.add('dragging'); }, { passive: false });
-  handle.addEventListener('touchmove', (e) => {
-    if (!touching) return;
-    e.preventDefault();
-    const y = e.touches[0].clientY; const x = e.touches[0].clientX;
-    node.style.pointerEvents = 'none';
-    const el = document.elementFromPoint(x, y);
-    node.style.pointerEvents = '';
-    if (!el) return;
-    const grid = el.closest('.cards-grid');
-    if (!grid) return;
-    insertCardInGrid(grid, node, y);
-  }, { passive: false });
-  handle.addEventListener('touchend', () => {
-    if (!touching) return;
-    touching = false; node.classList.remove('dragging');
-    document.querySelectorAll('.line').forEach(l => recalc(l)); scheduleSaveBoard();
-  });
-}
+// ============ 拖动 & 点击交互 ============
+// 短按抬手 → 弹出窗口；按住 350ms 后移动 → 拖动换位
+const HOLD_MS = 350;
+const MOVE_THRESHOLD = 8;
+let dropIndicator = null;
 
 function insertCardInGrid(grid, node, clientY) {
   const after = getDragAfter(grid, clientY);
@@ -1141,17 +1200,129 @@ function getDragAfter(grid, y) {
   }
   return null;
 }
-document.addEventListener('dragover', (e) => {
-  const dragging = document.querySelector('.card.dragging');
-  if (!dragging) return;
-  e.preventDefault();
-  const grid = e.target.closest('.cards-grid');
-  if (!grid) return;
-  insertCardInGrid(grid, dragging, e.clientY);
-});
+function ensureDropIndicator() {
+  if (!dropIndicator) {
+    dropIndicator = document.createElement('div');
+    dropIndicator.className = 'drop-indicator';
+  }
+  return dropIndicator;
+}
+function updateDropIndicator(grid, clientY) {
+  const ind = ensureDropIndicator();
+  if (ind.parentElement !== grid) grid.appendChild(ind);
+  const rect = grid.getBoundingClientRect();
+  ind.style.top = (clientY - rect.top) + 'px';
+}
+function hideDropIndicator() {
+  if (dropIndicator && dropIndicator.parentElement) dropIndicator.parentElement.removeChild(dropIndicator);
+}
+
+function attachCardInteraction(card) {
+  let holdTimer = null;
+  let holdReady = false;
+  let dragMode = false;
+  let startX = 0, startY = 0;
+  let activePointerId = null;
+
+  function startDrag() {
+    holdReady = true;
+    card.classList.add('dragging');
+    setActiveCard(null);
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch (e) {}
+  }
+  function doDragMove(x, y) {
+    dragMode = true;
+    card.style.visibility = 'hidden';
+    const el = document.elementFromPoint(x, y);
+    card.style.visibility = '';
+    if (!el) return;
+    const grid = el.closest('.cards-grid');
+    if (!grid) return;
+    insertCardInGrid(grid, card, y);
+    updateDropIndicator(grid, y);
+  }
+  function finalize(wasTap) {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (dragMode) {
+      card.classList.remove('dragging');
+      hideDropIndicator();
+      document.querySelectorAll('.line').forEach(l => recalc(l));
+      scheduleSaveBoard();
+    } else if (holdReady) {
+      // Held but didn't move — treat as tap
+      card.classList.remove('dragging');
+      setActiveCard(card);
+    } else if (wasTap) {
+      setActiveCard(card);
+    }
+    holdReady = false; dragMode = false; activePointerId = null;
+  }
+
+  // --- Touch (mobile): hold-then-drag, with passive control of preventDefault
+  card.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    if (e.target.closest('input, button, .card-expanded')) return;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    holdReady = false; dragMode = false;
+    holdTimer = setTimeout(startDrag, HOLD_MS);
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!holdTimer && !holdReady) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX, dy = t.clientY - startY;
+    if (!holdReady) {
+      if (Math.hypot(dx, dy) > MOVE_THRESHOLD) {
+        clearTimeout(holdTimer); holdTimer = null;
+      }
+      return;
+    }
+    e.preventDefault();
+    doDragMove(t.clientX, t.clientY);
+  }, { passive: false });
+
+  card.addEventListener('touchend', () => finalize(!holdReady));
+  card.addEventListener('touchcancel', () => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (dragMode || holdReady) { card.classList.remove('dragging'); hideDropIndicator(); }
+    holdReady = false; dragMode = false;
+  });
+
+  // --- Mouse (desktop): move threshold OR hold time triggers drag
+  card.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('input, button, .card-expanded')) return;
+    startX = e.clientX; startY = e.clientY;
+    holdReady = false; dragMode = false;
+    holdTimer = setTimeout(startDrag, HOLD_MS);
+
+    const onMove = (me) => {
+      const dx = me.clientX - startX, dy = me.clientY - startY;
+      if (!holdReady && Math.hypot(dx, dy) > MOVE_THRESHOLD) {
+        clearTimeout(holdTimer); holdTimer = null;
+        startDrag();
+      }
+      if (holdReady) doDragMove(me.clientX, me.clientY);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      finalize(!holdReady);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+}
+
+// 点击卡片之外（且不在弹窗内）关闭弹窗
 document.addEventListener('mousedown', (e) => {
-  if (!e.target.closest('.card')) { setActiveCard(null); }
+  if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 });
+document.addEventListener('touchstart', (e) => {
+  if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
+}, { passive: true });
 
 function recalc(line) {
   const grid = line.querySelector('.cards-grid');
@@ -1160,6 +1331,7 @@ function recalc(line) {
   const gapSec = gapMin * 60;
   const baseSec = TIME_START_HOUR * 3600;
   let totalQty = 0, totalSec = 0, cursor = startSec, lastEnd = null;
+  let prevVisualBottom = -Infinity;
   const cards = grid.querySelectorAll('.card');
   cards.forEach((card, i) => {
     const type = card.dataset.type;
@@ -1169,12 +1341,14 @@ function recalc(line) {
     if (type === 'job') {
       const speed = parseFloat(card.querySelector('.speed').value) || 0;
       const qty = parseFloat(card.querySelector('.qty').value) || 0;
+      const people = parseFloat(card.querySelector('.people').value) || 0;
       if (speed > 0 && qty > 0) duration = (qty / speed) * 60;
       card.querySelector('.duration').textContent = '耗时 ' + fmtDuration(duration);
       if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
       totalQty += qty; totalSec += duration;
-      card.querySelector('.compact-qty').textContent = qty > 0 ? `${qty}个` : '';
-      card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '';
+      const peopleEl = card.querySelector('.compact-people');
+      if (peopleEl) peopleEl.textContent = people > 0 ? `${people}人` : '—';
+      card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '—';
     } else if (type === 'rest') {
       const restMin = parseFloat(card.querySelector('.rest-min').value) || 0;
       duration = restMin * 60;
@@ -1186,11 +1360,20 @@ function recalc(line) {
     }
     if (cardStart != null && cardEnd != null) {
       tStart.textContent = fmtClock(cardStart); tEnd.textContent = fmtClock(cardEnd);
-      const top = secToPx(cardStart); const height = secToPx(cardEnd) - secToPx(cardStart);
-      card.style.top = top + 'px'; card.style.height = Math.max(height, 24) + 'px';
+      let top = secToPx(cardStart);
+      const height = Math.max(secToPx(cardEnd) - secToPx(cardStart), 24);
+      if (top < prevVisualBottom + 1) top = prevVisualBottom + 1;
+      card.style.top = top + 'px'; card.style.height = height + 'px';
+      prevVisualBottom = top + height;
       card.classList.toggle('error', cardStart < baseSec || cardEnd > TIME_END_HOUR * 3600);
     } else {
-      card.style.top = (i * 28) + 'px'; card.style.height = '26px';
+      // 草稿卡片（无耗时）：定位在上一卡片视觉底部之下，无上一卡片则按起始时间放置
+      let top;
+      if (prevVisualBottom > -Infinity) top = prevVisualBottom + 2;
+      else if (startSec != null) top = secToPx(startSec);
+      else top = i * 28;
+      card.style.top = top + 'px'; card.style.height = '26px';
+      prevVisualBottom = top + 26;
       tStart.textContent = '—'; tEnd.textContent = '—';
       if (type === 'job') card.querySelector('.duration').textContent = '耗时 —';
       card.classList.remove('error');
@@ -1218,7 +1401,7 @@ function recalcGlobal() {
 
 function scheduleSaveBoard() { clearTimeout(saveTimer); saveTimer = setTimeout(saveBoard, 400); }
 function saveBoard() {
-  const state = { lines: [] };
+  const state = { lines: [], hiddenLines: [...hiddenLines] };
   document.querySelectorAll('.line').forEach(line => {
     const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, cards: [] };
     line.querySelectorAll('.card').forEach(card => {
@@ -1238,6 +1421,10 @@ function loadBoard() {
   let state;
   try { const raw = localStorage.getItem(STORAGE_BOARD); if (!raw) return; state = JSON.parse(raw); } catch (e) { return; }
   if (!state || !state.lines) return;
+  if (Array.isArray(state.hiddenLines)) {
+    hiddenLines = new Set(state.hiddenLines.map(Number));
+    updateBoardLayout();
+  }
   const lineEls = document.querySelectorAll('.line');
   state.lines.forEach((lineData, idx) => {
     const lineEl = lineEls[idx];
@@ -1256,6 +1443,57 @@ function loadBoard() {
     recalc(lineEl);
   });
 }
+
+function updateBoardLayout() {
+  const visibleCount = LINE_COUNT - hiddenLines.size;
+  document.querySelectorAll('.line').forEach(line => {
+    line.style.display = hiddenLines.has(+line.dataset.line) ? 'none' : '';
+  });
+  if (visibleCount > 0) {
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile) {
+      board.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(66px, 1fr))`;
+      board.style.minWidth = (66 * visibleCount) + 'px';
+    } else {
+      board.style.gridTemplateColumns = `repeat(${visibleCount}, 1fr)`;
+      board.style.minWidth = '';
+    }
+  }
+  document.querySelectorAll('#pager .pip').forEach((p, i) => {
+    p.style.display = hiddenLines.has(i + 1) ? 'none' : '';
+  });
+}
+
+function renderLinesMenu() {
+  const menu = document.getElementById('linesMenu');
+  menu.innerHTML = '';
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    const displayName = i === 1 ? '夕盛' : String(i - 1).padStart(2, '0') + ' 号线';
+    const visible = !hiddenLines.has(i);
+    const btn = document.createElement('button');
+    btn.innerHTML = `<span style="display:inline-block;width:18px;color:${visible ? 'var(--green)' : 'var(--text-mute)'};font-weight:700;text-align:center">${visible ? '✓' : '·'}</span>${displayName}`;
+    btn.style.opacity = visible ? '1' : '0.55';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (visible) hiddenLines.add(i); else hiddenLines.delete(i);
+      updateBoardLayout();
+      scheduleSaveBoard();
+      renderLinesMenu();
+    });
+    menu.appendChild(btn);
+  }
+}
+
+const linesBtn = document.getElementById('linesBtn');
+const linesMenu = document.getElementById('linesMenu');
+linesBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu && exportMenu.classList.remove('show');
+  linesMenu.classList.toggle('show');
+  if (linesMenu.classList.contains('show')) renderLinesMenu();
+});
+document.addEventListener('click', () => linesMenu.classList.remove('show'));
+linesMenu.addEventListener('click', (e) => e.stopPropagation());
 
 document.getElementById('clearAll').addEventListener('click', () => {
   if (!confirm('确定清空所有牌子吗？(品名库不会被清空)')) return;
@@ -1285,9 +1523,34 @@ async function doExportPng() {
   const orig = exportBtn.textContent;
   exportBtn.textContent = '截图中…';
   exportBtn.disabled = true;
+
+  // 关闭活动卡片，避免 fixed 抽屉混入截图
+  setActiveCard(null);
+
+  // 临时展开所有可滚动容器，让 html2canvas 抓到完整内容
+  const restoreFns = [];
+  const override = (el, styles) => {
+    if (!el) return;
+    const prev = {};
+    for (const k in styles) { prev[k] = el.style[k]; el.style[k] = styles[k]; }
+    restoreFns.push(() => { for (const k in prev) el.style[k] = prev[k]; });
+  };
+  override(document.documentElement, { overflow: 'visible', height: 'auto' });
+  override(document.body, { overflow: 'visible', height: 'auto' });
+  override(document.querySelector('.main'), { height: 'auto', overflow: 'visible' });
+  override(document.querySelector('.timeline'), { overflow: 'visible', height: 'auto' });
+  override(document.querySelector('.timeline-body'), { overflow: 'visible', height: 'auto' });
+  document.querySelectorAll('.line').forEach(l => override(l, { overflow: 'visible' }));
+  document.querySelectorAll('.cards-wrap').forEach(w => override(w, { overflow: 'visible', height: 'auto', flex: 'none' }));
+
+  await new Promise(r => setTimeout(r, 50));
+
   try {
-    const canvas = await html2canvas(document.querySelector('.main'), {
+    const width = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+    const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    const canvas = await html2canvas(document.body, {
       backgroundColor: '#111827', scale: 2, useCORS: true, logging: false,
+      width, height, windowWidth: width, windowHeight: height,
     });
     const link = document.createElement('a');
     link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.png`;
@@ -1296,6 +1559,7 @@ async function doExportPng() {
   } catch (err) {
     alert('截图失败：' + err.message);
   } finally {
+    restoreFns.forEach(fn => fn());
     exportBtn.textContent = orig;
     exportBtn.disabled = false;
   }
@@ -1322,6 +1586,58 @@ function doExportCsv() {
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
+
+function doExportHtml() {
+  exportMenu.classList.remove('show');
+  saveBoard();
+  const libData = localStorage.getItem(STORAGE_LIB) || '[]';
+  const boardData = localStorage.getItem(STORAGE_BOARD) || '{}';
+
+  const docEl = document.documentElement.cloneNode(true);
+
+  // 清空运行时动态生成的内容（防御性：明确清空所有可能含动态节点的容器）
+  const clearIds = ['timelineHead','timelineInner','timelineFoot','board','pager','linesMenu','libList','pickList'];
+  clearIds.forEach(id => {
+    const el = docEl.querySelector('#' + id);
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+  });
+  // 防御性：万一克隆树里残留卡片，全部移除
+  docEl.querySelectorAll('.card, .line, .tick, .grid-line, .pip').forEach(n => n.remove());
+
+  // 重置 UI 状态
+  docEl.querySelectorAll('.modal-mask').forEach(m => m.classList.remove('show'));
+  docEl.querySelectorAll('.export-menu').forEach(m => m.classList.remove('show'));
+  // 清空 board 上的动态 inline 样式（gridTemplateColumns 等会由脚本重建）
+  const boardClone = docEl.querySelector('#board');
+  if (boardClone) { boardClone.removeAttribute('style'); }
+  docEl.querySelector('#totalAll').textContent = '共 0 个 · 0:00:00';
+  docEl.querySelector('#clock').textContent = '--:--:--';
+
+  // 在 <head> 最前面注入数据预载脚本
+  const initScript = document.createElement('script');
+  initScript.textContent =
+    `localStorage.setItem(${JSON.stringify(STORAGE_LIB)},${JSON.stringify(libData)});` +
+    `localStorage.setItem(${JSON.stringify(STORAGE_BOARD)},${JSON.stringify(boardData)});`;
+  const headEl = docEl.querySelector('head');
+  headEl.insertBefore(initScript, headEl.firstChild);
+
+  const html = '<!DOCTYPE html>\n' + docEl.outerHTML;
+  const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = `生产计划板_${date}.html`;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    doExportHtml();
+  }
+});
 
 function tick() {
   const d = new Date();
@@ -1402,9 +1718,11 @@ window.addEventListener('resize', () => {
   document.querySelectorAll('.line').forEach(l => recalc(l));
   const foot = document.querySelector('.line-foot');
   if (foot) document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
+  updateBoardLayout();
 });
 
 loadBoard();
+updateBoardLayout();
 recalcGlobal();
 syncMobLayout();
 window.addEventListener('beforeunload', saveBoard);
