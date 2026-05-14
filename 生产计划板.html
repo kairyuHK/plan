@@ -192,8 +192,8 @@
     .date-day  { font-size: 14px; text-align: center; line-height: 1.3; }
     .date-dow  { font-size: 14px; text-align: center; line-height: 1.3; margin-bottom: 0; }
 
-    /* 主板横向滚动 */
-    .main { overflow-x: auto; }
+    /* 主板：单一滚动容器 — 6 条线共同垂直滚动，丝滑无卡顿 */
+    .main { overflow: auto; -webkit-overflow-scrolling: touch; }
     .board {
       display: grid;
       grid-template-columns: repeat(6, minmax(66px, 1fr));
@@ -203,7 +203,14 @@
       gap: 1px;
       background: var(--border);
     }
-    .line { flex: unset; width: auto; }
+    .line { flex: unset; width: auto; overflow: visible; }
+    .cards-wrap { overflow: visible; height: auto; flex: none; }
+    .timeline { overflow: visible; position: sticky; left: 0; z-index: 6; background: var(--panel); }
+    .timeline-body { overflow: visible; }
+    .timeline-head { position: sticky; top: 0; z-index: 7; }
+    .timeline-foot { position: sticky; bottom: 0; z-index: 7; }
+    .line-head { position: sticky; top: 0; z-index: 5; }
+    .line-foot { position: sticky; bottom: 0; z-index: 5; }
 
     /* 线头：按钮竖排，夕盛/数字横排 */
     .line-head { height: 80px; padding: 3px 4px; gap: 2px; overflow: hidden; }
@@ -333,12 +340,33 @@
   }
   .drop-indicator::before { left: -3px; }
   .drop-indicator::after { right: -3px; }
+  .compact-name-letter {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-weight: 900; font-size: 13px; line-height: 1;
+    flex-shrink: 0;
+    font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  }
   .compact-people {
-    flex: 1; color: var(--accent);
-    font-size: 13px; font-weight: 800;
+    flex: 1; text-align: right;
+    color: var(--text); font-size: 13px; font-weight: 700;
     font-variant-numeric: tabular-nums;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .compact-people .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
+  .compact-del {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-mute);
+    font-family: inherit; font-size: 13px; line-height: 1;
+    border-radius: 5px; cursor: pointer; padding: 0;
+    transition: all 0.15s;
+  }
+  .compact-del:hover { color: var(--red); border-color: var(--red); background: rgba(248,113,113,0.1); }
 
   .drag-handle {
     cursor: grab; color: var(--text-mute);
@@ -350,7 +378,6 @@
   .drag-handle:hover { color: var(--accent); border-color: var(--accent); }
 
   .compact-name { flex: 1; color: var(--text); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .compact-qty { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
   .compact-time { color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
   .card-top { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
@@ -599,7 +626,7 @@
         <button onclick="doExportCsv()">📊 导出 Excel</button>
       </div>
     </div>
-    <span id="totalAll">共 0 个 · 0:00:00</span>
+    <span id="totalAll">总计 0 个</span>
     <span class="clock" id="clock">--:--:--</span>
   </div>
 </div>
@@ -878,9 +905,9 @@ function propagateLibChange(libId) {
     card.dataset.name = item.name;
     card.dataset.color = item.color;
     card.style.borderLeftColor = item.color;
-    const compactName = card.querySelector('.compact-name');
+    const letterEl = card.querySelector('.compact-name-letter');
     const display = popupQ(card, '.card-name-display');
-    if (compactName) compactName.textContent = item.name;
+    if (letterEl) { letterEl.textContent = (item.name || '').charAt(0); letterEl.style.color = item.color || ''; }
     if (display) display.textContent = item.name;
     const speedInp = popupQ(card, '.speed');
     const lineSpdInp = popupQ(card, '.line-speed');
@@ -1040,8 +1067,9 @@ function addJobCard(grid, libItem, savedData) {
   const peopleVal = savedData?.people != null ? savedData.people : (libItem.people > 0 ? libItem.people : '');
   node.innerHTML = `
     <div class="card-compact">
+      <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
       <span class="compact-people">—</span>
-      <span class="compact-time">—</span>
+      <button class="compact-del" title="删除">×</button>
     </div>
     <div class="card-expanded">
       <div class="card-top">
@@ -1235,6 +1263,18 @@ function repositionActivePopup() {
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
+  const compactDel = node.querySelector('.compact-del');
+  if (compactDel) {
+    const handleDel = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const line = node.closest('.line');
+      if (activeCard === node) setActiveCard(null);
+      node.remove(); recalc(line); scheduleSaveBoard();
+    };
+    compactDel.addEventListener('click', handleDel);
+    compactDel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    compactDel.addEventListener('mousedown', (e) => e.stopPropagation());
+  }
   let inputsToWatch;
   if (type === 'job') {
     inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
@@ -1421,9 +1461,13 @@ function recalc(line) {
       popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
       if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
       totalQty += qty; totalSec += duration;
+      const letterEl = card.querySelector('.compact-name-letter');
+      if (letterEl) {
+        letterEl.textContent = (card.dataset.name || '').charAt(0);
+        letterEl.style.color = card.dataset.color || '';
+      }
       const peopleEl = card.querySelector('.compact-people');
-      if (peopleEl) peopleEl.textContent = people > 0 ? `${people}人` : '—';
-      card.querySelector('.compact-time').textContent = duration > 0 ? fmtDuration(duration) : '—';
+      if (peopleEl) peopleEl.innerHTML = people > 0 ? `${people}<span class="unit">人</span>` : '—';
     } else if (type === 'rest') {
       const restMin = parseFloat(popupQ(card, '.rest-min').value) || 0;
       duration = restMin * 60;
@@ -1471,8 +1515,7 @@ function recalcGlobal() {
       if (speed > 0 && qty > 0) s += (qty / speed) * 60;
     });
   });
-  document.getElementById('totalAll').textContent =
-    `共 ${cnt} 张 · ${q.toLocaleString()} 个 · ${fmtDuration(s) === '—' ? '0:00' : fmtDuration(s)}`;
+  document.getElementById('totalAll').textContent = `总计 ${q.toLocaleString()} 个`;
 }
 
 function scheduleSaveBoard() { clearTimeout(saveTimer); saveTimer = setTimeout(saveBoard, 400); }
