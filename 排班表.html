@@ -63,9 +63,12 @@ html, body {
   position: absolute;
   left: -12px; right: -12px; bottom: -10px;
   height: 10px;
-  background: linear-gradient(to bottom, var(--bg), transparent);
+  /* 用同色 alpha=0 而非 transparent — 避免插值经过黑色出现深色条 */
+  background: linear-gradient(to bottom, #f4f6fb, rgba(244,246,251,0));
   pointer-events: none;
 }
+body.exporting .app-top::after { display: none; }
+body.exporting #appRoot { background: #f4f6fb; }
 
 /* ── Header ── */
 .header {
@@ -680,6 +683,7 @@ async function exportPNG() {
   const orig    = btn.textContent;
   const prevAppTopPos = appTop ? appTop.style.position : '';
   if (appTop) appTop.style.position = 'static';
+  document.body.classList.add('exporting');
   toolbar.style.display = 'none';
   pe.style.display = 'none';
   ac.style.display = 'none';
@@ -709,6 +713,7 @@ async function exportPNG() {
       row.style.borderColor      = '';
     });
     if (appTop) appTop.style.position = prevAppTopPos;
+    document.body.classList.remove('exporting');
     toolbar.style.display = '';
     pe.style.display = '';
     ac.style.display = '';
