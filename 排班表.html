@@ -187,6 +187,7 @@ body.has-unsaved .btn-primary::after {
   position: relative;
   display: grid;
   grid-template-columns: 30px 1fr;
+  min-height: 38px; /* 统一行高，避免「出」「休」字号不同导致高度差 */
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
