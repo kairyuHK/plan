@@ -452,6 +452,10 @@
     .line-config { display: none; }
     .card { z-index: 2; }
     .grid-line { z-index: 0; }
+    /* 列分隔线：直接给 .line 加右边框，保证延伸到视口最底部 */
+    .board { gap: 0; background: transparent; }
+    .line { border-right: 1px solid var(--border); min-height: calc(100vh - 52px); }
+    .line:last-child { border-right: none; }
     /* 竖屏线头：夕盛(上) → +品名(中) → +休息(下)，底部留空隙 */
     .timeline-head { height: 88px; }
     .line-head { padding: 4px 4px 8px; gap: 3px; height: 88px; }
@@ -1069,7 +1073,6 @@ function addJobCard(grid, libItem, savedData) {
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
       <span class="compact-people">—</span>
-      <button class="compact-del" title="删除">×</button>
     </div>
     <div class="card-expanded">
       <div class="card-top">
@@ -1263,18 +1266,6 @@ function repositionActivePopup() {
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
-  const compactDel = node.querySelector('.compact-del');
-  if (compactDel) {
-    const handleDel = (e) => {
-      e.stopPropagation(); e.preventDefault();
-      const line = node.closest('.line');
-      if (activeCard === node) setActiveCard(null);
-      node.remove(); recalc(line); scheduleSaveBoard();
-    };
-    compactDel.addEventListener('click', handleDel);
-    compactDel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-    compactDel.addEventListener('mousedown', (e) => e.stopPropagation());
-  }
   let inputsToWatch;
   if (type === 'job') {
     inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
