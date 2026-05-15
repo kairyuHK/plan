@@ -1,278 +1,351 @@
 <!DOCTYPE html>
-<!-- saved from url=(0073)file:///C:/Users/kairyu/OneDrive/Desktop/%E6%8E%92%E7%8F%AD%E8%A1%A8.html -->
-<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>シフト管理</title>
-<link href="./排班表_files/css2" rel="stylesheet">
 <script src="./排班表_files/html2canvas.min.js.下载"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  --today-bg: #c2410c;
-  --sat-fg: #2563eb; --sun-fg: #dc2626;
-  --header-bg: #0f172a;
+  --bg: #f4f6fb;
   --surface: #ffffff;
-  --border: #dde3ed;
-  --text: #1e293b;
-  --muted: #64748b;
-  --radius: 12px;
-  --shadow: 0 4px 16px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06);
+  --border: #e5e8ee;
+  --border-strong: #d0d6de;
+  --text: #1a2233;
+  --text-dim: #6b7385;
+  --muted: #9aa1ad;
+  --primary: #2563eb;
+  --work-bg: #eef4ff;
+  --work-fg: #1d4ed8;
+  --rest-bg: #fff1e0;
+  --rest-fg: #c2410c;
+  --rest-strong: #ea580c;
+  --sun: #dc2626;
+  --sat: #2563eb;
+  --today: #ea580c;
+  --rest-day-bg: #fffbeb;
+  --rest-day-stripe: #fef3c7;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow: 0 2px 8px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
 }
 
-body {
-  font-family: 'Inter', 'Noto Sans JP', sans-serif;
-  background: linear-gradient(150deg, #dde8f5 0%, #f0f4f8 45%, #e4ecf7 100%);
-  background-attachment: fixed;
+html, body {
+  background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
-.app { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 12px 80px;
+}
 
 /* ── Header ── */
-.app-header {
+.header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
-  padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  margin-bottom: 14px; gap: 10px;
 }
-.app-title {
-  font-size: 22px; font-weight: 800; letter-spacing: -0.3px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.title {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 6px;
+  color: #0f172a;
 }
-.period-badge {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  color: #e2e8f0;
-  padding: 7px 18px; border-radius: 24px; font-size: 13px; font-weight: 600;
-  cursor: pointer; user-select: none; letter-spacing: 0.2px;
-  box-shadow: 0 2px 8px rgba(15,23,42,0.25);
-  transition: opacity 0.15s;
+.title-emoji { font-size: 22px; }
+.period-btn {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #e2e8f0; border: none;
+  padding: 9px 16px; border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(15,23,42,0.18);
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.08s;
 }
-.period-badge:hover { opacity: 0.85; }
+.period-btn:active { opacity: 0.85; transform: scale(0.98); }
 
 /* ── Period editor ── */
 .period-editor {
-  display: none; background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px;
-  font-size: 13px; gap: 10px; align-items: center; flex-wrap: wrap;
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 12px;
+  gap: 8px; align-items: center; flex-wrap: wrap;
   box-shadow: var(--shadow);
+  font-size: 13px;
 }
 .period-editor.visible { display: flex; }
 .period-editor select {
-  border: 1.5px solid var(--border); border-radius: 7px; padding: 5px 8px;
-  font-size: 13px; background: #f8fafc; font-family: inherit; outline: none;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 6px 8px; font-size: 13px; font-family: inherit;
+  background: #fff; outline: none; color: var(--text);
 }
+.period-editor-label { color: var(--muted); font-weight: 600; font-size: 12px; }
 
 /* ── Toolbar ── */
-.toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
 .btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 18px; border-radius: 9px; font-size: 13px; font-weight: 700;
-  cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 11px 12px; border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer;
   font-family: inherit; letter-spacing: 0.2px;
+  transition: opacity 0.15s, transform 0.08s, background 0.15s;
+  flex: 1; min-width: 0;
+  box-shadow: var(--shadow-sm);
 }
-.btn:hover { opacity: 0.88; transform: translateY(-1px); }
-.btn:active { transform: scale(0.97) translateY(0); }
-.btn-primary   { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.35); }
-.btn-secondary { background: var(--surface); color: var(--muted); border: 1.5px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-.btn-success   { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,0.35); }
-.btn-warning   { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; box-shadow: 0 2px 8px rgba(217,119,6,0.35); }
-.btn-edit      { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,0.35); }
-.btn-danger    { background: linear-gradient(135deg, #f43f5e, #dc2626); color: #fff; box-shadow: 0 2px 8px rgba(244,63,94,0.35); }
-
-/* ── Calendar wrap ── */
-.calendar-wrap {
-  background: var(--surface); border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden; border: 1px solid var(--border);
-}
-.calendar { width: 100%; }
-
-.cal-row {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--border);
-}
-.cal-row:last-child { border-bottom: none; }
-.cal-row.month-boundary {
-  border-top: 3px solid #94a3b8;
-  background: linear-gradient(90deg, #f1f5f9 0%, transparent 10%);
-}
-
-/* ── Day header ── */
-.cal-head {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  color: #cbd5e1;
-  text-align: center; padding: 11px 4px; font-weight: 700; font-size: 14px;
-  border-right: 1px solid rgba(255,255,255,0.06); letter-spacing: 0.5px;
-}
-.cal-head:last-child { border-right: none; }
-.cal-head.sun { color: #fca5a5; }
-.cal-head.sat { color: #93c5fd; }
-
-/* ── Calendar cell ── */
-.cal-cell {
-  position: relative;
-  border-right: 1px solid var(--border);
-  min-height: 88px; padding: 5px 4px 4px;
-  display: flex; flex-direction: column; gap: 3px;
-  transition: background 0.15s;
-}
-.cal-cell:last-child { border-right: none; }
-.cal-cell.empty { background: #f8fafc; }
-
-/* Subtle tints for weekend columns */
-.cal-cell.sun  { background: #fff7f7; }
-.cal-cell.sat  { background: #f5f8ff; }
-.cal-cell.today {
-  background: #fff8f5;
-}
-
-/* ── Both employees resting ── */
-.cal-cell.both-rest {
-  background: repeating-linear-gradient(
-    -45deg,
-    #fffbeb 0px, #fffbeb 6px,
-    #fef3c7 6px, #fef3c7 12px
-  ) !important;
-}
-.both-rest-badge {
-  position: absolute; top: 4px; right: 4px;
-  font-size: 8px; font-weight: 800; letter-spacing: 0.3px;
-  color: #78350f;
-  background: linear-gradient(135deg, #fde68a, #fbbf24);
-  padding: 1px 5px; border-radius: 4px; line-height: 1.5;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-  pointer-events: none;
-}
-
-/* ── Date number area ── */
-.cal-month-prefix {
-  font-size: 11px; font-weight: 900; color: #ef4444;
-  line-height: 1; flex-shrink: 0; letter-spacing: -0.2px;
-}
-.cal-date-wrap {
-  display: flex; align-items: center; justify-content: center;
-  gap: 1px; min-height: 20px;
-}
-.cal-date-num {
-  font-size: 13px; font-weight: 800; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  min-width: 20px; padding: 1px;
-}
-.cal-cell.sun .cal-date-num  { color: var(--sun-fg); }
-.cal-cell.sat .cal-date-num  { color: var(--sat-fg); }
-.cal-cell.today .cal-date-num {
-  background: var(--today-bg); color: #fff; border-radius: 50%;
-  width: 20px; height: 20px; padding: 0; font-size: 10px;
-  box-shadow: 0 2px 5px rgba(194,65,12,0.40);
-}
-
-/* ── Shift rows ── */
-.shift-row {
-  display: flex; align-items: stretch;
-  border-radius: 5px; overflow: hidden;
-}
-.shift-row-emp1 { background: #dbeafe; }
-.shift-row-emp2 { background: #fce7f3; }
-
-.shift-slot {
-  flex: 1; text-align: center;
-  font-weight: 900; font-size: 12px; padding: 4px 0; line-height: 1.2;
-  user-select: none; letter-spacing: 1px;
-}
-/* 出 = deep blue text; 休 = orange text */
-.cell-emp1-work { background: #93c5fd; color: #1e3a8a; }
-.cell-emp1-rest { background: #bfdbfe; color: #c2410c; }
-.cell-emp2-work { background: #f9a8d4; color: #1e3a8a; }
-.cell-emp2-rest { background: #fbcfe8; color: #c2410c; }
-
-body.edit-mode .shift-slot { cursor: pointer; }
-body.edit-mode .shift-slot:hover { opacity: 0.60; }
+.btn:active { transform: scale(0.97); }
+.btn-edit    { background: #7c3aed; color: #fff; }
+.btn-edit.active { background: #f59e0b; }
+.btn-save    { background: #16a34a; color: #fff; }
+.btn-danger  { background: #fff; color: var(--rest-fg); border: 1.5px solid #fed7aa; box-shadow: none; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: #fff; color: var(--text-dim); border: 1px solid var(--border-strong); box-shadow: none; }
 
 /* ── Alert ── */
 .alert {
-  border-radius: var(--radius); padding: 10px 14px; font-size: 13px;
-  margin-bottom: 12px; line-height: 1.5;
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  font-size: 12px; margin-bottom: 10px; line-height: 1.5;
 }
-.alert-warn { background: #fef9c3; border: 1.5px solid #fcd34d; color: #78350f; }
-.alert-info { background: #dbeafe; border: 1.5px solid #93c5fd; color: #1e3a8a; }
+.alert-info { background: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; }
+.alert-warn { background: #fef9c3; color: #78350f; border: 1px solid #fcd34d; }
+
+/* ── Day list ── */
+.day-list {
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+
+/* Month divider */
+.month-divider {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 4px 4px;
+  font-size: 11px; font-weight: 800;
+  color: var(--text-dim); letter-spacing: 2px;
+}
+.month-divider:first-child { padding-top: 4px; }
+.month-divider span {
+  background: var(--bg);
+  padding: 0 8px;
+}
+.month-divider::before,
+.month-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-strong);
+}
+.month-divider .num { color: var(--rest-strong); font-size: 14px; letter-spacing: 0; }
+
+/* Day row */
+.day-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* weekend colorings */
+.day-row.sun .day-cell .dnum,
+.day-row.sun .day-cell .dow { color: var(--sun); }
+.day-row.sat .day-cell .dnum,
+.day-row.sat .day-cell .dow { color: var(--sat); }
+
+.day-row.today {
+  border-color: var(--today);
+  box-shadow: 0 2px 10px rgba(234,88,12,0.20);
+}
+.day-row.today .day-cell .dnum {
+  background: var(--today); color: #fff;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 2px 5px rgba(234,88,12,0.30);
+}
+
+/* Both rest: clear yellow stripe banner */
+.day-row.both-rest {
+  background:
+    repeating-linear-gradient(-45deg,
+      var(--rest-day-bg) 0px, var(--rest-day-bg) 8px,
+      var(--rest-day-stripe) 8px, var(--rest-day-stripe) 16px);
+  border-color: #fcd34d;
+}
+
+.day-cell {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 4px;
+  border-right: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+}
+.day-row.both-rest .day-cell { background: rgba(255,255,255,0.55); }
+.day-cell .dow {
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  letter-spacing: 1.5px;
+}
+.day-cell .dnum {
+  font-size: 24px; font-weight: 900; line-height: 1.1;
+  margin-top: 2px;
+  color: var(--text);
+}
+.day-cell .month-tag {
+  font-size: 10px; font-weight: 800; color: var(--rest-strong);
+  margin-top: 2px; letter-spacing: 0.5px;
+}
+
+/* Shifts area */
+.shifts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border);
+}
+.shift {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 8px;
+  font-weight: 700;
+  transition: background 0.15s, transform 0.08s;
+}
+.shift-name {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  opacity: 0.75;
+}
+.shift-mark {
+  font-size: 17px; font-weight: 900; letter-spacing: 1px;
+}
+.shift.work { background: var(--work-bg); color: var(--work-fg); }
+.shift.rest {
+  background: var(--rest-bg); color: var(--rest-fg);
+}
+.shift.rest .shift-mark { font-size: 20px; }
+.day-row.both-rest .shift.rest { background: rgba(254,243,199,0.55); }
+
+/* both-rest badge: top-right corner of row */
+.both-rest-tag {
+  position: absolute; top: 6px; right: 6px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #78350f; font-size: 9px; font-weight: 800;
+  padding: 2px 7px; border-radius: 999px; letter-spacing: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  pointer-events: none; z-index: 2;
+}
+
+body.edit-mode .shift { cursor: pointer; }
+body.edit-mode .shift:active { transform: scale(0.94); }
+body.edit-mode .shift::after {
+  content: ''; position: absolute; inset: 0;
+  border: 2px dashed transparent; pointer-events: none;
+  border-radius: inherit;
+}
+body.edit-mode .shifts { position: relative; }
 
 /* ── Legend card ── */
 .legend-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 12px 16px;
-  margin-top: 14px; box-shadow: var(--shadow);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px; margin-top: 18px;
+  box-shadow: var(--shadow-sm);
 }
-.legend {
-  display: flex; gap: 14px; flex-wrap: wrap;
-  font-size: 12px; color: var(--muted); align-items: center;
+.legend-title {
+  font-size: 11px; font-weight: 800; color: var(--text-dim);
+  letter-spacing: 2px; margin-bottom: 8px;
 }
-.legend-title { font-weight: 700; color: #475569; font-size: 12px; margin-right: 4px; }
-.legend-item  { display: flex; align-items: center; gap: 5px; }
-.legend-dot   { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+.legend-list {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  font-size: 11px; color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.06); }
 .legend-stripe {
   width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
   background: repeating-linear-gradient(-45deg, #fffbeb 0px, #fffbeb 3px, #fef3c7 3px, #fef3c7 6px);
   border: 1px solid #fcd34d;
 }
 
-@media (max-width: 640px) {
-  .app { padding: 12px 8px 40px; }
-  .app-title { font-size: 18px; }
-  .cal-cell { min-height: 68px; padding: 3px 2px; }
-  .cal-date-num { font-size: 11px; }
-  .shift-slot { font-size: 10px; padding: 3px 0; }
-  .cal-head { font-size: 12px; padding: 8px 2px; }
-  .cal-month-prefix { font-size: 9px; }
-  .both-rest-badge { font-size: 7px; padding: 1px 3px; }
+/* Small phones */
+@media (max-width: 380px) {
+  .app { padding: 12px 8px 60px; }
+  .title { font-size: 17px; }
+  .period-btn { padding: 8px 12px; font-size: 11px; }
+  .day-row { grid-template-columns: 56px 1fr; }
+  .day-cell .dnum { font-size: 21px; }
+  .day-row.today .day-cell .dnum { width: 28px; height: 28px; font-size: 14px; }
+  .shift { padding: 12px 4px; }
+  .shift-mark { font-size: 16px; }
+  .shift.rest .shift-mark { font-size: 19px; }
 }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 48px 16px;
+  color: var(--muted); font-size: 13px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.empty-state .ic { font-size: 32px; display: block; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 <div class="app" id="appRoot">
 
-  <div class="app-header">
-    <div class="app-title">📅 シフト管理</div>
-    <div class="period-badge" id="periodBadge" onclick="togglePeriodEditor()">2026年5月16日 〜 2026年6月15日</div>
-  </div>
+  <header class="header">
+    <div class="title"><span class="title-emoji">📅</span>シフト管理</div>
+    <button class="period-btn" id="periodBadge" onclick="togglePeriodEditor()">2026年5月16日 〜 2026年6月15日</button>
+  </header>
 
   <div class="period-editor" id="periodEditor">
-    <label style="color:var(--muted);font-weight:600">期間変更:</label>
-    <select id="periodYear"></select>年
-    <select id="periodMonth"></select>月16日〜翌月15日
-    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="applyPeriodChange()">適用</button>
-    <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" onclick="togglePeriodEditor()">閉じる</button>
+    <span class="period-editor-label">期間:</span>
+    <select id="periodYear"></select>
+    <span class="period-editor-label">年</span>
+    <select id="periodMonth"></select>
+    <span class="period-editor-label">月16日〜翌月15日</span>
+    <button class="btn btn-primary" style="flex:none;padding:7px 14px;font-size:12px" onclick="applyPeriodChange()">適用</button>
+    <button class="btn btn-secondary" style="flex:none;padding:7px 14px;font-size:12px" onclick="togglePeriodEditor()">閉じる</button>
   </div>
 
   <div class="toolbar" id="toolbar">
-    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 手動編集</button>
-    <button class="btn btn-success" onclick="exportPNG()">📸 PNG出力</button>
+    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 編集</button>
+    <button class="btn btn-save" onclick="exportPNG()">📸 PNG</button>
     <button class="btn btn-danger" onclick="clearData()">🗑 リセット</button>
   </div>
 
   <div id="alertContainer"></div>
 
-  <div class="calendar-wrap" id="calendarWrap"><div class="calendar"><div class="cal-row"><div class="cal-head sun">日</div><div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div><div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head sat">土</div></div><div class="cal-row"><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell sat"><div class="cal-date-wrap"><span class="cal-month-prefix">5月</span><span class="cal-date-num">16</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-16">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-16">出</div></div></div></div><div class="cal-row"><div class="cal-cell sun"><div class="cal-date-wrap"><span class="cal-date-num">17</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-17">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-17">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">18</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-18">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-18">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">19</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-19">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-19">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">20</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-20">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-20">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">21</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-21">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-21">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">22</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-22">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-22">出</div></div></div><div class="cal-cell sat"><div class="cal-date-wrap"><span class="cal-date-num">23</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-23">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-23">出</div></div></div></div><div class="cal-row"><div class="cal-cell sun"><div class="cal-date-wrap"><span class="cal-date-num">24</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-24">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-24">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">25</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-25">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-25">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">26</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-26">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-26">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">27</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-27">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-27">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">28</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-28">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-28">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">29</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-29">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-29">出</div></div></div><div class="cal-cell sat"><div class="cal-date-wrap"><span class="cal-date-num">30</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-30">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-30">出</div></div></div></div><div class="cal-row"><div class="cal-cell sun"><div class="cal-date-wrap"><span class="cal-date-num">31</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-05-31">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-05-31">出</div></div></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div></div><div class="cal-row month-boundary"><div class="cal-cell empty"></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-month-prefix">6月</span><span class="cal-date-num">1</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-01">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-01">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">2</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-02">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-02">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">3</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-03">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-03">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">4</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-04">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-04">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">5</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-05">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-05">出</div></div></div><div class="cal-cell sat"><div class="cal-date-wrap"><span class="cal-date-num">6</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-06">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-06">出</div></div></div></div><div class="cal-row"><div class="cal-cell sun"><div class="cal-date-wrap"><span class="cal-date-num">7</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-07">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-07">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">8</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-08">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-08">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">9</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-09">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-09">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">10</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-10">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-10">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">11</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-11">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-11">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">12</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-12">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-12">出</div></div></div><div class="cal-cell sat"><div class="cal-date-wrap"><span class="cal-date-num">13</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-13">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-13">出</div></div></div></div><div class="cal-row"><div class="cal-cell sun"><div class="cal-date-wrap"><span class="cal-date-num">14</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-14">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-14">出</div></div></div><div class="cal-cell"><div class="cal-date-wrap"><span class="cal-date-num">15</span></div><div class="shift-row shift-row-emp1"><div class="shift-slot cell-emp1-work" data-name="従業員A" data-iso="2026-06-15">出</div></div><div class="shift-row shift-row-emp2"><div class="shift-slot cell-emp2-work" data-name="従業員B" data-iso="2026-06-15">出</div></div></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div></div></div></div>
+  <div class="day-list" id="dayList">
+    <div class="empty-state">
+      <span class="ic">✏️</span>
+      「編集」を押してシフトを入力してください
+    </div>
+  </div>
 
-  <div id="legendCard" style="">
+  <div id="legendCard" style="display:none">
     <div class="legend-card">
-      <div class="legend">
-        <span class="legend-title">凡例</span>
-        <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>従業員1 出</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#bfdbfe"></div>従業員1 休</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f9a8d4"></div>従業員2 出</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#fbcfe8"></div>従業員2 休</div>
-        <div class="legend-item"><div class="legend-stripe"></div>全休</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--today-bg);border-radius:50%"></div>今日</div>
-        <div class="legend-item" style="color:var(--sat-fg);font-weight:700">土</div>
-        <div class="legend-item" style="color:var(--sun-fg);font-weight:700">日・祝</div>
+      <div class="legend-title">凡例</div>
+      <div class="legend-list">
+        <div class="legend-item"><span class="legend-dot" style="background:#eef4ff"></span>出勤</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fff1e0"></span>休み</div>
+        <div class="legend-item"><span class="legend-stripe"></span>全員休</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ea580c;border-radius:50%"></span>今日</div>
+        <div class="legend-item" style="color:#2563eb;font-weight:700">土</div>
+        <div class="legend-item" style="color:#dc2626;font-weight:700">日・祝</div>
       </div>
     </div>
   </div>
 
 </div>
+
 <script>
 const HOLIDAYS = new Set([
   '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23',
@@ -373,96 +446,63 @@ function applyPeriodChange() {
   showAlert(`期間を ${periodLabel(year, month)} に変更しました。`, 'info');
 }
 
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
 function renderCalendar() {
   if (!state.period) return;
   const dates = getPeriodDates(state.period.year, state.period.month);
   const [name1, name2] = state.employees;
 
-  // Build weeks — break at Saturday OR month boundary
-  const weeks = [];
-  let week = Array(7).fill(null);
+  let html = '';
   let prevMonth = null;
-  const boundaryFlags = [false];
 
   dates.forEach(d => {
+    const iso = toISO(d);
     const dow = d.getDay();
-    const curMonth = d.getMonth();
-    if (prevMonth !== null && curMonth !== prevMonth && week.some(x => x !== null)) {
-      weeks.push(week);
-      boundaryFlags.push(true);
-      week = Array(7).fill(null);
+    const month = d.getMonth() + 1;
+    const dateNum = d.getDate();
+
+    if (month !== prevMonth) {
+      html += `<div class="month-divider"><span class="num">${month}月</span></div>`;
     }
-    week[dow] = d;
-    prevMonth = curMonth;
-    if (dow === 6) {
-      weeks.push(week);
-      boundaryFlags.push(false);
-      week = Array(7).fill(null);
-    }
-  });
-  if (week.some(x => x !== null)) {
-    weeks.push(week);
-    boundaryFlags.push(false);
-  }
+    prevMonth = month;
 
-  let html = '<div class="calendar">';
+    const s1 = (state.schedule[name1] || {})[iso] || 'work';
+    const s2 = (state.schedule[name2] || {})[iso] || 'work';
+    const bothRest = s1 === 'rest' && s2 === 'rest';
 
-  html += '<div class="cal-row">';
-  DAY_LABELS.forEach((lbl, i) => {
-    const cls = i === 0 ? ' sun' : i === 6 ? ' sat' : '';
-    html += `<div class="cal-head${cls}">${lbl}</div>`;
-  });
-  html += '</div>';
+    let rowCls = 'day-row';
+    if (isSunOrHoliday(d)) rowCls += ' sun';
+    else if (isSaturday(d)) rowCls += ' sat';
+    if (isToday(iso)) rowCls += ' today';
+    if (bothRest) rowCls += ' both-rest';
 
-  weeks.forEach((wk, rowIdx) => {
-    const bCls = boundaryFlags[rowIdx] ? ' month-boundary' : '';
-    html += `<div class="cal-row${bCls}">`;
-    wk.forEach((d) => {
-      if (!d) { html += '<div class="cal-cell empty"></div>'; return; }
-      const iso = toISO(d);
-      let cls = 'cal-cell';
-      if (isSunOrHoliday(d)) cls += ' sun';
-      else if (isSaturday(d)) cls += ' sat';
-      if (isToday(iso)) cls += ' today';
-
-      const s1 = (state.schedule[name1] || {})[iso] || 'work';
-      const s2 = (state.schedule[name2] || {})[iso] || 'work';
-      const bothRest = s1 === 'rest' && s2 === 'rest';
-      if (bothRest) cls += ' both-rest';
-
-      const dateNum = d.getDate();
-      const showMonth = dateNum === 16 || dateNum === 1;
-      const cellStyle = bothRest
-        ? ` style="background:repeating-linear-gradient(-45deg,#fffbeb 0px,#fffbeb 6px,#fef3c7 6px,#fef3c7 12px)"`
-        : '';
-      html += `<div class="${cls}"${cellStyle}>`;
-      if (bothRest) html += `<span class="both-rest-badge">全休</span>`;
-      const monthPfx = showMonth ? `<span class="cal-month-prefix">${d.getMonth() + 1}月</span>` : '';
-      html += `<div class="cal-date-wrap">${monthPfx}<span class="cal-date-num">${dateNum}</span></div>`;
-      html += `<div class="shift-row shift-row-emp1">` +
-              `<div class="shift-slot ${s1==='rest'?'cell-emp1-rest':'cell-emp1-work'}" data-name="${escAttr(name1)}" data-iso="${iso}">${s1==='rest'?'休':'出'}</div></div>`;
-      html += `<div class="shift-row shift-row-emp2">` +
-              `<div class="shift-slot ${s2==='rest'?'cell-emp2-rest':'cell-emp2-work'}" data-name="${escAttr(name2)}" data-iso="${iso}">${s2==='rest'?'休':'出'}</div></div>`;
-      html += '</div>';
-    });
-    html += '</div>';
+    html += `<div class="${rowCls}">
+      ${bothRest ? '<span class="both-rest-tag">全休</span>' : ''}
+      <div class="day-cell">
+        <div class="dow">${DAY_LABELS[dow]}</div>
+        <div class="dnum">${dateNum}</div>
+      </div>
+      <div class="shifts">
+        <div class="shift ${s1==='rest'?'rest':'work'}" data-name="${escAttr(name1)}" data-iso="${iso}">
+          <span class="shift-name">A</span>
+          <span class="shift-mark">${s1==='rest'?'休':'出'}</span>
+        </div>
+        <div class="shift ${s2==='rest'?'rest':'work'}" data-name="${escAttr(name2)}" data-iso="${iso}">
+          <span class="shift-name">B</span>
+          <span class="shift-mark">${s2==='rest'?'休':'出'}</span>
+        </div>
+      </div>
+    </div>`;
   });
 
-  html += '</div>';
-  document.getElementById('calendarWrap').innerHTML = html;
+  document.getElementById('dayList').innerHTML = html;
   document.getElementById('legendCard').style.display = '';
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function escAttr(s) {
-  return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-document.getElementById('calendarWrap').addEventListener('click', e => {
+document.getElementById('dayList').addEventListener('click', e => {
   if (!document.body.classList.contains('edit-mode')) return;
-  const slot = e.target.closest('.shift-slot[data-name]');
+  const slot = e.target.closest('.shift[data-name]');
   if (!slot) return;
   const { name, iso } = slot.dataset;
   if (!state.schedule[name]) state.schedule[name] = {};
@@ -476,8 +516,8 @@ function toggleEditMode() {
   editMode = !editMode;
   document.body.classList.toggle('edit-mode', editMode);
   const btn = document.getElementById('editBtn');
-  btn.textContent = editMode ? '✅ 編集完了' : '✏️ 手動編集';
-  btn.className   = editMode ? 'btn btn-warning' : 'btn btn-edit';
+  btn.textContent = editMode ? '✅ 完了' : '✏️ 編集';
+  btn.classList.toggle('active', editMode);
   if (editMode) {
     if (!state.period) setDefaultPeriod();
     state.employees.forEach(ensureEmployeeDates);
@@ -494,10 +534,10 @@ function clearData() {
   editMode = false;
   document.body.classList.remove('edit-mode');
   const btn = document.getElementById('editBtn');
-  btn.textContent = '✏️ 手動編集'; btn.className = 'btn btn-edit';
+  btn.textContent = '✏️ 編集'; btn.classList.remove('active');
   setDefaultPeriod();
-  document.getElementById('calendarWrap').innerHTML =
-    '<div style="padding:48px;text-align:center;color:#94a3b8;font-size:13px">✏️ 手動編集を押してシフトを入力してください</div>';
+  document.getElementById('dayList').innerHTML =
+    '<div class="empty-state"><span class="ic">✏️</span>「編集」を押してシフトを入力してください</div>';
   document.getElementById('legendCard').style.display = 'none';
 }
 
@@ -511,48 +551,42 @@ function showAlert(msg, type = 'info') {
 
 function buildStripeDataURL() {
   const tile = document.createElement('canvas');
-  tile.width = 12; tile.height = 12;
+  tile.width = 16; tile.height = 16;
   const tc = tile.getContext('2d');
   tc.fillStyle = '#fffbeb';
-  tc.fillRect(0, 0, 12, 12);
-  tc.strokeStyle = '#fcd34d';
-  tc.lineWidth = 4;
+  tc.fillRect(0, 0, 16, 16);
+  tc.strokeStyle = '#fef3c7';
+  tc.lineWidth = 8;
   tc.beginPath();
-  tc.moveTo(-6, 6);  tc.lineTo(6,  -6);
-  tc.moveTo(0,  12); tc.lineTo(12,  0);
-  tc.moveTo(6,  18); tc.lineTo(18,  6);
+  tc.moveTo(-8, 8);  tc.lineTo(8,  -8);
+  tc.moveTo(0,  16); tc.lineTo(16,  0);
+  tc.moveTo(8,  24); tc.lineTo(24,  8);
   tc.stroke();
   return tile.toDataURL('image/png');
 }
 
 async function exportPNG() {
-  if (!document.getElementById('calendarWrap').querySelector('.calendar')) {
+  if (!document.querySelector('#dayList .day-row')) {
     showAlert('エクスポートするシフト表がありません。', 'warn'); return;
   }
-
-  // Build stripe PNG data URI so html2canvas can render it
   const stripeURL = buildStripeDataURL();
-
-  // Temporarily replace CSS-class background on both-rest cells with inline PNG
-  const bothRestCells = [];
-  document.querySelectorAll('.cal-cell.both-rest').forEach(cell => {
-    cell.classList.remove('both-rest');
-    cell.style.backgroundImage  = `url('${stripeURL}')`;
-    cell.style.backgroundSize   = '12px 12px';
-    cell.style.backgroundRepeat = 'repeat';
-    cell.style.backgroundColor  = '#fffbeb';
-    bothRestCells.push(cell);
+  const bothRestRows = [];
+  document.querySelectorAll('.day-row.both-rest').forEach(row => {
+    row.classList.remove('both-rest');
+    row.style.backgroundImage  = `url('${stripeURL}')`;
+    row.style.backgroundSize   = '16px 16px';
+    row.style.backgroundRepeat = 'repeat';
+    row.style.backgroundColor  = '#fffbeb';
+    row.style.borderColor      = '#fcd34d';
+    bothRestRows.push(row);
   });
 
   const root    = document.getElementById('appRoot');
   const toolbar = document.getElementById('toolbar');
   const pe      = document.getElementById('periodEditor');
   const ac      = document.getElementById('alertContainer');
-  const btn     = document.querySelector('.btn-success');
+  const btn     = document.querySelector('.btn-save');
   const orig    = btn.textContent;
-  const titleEl = document.querySelector('.app-title');
-  titleEl.style.background = 'none';
-  titleEl.style.webkitTextFillColor = '#1e3a8a';
   toolbar.style.display = 'none';
   pe.style.display = 'none';
   ac.style.display = 'none';
@@ -560,7 +594,7 @@ async function exportPNG() {
 
   try {
     const canvas = await html2canvas(root, {
-      scale: 2, useCORS: true, backgroundColor: '#e8edf5', logging: false
+      scale: 2, useCORS: true, backgroundColor: '#f4f6fb', logging: false
     });
     const link = document.createElement('a');
     const { year, month } = state.period || { year: 0, month: 0 };
@@ -570,15 +604,14 @@ async function exportPNG() {
   } catch(err) {
     showAlert('出力エラー: ' + err.message, 'warn');
   } finally {
-    bothRestCells.forEach(cell => {
-      cell.classList.add('both-rest');
-      cell.style.backgroundImage  = '';
-      cell.style.backgroundSize   = '';
-      cell.style.backgroundRepeat = '';
-      cell.style.backgroundColor  = '';
+    bothRestRows.forEach(row => {
+      row.classList.add('both-rest');
+      row.style.backgroundImage  = '';
+      row.style.backgroundSize   = '';
+      row.style.backgroundRepeat = '';
+      row.style.backgroundColor  = '';
+      row.style.borderColor      = '';
     });
-    titleEl.style.background = '';
-    titleEl.style.webkitTextFillColor = '';
     toolbar.style.display = '';
     pe.style.display = '';
     ac.style.display = '';
@@ -597,6 +630,5 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
-
-
-</body></html>
+</body>
+</html>
