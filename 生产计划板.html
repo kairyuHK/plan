@@ -221,6 +221,10 @@
     .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
     .head-btn .ic { font-size: 7px; }
 
+    /* 手机端紧凑视图：仅显示首字徽章 + 人数 */
+    .card-compact .compact-time,
+    .card-compact .compact-del { display: none; }
+
     /* 配置栏 */
     .line-config { gap: 2px; grid-template-columns: 1fr 1fr; align-items: stretch; }
     .cfg { padding: 2px 3px; border-radius: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden; }
@@ -1015,7 +1019,7 @@ function buildLine(num) {
     <div class="line-foot">
       <div class="foot-row">
         <span class="foot-label">数量</span>
-        <span class="foot-val qty-total">0<span class="unit">个</span></span>
+        <span class="foot-val qty-total">0</span>
       </div>
       <div class="foot-row">
         <span class="foot-label">耗时</span>
@@ -1073,6 +1077,8 @@ function addJobCard(grid, libItem, savedData) {
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
       <span class="compact-people">—</span>
+      <span class="compact-time">—</span>
+      <button class="compact-del" title="删除">×</button>
     </div>
     <div class="card-expanded">
       <div class="card-top">
@@ -1082,11 +1088,11 @@ function addJobCard(grid, libItem, savedData) {
       <div class="card-fields">
         <div class="field name-spd">
           <span class="field-label">品名速度★</span>
-          <input class="field-input speed" type="number" min="0" step="0.01" value="${speedVal}" inputmode="decimal">
+          <input class="field-input speed" type="number" value="${speedVal}" readonly>
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
-          <input class="field-input line-speed" type="number" min="0" step="0.01" value="${lineSpeedVal}" placeholder="0" inputmode="decimal">
+          <input class="field-input line-speed" type="number" value="${lineSpeedVal}" placeholder="—" readonly>
         </div>
         <div class="field">
           <span class="field-label">数量 个</span>
@@ -1094,7 +1100,7 @@ function addJobCard(grid, libItem, savedData) {
         </div>
         <div class="field">
           <span class="field-label">人数</span>
-          <input class="field-input people" type="number" min="0" step="1" value="${peopleVal}" placeholder="0" inputmode="numeric">
+          <input class="field-input people" type="number" value="${peopleVal}" placeholder="—" readonly>
         </div>
       </div>
       <div class="card-meta">
@@ -1266,6 +1272,18 @@ function repositionActivePopup() {
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
+  const compactDel = node.querySelector('.compact-del');
+  if (compactDel) {
+    const handleDel = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const line = node.closest('.line');
+      if (activeCard === node) setActiveCard(null);
+      node.remove(); recalc(line); scheduleSaveBoard();
+    };
+    compactDel.addEventListener('click', handleDel);
+    compactDel.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+    compactDel.addEventListener('mousedown', (e) => e.stopPropagation());
+  }
   let inputsToWatch;
   if (type === 'job') {
     inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
@@ -1459,6 +1477,8 @@ function recalc(line) {
       }
       const peopleEl = card.querySelector('.compact-people');
       if (peopleEl) peopleEl.textContent = people > 0 ? String(people) : '—';
+      const timeEl = card.querySelector('.compact-time');
+      if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
     } else if (type === 'rest') {
       const restMin = parseFloat(popupQ(card, '.rest-min').value) || 0;
       duration = restMin * 60;
@@ -1490,7 +1510,7 @@ function recalc(line) {
     }
     syncPopupState(card);
   });
-  line.querySelector('.qty-total').innerHTML = `${totalQty.toLocaleString()}<span class="unit">个</span>`;
+  line.querySelector('.qty-total').textContent = totalQty.toLocaleString();
   line.querySelector('.time-total').textContent = fmtDuration(totalSec);
   line.querySelector('.finish-total').textContent = (lastEnd != null) ? fmtClock(lastEnd) : '—';
   recalcGlobal();
