@@ -350,12 +350,11 @@
     font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
   }
   .compact-people {
-    flex: 1; text-align: right;
+    flex: 1;
     color: var(--text); font-size: 13px; font-weight: 700;
     font-variant-numeric: tabular-nums;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .compact-people .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
   .compact-del {
     flex-shrink: 0;
     width: 20px; height: 20px;
@@ -1468,7 +1467,7 @@ function recalc(line) {
         letterEl.style.color = card.dataset.color || '';
       }
       const peopleEl = card.querySelector('.compact-people');
-      if (peopleEl) peopleEl.innerHTML = people > 0 ? `${people}<span class="unit">人</span>` : '—';
+      if (peopleEl) peopleEl.textContent = people > 0 ? String(people) : '—';
     } else if (type === 'rest') {
       const restMin = parseFloat(popupQ(card, '.rest-min').value) || 0;
       duration = restMin * 60;
