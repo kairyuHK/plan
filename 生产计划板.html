@@ -109,6 +109,23 @@
   #exportBtn:hover { background: var(--blue); color: var(--bg); }
   .top-btn.clear { border-color: var(--red); color: var(--red); }
   .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
+
+  /* 未保存提示：导出按钮上的红色呼吸点 */
+  body.has-unsaved #exportBtn { position: relative; }
+  body.has-unsaved #exportBtn::after {
+    content: '';
+    position: absolute; top: 3px; right: 4px;
+    width: 7px; height: 7px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--panel);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.85); }
+  }
   #openLib { border-color: var(--rest); color: var(--rest); }
   #openLib:hover { background: var(--rest); color: var(--bg); }
   .export-wrap { position: relative; }
@@ -714,7 +731,7 @@
     <div class="export-wrap">
       <button class="top-btn accent" id="exportBtn">导出 ▾</button>
       <div class="export-menu" id="exportMenu">
-        <button onclick="doExportHtml()">💾 保存网页</button>
+        <button onclick="doSaveOverwrite()">💾 保存</button>
         <button onclick="doPrint()">🖨️ 打印</button>
         <button onclick="doExportPng()">🖼️ 导出图片</button>
         <button onclick="doExportCsv()">📊 导出 Excel</button>
@@ -1619,7 +1636,41 @@ function recalcGlobal() {
   document.getElementById('totalAll').textContent = `总计 ${q.toLocaleString()} 个`;
 }
 
-function scheduleSaveBoard() { clearTimeout(saveTimer); saveTimer = setTimeout(saveBoard, 400); }
+// 编辑只标记未保存；只有 doSaveOverwrite 才真正写 localStorage
+let unsaved = false;
+function markUnsaved() {
+  if (unsaved) return;
+  unsaved = true;
+  document.body.classList.add('has-unsaved');
+}
+function clearUnsaved() {
+  unsaved = false;
+  document.body.classList.remove('has-unsaved');
+}
+function scheduleSaveBoard() { markUnsaved(); }
+
+function showToast(msg) {
+  let toast = document.getElementById('toastEl');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toastEl';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity 0.2s;pointer-events:none;letter-spacing:0.3px';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+}
+
+function doSaveOverwrite() {
+  exportMenu && exportMenu.classList.remove('show');
+  setActiveCard(null);
+  saveBoard();
+  clearUnsaved();
+  const ts = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  showToast(`💾 已保存（${ts}）`);
+}
 function saveBoard() {
   const state = { lines: [], hiddenLines: [...hiddenLines] };
   document.querySelectorAll('.line').forEach(line => {
@@ -1721,6 +1772,7 @@ document.getElementById('clearAll').addEventListener('click', () => {
   activeCard = null;
   document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; recalc(l); });
   saveBoard();
+  clearUnsaved();
 });
 
 // ============ 导出功能 ============
@@ -1939,7 +1991,7 @@ function doExportHtml() {
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
-    doExportHtml();
+    doSaveOverwrite();
   }
 });
 
@@ -2029,7 +2081,9 @@ loadBoard();
 updateBoardLayout();
 recalcGlobal();
 syncMobLayout();
-window.addEventListener('beforeunload', saveBoard);
+window.addEventListener('beforeunload', e => {
+  if (unsaved) { e.preventDefault(); e.returnValue = ''; }
+});
 
 </script>
 
