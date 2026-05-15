@@ -152,26 +152,41 @@ body.has-unsaved .btn-primary::after {
 .alert-info { background: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; }
 .alert-warn { background: #fef9c3; color: #78350f; border: 1px solid #fcd34d; }
 
-/* ── Day list ── */
+/* ── Day list (two-column: 月份 A / 月份 B 并排) ── */
 .day-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.month-col {
   display: flex; flex-direction: column;
   gap: 3px;
+  min-width: 0;
+}
+.month-col-head {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--rest-strong), #d97706);
+  color: #fff;
+  font-size: 14px; font-weight: 900; letter-spacing: 1px;
+  padding: 6px 0;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(234,88,12,0.25);
+  margin-bottom: 1px;
 }
 
-/* Day row */
+/* Day row (compact, 在两栏内) */
 .day-row {
   position: relative;
   display: grid;
-  grid-template-columns: 54px 1fr;
+  grid-template-columns: 30px 1fr;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-/* 月初标记（5月、6月）：贴在 4月 最后一行下边 / 5月 第一行左上 */
-.day-row.month-start { margin-top: 4px; }
 
 /* weekend colorings */
 .day-row.sun .day-cell .dnum,
@@ -185,10 +200,10 @@ body.has-unsaved .btn-primary::after {
 }
 .day-row.today .day-cell .dnum {
   background: var(--today); color: #fff;
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 16px;
-  box-shadow: 0 2px 5px rgba(234,88,12,0.30);
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(234,88,12,0.30);
 }
 
 /* Both rest: clear yellow stripe banner */
@@ -203,28 +218,20 @@ body.has-unsaved .btn-primary::after {
 .day-cell {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 4px 2px;
+  padding: 2px 0;
   border-right: 1px solid var(--border);
   background: rgba(255,255,255,0.7);
-  gap: 1px;
+  gap: 0;
 }
-.day-row.both-rest .day-cell { background: rgba(255,255,255,0.55); }
+.day-row.both-rest .day-cell { background: rgba(255,255,255,0.5); }
 .day-cell .dow {
-  font-size: 10px; font-weight: 700; color: var(--text-dim);
-  letter-spacing: 1px;
-  line-height: 1;
-}
-.day-cell .dnum-row {
-  display: flex; align-items: baseline; justify-content: center; gap: 3px;
-  line-height: 1.05;
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  letter-spacing: 0;
+  line-height: 1.1;
 }
 .day-cell .dnum {
-  font-size: 21px; font-weight: 900; line-height: 1;
+  font-size: 15px; font-weight: 900; line-height: 1.1;
   color: var(--text);
-}
-.day-cell .month-tag {
-  font-size: 10px; font-weight: 900; color: var(--rest-strong);
-  letter-spacing: -0.3px;
 }
 
 /* Shifts area */
@@ -234,34 +241,34 @@ body.has-unsaved .btn-primary::after {
 }
 .shift {
   display: flex; align-items: center; justify-content: center;
-  padding: 9px 6px;
+  padding: 6px 2px;
   font-weight: 700;
   transition: background 0.15s, transform 0.08s;
 }
 .shift-mark {
-  font-size: 18px; font-weight: 900; letter-spacing: 1px;
+  font-size: 15px; font-weight: 900; letter-spacing: 0.5px;
 }
 .shift.work { background: var(--work-bg); color: var(--work-fg); }
 .shift.rest {
-  background: #ffe4cc;
+  background: #ffd6b0;
   color: #9a3412;
   position: relative;
 }
 .shift.rest .shift-mark {
-  font-size: 22px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+  font-size: 17px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
 }
 /* 右侧（従業員B）出 颜色改为深绿色，与蓝色（左侧 A 出）和橙色（休）都有鲜明对比 */
 .shifts .shift + .shift.work { color: #15803d; }
-.day-row.both-rest .shift.rest { background: rgba(254,215,170,0.7); }
+.day-row.both-rest .shift.rest { background: rgba(254,215,170,0.65); }
 
-/* both-rest badge: top-right corner of row */
+/* both-rest badge: 紧凑版（仅留小圆点） */
 .both-rest-tag {
-  position: absolute; top: 6px; right: 6px;
+  position: absolute; top: 3px; right: 3px;
   background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: #78350f; font-size: 9px; font-weight: 800;
-  padding: 2px 7px; border-radius: 999px; letter-spacing: 1px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  color: #78350f; font-size: 8px; font-weight: 800;
+  padding: 1px 4px; border-radius: 999px; letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
   pointer-events: none; z-index: 2;
 }
 
@@ -300,18 +307,18 @@ body.edit-mode .shifts { position: relative; }
 
 /* Small phones */
 @media (max-width: 380px) {
-  .app { padding: 0 8px 60px; }
+  .app { padding: 0 6px 60px; }
   .title { font-size: 16px; }
   .period-btn { padding: 7px 11px; font-size: 11px; }
-  .day-row { grid-template-columns: 48px 1fr; }
-  .day-cell .dnum { font-size: 19px; }
-  .day-cell .dow { font-size: 9px; }
-  .day-cell .month-tag { font-size: 9px; }
-  .day-row.today .day-cell .dnum { width: 26px; height: 26px; font-size: 13px; }
-  .shift { padding: 7px 4px; }
-  .shift-mark { font-size: 16px; }
-  .shift.rest .shift-mark { font-size: 19px; }
-  .both-rest-tag { font-size: 8px; padding: 1px 5px; }
+  .day-list { gap: 6px; }
+  .day-row { grid-template-columns: 26px 1fr; }
+  .day-cell .dnum { font-size: 13px; }
+  .day-cell .dow { font-size: 8px; }
+  .day-row.today .day-cell .dnum { width: 20px; height: 20px; font-size: 11px; }
+  .shift { padding: 5px 2px; }
+  .shift-mark { font-size: 13px; }
+  .shift.rest .shift-mark { font-size: 15px; }
+  .month-col-head { font-size: 12px; padding: 5px 0; }
 }
 
 /* Empty state */
@@ -485,17 +492,22 @@ function renderCalendar() {
   const dates = getPeriodDates(state.period.year, state.period.month);
   const [name1, name2] = state.employees;
 
-  let html = '';
-  let prevMonth = null;
+  // 按月份分组 → 两栏并排（4月 | 5月）
+  const monthGroups = [];
+  dates.forEach(d => {
+    const m = d.getMonth() + 1;
+    let g = monthGroups[monthGroups.length - 1];
+    if (!g || g.month !== m) {
+      g = { month: m, dates: [] };
+      monthGroups.push(g);
+    }
+    g.dates.push(d);
+  });
 
-  dates.forEach((d, idx) => {
+  const renderDay = d => {
     const iso = toISO(d);
     const dow = d.getDay();
-    const month = d.getMonth() + 1;
     const dateNum = d.getDate();
-    const isMonthStart = (idx === 0) || (month !== prevMonth);
-    prevMonth = month;
-
     const s1 = (state.schedule[name1] || {})[iso] || 'work';
     const s2 = (state.schedule[name2] || {})[iso] || 'work';
     const bothRest = s1 === 'rest' && s2 === 'rest';
@@ -505,15 +517,12 @@ function renderCalendar() {
     else if (isSaturday(d)) rowCls += ' sat';
     if (isToday(iso)) rowCls += ' today';
     if (bothRest) rowCls += ' both-rest';
-    if (isMonthStart && idx !== 0) rowCls += ' month-start';
 
-    const monthTag = isMonthStart ? `<span class="month-tag">${month}月</span>` : '';
-
-    html += `<div class="${rowCls}">
+    return `<div class="${rowCls}">
       ${bothRest ? '<span class="both-rest-tag">全休</span>' : ''}
       <div class="day-cell">
         <div class="dow">${DAY_LABELS[dow]}</div>
-        <div class="dnum-row">${monthTag}<span class="dnum">${dateNum}</span></div>
+        <div class="dnum">${dateNum}</div>
       </div>
       <div class="shifts">
         <div class="shift ${s1==='rest'?'rest':'work'}" data-name="${escAttr(name1)}" data-iso="${iso}">
@@ -524,7 +533,14 @@ function renderCalendar() {
         </div>
       </div>
     </div>`;
-  });
+  };
+
+  const html = monthGroups.map(g => `
+    <div class="month-col">
+      <div class="month-col-head">${g.month}月</div>
+      ${g.dates.map(renderDay).join('')}
+    </div>
+  `).join('');
 
   document.getElementById('dayList').innerHTML = html;
   document.getElementById('legendCard').style.display = '';
