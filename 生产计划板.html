@@ -1326,7 +1326,11 @@ function positionCardPopup(card) {
 }
 
 function repositionActivePopup() {
-  if (activeCard) positionCardPopup(activeCard);
+  if (!activeCard) return;
+  // 输入框聚焦时（手机端键盘弹起引发的滚动/视口变化）冻结弹窗位置，避免乱飞
+  const popup = activeCard._popup;
+  if (popup && popup.contains(document.activeElement)) return;
+  positionCardPopup(activeCard);
 }
 
 function wireCardEvents(node, type) {
