@@ -141,7 +141,9 @@
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 1px; padding: 6px 2px;
-    position: relative;
+  }
+  @media (min-width: 901px) {
+    .timeline-head { position: relative; }
   }
   .date-year { color: var(--text-mute); font-size: 9px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.2; position: absolute; top: 6px; left: 4px; }
   .date-month, .date-day, .date-dow {
