@@ -155,39 +155,23 @@ body.has-unsaved .btn-primary::after {
 /* ── Day list ── */
 .day-list {
   display: flex; flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
-
-/* Month divider */
-.month-divider {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 4px 4px;
-  font-size: 11px; font-weight: 800;
-  color: var(--text-dim); letter-spacing: 2px;
-}
-.month-divider:first-child { padding-top: 4px; }
-.month-divider span {
-  background: var(--bg);
-  padding: 0 8px;
-}
-.month-divider::before,
-.month-divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border-strong);
-}
-.month-divider .num { color: var(--rest-strong); font-size: 14px; letter-spacing: 0; }
 
 /* Day row */
 .day-row {
   position: relative;
   display: grid;
-  grid-template-columns: 64px 1fr;
+  grid-template-columns: 54px 1fr;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* 月初标记（5月、6月）：贴在 4月 最后一行下边 / 5月 第一行左上 */
+.day-row.month-start { margin-top: 4px; }
 
 /* weekend colorings */
 .day-row.sun .day-cell .dnum,
@@ -219,23 +203,28 @@ body.has-unsaved .btn-primary::after {
 .day-cell {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 8px 4px;
+  padding: 4px 2px;
   border-right: 1px solid var(--border);
   background: rgba(255,255,255,0.7);
+  gap: 1px;
 }
 .day-row.both-rest .day-cell { background: rgba(255,255,255,0.55); }
 .day-cell .dow {
-  font-size: 11px; font-weight: 700; color: var(--text-dim);
-  letter-spacing: 1.5px;
+  font-size: 10px; font-weight: 700; color: var(--text-dim);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+.day-cell .dnum-row {
+  display: flex; align-items: baseline; justify-content: center; gap: 3px;
+  line-height: 1.05;
 }
 .day-cell .dnum {
-  font-size: 24px; font-weight: 900; line-height: 1.1;
-  margin-top: 2px;
+  font-size: 21px; font-weight: 900; line-height: 1;
   color: var(--text);
 }
 .day-cell .month-tag {
-  font-size: 10px; font-weight: 800; color: var(--rest-strong);
-  margin-top: 2px; letter-spacing: 0.5px;
+  font-size: 10px; font-weight: 900; color: var(--rest-strong);
+  letter-spacing: -0.3px;
 }
 
 /* Shifts area */
@@ -244,26 +233,27 @@ body.has-unsaved .btn-primary::after {
   background: var(--border);
 }
 .shift {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 9px 6px;
   font-weight: 700;
   transition: background 0.15s, transform 0.08s;
 }
-.shift-name {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
-  opacity: 0.75;
-}
 .shift-mark {
-  font-size: 17px; font-weight: 900; letter-spacing: 1px;
+  font-size: 18px; font-weight: 900; letter-spacing: 1px;
 }
 .shift.work { background: var(--work-bg); color: var(--work-fg); }
 .shift.rest {
-  background: var(--rest-bg); color: var(--rest-fg);
+  background: #ffe4cc;
+  color: #9a3412;
+  position: relative;
 }
-.shift.rest .shift-mark { font-size: 20px; }
+.shift.rest .shift-mark {
+  font-size: 22px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+}
 /* 右侧（従業員B）出 颜色改为深绿色，与蓝色（左侧 A 出）和橙色（休）都有鲜明对比 */
 .shifts .shift + .shift.work { color: #15803d; }
-.day-row.both-rest .shift.rest { background: rgba(254,243,199,0.55); }
+.day-row.both-rest .shift.rest { background: rgba(254,215,170,0.7); }
 
 /* both-rest badge: top-right corner of row */
 .both-rest-tag {
@@ -310,15 +300,18 @@ body.edit-mode .shifts { position: relative; }
 
 /* Small phones */
 @media (max-width: 380px) {
-  .app { padding: 12px 8px 60px; }
-  .title { font-size: 17px; }
-  .period-btn { padding: 8px 12px; font-size: 11px; }
-  .day-row { grid-template-columns: 56px 1fr; }
-  .day-cell .dnum { font-size: 21px; }
-  .day-row.today .day-cell .dnum { width: 28px; height: 28px; font-size: 14px; }
-  .shift { padding: 12px 4px; }
+  .app { padding: 0 8px 60px; }
+  .title { font-size: 16px; }
+  .period-btn { padding: 7px 11px; font-size: 11px; }
+  .day-row { grid-template-columns: 48px 1fr; }
+  .day-cell .dnum { font-size: 19px; }
+  .day-cell .dow { font-size: 9px; }
+  .day-cell .month-tag { font-size: 9px; }
+  .day-row.today .day-cell .dnum { width: 26px; height: 26px; font-size: 13px; }
+  .shift { padding: 7px 4px; }
   .shift-mark { font-size: 16px; }
   .shift.rest .shift-mark { font-size: 19px; }
+  .both-rest-tag { font-size: 8px; padding: 1px 5px; }
 }
 
 /* Empty state */
@@ -495,15 +488,12 @@ function renderCalendar() {
   let html = '';
   let prevMonth = null;
 
-  dates.forEach(d => {
+  dates.forEach((d, idx) => {
     const iso = toISO(d);
     const dow = d.getDay();
     const month = d.getMonth() + 1;
     const dateNum = d.getDate();
-
-    if (month !== prevMonth) {
-      html += `<div class="month-divider"><span class="num">${month}月</span></div>`;
-    }
+    const isMonthStart = (idx === 0) || (month !== prevMonth);
     prevMonth = month;
 
     const s1 = (state.schedule[name1] || {})[iso] || 'work';
@@ -515,12 +505,15 @@ function renderCalendar() {
     else if (isSaturday(d)) rowCls += ' sat';
     if (isToday(iso)) rowCls += ' today';
     if (bothRest) rowCls += ' both-rest';
+    if (isMonthStart && idx !== 0) rowCls += ' month-start';
+
+    const monthTag = isMonthStart ? `<span class="month-tag">${month}月</span>` : '';
 
     html += `<div class="${rowCls}">
       ${bothRest ? '<span class="both-rest-tag">全休</span>' : ''}
       <div class="day-cell">
         <div class="dow">${DAY_LABELS[dow]}</div>
-        <div class="dnum">${dateNum}</div>
+        <div class="dnum-row">${monthTag}<span class="dnum">${dateNum}</span></div>
       </div>
       <div class="shifts">
         <div class="shift ${s1==='rest'?'rest':'work'}" data-name="${escAttr(name1)}" data-iso="${iso}">
