@@ -243,7 +243,9 @@
     padding: 8px 10px; background: var(--panel);
     border-bottom: 2px solid var(--accent);
     display: flex; flex-direction: column; gap: 6px;
-    position: relative;
+  }
+  @media (min-width: 901px) {
+    .line-head { position: relative; }
   }
   /* 桌面端：head-btns 与 line-config 绝对定位，使所有线的按钮和起始/切换框水平对齐 */
   @media (min-width: 901px) {
