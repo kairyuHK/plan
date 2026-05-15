@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>流水线生产计划板</title>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
@@ -261,6 +261,9 @@
     .cfg-input { font-size: 8px; padding: 0; line-height: 1; width: 100%; min-width: 0; margin-top: auto; }
     .cfg:last-child .cfg-input { text-align: right; }
     .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+
+    /* iOS 防自动缩放：聚焦时字号 ≥ 16px 不触发 Safari auto-zoom */
+    .field-input, .lib-add-form input, .lib-add-form select { font-size: 16px !important; }
 
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
