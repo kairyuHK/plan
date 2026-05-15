@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0116)file:///C:/Users/kairyu/OneDrive/Desktop/%E7%94%9F%E4%BA%A7%E8%AE%A1%E5%88%92%E6%9D%BF%20-%20%E5%89%AF%E6%9C%AC.html -->
+<html lang="zh-CN" style="--foot-h: 75px;"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>流水线生产计划板</title>
-<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="./生产计划板_files/html2canvas.min.js.下载"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -716,7 +716,7 @@
   }
 </style>
 </head>
-<body>
+<body class="">
 
 <div class="topbar">
   <div class="brand">
@@ -740,23 +740,884 @@
         <button onclick="doExportCsv()">📊 导出 Excel</button>
       </div>
     </div>
-    <span id="totalAll">总计 0 个</span>
-    <span class="clock" id="clock">--:--:--</span>
+    <span id="totalAll">总计 13,482 个</span>
+    <span class="clock" id="clock">23:13:57</span>
   </div>
 </div>
 
 <div class="main">
   <div class="timeline">
-    <div class="timeline-head" id="timelineHead"></div>
+    <div class="timeline-head" id="timelineHead"><span class="date-year">2026年</span><span class="date-month dow-weekday">05月</span><span class="date-day dow-weekday">15日</span><span class="date-dow dow-weekday">（金）</span></div>
     <div class="timeline-body" id="timelineBody">
-      <div class="timeline-inner" id="timelineInner"></div>
+      <div class="timeline-inner" id="timelineInner" style="height: 1976px;"><div class="tick hour" style="top: 0px;"><span class="label">08:00</span></div><div class="tick" style="top: 23.3333px;"></div><div class="tick" style="top: 46.6667px;"></div><div class="tick" style="top: 70px;"></div><div class="tick" style="top: 93.3333px;"></div><div class="tick" style="top: 116.667px;"></div><div class="tick hour" style="top: 140px;"><span class="label">09:00</span></div><div class="tick" style="top: 163.333px;"></div><div class="tick" style="top: 186.667px;"></div><div class="tick" style="top: 210px;"></div><div class="tick" style="top: 233.333px;"></div><div class="tick" style="top: 256.667px;"></div><div class="tick hour" style="top: 280px;"><span class="label">10:00</span></div><div class="tick" style="top: 303.333px;"></div><div class="tick" style="top: 326.667px;"></div><div class="tick" style="top: 350px;"></div><div class="tick" style="top: 373.333px;"></div><div class="tick" style="top: 396.667px;"></div><div class="tick hour" style="top: 420px;"><span class="label">11:00</span></div><div class="tick" style="top: 443.333px;"></div><div class="tick" style="top: 466.667px;"></div><div class="tick" style="top: 490px;"></div><div class="tick" style="top: 513.333px;"></div><div class="tick" style="top: 536.667px;"></div><div class="tick hour" style="top: 560px;"><span class="label">12:00</span></div><div class="tick" style="top: 583.333px;"></div><div class="tick" style="top: 606.667px;"></div><div class="tick" style="top: 630px;"></div><div class="tick" style="top: 653.333px;"></div><div class="tick" style="top: 676.667px;"></div><div class="tick hour" style="top: 700px;"><span class="label">13:00</span></div><div class="tick" style="top: 723.333px;"></div><div class="tick" style="top: 746.667px;"></div><div class="tick" style="top: 770px;"></div><div class="tick" style="top: 793.333px;"></div><div class="tick" style="top: 816.667px;"></div><div class="tick hour" style="top: 840px;"><span class="label">14:00</span></div><div class="tick" style="top: 863.333px;"></div><div class="tick" style="top: 886.667px;"></div><div class="tick" style="top: 910px;"></div><div class="tick" style="top: 933.333px;"></div><div class="tick" style="top: 956.667px;"></div><div class="tick hour" style="top: 980px;"><span class="label">15:00</span></div><div class="tick" style="top: 1003.33px;"></div><div class="tick" style="top: 1026.67px;"></div><div class="tick" style="top: 1050px;"></div><div class="tick" style="top: 1073.33px;"></div><div class="tick" style="top: 1096.67px;"></div><div class="tick hour" style="top: 1120px;"><span class="label">16:00</span></div><div class="tick" style="top: 1143.33px;"></div><div class="tick" style="top: 1166.67px;"></div><div class="tick" style="top: 1190px;"></div><div class="tick" style="top: 1213.33px;"></div><div class="tick" style="top: 1236.67px;"></div><div class="tick hour" style="top: 1260px;"><span class="label">17:00</span></div><div class="tick" style="top: 1283.33px;"></div><div class="tick" style="top: 1306.67px;"></div><div class="tick" style="top: 1330px;"></div><div class="tick" style="top: 1353.33px;"></div><div class="tick" style="top: 1376.67px;"></div><div class="tick hour" style="top: 1400px;"><span class="label">18:00</span></div><div class="tick" style="top: 1423.33px;"></div><div class="tick" style="top: 1446.67px;"></div><div class="tick" style="top: 1470px;"></div><div class="tick" style="top: 1493.33px;"></div><div class="tick" style="top: 1516.67px;"></div><div class="tick hour" style="top: 1540px;"><span class="label">19:00</span></div><div class="tick" style="top: 1563.33px;"></div><div class="tick" style="top: 1586.67px;"></div><div class="tick" style="top: 1610px;"></div><div class="tick" style="top: 1633.33px;"></div><div class="tick" style="top: 1656.67px;"></div><div class="tick hour hour-20" style="top: 1680px;"><span class="label">20:00</span></div><div class="tick" style="top: 1703.33px;"></div><div class="tick" style="top: 1726.67px;"></div><div class="tick" style="top: 1750px;"></div><div class="tick" style="top: 1773.33px;"></div><div class="tick" style="top: 1796.67px;"></div><div class="tick hour" style="top: 1820px;"><span class="label">21:00</span></div><div class="tick" style="top: 1843.33px;"></div><div class="tick" style="top: 1866.67px;"></div><div class="tick" style="top: 1890px;"></div><div class="tick" style="top: 1913.33px;"></div><div class="tick" style="top: 1936.67px;"></div><div class="tick hour" style="top: 1960px;"><span class="label">22:00</span></div></div>
     </div>
     <div class="timeline-foot" id="timelineFoot"></div>
   </div>
-  <div class="board" id="board"></div>
+  <div class="board" id="board" style="grid-template-columns: repeat(6, 1fr);"><div class="line" data-line="1">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num xiusheng">夕盛</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div><div class="card" data-type="job" data-lib-id="mp48k8nwpy0j" data-name="ポテトサラダ1㎏" data-color="#ffb000" style="border-left-color: rgb(255, 176, 0); top: 420px; height: 38.8889px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#ffb000">ポ</span>
+      <span class="compact-people">3</span>
+      <span class="compact-time">16:40</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">ポテトサラダ1㎏</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="6" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="15" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="100" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="3" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 16:40</span>
+        <span class="range"><span class="t-start">11:00</span> → <span class="t-end">11:16</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48l99kknyz" data-name="蓮根金平" data-color="#d2a8ff" style="border-left-color: rgb(210, 168, 255); top: 465.889px; height: 24px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#d2a8ff">蓮</span>
+      <span class="compact-people">3</span>
+      <span class="compact-time">8:15</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">蓮根金平</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="16" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="20" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="132" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="3" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 8:15</span>
+        <span class="range"><span class="t-start">11:19</span> → <span class="t-end">11:27</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48955e4xzb" data-name="４点盛サラダ" data-color="#3fb950" style="border-left-color: rgb(63, 185, 80); top: 492.139px; height: 65.2105px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#3fb950">４</span>
+      <span class="compact-people">14</span>
+      <span class="compact-time">27:57</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">４点盛サラダ</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="19" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="40" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="531" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="14" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 27:57</span>
+        <span class="range"><span class="t-start">11:30</span> → <span class="t-end">11:58</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp489zjfbyh9" data-name="肉じゃが弁当" data-color="#ffa657" style="border-left-color: rgb(255, 166, 87); top: 564.349px; height: 28.0897px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#ffa657">肉</span>
+      <span class="compact-people">14</span>
+      <span class="compact-time">12:02</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">肉じゃが弁当</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="26" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="313" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="14" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 12:02</span>
+        <span class="range"><span class="t-start">12:01</span> → <span class="t-end">12:13</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp487dpwr24w" data-name="助六（小）" data-color="#d2a8ff" style="border-left-color: rgb(210, 168, 255); top: 599.439px; height: 60.9922px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#d2a8ff">助</span>
+      <span class="compact-people">12</span>
+      <span class="compact-time">26:08</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">助六（小）</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="43" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="42" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="1124" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="12" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 26:08</span>
+        <span class="range"><span class="t-start">12:16</span> → <span class="t-end">12:43</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp1czw59m6gc" data-name="助六（大）" data-color="#a371f7" style="border-left-color: rgb(163, 113, 247); top: 667.431px; height: 85.1407px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#a371f7">助</span>
+      <span class="compact-people">13</span>
+      <span class="compact-time">36:29</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">助六（大）</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="45" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="40" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="1642" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="13" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 36:29</span>
+        <span class="range"><span class="t-start">12:46</span> → <span class="t-end">13:22</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp1cwesol4zu" data-name="赤飯助六" data-color="#f85149" style="border-left-color: rgb(248, 81, 73); top: 759.572px; height: 36.6333px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#f85149">赤</span>
+      <span class="compact-people">12</span>
+      <span class="compact-time">15:42</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">赤飯助六</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="50" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="60" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="785" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="12" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 15:42</span>
+        <span class="range"><span class="t-start">13:25</span> → <span class="t-end">13:41</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp1cy09vh1wp" data-name="大阪寿司" data-color="#79c0ff" style="border-left-color: rgb(121, 192, 255); top: 803.205px; height: 32.8039px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#79c0ff">大</span>
+      <span class="compact-people">15</span>
+      <span class="compact-time">14:04</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">大阪寿司</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="34" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="478" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="15" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 14:04</span>
+        <span class="range"><span class="t-start">13:44</span> → <span class="t-end">13:58</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48at12e2yo" data-name="野菜炊き合わせ" data-color="#3fb950" style="border-left-color: rgb(63, 185, 80); top: 843.009px; height: 140.217px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#3fb950">野</span>
+      <span class="compact-people">12</span>
+      <span class="compact-time">1:00:06</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">野菜炊き合わせ</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="43" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="34" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="2584" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="12" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 1:00:06</span>
+        <span class="range"><span class="t-start">14:01</span> → <span class="t-end">15:01</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48dnntey3q" data-name="冷やし中華（大）" data-color="#58a6ff" style="border-left-color: rgb(88, 166, 255); top: 990.226px; height: 125.222px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#58a6ff">冷</span>
+      <span class="compact-people">15</span>
+      <span class="compact-time">53:40</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">冷やし中華（大）</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="24" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="20" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="1288" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="15" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 53:40</span>
+        <span class="range"><span class="t-start">15:04</span> → <span class="t-end">15:58</span></span>
+      </div>
+    </div>
+  </div><div class="card rest" data-type="rest" style="top: 1122.45px; height: 140px;">
+    <div class="card-compact">
+      <span class="rest-tag">休息</span>
+      <span class="compact-name">午休</span>
+      <span class="compact-time">1:00:00</span>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="rest-tag">休息</span>
+        <input class="card-name-display rest-name-input" type="text" value="午休" maxlength="20" style="background:transparent;border:none;color:var(--rest);font-family:inherit;font-size:14px;font-weight:700;outline:none;flex:1;min-width:0;padding:3px 4px;">
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field">
+          <span class="field-label">时长分</span>
+          <input class="field-input rest-min" type="number" min="0" step="1" value="60" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">指定开始</span>
+          <input class="field-input rest-fixed" type="time" value="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="range"><span class="t-start">16:01</span> → <span class="t-end">17:01</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48bzhrws9r" data-name="牛ごぼうだし巻きセット" data-color="#8b949e" style="border-left-color: rgb(139, 148, 158); top: 1263.45px; height: 69.9386px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#8b949e">牛</span>
+      <span class="compact-people">14</span>
+      <span class="compact-time">29:58</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">牛ごぼうだし巻きセット</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="38" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="1139" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="14" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 29:58</span>
+        <span class="range"><span class="t-start">17:01</span> → <span class="t-end">17:31</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48eenlndjx" data-name="ねばねばサラダ" data-color="#79c0ff" style="border-left-color: rgb(121, 192, 255); top: 1339.39px; height: 41.9085px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#79c0ff">ね</span>
+      <span class="compact-people">14</span>
+      <span class="compact-time">17:58</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">ねばねばサラダ</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="25.5" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="30" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="458" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="14" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 17:58</span>
+        <span class="range"><span class="t-start">17:34</span> → <span class="t-end">17:51</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48csv63ky8" data-name="２種おこわ弁当" data-color="#ffb000" style="border-left-color: rgb(255, 176, 0); top: 1388.3px; height: 39.7436px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#ffb000">２</span>
+      <span class="compact-people">10</span>
+      <span class="compact-time">17:02</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">２種おこわ弁当</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="18.2" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="310" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="10" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 17:02</span>
+        <span class="range"><span class="t-start">17:54</span> → <span class="t-end">18:12</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48hxj7b2jv" data-name="超カセット弁当" data-color="#d2a8ff" style="border-left-color: rgb(210, 168, 255); top: 1435.04px; height: 94px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#d2a8ff">超</span>
+      <span class="compact-people">14</span>
+      <span class="compact-time">40:17</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">超カセット弁当</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="21" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="846" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="14" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 40:17</span>
+        <span class="range"><span class="t-start">18:15</span> → <span class="t-end">18:55</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48gl0dciy8" data-name="幕の内" data-color="#8b949e" style="border-left-color: rgb(139, 148, 158); top: 1536.04px; height: 72.1356px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#8b949e">幕</span>
+      <span class="compact-people">11</span>
+      <span class="compact-time">30:55</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">幕の内</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="29.5" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="50" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="912" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="11" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 30:55</span>
+        <span class="range"><span class="t-start">18:58</span> → <span class="t-end">19:29</span></span>
+      </div>
+    </div>
+  </div><div class="card" data-type="job" data-lib-id="mp48inpauyqr" data-name="高単価半製品" data-color="#8b949e" style="border-left-color: rgb(139, 148, 158); top: 1615.17px; height: 24px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#8b949e">高</span>
+      <span class="compact-people">9</span>
+      <span class="compact-time">9:03</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    <div class="card-expanded">
+      <div class="card-top">
+        <span class="card-name-display">高単価半製品</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="26.5" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="50" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="240" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="9" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 9:03</span>
+        <span class="range"><span class="t-start">19:32</span> → <span class="t-end">19:41</span></span>
+      </div>
+    </div>
+  </div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">12,882</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">6:56:16</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">19:41</span>
+      </div>
+    </div>
+  </div><div class="line" data-line="2">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num">01</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div><div class="card" data-type="job" data-lib-id="mp1cy09vh1wp" data-name="大阪寿司" data-color="#79c0ff" style="border-left-color: rgb(121, 192, 255); top: 280px; height: 41.1765px;">
+    <div class="card-compact">
+      <span class="compact-name-letter" style="color:#79c0ff">大</span>
+      <span class="compact-people">15</span>
+      <span class="compact-time">17:39</span>
+      <button class="compact-del" title="删除">×</button>
+    </div>
+    
+  <div class="card-expanded" style="top: 194px; left: 247.328px;">
+      <div class="card-top">
+        <span class="card-name-display">大阪寿司</span>
+        <button class="card-del">×</button>
+      </div>
+      <div class="card-fields">
+        <div class="field name-spd">
+          <span class="field-label">品名速度★</span>
+          <input class="field-input speed" type="number" value="34" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">流水线速度</span>
+          <input class="field-input line-speed" type="number" value="35" placeholder="—" readonly="">
+        </div>
+        <div class="field">
+          <span class="field-label">数量 个</span>
+          <input class="field-input qty" type="number" min="0" step="1" value="" placeholder="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <span class="field-label">人数</span>
+          <input class="field-input people" type="number" value="15" placeholder="—" readonly="">
+        </div>
+      </div>
+      <div class="card-meta">
+        <span class="duration">耗时 17:39</span>
+        <span class="range"><span class="t-start">10:00</span> → <span class="t-end">10:17</span></span>
+      </div>
+    </div></div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">600</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">17:39</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">10:17</span>
+      </div>
+    </div>
+  </div><div class="line" data-line="3">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num">02</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">0</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">—</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">—</span>
+      </div>
+    </div>
+  </div><div class="line" data-line="4">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num">03</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">0</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">—</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">—</span>
+      </div>
+    </div>
+  </div><div class="line" data-line="5">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num">04</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">0</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">—</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">—</span>
+      </div>
+    </div>
+  </div><div class="line" data-line="6">
+    <div class="line-head">
+      <div class="line-head-row1">
+        <div>
+          <div class="line-num">05</div>
+          <div class="line-label">LINE</div>
+        </div>
+        <div class="head-btns">
+          <button class="head-btn add-job"><span class="ic">+</span>品名</button>
+          <button class="head-btn rest add-rest"><span class="ic">+</span>休息</button>
+        </div>
+      </div>
+      <div class="line-config">
+        <div class="cfg">
+          <span class="cfg-label">起始</span>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </div>
+        <div class="cfg">
+          <span class="cfg-label">切换</span>
+          <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="cards-wrap">
+      <div class="cards-grid" style="height: 1976px;"><div class="grid-line hour" style="top: 0px;"></div><div class="grid-line" style="top: 23.3333px;"></div><div class="grid-line" style="top: 46.6667px;"></div><div class="grid-line" style="top: 70px;"></div><div class="grid-line" style="top: 93.3333px;"></div><div class="grid-line" style="top: 116.667px;"></div><div class="grid-line hour" style="top: 140px;"></div><div class="grid-line" style="top: 163.333px;"></div><div class="grid-line" style="top: 186.667px;"></div><div class="grid-line" style="top: 210px;"></div><div class="grid-line" style="top: 233.333px;"></div><div class="grid-line" style="top: 256.667px;"></div><div class="grid-line hour" style="top: 280px;"></div><div class="grid-line" style="top: 303.333px;"></div><div class="grid-line" style="top: 326.667px;"></div><div class="grid-line" style="top: 350px;"></div><div class="grid-line" style="top: 373.333px;"></div><div class="grid-line" style="top: 396.667px;"></div><div class="grid-line hour" style="top: 420px;"></div><div class="grid-line" style="top: 443.333px;"></div><div class="grid-line" style="top: 466.667px;"></div><div class="grid-line" style="top: 490px;"></div><div class="grid-line" style="top: 513.333px;"></div><div class="grid-line" style="top: 536.667px;"></div><div class="grid-line hour" style="top: 560px;"></div><div class="grid-line" style="top: 583.333px;"></div><div class="grid-line" style="top: 606.667px;"></div><div class="grid-line" style="top: 630px;"></div><div class="grid-line" style="top: 653.333px;"></div><div class="grid-line" style="top: 676.667px;"></div><div class="grid-line hour" style="top: 700px;"></div><div class="grid-line" style="top: 723.333px;"></div><div class="grid-line" style="top: 746.667px;"></div><div class="grid-line" style="top: 770px;"></div><div class="grid-line" style="top: 793.333px;"></div><div class="grid-line" style="top: 816.667px;"></div><div class="grid-line hour" style="top: 840px;"></div><div class="grid-line" style="top: 863.333px;"></div><div class="grid-line" style="top: 886.667px;"></div><div class="grid-line" style="top: 910px;"></div><div class="grid-line" style="top: 933.333px;"></div><div class="grid-line" style="top: 956.667px;"></div><div class="grid-line hour" style="top: 980px;"></div><div class="grid-line" style="top: 1003.33px;"></div><div class="grid-line" style="top: 1026.67px;"></div><div class="grid-line" style="top: 1050px;"></div><div class="grid-line" style="top: 1073.33px;"></div><div class="grid-line" style="top: 1096.67px;"></div><div class="grid-line hour" style="top: 1120px;"></div><div class="grid-line" style="top: 1143.33px;"></div><div class="grid-line" style="top: 1166.67px;"></div><div class="grid-line" style="top: 1190px;"></div><div class="grid-line" style="top: 1213.33px;"></div><div class="grid-line" style="top: 1236.67px;"></div><div class="grid-line hour" style="top: 1260px;"></div><div class="grid-line" style="top: 1283.33px;"></div><div class="grid-line" style="top: 1306.67px;"></div><div class="grid-line" style="top: 1330px;"></div><div class="grid-line" style="top: 1353.33px;"></div><div class="grid-line" style="top: 1376.67px;"></div><div class="grid-line hour" style="top: 1400px;"></div><div class="grid-line" style="top: 1423.33px;"></div><div class="grid-line" style="top: 1446.67px;"></div><div class="grid-line" style="top: 1470px;"></div><div class="grid-line" style="top: 1493.33px;"></div><div class="grid-line" style="top: 1516.67px;"></div><div class="grid-line hour" style="top: 1540px;"></div><div class="grid-line" style="top: 1563.33px;"></div><div class="grid-line" style="top: 1586.67px;"></div><div class="grid-line" style="top: 1610px;"></div><div class="grid-line" style="top: 1633.33px;"></div><div class="grid-line" style="top: 1656.67px;"></div><div class="grid-line hour hour-20" style="top: 1680px;"></div><div class="grid-line" style="top: 1703.33px;"></div><div class="grid-line" style="top: 1726.67px;"></div><div class="grid-line" style="top: 1750px;"></div><div class="grid-line" style="top: 1773.33px;"></div><div class="grid-line" style="top: 1796.67px;"></div><div class="grid-line hour" style="top: 1820px;"></div><div class="grid-line" style="top: 1843.33px;"></div><div class="grid-line" style="top: 1866.67px;"></div><div class="grid-line" style="top: 1890px;"></div><div class="grid-line" style="top: 1913.33px;"></div><div class="grid-line" style="top: 1936.67px;"></div><div class="grid-line hour" style="top: 1960px;"></div></div>
+    </div>
+    <div class="line-foot">
+      <div class="foot-row">
+        <span class="foot-label">数量</span>
+        <span class="foot-val qty-total">0</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">耗时</span>
+        <span class="foot-val time time-total">—</span>
+      </div>
+      <div class="foot-row">
+        <span class="foot-label">结束</span>
+        <span class="foot-val finish finish-total">—</span>
+      </div>
+    </div>
+  </div></div>
 </div>
 
-<div class="pager" id="pager"></div>
+<div class="pager" id="pager"><div class="pip active"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
 
 <div class="modal-mask" id="libModal">
   <div class="modal">
@@ -765,7 +1626,7 @@
         <div class="modal-title">品名库管理</div>
         <div class="modal-sub">流水线速度=参考 / 品名速度=实际跑的(算耗时用)</div>
       </div>
-      <button class="modal-close" data-close>×</button>
+      <button class="modal-close" data-close="">×</button>
     </div>
     <div class="modal-body">
       <div class="lib-add-form">
@@ -786,12 +1647,46 @@
     <div class="modal-head">
       <div>
         <div class="modal-title">选择品名</div>
-        <div class="modal-sub" id="pickSub">添加到 流水线</div>
+        <div class="modal-sub" id="pickSub">添加到 01 号线</div>
       </div>
-      <button class="modal-close" data-close>×</button>
+      <button class="modal-close" data-close="">×</button>
     </div>
     <div class="modal-body">
-      <div class="pick-list" id="pickList"></div>
+      <div class="pick-list" id="pickList"><div class="pick-item" style="--lib-color: #f85149;">
+        <div class="pick-item-name">赤飯助六</div>
+        <div class="pick-item-info">品名 <span class="ns">50</span><br>流水线 60<br>12 人</div></div><div class="pick-item" style="--lib-color: #79c0ff;">
+        <div class="pick-item-name">大阪寿司</div>
+        <div class="pick-item-info">品名 <span class="ns">34</span><br>流水线 35<br>15 人</div></div><div class="pick-item" style="--lib-color: #a371f7;">
+        <div class="pick-item-name">助六（大）</div>
+        <div class="pick-item-info">品名 <span class="ns">45</span><br>流水线 40<br>13 人</div></div><div class="pick-item" style="--lib-color: #d2a8ff;">
+        <div class="pick-item-name">助六（小）</div>
+        <div class="pick-item-info">品名 <span class="ns">43</span><br>流水线 42<br>12 人</div></div><div class="pick-item" style="--lib-color: #3fb950;">
+        <div class="pick-item-name">４点盛サラダ</div>
+        <div class="pick-item-info">品名 <span class="ns">19</span><br>流水线 40<br>14 人</div></div><div class="pick-item" style="--lib-color: #ffa657;">
+        <div class="pick-item-name">肉じゃが弁当</div>
+        <div class="pick-item-info">品名 <span class="ns">26</span><br>流水线 35<br>14 人</div></div><div class="pick-item" style="--lib-color: #3fb950;">
+        <div class="pick-item-name">野菜炊き合わせ</div>
+        <div class="pick-item-info">品名 <span class="ns">43</span><br>流水线 34<br>12 人</div></div><div class="pick-item" style="--lib-color: #8b949e;">
+        <div class="pick-item-name">牛ごぼうだし巻きセット</div>
+        <div class="pick-item-info">品名 <span class="ns">38</span><br>流水线 35<br>14 人</div></div><div class="pick-item" style="--lib-color: #ffb000;">
+        <div class="pick-item-name">２種おこわ弁当</div>
+        <div class="pick-item-info">品名 <span class="ns">18.2</span><br>流水线 35<br>10 人</div></div><div class="pick-item" style="--lib-color: #58a6ff;">
+        <div class="pick-item-name">冷やし中華（大）</div>
+        <div class="pick-item-info">品名 <span class="ns">24</span><br>流水线 20<br>15 人</div></div><div class="pick-item" style="--lib-color: #79c0ff;">
+        <div class="pick-item-name">ねばねばサラダ</div>
+        <div class="pick-item-info">品名 <span class="ns">25.5</span><br>流水线 30<br>14 人</div></div><div class="pick-item" style="--lib-color: #a371f7;">
+        <div class="pick-item-name">焼き鳥重</div>
+        <div class="pick-item-info">品名 <span class="ns">34</span><br>流水线 30<br>14 人</div></div><div class="pick-item" style="--lib-color: #8b949e;">
+        <div class="pick-item-name">幕の内</div>
+        <div class="pick-item-info">品名 <span class="ns">29.5</span><br>流水线 50<br>11 人</div></div><div class="pick-item" style="--lib-color: #d2a8ff;">
+        <div class="pick-item-name">超カセット弁当</div>
+        <div class="pick-item-info">品名 <span class="ns">21</span><br>流水线 35<br>14 人</div></div><div class="pick-item" style="--lib-color: #8b949e;">
+        <div class="pick-item-name">高単価半製品</div>
+        <div class="pick-item-info">品名 <span class="ns">26.5</span><br>流水线 50<br>9 人</div></div><div class="pick-item" style="--lib-color: #ffb000;">
+        <div class="pick-item-name">ポテトサラダ1㎏</div>
+        <div class="pick-item-info">品名 <span class="ns">6</span><br>流水线 15<br>3 人</div></div><div class="pick-item" style="--lib-color: #d2a8ff;">
+        <div class="pick-item-name">蓮根金平</div>
+        <div class="pick-item-info">品名 <span class="ns">16</span><br>流水线 20<br>3 人</div></div></div>
     </div>
   </div>
 </div>
@@ -2090,5 +2985,6 @@ window.addEventListener('beforeunload', e => {
 
 </script>
 
-</body>
-</html>
+
+
+<div id="toastEl" style="position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.92); color: rgb(255, 255, 255); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity 0.2s; pointer-events: none; letter-spacing: 0.3px;">💾 已保存（23:13）</div></body></html>
