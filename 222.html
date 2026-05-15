@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>シフト管理</title>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --border: #e5e8ee;
+  --border-strong: #d0d6de;
+  --text: #1a2233;
+  --text-dim: #6b7385;
+  --muted: #9aa1ad;
+  --primary: #2563eb;
+  --work-bg: #eef4ff;
+  --work-fg: #1d4ed8;
+  --rest-bg: #fff1e0;
+  --rest-fg: #c2410c;
+  --rest-strong: #ea580c;
+  --sun: #dc2626;
+  --sat: #2563eb;
+  --today: #ea580c;
+  --rest-day-bg: #fffbeb;
+  --rest-day-stripe: #fef3c7;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow: 0 2px 8px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 12px 80px;
+}
+
+/* Sticky top zone: header + period editor + toolbar */
+.app-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  padding: 16px 0 8px;
+  margin-bottom: 4px;
+}
+.app-top::after {
+  content: '';
+  position: absolute;
+  left: -12px; right: -12px; bottom: -10px;
+  height: 10px;
+  /* 用同色 alpha=0 而非 transparent — 避免插值经过黑色出现深色条 */
+  background: linear-gradient(to bottom, #f4f6fb, rgba(244,246,251,0));
+  pointer-events: none;
+}
+body.exporting .app-top::after { display: none; }
+body.exporting #appRoot { background: #f4f6fb; }
+
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; gap: 10px;
+}
+.title {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 6px;
+  color: #0f172a;
+}
+.title-icon {
+  width: 22px; height: 22px;
+  display: inline-block; flex-shrink: 0;
+  color: #2563eb;
+}
+.period-btn {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #e2e8f0; border: none;
+  padding: 9px 16px; border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(15,23,42,0.18);
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.08s;
+}
+.period-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+/* ── Period editor ── */
+.period-editor {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 12px;
+  gap: 8px; align-items: center; flex-wrap: wrap;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+.period-editor.visible { display: flex; }
+.period-editor select {
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 6px 8px; font-size: 13px; font-family: inherit;
+  background: #fff; outline: none; color: var(--text);
+}
+.period-editor-label { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+/* ── Toolbar ── */
+.toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 11px 12px; border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  border: none; cursor: pointer;
+  font-family: inherit; letter-spacing: 0.2px;
+  transition: opacity 0.15s, transform 0.08s, background 0.15s;
+  flex: 1; min-width: 0;
+  box-shadow: var(--shadow-sm);
+}
+.btn { position: relative; }
+.btn:active { transform: scale(0.97); }
+/* 未保存提示：保存按钮上的红点呼吸动画 */
+body.has-unsaved .btn-primary::after {
+  content: '';
+  position: absolute; top: 5px; right: 7px;
+  width: 8px; height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff;
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+.btn-edit    { background: #7c3aed; color: #fff; }
+.btn-edit.active { background: #f59e0b; }
+.btn-save    { background: #16a34a; color: #fff; }
+.btn-danger  { background: #fff; color: var(--rest-fg); border: 1.5px solid #fed7aa; box-shadow: none; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: #fff; color: var(--text-dim); border: 1px solid var(--border-strong); box-shadow: none; }
+
+/* ── Alert ── */
+.alert {
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  font-size: 12px; margin-bottom: 10px; line-height: 1.5;
+}
+.alert-info { background: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; }
+.alert-warn { background: #fef9c3; color: #78350f; border: 1px solid #fcd34d; }
+
+/* ── Day list (two-column: 月份 A / 月份 B 并排) ── */
+.day-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.month-col {
+  display: flex; flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.month-col-head {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--rest-strong), #d97706);
+  color: #fff;
+  font-size: 14px; font-weight: 900; letter-spacing: 1px;
+  padding: 6px 0;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(234,88,12,0.25);
+  margin-bottom: 1px;
+}
+
+/* Day row (compact, 在两栏内) */
+.day-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  min-height: 38px; /* 统一行高，避免「出」「休」字号不同导致高度差 */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* weekend colorings */
+.day-row.sun .day-cell .dnum,
+.day-row.sun .day-cell .dow { color: var(--sun); }
+.day-row.sat .day-cell .dnum,
+.day-row.sat .day-cell .dow { color: var(--sat); }
+
+.day-row.today {
+  border-color: var(--today);
+  box-shadow: 0 2px 10px rgba(234,88,12,0.20);
+}
+.day-row.today .day-cell .dnum {
+  background: var(--today); color: #fff;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(234,88,12,0.30);
+}
+
+/* Both rest: clear yellow stripe banner */
+.day-row.both-rest {
+  background:
+    repeating-linear-gradient(-45deg,
+      var(--rest-day-bg) 0px, var(--rest-day-bg) 8px,
+      var(--rest-day-stripe) 8px, var(--rest-day-stripe) 16px);
+  border-color: #fcd34d;
+}
+
+.day-cell {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 2px 0;
+  border-right: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  gap: 0;
+}
+.day-row.both-rest .day-cell { background: rgba(255,255,255,0.5); }
+.day-cell .dow {
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.day-cell .dnum {
+  font-size: 15px; font-weight: 900; line-height: 1.1;
+  color: var(--text);
+}
+
+/* Shifts area */
+.shifts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border);
+}
+.shift {
+  display: flex; align-items: center; justify-content: center;
+  padding: 6px 2px;
+  font-weight: 700;
+  transition: background 0.15s, transform 0.08s;
+}
+.shift-mark {
+  font-size: 15px; font-weight: 900; letter-spacing: 0.5px;
+}
+.shift.work { background: var(--work-bg); color: var(--work-fg); }
+.shift.rest {
+  background: #ffd6b0;
+  color: #9a3412;
+  position: relative;
+}
+.shift.rest .shift-mark {
+  font-size: 17px;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+}
+/* 右侧（従業員B）出 颜色改为深绿色，与蓝色（左侧 A 出）和橙色（休）都有鲜明对比 */
+.shifts .shift + .shift.work { color: #15803d; }
+.day-row.both-rest .shift.rest { background: rgba(254,215,170,0.65); }
+
+/* both-rest badge: 紧凑版（仅留小圆点） */
+.both-rest-tag {
+  position: absolute; top: 3px; right: 3px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #78350f; font-size: 8px; font-weight: 800;
+  padding: 1px 4px; border-radius: 999px; letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  pointer-events: none; z-index: 2;
+}
+
+body.edit-mode .shift { cursor: pointer; }
+body.edit-mode .shift:active { transform: scale(0.94); }
+body.edit-mode .shift::after {
+  content: ''; position: absolute; inset: 0;
+  border: 2px dashed transparent; pointer-events: none;
+  border-radius: inherit;
+}
+body.edit-mode .shifts { position: relative; }
+
+/* ── Legend card ── */
+.legend-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px; margin-top: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.legend-title {
+  font-size: 11px; font-weight: 800; color: var(--text-dim);
+  letter-spacing: 2px; margin-bottom: 8px;
+}
+.legend-list {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  font-size: 11px; color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.06); }
+.legend-stripe {
+  width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+  background: repeating-linear-gradient(-45deg, #fffbeb 0px, #fffbeb 3px, #fef3c7 3px, #fef3c7 6px);
+  border: 1px solid #fcd34d;
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .app { padding: 0 6px 60px; }
+  .title { font-size: 16px; }
+  .period-btn { padding: 7px 11px; font-size: 11px; }
+  .day-list { gap: 6px; }
+  .day-row { grid-template-columns: 26px 1fr; }
+  .day-cell .dnum { font-size: 13px; }
+  .day-cell .dow { font-size: 8px; }
+  .day-row.today .day-cell .dnum { width: 20px; height: 20px; font-size: 11px; }
+  .shift { padding: 5px 2px; }
+  .shift-mark { font-size: 13px; }
+  .shift.rest .shift-mark { font-size: 15px; }
+  .month-col-head { font-size: 12px; padding: 5px 0; }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 48px 16px;
+  color: var(--muted); font-size: 13px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.empty-state .ic { font-size: 32px; display: block; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="app" id="appRoot">
+
+  <div class="app-top">
+  <header class="header">
+    <div class="title">
+      <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="17" rx="2.5"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="8" y1="2.5" x2="8" y2="6"/>
+        <line x1="16" y1="2.5" x2="16" y2="6"/>
+        <rect x="6.5" y="12" width="3" height="2.5" rx="0.5" fill="currentColor"/>
+        <rect x="14.5" y="12" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.5"/>
+      </svg>
+      シフト管理
+    </div>
+    <button class="period-btn" id="periodBadge" onclick="togglePeriodEditor()">2026年5月16日 〜 2026年6月15日</button>
+  </header>
+
+  <div class="period-editor" id="periodEditor">
+    <span class="period-editor-label">期間:</span>
+    <select id="periodYear"></select>
+    <span class="period-editor-label">年</span>
+    <select id="periodMonth"></select>
+    <span class="period-editor-label">月16日〜翌月15日</span>
+    <button class="btn btn-primary" style="flex:none;padding:7px 14px;font-size:12px" onclick="applyPeriodChange()">適用</button>
+    <button class="btn btn-secondary" style="flex:none;padding:7px 14px;font-size:12px" onclick="togglePeriodEditor()">閉じる</button>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 編集</button>
+    <button class="btn btn-primary" onclick="doSaveOverwrite()">💾 保存</button>
+    <button class="btn btn-save" onclick="exportPNG()">📸 PNG</button>
+    <button class="btn btn-danger" onclick="clearData()">🗑 リセット</button>
+  </div>
+
+  <div id="alertContainer"></div>
+  </div><!-- /app-top -->
+
+  <div class="day-list" id="dayList">
+    <div class="empty-state">
+      <span class="ic">✏️</span>
+      「編集」を押してシフトを入力してください
+    </div>
+  </div>
+
+  <div id="legendCard" style="display:none">
+    <div class="legend-card">
+      <div class="legend-title">凡例</div>
+      <div class="legend-list">
+        <div class="legend-item"><span class="legend-dot" style="background:#eef4ff"></span>出勤</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fff1e0"></span>休み</div>
+        <div class="legend-item"><span class="legend-stripe"></span>全員休</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ea580c;border-radius:50%"></span>今日</div>
+        <div class="legend-item" style="color:#2563eb;font-weight:700">土</div>
+        <div class="legend-item" style="color:#dc2626;font-weight:700">日・祝</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const HOLIDAYS = new Set([
+  '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23',
+  '2024-03-20','2024-04-29','2024-05-03','2024-05-04','2024-05-05',
+  '2024-05-06','2024-07-15','2024-08-11','2024-08-12','2024-09-16',
+  '2024-09-22','2024-09-23','2024-10-14','2024-11-03','2024-11-04','2024-11-23',
+  '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+  '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05',
+  '2025-05-06','2025-07-21','2025-08-11','2025-09-15','2025-09-23',
+  '2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
+  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-07-20',
+  '2026-08-11','2026-09-21','2026-09-23','2026-10-12','2026-11-03','2026-11-23',
+]);
+
+const DAY_LABELS = ['日','月','火','水','木','金','土'];
+
+function toISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function getPeriodDates(year, month) {
+  const dates = [];
+  const cur = new Date(year, month - 1, 16);
+  const endY = month === 12 ? year + 1 : year;
+  const endM = month === 12 ? 1 : month + 1;
+  const end  = new Date(endY, endM - 1, 15);
+  while (cur <= end) { dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+  return dates;
+}
+
+function isSunOrHoliday(d) { return d.getDay() === 0 || HOLIDAYS.has(toISO(d)); }
+function isSaturday(d)      { return d.getDay() === 6; }
+function isToday(iso)        { return iso === toISO(new Date()); }
+
+function periodLabel(year, month) {
+  const endY = month === 12 ? year + 1 : year;
+  const endM = month === 12 ? 1 : month + 1;
+  return `${year}年${month}月16日 〜 ${endY}年${endM}月15日`;
+}
+
+const STORAGE_KEY = 'shift-schedule-v2';
+let state = { period: null, employees: ['従業員A', '従業員B'], schedule: {} };
+
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function loadState() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(_) {}
+}
+
+function ensureEmployeeDates(name) {
+  if (!state.schedule[name]) state.schedule[name] = {};
+  getPeriodDates(state.period.year, state.period.month).forEach(d => {
+    const iso = toISO(d);
+    if (!state.schedule[name][iso]) state.schedule[name][iso] = 'work';
+  });
+}
+
+function setPeriod(year, month) {
+  state.period = { year, month };
+  document.getElementById('periodBadge').textContent = periodLabel(year, month);
+}
+
+function setDefaultPeriod() {
+  const now = new Date();
+  let year = now.getFullYear(), month = now.getMonth() + 1;
+  if (now.getDate() <= 15) { month--; if (month === 0) { month = 12; year--; } }
+  setPeriod(year, month);
+}
+
+function togglePeriodEditor() {
+  const ed = document.getElementById('periodEditor');
+  ed.classList.toggle('visible');
+  if (ed.classList.contains('visible')) {
+    const cur = state.period || { year: new Date().getFullYear(), month: new Date().getMonth()+1 };
+    const yEl = document.getElementById('periodYear');
+    const mEl = document.getElementById('periodMonth');
+    yEl.innerHTML = '';
+    for (let y = 2024; y <= 2027; y++) {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y; if (y === cur.year) o.selected = true;
+      yEl.appendChild(o);
+    }
+    mEl.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m; if (m === cur.month) o.selected = true;
+      mEl.appendChild(o);
+    }
+  }
+}
+
+function applyPeriodChange() {
+  const year  = parseInt(document.getElementById('periodYear').value);
+  const month = parseInt(document.getElementById('periodMonth').value);
+  setPeriod(year, month);
+  state.employees.forEach(ensureEmployeeDates);
+  markUnsaved();
+  renderCalendar(); togglePeriodEditor();
+  showAlert(`期間を ${periodLabel(year, month)} に変更しました。`, 'info');
+}
+
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function renderCalendar() {
+  if (!state.period) return;
+  const dates = getPeriodDates(state.period.year, state.period.month);
+  const [name1, name2] = state.employees;
+
+  // 按月份分组 → 两栏并排（4月 | 5月）
+  const monthGroups = [];
+  dates.forEach(d => {
+    const m = d.getMonth() + 1;
+    let g = monthGroups[monthGroups.length - 1];
+    if (!g || g.month !== m) {
+      g = { month: m, dates: [] };
+      monthGroups.push(g);
+    }
+    g.dates.push(d);
+  });
+
+  const renderDay = d => {
+    const iso = toISO(d);
+    const dow = d.getDay();
+    const dateNum = d.getDate();
+    const s1 = (state.schedule[name1] || {})[iso] || 'work';
+    const s2 = (state.schedule[name2] || {})[iso] || 'work';
+    const bothRest = s1 === 'rest' && s2 === 'rest';
+
+    let rowCls = 'day-row';
+    if (isSunOrHoliday(d)) rowCls += ' sun';
+    else if (isSaturday(d)) rowCls += ' sat';
+    if (isToday(iso)) rowCls += ' today';
+    if (bothRest) rowCls += ' both-rest';
+
+    return `<div class="${rowCls}">
+      ${bothRest ? '<span class="both-rest-tag">全休</span>' : ''}
+      <div class="day-cell">
+        <div class="dow">${DAY_LABELS[dow]}</div>
+        <div class="dnum">${dateNum}</div>
+      </div>
+      <div class="shifts">
+        <div class="shift ${s1==='rest'?'rest':'work'}" data-name="${escAttr(name1)}" data-iso="${iso}">
+          <span class="shift-mark">${s1==='rest'?'休':'出'}</span>
+        </div>
+        <div class="shift ${s2==='rest'?'rest':'work'}" data-name="${escAttr(name2)}" data-iso="${iso}">
+          <span class="shift-mark">${s2==='rest'?'休':'出'}</span>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const html = monthGroups.map(g => `
+    <div class="month-col">
+      <div class="month-col-head">${g.month}月</div>
+      ${g.dates.map(renderDay).join('')}
+    </div>
+  `).join('');
+
+  document.getElementById('dayList').innerHTML = html;
+  document.getElementById('legendCard').style.display = '';
+}
+
+let unsaved = false;
+function markUnsaved() {
+  if (unsaved) return;
+  unsaved = true;
+  document.body.classList.add('has-unsaved');
+}
+function clearUnsaved() {
+  unsaved = false;
+  document.body.classList.remove('has-unsaved');
+}
+
+document.getElementById('dayList').addEventListener('click', e => {
+  if (!document.body.classList.contains('edit-mode')) return;
+  const slot = e.target.closest('.shift[data-name]');
+  if (!slot) return;
+  const { name, iso } = slot.dataset;
+  if (!state.schedule[name]) state.schedule[name] = {};
+  state.schedule[name][iso] = state.schedule[name][iso] === 'rest' ? 'work' : 'rest';
+  markUnsaved();
+  renderCalendar();
+});
+
+window.addEventListener('beforeunload', e => {
+  if (unsaved) { e.preventDefault(); e.returnValue = ''; }
+});
+
+let editMode = false;
+
+function toggleEditMode() {
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  const btn = document.getElementById('editBtn');
+  btn.textContent = editMode ? '✅ 完了' : '✏️ 編集';
+  btn.classList.toggle('active', editMode);
+  if (editMode) {
+    if (!state.period) setDefaultPeriod();
+    state.employees.forEach(ensureEmployeeDates);
+    renderCalendar();
+  }
+  // 退出编辑不自动保存 — 必须显式点「💾 保存」才会写入 localStorage
+}
+
+function doSaveOverwrite() {
+  if (!state.period) {
+    showAlert('保存するシフトデータがありません。', 'warn');
+    return;
+  }
+  state.employees.forEach(ensureEmployeeDates);
+  saveState();
+  clearUnsaved();
+  const ts = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  showAlert(`💾 保存しました（${ts}）— 既存データを上書きしました。`, 'info');
+}
+
+function clearData() {
+  if (!confirm('すべてのシフトデータをリセットしますか？')) return;
+  state = { period: null, employees: ['従業員A', '従業員B'], schedule: {} };
+  localStorage.removeItem(STORAGE_KEY);
+  editMode = false;
+  document.body.classList.remove('edit-mode');
+  const btn = document.getElementById('editBtn');
+  btn.textContent = '✏️ 編集'; btn.classList.remove('active');
+  setDefaultPeriod();
+  document.getElementById('dayList').innerHTML =
+    '<div class="empty-state"><span class="ic">✏️</span>「編集」を押してシフトを入力してください</div>';
+  document.getElementById('legendCard').style.display = 'none';
+}
+
+function showAlert(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `alert alert-${type}`; el.textContent = msg;
+  const c = document.getElementById('alertContainer');
+  c.innerHTML = ''; c.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 5000);
+}
+
+function buildStripeDataURL() {
+  const tile = document.createElement('canvas');
+  tile.width = 16; tile.height = 16;
+  const tc = tile.getContext('2d');
+  tc.fillStyle = '#fffbeb';
+  tc.fillRect(0, 0, 16, 16);
+  tc.strokeStyle = '#fef3c7';
+  tc.lineWidth = 8;
+  tc.beginPath();
+  tc.moveTo(-8, 8);  tc.lineTo(8,  -8);
+  tc.moveTo(0,  16); tc.lineTo(16,  0);
+  tc.moveTo(8,  24); tc.lineTo(24,  8);
+  tc.stroke();
+  return tile.toDataURL('image/png');
+}
+
+async function exportPNG() {
+  if (!document.querySelector('#dayList .day-row')) {
+    showAlert('エクスポートするシフト表がありません。', 'warn'); return;
+  }
+  if (typeof html2canvas === 'undefined') {
+    showAlert('html2canvas が読み込めません。ネット接続をご確認ください。', 'warn'); return;
+  }
+  const stripeURL = buildStripeDataURL();
+  const bothRestRows = [];
+  document.querySelectorAll('.day-row.both-rest').forEach(row => {
+    row.classList.remove('both-rest');
+    row.style.backgroundImage  = `url('${stripeURL}')`;
+    row.style.backgroundSize   = '16px 16px';
+    row.style.backgroundRepeat = 'repeat';
+    row.style.backgroundColor  = '#fffbeb';
+    row.style.borderColor      = '#fcd34d';
+    bothRestRows.push(row);
+  });
+
+  const root    = document.getElementById('appRoot');
+  const appTop  = document.querySelector('.app-top');
+  const toolbar = document.getElementById('toolbar');
+  const pe      = document.getElementById('periodEditor');
+  const ac      = document.getElementById('alertContainer');
+  const btn     = document.querySelector('.btn-save');
+  const orig    = btn.textContent;
+  const prevAppTopPos = appTop ? appTop.style.position : '';
+  if (appTop) appTop.style.position = 'static';
+  document.body.classList.add('exporting');
+  toolbar.style.display = 'none';
+  pe.style.display = 'none';
+  ac.style.display = 'none';
+  btn.textContent = '⏳ 出力中…'; btn.disabled = true;
+
+  await new Promise(r => setTimeout(r, 50));
+
+  try {
+    const canvas = await html2canvas(root, {
+      scale: 2, useCORS: true, backgroundColor: '#f4f6fb', logging: false,
+      windowWidth: root.scrollWidth, windowHeight: root.scrollHeight
+    });
+    const link = document.createElement('a');
+    const { year, month } = state.period || { year: 0, month: 0 };
+    link.download = `shift-${year}${String(month).padStart(2,'0')}.png`;
+    link.href = canvas.toDataURL('image/png'); link.click();
+    showAlert('📸 PNG出力完了！', 'info');
+  } catch(err) {
+    showAlert('出力エラー: ' + err.message, 'warn');
+  } finally {
+    bothRestRows.forEach(row => {
+      row.classList.add('both-rest');
+      row.style.backgroundImage  = '';
+      row.style.backgroundSize   = '';
+      row.style.backgroundRepeat = '';
+      row.style.backgroundColor  = '';
+      row.style.borderColor      = '';
+    });
+    if (appTop) appTop.style.position = prevAppTopPos;
+    document.body.classList.remove('exporting');
+    toolbar.style.display = '';
+    pe.style.display = '';
+    ac.style.display = '';
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
+function init() {
+  loadState();
+  if (!state.period) setDefaultPeriod();
+  else document.getElementById('periodBadge').textContent = periodLabel(state.period.year, state.period.month);
+  if (state.employees.some(n => state.schedule[n] && Object.keys(state.schedule[n]).length > 0)) {
+    renderCalendar();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
