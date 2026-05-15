@@ -603,12 +603,18 @@
   body.mob-ls .head-btn .ic { font-size: 9px; }
 
   @media print {
-    .export-wrap, .head-btns, .card-del, .drag-handle, .pager, .modal-mask,
+    .export-wrap, .head-btns, .card-del, .compact-del, .drag-handle, .pager, .modal-mask,
     #clearAll, #openLib, #totalAll, body::before { display: none !important; }
     html, body { overflow: visible !important; height: auto !important; }
-    .main { overflow: visible !important; height: auto !important; }
-    .cards-wrap { overflow: visible !important; }
-    .cards-grid { height: auto !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .main { overflow: visible !important; height: auto !important; align-items: stretch !important; }
+    .timeline { position: static !important; }
+    .timeline-body { overflow: hidden !important; flex: 1 !important; height: auto !important; }
+    .timeline-head, .timeline-foot { position: static !important; }
+    .line { overflow: visible !important; min-height: 0 !important; border-right: 1px solid #333 !important; }
+    .line:last-child { border-right: none !important; }
+    .line-head, .line-foot { position: static !important; }
+    .cards-wrap { overflow: visible !important; flex: 1 !important; }
   }
 </style>
 </head>
@@ -1641,9 +1647,39 @@ const exportMenu = document.getElementById('exportMenu');
 exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportMenu.classList.toggle('show'); });
 document.addEventListener('click', () => exportMenu.classList.remove('show'));
 
+function trimGridForExport() {
+  let maxBottom = 0;
+  document.querySelectorAll('.cards-grid').forEach(grid => {
+    grid.querySelectorAll('.card').forEach(c => {
+      const top = parseFloat(c.style.top) || 0;
+      const h = parseFloat(c.style.height) || 0;
+      if (top + h > maxBottom) maxBottom = top + h;
+    });
+  });
+  if (maxBottom <= 0) return () => {};
+  const trim = maxBottom + 8;
+  const restoreFns = [];
+  document.querySelectorAll('.cards-grid').forEach(grid => {
+    const prev = grid.style.height;
+    grid.style.height = trim + 'px';
+    restoreFns.push(() => grid.style.height = prev);
+  });
+  const ti = document.getElementById('timelineInner');
+  if (ti) {
+    const prev = ti.style.height;
+    ti.style.height = trim + 'px';
+    restoreFns.push(() => ti.style.height = prev);
+  }
+  return () => restoreFns.forEach(fn => fn());
+}
+
 function doPrint() {
   exportMenu.classList.remove('show');
-  window.print();
+  setActiveCard(null);
+  const restore = trimGridForExport();
+  const cleanup = () => { restore(); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => window.print(), 50);
 }
 
 async function doExportPng() {
@@ -1674,6 +1710,10 @@ async function doExportPng() {
   override(document.querySelector('.timeline-body'), { overflow: 'visible', height: 'auto' });
   document.querySelectorAll('.line').forEach(l => override(l, { overflow: 'visible' }));
   document.querySelectorAll('.cards-wrap').forEach(w => override(w, { overflow: 'visible', height: 'auto', flex: 'none' }));
+
+  // 裁剪掉最后一张卡片之后的空白时间轴区域
+  const restoreTrim = trimGridForExport();
+  restoreFns.push(restoreTrim);
 
   await new Promise(r => setTimeout(r, 50));
 
