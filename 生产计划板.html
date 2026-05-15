@@ -39,6 +39,7 @@
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     overflow: hidden;
+    overscroll-behavior: none;
   }
   body::before {
     content: '';
@@ -127,6 +128,7 @@
     position: relative; z-index: 1;
     height: calc(100vh - 52px);
     display: flex; overflow: hidden;
+    overscroll-behavior: contain;
   }
   .timeline {
     width: var(--time-col-w); flex-shrink: 0;
