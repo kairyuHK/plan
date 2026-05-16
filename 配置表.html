@@ -97,10 +97,37 @@
     .belt{background:#ccc}
   }
   @media (max-width: 720px) {
-    header input{min-width:140px}
-    .line-grid .cell{min-height:64px;padding:6px}
-    .line-grid .cell .mats{font-size:16px}
-    .bento-title{font-size:24px}
+    body{font-size:14px}
+    header{padding:6px 8px;gap:6px}
+    header input,header button,header select{padding:5px 8px;font-size:13px}
+    header input{min-width:0;flex:1 1 120px}
+    header .grow{display:none}
+    #content{padding:8px}
+    .line-grid{padding:8px 0;gap:6px}
+    .line-grid .cell{min-height:56px;padding:6px;border-radius:6px;--cell-min:88px}
+    .line-grid .cell .lbl{font-size:11px;top:2px;left:4px}
+    .line-grid .cell .mats{font-size:15px;gap:1px}
+    .bento-title{font-size:22px;min-height:32px;margin:4px 0 2px;letter-spacing:1px}
+    .bento-title .muted{font-size:13px}
+    .belt{height:6px;margin:4px 0}
+    .drawer{width:88vw}
+    .picker{max-width:90vw}
+    .bentos-screen .item .name{font-size:15px}
+    .line-screen td input{width:60px}
+    .line-screen td input.label{width:100px}
+  }
+  @media (max-width: 720px) and (orientation: portrait) {
+    .line-grid .cell{--cell-min:78px}
+    .line-grid .cell .mats{font-size:14px}
+    .line-grid .cell .lbl{font-size:10px}
+  }
+  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+    header{padding:4px 8px}
+    .bento-title{font-size:18px;min-height:24px;margin:2px 0}
+    .line-grid{padding:4px 0;gap:4px}
+    .line-grid .cell{min-height:48px;--cell-min:72px}
+    .line-grid .cell .mats{font-size:13px}
+    .belt{height:5px;margin:3px 0}
   }
 </style>
 </head>
@@ -697,7 +724,7 @@ function renderLineGrid(cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
   const grid = document.createElement("div"); grid.className = "line-grid";
   const N = Math.max(maxSlot(), 1);
-  const cols = `repeat(${N}, minmax(120px, 1fr))`;
+  const cols = `repeat(${N}, minmax(var(--cell-min, 120px), 1fr))`;
 
   const top = document.createElement("div"); top.className = "row"; top.style.gridTemplateColumns = cols;
   const bot = document.createElement("div"); bot.className = "row"; bot.style.gridTemplateColumns = cols;
