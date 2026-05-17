@@ -556,7 +556,7 @@
   .modal-body::-webkit-scrollbar { width: 4px; }
   .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
-  /* 品名库表单 — 统一两行两列 */
+  /* 品名库表单 — 品名跨两列, 其余按两列排 */
   .lib-add-form {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -565,6 +565,7 @@
     padding-bottom: 14px;
     border-bottom: 1px dashed var(--border);
   }
+  .lib-add-form #libName { grid-column: 1 / -1; }
   .lib-add-form input[type=text],
   .lib-add-form input[type=number] {
     background: var(--bg); border: 1px solid var(--border);
@@ -774,7 +775,7 @@
     <div class="modal-head">
       <div>
         <div class="modal-title">品名库管理</div>
-        <div class="modal-sub">流水线速度=参考 / 品名速度=实际跑的(算耗时用)</div>
+        <div class="modal-sub">耗时 = 数量 / (品名速度 × 计量人数) · 人数可填 ?</div>
       </div>
       <button class="modal-close" data-close>×</button>
     </div>
@@ -783,7 +784,8 @@
         <input type="text" id="libName" placeholder="品名…" maxlength="30">
         <input type="number" id="libSpeed" min="0" step="0.01" placeholder="品名速度★" inputmode="decimal">
         <input type="number" id="libLineSpeed" min="0" step="0.01" placeholder="流水线速度" inputmode="decimal">
-        <input type="number" id="libPeople" min="0" step="1" placeholder="人数" inputmode="numeric">
+        <input type="text" id="libPeople" placeholder="人数 (可输入?)" maxlength="6">
+        <input type="number" id="libMeterPeople" min="1" step="1" placeholder="计量人数★" inputmode="numeric">
         <div class="color-picker" id="libColorPicker"></div>
         <button class="lib-add-btn" id="libAddBtn">添加</button>
       </div>
@@ -840,7 +842,19 @@ function loadLibrary() {
   library.forEach(item => {
     if (item.people == null) item.people = 0;
     if (item.lineSpeed == null) item.lineSpeed = 0;
+    if (item.meterPeople == null || item.meterPeople <= 0) item.meterPeople = 1;
   });
+}
+function fmtPeople(v) {
+  if (v === '?' || v === '？') return '?';
+  const n = parseFloat(v);
+  return n > 0 ? `${n} 人` : '—';
+}
+function parsePeople(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (s === '?' || s === '？') return '?';
+  const n = parseInt(s);
+  return n > 0 ? n : 0;
 }
 function saveLibrary() {
   try { localStorage.setItem(STORAGE_LIB, JSON.stringify(library)); } catch (e) {}
@@ -930,6 +944,7 @@ const libNameInput = document.getElementById('libName');
 const libSpeedInput = document.getElementById('libSpeed');
 const libLineSpeedInput = document.getElementById('libLineSpeed');
 const libPeopleInput = document.getElementById('libPeople');
+const libMeterPeopleInput = document.getElementById('libMeterPeople');
 const libColorPicker = document.getElementById('libColorPicker');
 const libAddBtn = document.getElementById('libAddBtn');
 let selectedColor = COLORS[0];
@@ -964,11 +979,12 @@ function renderLibList() {
     const row = document.createElement('div');
     row.className = 'lib-item';
     row.style.setProperty('--lib-color', item.color);
-    const peopleText = item.people > 0 ? `${item.people} 人` : '—';
+    const peopleText = fmtPeople(item.people);
     const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
+    const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
     row.innerHTML = `
       <div class="lib-item-name">${escapeHtml(item.name)}</div>
-      <div class="lib-item-info">品名 <span class="ns">${item.speed}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
+      <div class="lib-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
       <div class="lib-item-btns">
         <button class="lib-item-btn edit" title="编辑">✎</button>
         <button class="lib-item-btn del" title="删除">×</button>
@@ -992,7 +1008,8 @@ function startEditLib(id) {
   libNameInput.value = item.name;
   libSpeedInput.value = item.speed;
   libLineSpeedInput.value = item.lineSpeed || '';
-  libPeopleInput.value = item.people || '';
+  libPeopleInput.value = (item.people === '?' || item.people === '？') ? '?' : (item.people || '');
+  libMeterPeopleInput.value = item.meterPeople > 0 ? item.meterPeople : 1;
   selectedColor = item.color;
   renderColorPicker();
   libAddBtn.textContent = '保存修改';
@@ -1005,6 +1022,7 @@ function cancelEditLib() {
   libSpeedInput.value = '';
   libLineSpeedInput.value = '';
   libPeopleInput.value = '';
+  libMeterPeopleInput.value = '';
   libAddBtn.textContent = '添加';
   libAddBtn.classList.remove('editing');
 }
@@ -1013,18 +1031,19 @@ libAddBtn.addEventListener('click', () => {
   const name = libNameInput.value.trim();
   const speed = parseFloat(libSpeedInput.value);
   const lineSpeed = parseFloat(libLineSpeedInput.value) || 0;
-  const people = parseInt(libPeopleInput.value) || 0;
+  const people = parsePeople(libPeopleInput.value);
+  const meterPeople = Math.max(1, parseInt(libMeterPeopleInput.value) || 1);
   if (!name) { libNameInput.focus(); return; }
   if (!speed || speed <= 0) { libSpeedInput.focus(); return; }
   if (editingLibId) {
     const item = findLibItem(editingLibId);
-    if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.color = selectedColor; }
+    if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.meterPeople = meterPeople; item.color = selectedColor; }
     const editedId = editingLibId;
     cancelEditLib();
     propagateLibChange(editedId);
   } else {
-    library.push({ id: uid(), name, speed, lineSpeed, people, color: selectedColor });
-    libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = '';
+    library.push({ id: uid(), name, speed, lineSpeed, people, meterPeople, color: selectedColor });
+    libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = ''; libMeterPeopleInput.value = '';
   }
   saveLibrary();
   renderLibList();
@@ -1044,12 +1063,12 @@ function propagateLibChange(libId) {
     const display = popupQ(card, '.card-name-display');
     if (letterEl) { letterEl.textContent = (item.name || '').charAt(0); letterEl.style.color = item.color || ''; }
     if (display) display.textContent = item.name;
-    const speedInp = popupQ(card, '.speed');
     const lineSpdInp = popupQ(card, '.line-speed');
     const peopleInp = popupQ(card, '.people');
-    if (speedInp) speedInp.value = item.speed;
+    const meterInp = popupQ(card, '.meter-people');
     if (lineSpdInp) lineSpdInp.value = item.lineSpeed > 0 ? item.lineSpeed : '';
-    if (peopleInp) peopleInp.value = item.people > 0 ? item.people : '';
+    if (peopleInp) peopleInp.value = (item.people === '?' || item.people === '？') ? '?' : (item.people > 0 ? item.people : '');
+    if (meterInp) meterInp.value = item.meterPeople > 0 ? item.meterPeople : 1;
     affectedLines.add(card.closest('.line'));
   });
   affectedLines.forEach(l => l && recalc(l));
@@ -1058,7 +1077,8 @@ function propagateLibChange(libId) {
 libNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') libSpeedInput.focus(); });
 libSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libLineSpeedInput.focus(); });
 libLineSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libPeopleInput.focus(); });
-libPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libAddBtn.click(); });
+libPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libMeterPeopleInput.focus(); });
+libMeterPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libAddBtn.click(); });
 document.getElementById('openLib').addEventListener('click', () => {
   cancelEditLib(); renderColorPicker(); renderLibList();
   libModal.classList.add('show');
@@ -1073,8 +1093,11 @@ document.querySelectorAll('[data-close]').forEach(btn => {
   });
 });
 document.querySelectorAll('.modal-mask').forEach(m => {
+  let downOnMask = false;
+  m.addEventListener('mousedown', e => { downOnMask = (e.target === m); });
   m.addEventListener('click', e => {
-    if (e.target === m) { m.classList.remove('show'); if (m.id === 'libModal') cancelEditLib(); }
+    if (downOnMask && e.target === m) { m.classList.remove('show'); if (m.id === 'libModal') cancelEditLib(); }
+    downOnMask = false;
   });
 });
 
@@ -1096,11 +1119,12 @@ function openPicker(line) {
       const row = document.createElement('div');
       row.className = 'pick-item';
       row.style.setProperty('--lib-color', item.color);
-      const peopleText = item.people > 0 ? `${item.people} 人` : '—';
+      const peopleText = fmtPeople(item.people);
       const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
+      const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
       row.innerHTML = `
         <div class="pick-item-name">${escapeHtml(item.name)}</div>
-        <div class="pick-item-info">品名 <span class="ns">${item.speed}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>`;
+        <div class="pick-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>`;
       row.addEventListener('click', () => {
         addJobCard(currentPickTargetLine.querySelector('.cards-grid'), item);
         pickModal.classList.remove('show');
@@ -1196,10 +1220,10 @@ function addJobCard(grid, libItem, savedData) {
   node.dataset.name = libItem.name;
   node.dataset.color = libItem.color;
   node.style.borderLeftColor = libItem.color;
-  const speedVal = savedData?.speed != null ? savedData.speed : libItem.speed;
+  const meterPeopleVal = libItem.meterPeople > 0 ? libItem.meterPeople : 1;
   const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (libItem.lineSpeed > 0 ? libItem.lineSpeed : '');
   const qtyVal = savedData?.qty != null ? savedData.qty : '';
-  const peopleVal = savedData?.people != null ? savedData.people : (libItem.people > 0 ? libItem.people : '');
+  const peopleVal = savedData?.people != null ? savedData.people : ((libItem.people === '?' || libItem.people === '？') ? '?' : (libItem.people > 0 ? libItem.people : ''));
   node.innerHTML = `
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
@@ -1214,8 +1238,8 @@ function addJobCard(grid, libItem, savedData) {
       </div>
       <div class="card-fields">
         <div class="field name-spd">
-          <span class="field-label">品名速度★</span>
-          <input class="field-input speed" type="number" value="${speedVal}" readonly>
+          <span class="field-label">计量人数★</span>
+          <input class="field-input meter-people" type="number" min="1" step="1" value="${meterPeopleVal}" inputmode="numeric">
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
@@ -1227,7 +1251,7 @@ function addJobCard(grid, libItem, savedData) {
         </div>
         <div class="field">
           <span class="field-label">人数</span>
-          <input class="field-input people" type="number" value="${peopleVal}" placeholder="—" readonly>
+          <input class="field-input people" type="text" value="${peopleVal}" placeholder="—" readonly>
         </div>
       </div>
       <div class="card-meta">
@@ -1417,7 +1441,7 @@ function wireCardEvents(node, type) {
   }
   let inputsToWatch;
   if (type === 'job') {
-    inputsToWatch = [node.querySelector('.speed'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
+    inputsToWatch = [node.querySelector('.meter-people'), node.querySelector('.line-speed'), node.querySelector('.qty'), node.querySelector('.people')];
   } else {
     inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
@@ -1428,6 +1452,13 @@ function wireCardEvents(node, type) {
       scheduleSaveBoard();
     });
   });
+  const meterInp = node.querySelector('.meter-people');
+  if (meterInp) {
+    meterInp.addEventListener('change', () => {
+      const libId = node.dataset.libId;
+      if (libId) propagateLibChange(libId);
+    });
+  }
   delBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const line = node.closest('.line');
@@ -1594,10 +1625,19 @@ function recalc(line) {
     const tEnd = popupQ(card, '.t-end');
     let cardStart = null, cardEnd = null, duration = 0;
     if (type === 'job') {
-      const speed = parseFloat(popupQ(card, '.speed').value) || 0;
+      const libItem = findLibItem(card.dataset.libId);
+      const speed = (libItem && libItem.speed > 0) ? libItem.speed : 0;
       const qty = parseFloat(popupQ(card, '.qty').value) || 0;
-      const people = parseFloat(popupQ(card, '.people').value) || 0;
-      if (speed > 0 && qty > 0) duration = (qty / speed) * 60;
+      const peopleRaw = popupQ(card, '.people').value;
+      const peopleIsQ = (peopleRaw === '?' || peopleRaw === '？');
+      const people = peopleIsQ ? 0 : (parseFloat(peopleRaw) || 0);
+      const meterPeopleInp = popupQ(card, '.meter-people');
+      let meterPeople = Math.max(1, parseInt(meterPeopleInp && meterPeopleInp.value) || 1);
+      if (libItem && libItem.meterPeople !== meterPeople) {
+        libItem.meterPeople = meterPeople;
+        saveLibrary();
+      }
+      if (speed > 0 && qty > 0 && meterPeople > 0) duration = (qty / (speed * meterPeople)) * 60;
       popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
       if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
       totalQty += qty; totalSec += duration;
@@ -1607,7 +1647,7 @@ function recalc(line) {
         letterEl.style.color = card.dataset.color || '';
       }
       const peopleEl = card.querySelector('.compact-people');
-      if (peopleEl) peopleEl.textContent = people > 0 ? String(people) : '—';
+      if (peopleEl) peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
       const timeEl = card.querySelector('.compact-time');
       if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
     } else if (type === 'rest') {
@@ -1651,10 +1691,12 @@ function recalcGlobal() {
   let q = 0, s = 0, cnt = 0;
   document.querySelectorAll('.line').forEach(line => {
     line.querySelectorAll('.card[data-type="job"]').forEach(card => {
-      const speed = parseFloat(popupQ(card, '.speed').value) || 0;
+      const libItem = findLibItem(card.dataset.libId);
+      const speed = (libItem && libItem.speed > 0) ? libItem.speed : 0;
       const qty = parseFloat(popupQ(card, '.qty').value) || 0;
+      const mp = Math.max(1, parseInt(popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
       cnt++; q += qty;
-      if (speed > 0 && qty > 0) s += (qty / speed) * 60;
+      if (speed > 0 && qty > 0) s += (qty / (speed * mp)) * 60;
     });
   });
   document.getElementById('totalAll').textContent = `总计 ${q.toLocaleString()} 个`;
@@ -1702,7 +1744,8 @@ function saveBoard() {
     line.querySelectorAll('.card').forEach(card => {
       const type = card.dataset.type;
       if (type === 'job') {
-        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: popupQ(card, '.speed').value, lineSpeed: popupQ(card, '.line-speed').value, qty: popupQ(card, '.qty').value, people: popupQ(card, '.people').value });
+        const _li = findLibItem(card.dataset.libId);
+        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: _li ? _li.speed : '', lineSpeed: popupQ(card, '.line-speed').value, qty: popupQ(card, '.qty').value, people: popupQ(card, '.people').value, meterPeople: popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : 1) });
       } else if (type === 'rest') {
         lineData.cards.push({ type: 'rest', name: popupQ(card, '.rest-name-input').value, min: popupQ(card, '.rest-min').value, fixed: popupQ(card, '.rest-fixed').value });
       }
@@ -1729,7 +1772,7 @@ function loadBoard() {
     const grid = lineEl.querySelector('.cards-grid');
     (lineData.cards || []).forEach(c => {
       if (c.type === 'job') {
-        const libItem = findLibItem(c.libId) || { id: c.libId, name: c.name || '未知品名', color: c.color || '#8b949e', speed: parseFloat(c.speed) || 0, lineSpeed: parseFloat(c.lineSpeed) || 0, people: parseFloat(c.people) || 0 };
+        const libItem = findLibItem(c.libId) || { id: c.libId, name: c.name || '未知品名', color: c.color || '#8b949e', speed: parseFloat(c.speed) || 0, lineSpeed: parseFloat(c.lineSpeed) || 0, people: parsePeople(c.people), meterPeople: 1 };
         addJobCard(grid, libItem, c);
       } else if (c.type === 'rest') {
         addRestCard(grid, c);
@@ -1946,14 +1989,17 @@ async function doExportPng() {
 
 function doExportCsv() {
   exportMenu.classList.remove('show');
-  const rows = [['流水线', '类型', '品名/说明', '数量', '品名速度', '流水线速度', '人数', '耗时', '开始时间', '结束时间']];
+  const rows = [['流水线', '类型', '品名/说明', '数量', '品名速度', '计量人数', '流水线速度', '人数', '耗时', '开始时间', '结束时间']];
   document.querySelectorAll('.line').forEach(line => {
     const lineNum = line.dataset.line;
     line.querySelectorAll('.card').forEach(card => {
       if (card.dataset.type === 'job') {
-        rows.push([lineNum, '品名', card.dataset.name, popupQ(card, '.qty').value, popupQ(card, '.speed').value, popupQ(card, '.line-speed').value, popupQ(card, '.people').value, popupQ(card, '.duration').textContent.replace('耗时 ',''), popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
+        const _li = findLibItem(card.dataset.libId);
+        const _speedVal = _li ? _li.speed : '';
+        const _meterVal = popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : '');
+        rows.push([lineNum, '品名', card.dataset.name, popupQ(card, '.qty').value, _speedVal, _meterVal, popupQ(card, '.line-speed').value, popupQ(card, '.people').value, popupQ(card, '.duration').textContent.replace('耗时 ',''), popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
       } else if (card.dataset.type === 'rest') {
-        rows.push([lineNum, '休息', popupQ(card, '.rest-name-input').value, '', '', '', '', popupQ(card, '.rest-min').value + '分钟', popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
+        rows.push([lineNum, '休息', popupQ(card, '.rest-name-input').value, '', '', '', '', '', popupQ(card, '.rest-min').value + '分钟', popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
       }
     });
   });
