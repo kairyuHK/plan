@@ -36,10 +36,19 @@
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
   .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 0;width:max-content;min-width:100%}
   .line-grid .row{display:grid;gap:10px}
-  .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:78px;display:flex;flex-direction:column;position:relative}
+  .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:78px;min-height:78px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
-  .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:600;line-height:1.2}
+  .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:600;line-height:1.2;width:100%;overflow:hidden}
+  .line-grid .cell .mats>div{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .line-grid.vertical{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0}
+  .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch}
+  .line-grid.vertical .cell{height:62px;min-height:62px;padding:6px;border-radius:6px}
+  .line-grid.vertical .cell .lbl{font-size:10px;top:2px;left:4px}
+  .line-grid.vertical .cell .mats{font-size:16px;gap:1px}
+  .vbelt{background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:3px;position:relative}
+  .line-grid.vertical .vrow:last-child .vbelt::after{content:"▼";position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:16px}
+  .meta-bar .date{color:var(--accent);font-weight:600}
   .belt{height:8px;background:linear-gradient(90deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;position:relative;margin:6px 0}
   .belt::after{content:"▶";position:absolute;right:-2px;top:-9px;color:var(--accent);font-size:20px}
   .meta-bar{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:4px 0}
@@ -326,7 +335,20 @@ function addSlot() {
 function deleteSlotPosition(posId) {
   state.line = state.line.filter(p => p.id !== posId);
   for (const b of state.bentos) delete b.assignments[posId];
+  compactSlots();
   saveState();
+}
+
+function compactSlots() {
+  const used = [...new Set(state.line.map(p => p.slot))].sort((a,b) => a - b);
+  const remap = new Map();
+  used.forEach((s, i) => remap.set(s, i + 1));
+  for (const p of state.line) p.slot = remap.get(p.slot);
+}
+
+function todayString() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 
 function updateSlotPosition(posId, patch) {
@@ -575,6 +597,7 @@ function moveOrSwap(posId, targetSlot, targetRow) {
   }
   pos.slot = targetSlot;
   pos.row = targetRow;
+  compactSlots();
   saveState();
 }
 
@@ -755,6 +778,46 @@ function startCellPress(e, cell, wrap) {
   document.addEventListener("pointercancel", onUp);
 }
 
+function isVerticalLayout() {
+  return window.matchMedia("(max-width:720px) and (orientation:portrait)").matches;
+}
+
+function renderLineGridVertical(cellRenderer) {
+  const wrap = document.createElement("div"); wrap.className = "line-wrap";
+  const grid = document.createElement("div"); grid.className = "line-grid vertical";
+  const N = Math.max(maxSlot(), 1);
+  for (let s = 1; s <= N; s++) {
+    const vrow = document.createElement("div"); vrow.className = "vrow";
+    vrow.appendChild(cellRenderer(findSlot(s, "bottom"), s, "bottom"));
+    const belt = document.createElement("div"); belt.className = "vbelt";
+    vrow.appendChild(belt);
+    vrow.appendChild(cellRenderer(findSlot(s, "top"), s, "top"));
+    grid.appendChild(vrow);
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function buildGrid(cellRenderer) {
+  return isVerticalLayout() ? renderLineGridVertical(cellRenderer) : renderLineGrid(cellRenderer);
+}
+
+function fitAllCells(root) {
+  requestAnimationFrame(() => {
+    for (const mats of root.querySelectorAll(".cell .mats")) {
+      const items = [...mats.children];
+      if (!items.length) continue;
+      for (const el of items) el.style.fontSize = "";
+      let size = parseFloat(getComputedStyle(items[0]).fontSize);
+      let guard = 30;
+      while (guard-- > 0 && size > 9 && (mats.scrollHeight > mats.clientHeight + 1 || items.some(el => el.scrollWidth > el.clientWidth + 1))) {
+        size -= 1;
+        for (const el of items) el.style.fontSize = size + "px";
+      }
+    }
+  });
+}
+
 function renderLineGrid(cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
   const grid = document.createElement("div"); grid.className = "line-grid";
@@ -781,17 +844,26 @@ function renderOperate() {
   const bento = state.current.bentoId ? state.bentos.find(b => b.id === state.current.bentoId) : null;
 
   const meta = document.createElement("div"); meta.className = "meta-bar";
-  const mk = (key, lbl, ph) => {
-    const w = document.createElement("label");
-    w.appendChild(document.createTextNode(lbl));
-    const inp = document.createElement("input");
-    inp.value = state.meta[key] || ""; inp.placeholder = ph;
-    inp.oninput = () => { state.meta[key] = inp.value; saveState(); };
-    w.appendChild(inp);
-    return w;
-  };
-  meta.appendChild(mk("people", "人数", "—"));
-  meta.appendChild(mk("speed", "LINE速度", "—"));
+  const dateLbl = document.createElement("label");
+  dateLbl.appendChild(document.createTextNode("日期"));
+  const dateSpan = document.createElement("span"); dateSpan.className = "date"; dateSpan.textContent = todayString();
+  dateLbl.appendChild(dateSpan);
+  meta.appendChild(dateLbl);
+
+  const peopleLbl = document.createElement("label");
+  peopleLbl.appendChild(document.createTextNode("人数"));
+  const peopleInp = document.createElement("input");
+  peopleInp.value = state.line.length; peopleInp.readOnly = true;
+  peopleLbl.appendChild(peopleInp);
+  meta.appendChild(peopleLbl);
+
+  const speedLbl = document.createElement("label");
+  speedLbl.appendChild(document.createTextNode("LINE速度"));
+  const speedInp = document.createElement("input");
+  speedInp.value = state.meta.speed || ""; speedInp.placeholder = "—";
+  speedInp.oninput = () => { state.meta.speed = speedInp.value; saveState(); };
+  speedLbl.appendChild(speedInp);
+  meta.appendChild(speedLbl);
   c.appendChild(meta);
 
   const title = document.createElement("div"); title.className = "bento-title";
@@ -799,7 +871,8 @@ function renderOperate() {
   else { title.innerHTML = '<span class="muted">(输入便当名或从便当库选)</span>'; }
   c.appendChild(title);
 
-  const wrap = renderLineGrid((pos, slot, row) => {
+  const vertical = isVerticalLayout();
+  const wrap = buildGrid((pos, slot, row) => {
     const cell = document.createElement("div");
     cell.className = "cell" + (pos ? "" : " empty");
     cell.dataset.slot = slot;
@@ -824,7 +897,8 @@ function renderOperate() {
     return cell;
   });
   c.appendChild(wrap);
-  setupOperateDrag(wrap);
+  if (!vertical) setupOperateDrag(wrap);
+  fitAllCells(wrap);
 }
 
 function renderLine() {
@@ -947,7 +1021,7 @@ function renderEdit() {
   tb.appendChild(nameInp); tb.appendChild(done); tb.appendChild(back);
   c.appendChild(tb);
 
-  c.appendChild(renderLineGrid((pos, slot, row) => {
+  const editWrap = buildGrid((pos, slot, row) => {
     const cell = document.createElement("div");
     cell.className = "cell" + (pos ? " clickable" : " empty");
     if (!pos) return cell;
@@ -975,7 +1049,9 @@ function renderEdit() {
     cell.appendChild(mats);
     cell.onclick = (e) => { e.stopPropagation(); openPicker(cell, b.id, pos.id); };
     return cell;
-  }));
+  });
+  c.appendChild(editWrap);
+  fitAllCells(editWrap);
 }
 
 function renderBentos() {
@@ -1023,6 +1099,7 @@ function renderBentos() {
 }
 
 function render() {
+  compactSlots();
   for (const b of document.querySelectorAll("header .btn-tab")) {
     b.classList.toggle("active", b.dataset.screen === state.current.screen);
   }
@@ -1082,6 +1159,10 @@ for (const b of document.querySelectorAll("header .btn-tab")) {
   b.onclick = () => { state.current = { ...state.current, screen: b.dataset.screen }; saveState(); render(); };
 }
 setupAutocomplete();
+
+window.matchMedia("(orientation:portrait)").addEventListener("change", () => render());
+let _resizeT;
+window.addEventListener("resize", () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => render(), 200); });
 
 function saveJSON() {
   saveState();
