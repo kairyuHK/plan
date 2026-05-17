@@ -127,20 +127,28 @@
   .menu-item{padding:8px 12px;cursor:pointer;font:inherit;color:var(--fg)}
   .menu-item:hover{background:var(--soft);color:var(--accent)}
   @media print {
-    @page { size: landscape; margin: 8mm; }
-    header, .backdrop, .drawer, .picker, .autocomplete { display:none !important; }
-    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    #content{padding:0}
-    .line-wrap{overflow:visible !important;width:100% !important}
-    .line-grid{width:100% !important;min-width:0 !important;padding:6px 0 !important;gap:6px !important;page-break-inside:avoid}
-    .line-grid .cell{background:#fff !important;border-color:#000 !important;color:#000 !important;height:auto !important;min-height:64px !important}
-    .line-grid .cell.empty{border-style:dashed !important;border-color:#888 !important}
-    .line-grid .cell .lbl{color:#555 !important}
-    .line-grid .cell .mats{color:#000;font-size:16px !important}
-    .belt{background:#999 !important}
-    .belt::after{color:#000 !important}
-    .bento-title{color:#000 !important;margin:4px 0 !important;font-size:22px !important;min-height:0 !important}
-    .bento-title .muted{color:#555 !important}
+    @page { size: landscape; margin: 0; }
+    html, body { height: auto !important; min-height: 0 !important; overflow: hidden !important; }
+    header, .backdrop, .drawer, .picker, .autocomplete, .modal { display:none !important; }
+    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none}
+    #content{padding:0;position:relative;display:flex;flex-direction:column;height:calc(100vh - 12mm);page-break-after:avoid;break-inside:avoid}
+    #content > *{break-inside:avoid;page-break-inside:avoid}
+    .info-bar{flex:0 0 auto;margin:0 0 4px !important;gap:6px}
+    .bento-title{position:absolute;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:28px !important;min-height:0 !important;letter-spacing:4px !important;font-weight:800;line-height:1}
+    .bento-title .muted{color:#555 !important;font-size:14px !important}
+    .line-wrap{flex:0 0 auto;margin:auto 0 !important;overflow:visible !important;width:100% !important;break-inside:avoid}
+    .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important;break-inside:avoid}
+    .line-grid .row{gap:8px !important}
+    .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important}
+    .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
+    .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
+    .line-grid .cell .mats{color:#000;font-size:22px !important;font-weight:700 !important}
+    .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
+    .belt::after{color:#000 !important;font-size:18px !important;top:-9px !important}
+    .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:4px 12px !important;font-size:12px !important}
+    .chip .k{color:#666 !important}
+    .chip .v{color:#000 !important;font-weight:700}
+    .chip input.v{color:#000 !important}
     .info-bar{margin:2px 0 6px !important;gap:6px}
     .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:3px 10px !important}
     .chip .k{color:#555 !important}
@@ -925,9 +933,13 @@ function startCellPress(e, cell, wrap) {
   document.addEventListener("pointercancel", onUp);
 }
 
+let _forceHorizontal = false;
 function isVerticalLayout() {
+  if (_forceHorizontal) return false;
   return window.matchMedia("(max-width:720px) and (orientation:portrait)").matches;
 }
+window.addEventListener("beforeprint", () => { _forceHorizontal = true; render(); });
+window.addEventListener("afterprint", () => { _forceHorizontal = false; render(); });
 
 function renderLineGridVertical(cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
