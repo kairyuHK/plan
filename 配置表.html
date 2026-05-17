@@ -41,13 +41,14 @@
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:600;line-height:1.2;width:100%;overflow:hidden}
   .line-grid .cell .mats>div{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .line-grid.vertical{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0}
-  .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch}
+  .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 22px}
+  .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:22px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
+  .line-grid.vertical::after{content:"▼";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);color:var(--accent);font-size:18px;line-height:1}
+  .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch;position:relative;z-index:1}
   .line-grid.vertical .cell{height:62px;min-height:62px;padding:6px;border-radius:6px}
   .line-grid.vertical .cell .lbl{font-size:10px;top:2px;left:4px}
   .line-grid.vertical .cell .mats{font-size:16px;gap:1px}
-  .vbelt{background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:3px;position:relative}
-  .line-grid.vertical .vrow:last-child .vbelt::after{content:"▼";position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:16px}
+  .vbelt{background:transparent}
   .meta-bar .date{color:var(--accent);font-weight:600}
   .belt{height:8px;background:linear-gradient(90deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;position:relative;margin:6px 0}
   .belt::after{content:"▶";position:absolute;right:-2px;top:-9px;color:var(--accent);font-size:20px}
@@ -644,6 +645,126 @@ function setupOperateDrag(wrap) {
   }
 }
 
+function setupOperateDragVertical(wrap) {
+  for (const cell of wrap.querySelectorAll(".cell[data-pos-id]")) {
+    cell.addEventListener("pointerdown", e => startCellPressVertical(e, cell, wrap));
+  }
+}
+
+function startCellPressVertical(e, cell, wrap) {
+  if (e.button !== undefined && e.button !== 0) return;
+  const posId = cell.dataset.posId;
+  const origin = cell.getBoundingClientRect();
+  const startX = e.clientX, startY = e.clientY;
+  let dragging = false, ghost = null, indicator = null, drop = null, highlightedCell = null;
+
+  const timer = setTimeout(() => {
+    dragging = true;
+    cell.classList.add("dragging");
+    ghost = cell.cloneNode(true);
+    ghost.classList.remove("dragging");
+    ghost.className = "drag-ghost";
+    ghost.style.width = origin.width + "px";
+    ghost.style.height = origin.height + "px";
+    ghost.style.left = (e.clientX - origin.width/2) + "px";
+    ghost.style.top = (e.clientY - origin.height/2) + "px";
+    document.body.appendChild(ghost);
+    indicator = document.createElement("div");
+    indicator.className = "drop-indicator";
+    document.body.appendChild(indicator);
+    try { cell.setPointerCapture(e.pointerId); } catch(_) {}
+  }, 350);
+
+  function onMove(ev) {
+    if (!dragging) {
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8) clearTimeout(timer);
+      return;
+    }
+    ev.preventDefault();
+    ghost.style.left = (ev.clientX - origin.width/2) + "px";
+    ghost.style.top = (ev.clientY - origin.height/2) + "px";
+
+    const allCells = [...wrap.querySelectorAll(".cell[data-slot]")].filter(c => c !== cell);
+    let hitCell = null;
+    for (const c of allCells) {
+      const r = c.getBoundingClientRect();
+      if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
+        hitCell = c; break;
+      }
+    }
+    if (highlightedCell && highlightedCell !== hitCell) {
+      highlightedCell.classList.remove("drop-target"); highlightedCell = null;
+    }
+    if (hitCell) {
+      drop = { mode:"cell", slot: parseInt(hitCell.dataset.slot,10), row: hitCell.dataset.row };
+      hitCell.classList.add("drop-target");
+      highlightedCell = hitCell;
+      indicator.style.display = "none";
+    } else {
+      indicator.style.display = "";
+      const bounds = new Map();
+      for (const c of allCells) {
+        const s = parseInt(c.dataset.slot,10);
+        const r = c.getBoundingClientRect();
+        if (!bounds.has(s)) bounds.set(s, { top: r.top, bottom: r.bottom });
+        else {
+          const v = bounds.get(s);
+          v.top = Math.min(v.top, r.top); v.bottom = Math.max(v.bottom, r.bottom);
+        }
+      }
+      const slots = [...bounds.entries()].sort((a,b) => a[0] - b[0]);
+      const wrapRect = wrap.getBoundingClientRect();
+      let targetCol, indicatorY;
+      if (slots.length === 0) {
+        targetCol = 1; indicatorY = wrapRect.top;
+      } else {
+        let placed = false;
+        for (let i = 0; i < slots.length; i++) {
+          const [s, ext] = slots[i];
+          const mid = (ext.top + ext.bottom) / 2;
+          if (ev.clientY < mid) { targetCol = s; indicatorY = ext.top - 4; placed = true; break; }
+        }
+        if (!placed) {
+          const [lastS, lastExt] = slots[slots.length - 1];
+          targetCol = lastS + 1; indicatorY = lastExt.bottom + 2;
+        }
+      }
+      const wrapMidX = wrapRect.left + wrapRect.width / 2;
+      const row = ev.clientX < wrapMidX ? "bottom" : "top";
+      drop = { mode:"insert", slot:targetCol, row };
+      indicator.style.left = wrapRect.left + "px";
+      indicator.style.top = indicatorY + "px";
+      indicator.style.width = wrapRect.width + "px";
+      indicator.style.height = "4px";
+    }
+  }
+
+  function cleanup() {
+    clearTimeout(timer);
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onUp);
+    if (ghost) ghost.remove();
+    if (indicator) indicator.remove();
+    if (highlightedCell) highlightedCell.classList.remove("drop-target");
+    cell.classList.remove("dragging");
+  }
+
+  function onUp() {
+    if (!dragging) { cleanup(); return; }
+    const d = drop;
+    cleanup();
+    if (d) {
+      if (d.mode === "cell") moveOrSwap(posId, d.slot, d.row);
+      else moveLinePosition(posId, d.slot, d.row);
+      render();
+    }
+  }
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
+  document.addEventListener("pointercancel", onUp);
+}
+
 function startCellPress(e, cell, wrap) {
   if (e.button !== undefined && e.button !== 0) return;
   const posId = cell.dataset.posId;
@@ -897,7 +1018,8 @@ function renderOperate() {
     return cell;
   });
   c.appendChild(wrap);
-  if (!vertical) setupOperateDrag(wrap);
+  if (vertical) setupOperateDragVertical(wrap);
+  else setupOperateDrag(wrap);
   fitAllCells(wrap);
 }
 
