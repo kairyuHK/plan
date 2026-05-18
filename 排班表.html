@@ -151,6 +151,27 @@ body.has-unsaved .btn-primary::after {
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-secondary { background: #fff; color: var(--text-dim); border: 1px solid var(--border-strong); box-shadow: none; }
 
+/* ── Export dropdown ── */
+.export-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
+.export-wrap > .btn { flex: 1; }
+.export-menu {
+  display: none;
+  position: absolute; top: calc(100% + 4px); right: 0; left: 0;
+  background: #fff; border: 1px solid var(--border-strong);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,0.15);
+  padding: 4px; z-index: 60;
+}
+.export-menu.show { display: block; }
+.export-menu button {
+  display: block; width: 100%;
+  background: transparent; border: none; cursor: pointer;
+  padding: 9px 12px; border-radius: 6px;
+  font: inherit; font-size: 13px; font-weight: 700;
+  color: var(--text); text-align: left;
+}
+.export-menu button:hover { background: #f1f5f9; }
+.export-menu button:active { background: #e2e8f0; }
+
 /* ── Alert ── */
 .alert {
   border-radius: var(--radius-sm); padding: 10px 14px;
@@ -371,8 +392,14 @@ body.edit-mode .shifts { position: relative; }
 
   <div class="toolbar" id="toolbar">
     <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 編集</button>
-    <button class="btn btn-primary" onclick="doSaveOverwrite()">💾 保存</button>
-    <button class="btn btn-save" onclick="exportPNG()">📸 PNG</button>
+    <button class="btn btn-primary" onclick="importJSON()">📥 導入</button>
+    <div class="export-wrap">
+      <button class="btn btn-save" id="exportBtn" onclick="toggleExportMenu(event)">📤 導出 ▾</button>
+      <div class="export-menu" id="exportMenu">
+        <button onclick="saveJSON()">💾 保存</button>
+        <button onclick="exportPNG()">📸 PNG</button>
+      </div>
+    </div>
     <button class="btn btn-danger" onclick="clearData()">🗑 リセット</button>
   </div>
 
@@ -498,7 +525,7 @@ function applyPeriodChange() {
   const month = parseInt(document.getElementById('periodMonth').value);
   setPeriod(year, month);
   state.employees.forEach(ensureEmployeeDates);
-  markUnsaved();
+  saveState();
   renderCalendar(); togglePeriodEditor();
   showAlert(`期間を ${periodLabel(year, month)} に変更しました。`, 'info');
 }
@@ -582,7 +609,7 @@ document.getElementById('dayList').addEventListener('click', e => {
   const { name, iso } = slot.dataset;
   if (!state.schedule[name]) state.schedule[name] = {};
   state.schedule[name][iso] = state.schedule[name][iso] === 'rest' ? 'work' : 'rest';
-  markUnsaved();
+  saveState();
   renderCalendar();
 });
 
@@ -606,17 +633,15 @@ function toggleEditMode() {
   // 退出编辑不自动保存 — 必须显式点「💾 保存」才会写入 localStorage
 }
 
-function doSaveOverwrite() {
-  if (!state.period) {
-    showAlert('保存するシフトデータがありません。', 'warn');
-    return;
-  }
-  state.employees.forEach(ensureEmployeeDates);
-  saveState();
-  clearUnsaved();
-  const ts = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-  showAlert(`💾 保存しました（${ts}）— 既存データを上書きしました。`, 'info');
+function toggleExportMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('exportMenu').classList.toggle('show');
 }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) {
+    document.getElementById('exportMenu')?.classList.remove('show');
+  }
+});
 
 function clearData() {
   if (!confirm('すべてのシフトデータをリセットしますか？')) return;
@@ -657,6 +682,7 @@ function buildStripeDataURL() {
 }
 
 async function exportPNG() {
+  document.getElementById('exportMenu')?.classList.remove('show');
   if (!document.querySelector('#dayList .day-row')) {
     showAlert('エクスポートするシフト表がありません。', 'warn'); return;
   }
@@ -680,7 +706,7 @@ async function exportPNG() {
   const toolbar = document.getElementById('toolbar');
   const pe      = document.getElementById('periodEditor');
   const ac      = document.getElementById('alertContainer');
-  const btn     = document.querySelector('.btn-save');
+  const btn     = document.getElementById('exportBtn');
   const orig    = btn.textContent;
   const prevAppTopPos = appTop ? appTop.style.position : '';
   if (appTop) appTop.style.position = 'static';
@@ -720,6 +746,60 @@ async function exportPNG() {
     ac.style.display = '';
     btn.textContent = orig; btn.disabled = false;
   }
+}
+
+function saveJSON() {
+  document.getElementById('exportMenu')?.classList.remove('show');
+  if (!state.period) { showAlert('保存するデータがありません。', 'warn'); return; }
+  const { year, month } = state.period;
+  const defaultName = `shift-${year}${String(month).padStart(2,'0')}.json`;
+  const name = prompt('ファイル名を入力してください', defaultName);
+  if (!name) return;
+  const filename = /\.json$/i.test(name) ? name : name + '.json';
+  const payload = {
+    version: 2,
+    type: 'shift-schedule',
+    period: state.period,
+    employees: state.employees,
+    schedule: state.schedule
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showAlert(`📤 ${filename} を保存しました。`, 'info');
+}
+
+function importJSON() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (data.type !== 'shift-schedule') throw new Error('ファイル種別が不正です');
+        if (!data.period || typeof data.period.year !== 'number' || typeof data.period.month !== 'number') throw new Error('期間データが不正です');
+        if (!Array.isArray(data.employees) || data.employees.length < 2) throw new Error('従業員データが不正です');
+        if (!data.schedule || typeof data.schedule !== 'object') throw new Error('シフトデータが不正です');
+        if (!confirm('現在のデータを上書きします。続行しますか？')) return;
+        state = { period: data.period, employees: data.employees, schedule: data.schedule };
+        setPeriod(state.period.year, state.period.month);
+        state.employees.forEach(ensureEmployeeDates);
+        saveState();
+        clearUnsaved();
+        renderCalendar();
+        showAlert(`📥 読込完了 — ${periodLabel(state.period.year, state.period.month)}`, 'info');
+      } catch (e) {
+        showAlert('読込エラー: ' + e.message, 'warn');
+      }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
 }
 
 function init() {
