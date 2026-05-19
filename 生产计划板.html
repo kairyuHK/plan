@@ -125,16 +125,7 @@
 
   /* 未保存提示：导出按钮上的红色呼吸点 */
   body.has-unsaved #exportBtn { position: relative; }
-  body.has-unsaved #exportBtn::after {
-    content: '';
-    position: absolute; top: 3px; right: 4px;
-    width: 7px; height: 7px;
-    background: #ef4444;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px var(--panel);
-    animation: pulse-dot 1.4s ease-in-out infinite;
-    pointer-events: none;
-  }
+  body.has-unsaved #exportBtn::after { display: none; }
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.55; transform: scale(0.85); }
@@ -872,6 +863,8 @@
     <span class="dot"></span>
     <span>计划板</span>
     <span class="brand-sub">流水线生产计划板</span>
+    <button class="top-btn" id="undoBtn" title="撤回 (Ctrl+Z)" style="padding:0 8px;margin-left:8px" disabled>↶</button>
+    <button class="top-btn" id="redoBtn" title="重做 (Ctrl+Shift+Z)" style="padding:0 8px" disabled>↷</button>
   </div>
   <div class="topbar-right">
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
@@ -889,7 +882,7 @@
         <button onclick="doExportPng()">导出图片</button>
       </div>
     </div>
-    <span id="totalAll">总计 0 个</span>
+    <span id="totalAll" style="white-space:nowrap;flex:0 0 auto">总计 0 个</span>
     <span id="totalDur" class="print-only">耗时 0:00:00</span>
     <span id="totalFinish" class="print-only">结束 —</span>
     <span class="clock" id="clock">--:--:--</span>
@@ -1861,7 +1854,55 @@ function clearUnsaved() {
   unsaved = false;
   document.body.classList.remove('has-unsaved');
 }
-function scheduleSaveBoard() { markUnsaved(); }
+function scheduleSaveBoard() { markUnsaved(); pushHistory(); }
+
+// ============ 撤回/重做 ============
+const undoStack = [];
+const redoStack = [];
+const HISTORY_MAX = 100;
+let lastSnapshot = null;
+let suppressHistory = false;
+function snapshotStr() { try { return JSON.stringify(captureState()); } catch (e) { return null; } }
+function pushHistory() {
+  if (suppressHistory) return;
+  const cur = snapshotStr();
+  if (cur == null) return;
+  if (lastSnapshot != null && lastSnapshot !== cur) {
+    undoStack.push(lastSnapshot);
+    if (undoStack.length > HISTORY_MAX) undoStack.shift();
+    redoStack.length = 0;
+  }
+  lastSnapshot = cur;
+  updateUndoButtons();
+}
+function updateUndoButtons() {
+  const u = document.getElementById('undoBtn');
+  const r = document.getElementById('redoBtn');
+  if (u) u.disabled = undoStack.length === 0;
+  if (r) r.disabled = redoStack.length === 0;
+}
+function doUndo() {
+  if (!undoStack.length) return;
+  const cur = snapshotStr();
+  const prev = undoStack.pop();
+  if (cur != null) redoStack.push(cur);
+  suppressHistory = true;
+  try { applyState(JSON.parse(prev)); } finally { suppressHistory = false; }
+  lastSnapshot = prev;
+  markUnsaved();
+  updateUndoButtons();
+}
+function doRedo() {
+  if (!redoStack.length) return;
+  const cur = snapshotStr();
+  const next = redoStack.pop();
+  if (cur != null) undoStack.push(cur);
+  suppressHistory = true;
+  try { applyState(JSON.parse(next)); } finally { suppressHistory = false; }
+  lastSnapshot = next;
+  markUnsaved();
+  updateUndoButtons();
+}
 
 function saveJSON() {
   exportMenu && exportMenu.classList.remove('show');
@@ -1935,7 +1976,7 @@ function doSaveOverwrite() {
   const ts = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   showToast(`💾 已保存（${ts}）`);
 }
-function saveBoard() {
+function captureState() {
   const state = { lines: [], hiddenLines: [...hiddenLines] };
   document.querySelectorAll('.line').forEach(line => {
     const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, cards: [] };
@@ -1950,17 +1991,20 @@ function saveBoard() {
     });
     state.lines.push(lineData);
   });
-  try { localStorage.setItem(STORAGE_BOARD, JSON.stringify(state)); } catch (e) {}
+  return state;
+}
+function saveBoard() {
+  try { localStorage.setItem(STORAGE_BOARD, JSON.stringify(captureState())); } catch (e) {}
 }
 
-function loadBoard() {
-  let state;
-  try { const raw = localStorage.getItem(STORAGE_BOARD); if (!raw) return; state = JSON.parse(raw); } catch (e) { return; }
+function applyState(state) {
   if (!state || !state.lines) return;
   if (Array.isArray(state.hiddenLines)) {
     hiddenLines = new Set(state.hiddenLines.map(Number));
     updateBoardLayout();
   }
+  document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
+  activeCard = null;
   const lineEls = document.querySelectorAll('.line');
   state.lines.forEach((lineData, idx) => {
     const lineEl = lineEls[idx];
@@ -1978,6 +2022,11 @@ function loadBoard() {
     });
     recalc(lineEl);
   });
+}
+function loadBoard() {
+  let state;
+  try { const raw = localStorage.getItem(STORAGE_BOARD); if (!raw) return; state = JSON.parse(raw); } catch (e) { return; }
+  applyState(state);
 }
 
 function updateBoardLayout() {
@@ -2353,9 +2402,22 @@ loadBoard();
 updateBoardLayout();
 recalcGlobal();
 syncMobLayout();
-window.addEventListener('beforeunload', e => {
-  if (unsaved) { e.preventDefault(); e.returnValue = ''; }
+lastSnapshot = snapshotStr();
+updateUndoButtons();
+
+document.getElementById('undoBtn').addEventListener('click', doUndo);
+document.getElementById('redoBtn').addEventListener('click', doRedo);
+document.addEventListener('keydown', e => {
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+  else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); doRedo(); }
 });
+window.addEventListener('pagehide', () => { try { saveBoard(); } catch (e) {} });
+window.addEventListener('beforeunload', () => { try { saveBoard(); } catch (e) {} });
 
 </script>
 
