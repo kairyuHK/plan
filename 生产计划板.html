@@ -84,31 +84,44 @@
   }
   .topbar-right {
     margin-left: auto; display: flex; align-items: center;
-    gap: 8px; color: var(--text-dim); font-size: 11px;
+    gap: 4px; color: var(--text-dim); font-size: 11px;
   }
-  .clock { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; }
+  .clock { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; margin-left: 8px; }
+  .print-only { display: none; }
+  /* 顶栏按钮 — 三层视觉层级 */
   .top-btn {
     height: 30px; padding: 0 12px;
+    display: inline-flex; align-items: center; gap: 5px;
     background: transparent;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     color: var(--text-dim);
     cursor: pointer;
-    font-size: 12px; font-weight: 600;
-    border-radius: var(--radius-sm);
-    transition: all 0.15s;
+    font-size: 12px; font-weight: 500;
+    border-radius: 7px;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
     font-family: inherit;
     letter-spacing: 0.2px;
+    white-space: nowrap;
   }
-  .top-btn:hover { background: var(--border); color: var(--text); }
-  .top-btn.accent { border-color: var(--accent); color: var(--accent); }
-  .top-btn.accent:hover { background: var(--accent); color: var(--bg); }
-  /* 顶部按钮颜色覆盖 */
-  #linesBtn { border-color: var(--accent); color: var(--accent); }
-  #linesBtn:hover { background: var(--accent); color: var(--bg); }
-  #exportBtn { border-color: var(--blue); color: var(--blue); }
-  #exportBtn:hover { background: var(--blue); color: var(--bg); }
-  .top-btn.clear { border-color: var(--red); color: var(--red); }
-  .top-btn.clear:hover { background: rgba(248,113,113,0.15); }
+  /* 二级（默认）：品名库 / 生产线 / 导入 — 静态低调，hover 轻微提亮 */
+  .top-btn:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+  }
+  .top-btn:active { background: rgba(255,255,255,0.08); }
+  /* 导出 — 与其他二级按钮一致的 ghost 样式 */
+  .top-btn.accent { background: transparent; border-color: transparent; color: var(--text-dim); }
+  .top-btn.accent:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  /* 破坏性：清空 — ghost 样式，hover 才显红 */
+  .top-btn.clear { color: var(--text-mute); }
+  .top-btn.clear:hover {
+    background: rgba(248,113,113,0.10);
+    color: var(--red);
+  }
+  /* 下拉箭头样式（针对 ▾ 在按钮文本中的视觉重量） */
+  #linesBtn::after, #exportBtn::after {
+    font-size: 9px; opacity: 0.7; margin-left: 1px;
+  }
 
   /* 未保存提示：导出按钮上的红色呼吸点 */
   body.has-unsaved #exportBtn { position: relative; }
@@ -126,8 +139,8 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.55; transform: scale(0.85); }
   }
-  #openLib { border-color: var(--rest); color: var(--rest); }
-  #openLib:hover { background: var(--rest); color: var(--bg); }
+  #openLib { background: transparent; border-color: transparent; color: var(--text-dim); }
+  #openLib:hover { background: rgba(255,255,255,0.05); color: var(--text); }
   .export-wrap { position: relative; }
   .export-menu {
     display: none;
@@ -287,7 +300,7 @@
     .line-num.xiusheng { font-size: 17px; }
   }
   .line-head-row1 { display: flex; align-items: center; gap: 6px; }
-  .line-num { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .line-num { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 22px; height: 22px; display: flex; align-items: flex-end; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .line-label { color: var(--text-mute); font-size: 9px; letter-spacing: 2px; }
   .head-btns { margin-left: auto; display: flex; gap: 4px; }
   .head-btn {
@@ -673,7 +686,11 @@
   @media print {
     @page { size: A4 landscape; margin: 6mm; }
     .export-wrap, .head-btns, .card-del, .compact-del, .drag-handle, .pager, .modal-mask,
-    .line-config, #clearAll, #openLib, #totalAll, body::before { display: none !important; }
+    .line-config, .top-btn, body::before { display: none !important; }
+    /* 打印时 #totalAll / 耗时 / 结束 — 顶栏统计栏，保留显示 */
+    #totalAll, .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
+    #totalDur { color: #f97316 !important; }
+    #totalFinish { color: #2563eb !important; }
     html, body { overflow: visible !important; height: auto !important; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; color: #000 !important; }
 
@@ -725,6 +742,43 @@
     /* 视觉清简：去掉 10 分钟间隔虚线 / 子小时实线 */
     .grid-line:not(.hour):not(.hour-20),
     .tick:not(.hour):not(.hour-20) { display: none !important; }
+
+    /* 紧凑打印：压缩顶栏 / 线头 / 线脚 / 卡片内边距，最大化卡片区垂直空间 */
+    body.printing-compact .topbar { height: 24px !important; padding: 0 8px !important; }
+    body.printing-compact .brand { font-size: 11px !important; gap: 6px !important; }
+    body.printing-compact .brand .dot { width: 6px !important; height: 6px !important; }
+    body.printing-compact .brand-sub { font-size: 9px !important; padding-left: 6px !important; }
+    body.printing-compact .clock { font-size: 10px !important; }
+
+    body.printing-compact .timeline-head,
+    body.printing-compact .line-head { height: 56px !important; padding: 4px 6px !important; }
+    body.printing-compact .line-num { font-size: 14px !important; line-height: 14px !important; height: 14px !important; }
+    body.printing-compact .line-num.xiusheng { font-size: 11px !important; }
+    body.printing-compact .line-label { font-size: 7px !important; letter-spacing: 1px !important; }
+    body.printing-compact .date-month,
+    body.printing-compact .date-day,
+    body.printing-compact .date-dow { font-size: 12px !important; }
+    body.printing-compact .date-year { font-size: 7px !important; }
+
+    body.printing-compact .timeline-foot,
+    body.printing-compact .line-foot { height: 36px !important; padding: 3px 6px !important; }
+    body.printing-compact .foot-label { font-size: 7px !important; }
+    body.printing-compact .foot-val { font-size: 11px !important; }
+
+    /* 卡片内部更紧凑 */
+    body.printing-compact .card { font-size: 10px !important; padding: 1px 4px !important; }
+    body.printing-compact .card-name-display { font-size: 11px !important; padding: 1px 2px !important; }
+    body.printing-compact .compact-name-letter { width: 14px !important; height: 14px !important; font-size: 9px !important; border-width: 1px !important; }
+    body.printing-compact .compact-people,
+    body.printing-compact .compact-time,
+    body.printing-compact .compact-name { font-size: 10px !important; }
+    body.printing-compact .range,
+    body.printing-compact .t-start,
+    body.printing-compact .t-end { font-size: 9px !important; }
+    body.printing-compact .duration { font-size: 9px !important; }
+
+    /* 时间刻度文字稍小 */
+    body.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
   }
 </style>
 </head>
@@ -743,16 +797,18 @@
       <button class="top-btn" id="linesBtn">生产线 ▾</button>
       <div class="export-menu" id="linesMenu"></div>
     </div>
+    <button class="top-btn" onclick="importJSON()">导入</button>
     <div class="export-wrap">
       <button class="top-btn accent" id="exportBtn">导出 ▾</button>
       <div class="export-menu" id="exportMenu">
-        <button onclick="doSaveOverwrite()">💾 保存</button>
-        <button onclick="doPrint()">🖨️ 打印</button>
-        <button onclick="doExportPng()">🖼️ 导出图片</button>
-        <button onclick="doExportCsv()">📊 导出 Excel</button>
+        <button onclick="saveJSON()">保存</button>
+        <button onclick="doPrint()">打印</button>
+        <button onclick="doExportPng()">导出图片</button>
       </div>
     </div>
     <span id="totalAll">总计 0 个</span>
+    <span id="totalDur" class="print-only">耗时 0:00:00</span>
+    <span id="totalFinish" class="print-only">结束 —</span>
     <span class="clock" id="clock">--:--:--</span>
   </div>
 </div>
@@ -1688,7 +1744,7 @@ function recalc(line) {
 }
 
 function recalcGlobal() {
-  let q = 0, s = 0, cnt = 0;
+  let q = 0, s = 0, cnt = 0, latestFinish = null;
   document.querySelectorAll('.line').forEach(line => {
     line.querySelectorAll('.card[data-type="job"]').forEach(card => {
       const libItem = findLibItem(card.dataset.libId);
@@ -1698,8 +1754,17 @@ function recalcGlobal() {
       cnt++; q += qty;
       if (speed > 0 && qty > 0) s += (qty / (speed * mp)) * 60;
     });
+    const ft = line.querySelector('.finish-total');
+    if (ft && ft.textContent && ft.textContent !== '—') {
+      const sec = parseClock(ft.textContent);
+      if (sec != null && (latestFinish == null || sec > latestFinish)) latestFinish = sec;
+    }
   });
   document.getElementById('totalAll').textContent = `总计 ${q.toLocaleString()} 个`;
+  const dur = document.getElementById('totalDur');
+  const fin = document.getElementById('totalFinish');
+  if (dur) dur.textContent = `耗时 ${fmtDuration(s)}`;
+  if (fin) fin.textContent = `结束 ${latestFinish != null ? fmtClock(latestFinish) : '—'}`;
 }
 
 // 编辑只标记未保存；只有 doSaveOverwrite 才真正写 localStorage
@@ -1714,6 +1779,56 @@ function clearUnsaved() {
   document.body.classList.remove('has-unsaved');
 }
 function scheduleSaveBoard() { markUnsaved(); }
+
+function saveJSON() {
+  exportMenu && exportMenu.classList.remove('show');
+  setActiveCard(null);
+  saveBoard();
+  const d = new Date();
+  const ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  const defaultName = `production-${ds}.json`;
+  const name = prompt('文件名', defaultName);
+  if (!name) return;
+  const filename = /\.json$/i.test(name) ? name : name + '.json';
+  let library = [];
+  let board = {};
+  try { library = JSON.parse(localStorage.getItem(STORAGE_LIB) || '[]'); } catch (e) {}
+  try { board = JSON.parse(localStorage.getItem(STORAGE_BOARD) || '{}'); } catch (e) {}
+  const payload = { version: 1, type: 'production-board', library, board };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast(`📤 已保存 ${filename}`);
+}
+
+function importJSON() {
+  exportMenu && exportMenu.classList.remove('show');
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        if (data.type !== 'production-board') throw new Error('文件类型不匹配');
+        if (!Array.isArray(data.library)) throw new Error('品名库数据结构错误');
+        if (!data.board || typeof data.board !== 'object') throw new Error('计划板数据结构错误');
+        if (!confirm('将覆盖当前所有数据,继续?')) return;
+        localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
+        localStorage.setItem(STORAGE_BOARD, JSON.stringify(data.board));
+        location.reload();
+      } catch (e) {
+        alert('导入失败: ' + e.message);
+      }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
 
 function showToast(msg) {
   let toast = document.getElementById('toastEl');
@@ -1887,7 +2002,7 @@ function doPrint() {
   const origHourPxStr = getComputedStyle(root).getPropertyValue('--hour-px').trim();
   const origHourPx = parseFloat(origHourPxStr) || 140;
 
-  // 找当前所有卡片纵向范围（用当前 --hour-px）
+  // 找当前所有卡片纵向范围
   let minTop = Infinity, maxBottom = 0;
   document.querySelectorAll('.card').forEach(c => {
     const t = parseFloat(c.style.top) || 0;
@@ -1897,38 +2012,42 @@ function doPrint() {
   });
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
-  // A4 横向 @96dpi ≈ 1123×794，6mm 边距 ≈ 22.7px：可用约 1100×771
-  // 预留：topbar 52 + line-head 110 + line-foot ~70 + 缓冲 40 = 272
-  const PAGE_H_FOR_CARDS = 771 - 290;
+  // 启用紧凑打印 CSS：缩小 topbar / line-head / line-foot / 卡片内边距，腾出更多卡片区
+  document.body.classList.add('printing-compact');
+
+  // A4 横向 @96dpi ≈ 1123×794，6mm 边距：可用约 1100×771
+  // 紧凑打印下预留：topbar 24 + line-head 56 + line-foot 36 + 缓冲 16 = 132
+  const PAGE_H_FOR_CARDS = 771 - 132;
   let newHourPx = origHourPx;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
-    newHourPx = Math.max(20, origHourPx * (PAGE_H_FOR_CARDS / cardRange));
+    newHourPx = Math.max(18, origHourPx * (PAGE_H_FOR_CARDS / cardRange));
   }
   const needRescale = Math.abs(newHourPx - origHourPx) > 0.5;
 
   if (needRescale) {
     root.style.setProperty('--hour-px', newHourPx + 'px');
-    renderTimeline();
-    document.querySelectorAll('.cards-grid').forEach(g => {
-      g.style.height = (getTotalPx() + 16) + 'px';
-      renderGridLines(g);
-    });
-    document.querySelectorAll('.line').forEach(l => recalc(l));
   }
+  renderTimeline();
+  document.querySelectorAll('.cards-grid').forEach(g => {
+    g.style.height = (getTotalPx() + 16) + 'px';
+    renderGridLines(g);
+  });
+  document.querySelectorAll('.line').forEach(l => recalc(l));
 
   setTimeout(() => {
     const restore = trimGridForExport();
     const cleanup = () => {
       restore();
+      document.body.classList.remove('printing-compact');
       if (needRescale) {
         root.style.setProperty('--hour-px', origHourPxStr);
-        renderTimeline();
-        document.querySelectorAll('.cards-grid').forEach(g => {
-          g.style.height = (getTotalPx() + 16) + 'px';
-          renderGridLines(g);
-        });
-        document.querySelectorAll('.line').forEach(l => recalc(l));
       }
+      renderTimeline();
+      document.querySelectorAll('.cards-grid').forEach(g => {
+        g.style.height = (getTotalPx() + 16) + 'px';
+        renderGridLines(g);
+      });
+      document.querySelectorAll('.line').forEach(l => recalc(l));
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
