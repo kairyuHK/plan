@@ -780,6 +780,44 @@
     /* 时间刻度文字稍小 */
     body.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
   }
+
+  /* 手机端打印：强制按桌面布局打印，覆盖 (max-width:900px) 响应式专用规则 */
+  @media print and (max-width: 900px) {
+    html, body { font-size: 13px !important; width: auto !important; height: auto !important; overflow: visible !important; }
+    :root { --time-col-w: 64px !important; --hour-px: 140px !important; }
+    .brand-sub { display: inline !important; }
+    #totalAll { display: inline !important; }
+    .topbar { padding: 0 12px !important; }
+    .topbar-right { gap: 8px !important; font-size: 11px !important; }
+
+    /* 解除手机端单一滚动容器，恢复桌面端各自展开布局 */
+    .main { overflow: visible !important; align-items: stretch !important; height: auto !important; }
+    .board {
+      grid-template-columns: repeat(6, 1fr) !important;
+      grid-auto-rows: auto !important;
+      min-width: 0 !important;
+      overflow: visible !important;
+    }
+    .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; }
+    .cards-wrap { overflow: visible !important; height: auto !important; flex: 1 !important; }
+
+    /* 取消 sticky，避免打印分页空白 */
+    .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
+    .timeline-body { overflow: visible !important; height: auto !important; flex: 1 !important; }
+    .timeline-head, .timeline-foot,
+    .line-head, .line-foot { position: static !important; }
+
+    /* 线头恢复桌面尺寸（紧凑打印类后续会再压缩） */
+    .timeline-head, .line-head { height: 110px !important; padding: 8px 10px !important; }
+    .line-num { font-size: 18px !important; }
+    .line-label { font-size: 9px !important; letter-spacing: 2px !important; }
+    .date-month, .date-day, .date-dow { font-size: 18px !important; }
+    .date-year { position: absolute !important; font-size: 9px !important; top: 6px !important; left: 4px !important; padding-left: 0 !important; }
+    .head-btns { flex-direction: row !important; }
+
+    /* 卡片紧凑视图隐藏的元素恢复显示（如有需要） */
+    .card-compact .compact-time { display: inline !important; }
+  }
 </style>
 </head>
 <body>
