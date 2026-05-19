@@ -661,40 +661,40 @@
   }
 
   /* JS驱动横屏类，比CSS orientation媒体查询更可靠（解决旋转锁定设备问题） */
-  body.mob-ls .timeline-head { height: 96px; padding: 6px 8px; }
-  body.mob-ls .line-head { height: 96px; padding: 8px 10px 10px; gap: 6px; }
+  body.mob-ls .timeline-head { height: 92px; padding: 5px 6px; }
+  body.mob-ls .line-head { height: 92px; padding: 6px 6px 8px; gap: 5px; }
   body.mob-ls .line-foot { display: none; }
   body.mob-ls .timeline-foot { display: none; }
 
   /* 线头：数字+LINE 在左，按钮组在右；起始/切换 绝对定位贴底 */
-  body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: flex-start; justify-content: space-between; gap: 6px; flex: 0 0 auto; }
-  body.mob-ls .line-head-row1 > div:first-child { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; flex: 0 0 auto; }
+  body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: flex-start; justify-content: space-between; gap: 4px; flex: 0 0 auto; }
+  body.mob-ls .line-head-row1 > div:first-child { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; flex: 0 0 auto; }
   body.mob-ls .line-num,
   body.mob-ls .line-num.xiusheng {
     display: block; height: auto; line-height: 1;
-    font-size: 19px; font-weight: 800;
+    font-size: 13px; font-weight: 800;
     white-space: nowrap; text-align: left;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
   }
   body.mob-ls .line-label {
-    display: block; font-size: 9px; letter-spacing: 2px;
+    display: block; font-size: 7px; letter-spacing: 1px;
     text-align: left; line-height: 1;
     color: var(--text-mute); font-weight: 500;
   }
 
-  /* 按钮组：在数字右侧，两个按钮左右横排；空间狭窄改为图标按钮，文字隐藏 */
+  /* 按钮组：在数字右侧，两个按钮 +品名 / +休息 左右横排，紧凑边框 */
   body.mob-ls .head-btns {
-    flex-direction: row; gap: 4px; margin-left: auto;
+    flex-direction: row; gap: 3px; margin-left: auto;
     position: static; width: auto; height: auto; flex: 0 0 auto;
     align-items: center; justify-content: flex-end;
   }
   body.mob-ls .head-btn {
-    height: 22px; width: 22px; padding: 0;
-    font-size: 0; /* 隐藏 "品名"/"休息" 文字节点 */
-    border-radius: 5px; gap: 0; justify-content: center;
-    flex: 0 0 auto;
+    height: 20px; padding: 0 4px; font-size: 9px;
+    border-radius: 4px; gap: 1px; justify-content: center;
+    font-weight: 600; flex: 0 0 auto; width: auto;
+    white-space: nowrap;
   }
-  body.mob-ls .head-btn .ic { font-size: 14px; font-weight: 700; }
+  body.mob-ls .head-btn .ic { font-size: 10px; font-weight: 700; }
 
   /* 起始 / 切换 框：放大字号 + 高度 + 圆角，视觉更舒展 */
   body.mob-ls .line-config { position: absolute; left: 10px; right: 10px; bottom: 8px; gap: 5px; }
