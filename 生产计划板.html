@@ -67,7 +67,9 @@
   .brand {
     display: flex; align-items: center; gap: 10px;
     font-weight: 700; font-size: 14px;
+    white-space: nowrap; flex-shrink: 0;
   }
+  .brand > span { white-space: nowrap; }
   .brand .dot {
     width: 9px; height: 9px;
     background: var(--accent); border-radius: 3px;
