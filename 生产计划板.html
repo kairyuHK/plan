@@ -1946,6 +1946,7 @@ function importJSON() {
         if (!confirm('将覆盖当前所有数据,继续?')) return;
         localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
         localStorage.setItem(STORAGE_BOARD, JSON.stringify(data.board));
+        skipAutoSave = true;
         location.reload();
       } catch (e) {
         alert('导入失败: ' + e.message);
@@ -2418,8 +2419,9 @@ document.addEventListener('keydown', e => {
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
   else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); doRedo(); }
 });
-window.addEventListener('pagehide', () => { try { saveBoard(); } catch (e) {} });
-window.addEventListener('beforeunload', () => { try { saveBoard(); } catch (e) {} });
+let skipAutoSave = false;
+window.addEventListener('pagehide', () => { if (skipAutoSave) return; try { saveBoard(); } catch (e) {} });
+window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 
 </script>
 
