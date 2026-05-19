@@ -254,11 +254,11 @@
     .line-head { position: sticky; top: 0; z-index: 5; }
     .line-foot { position: sticky; bottom: 0; z-index: 5; }
 
-    /* 线头：按钮竖排，夕盛/数字横排 */
+    /* 线头：LINE 标签在数字正下方，按钮另起一列 */
     .line-head { height: 80px; padding: 3px 4px; gap: 2px; overflow: hidden; }
-    .line-head-row1 { gap: 3px; align-items: flex-start; }
-    .line-num { font-size: 9px; white-space: nowrap; }
-    .line-label { font-size: 6px; letter-spacing: 1px; }
+    .line-head-row1 { flex-direction: column; gap: 1px; align-items: center; justify-content: flex-start; }
+    .line-num { font-size: 14px; white-space: nowrap; text-align: center; line-height: 1; }
+    .line-label { font-size: 7px; letter-spacing: 1px; text-align: center; display: block; }
     .head-btns { flex-direction: column; gap: 2px; }
     .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
     .head-btn .ic { font-size: 7px; }
@@ -531,10 +531,10 @@
     /* 横屏隐藏底部统计栏 */
     .line-foot { display: none; }
     .timeline-foot { display: none; }
-    /* 横屏线头：数字横排，所有线号统一字号 */
-    .line-head-row1 { flex-direction: row; align-items: center; gap: 3px; }
-    .line-label { display: none; }
-    .line-num { font-size: 15px; white-space: nowrap; }
+    /* 横屏线头：LINE 在数字正下方（与竖屏一致） */
+    .line-head-row1 { flex-direction: column; align-items: center; gap: 1px; }
+    .line-label { display: block; text-align: center; font-size: 7px; letter-spacing: 1px; }
+    .line-num { font-size: 15px; white-space: nowrap; text-align: center; line-height: 1; }
     .head-btns { flex-direction: row; }
     .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
     .head-btn .ic { font-size: 9px; }
@@ -657,10 +657,10 @@
   body.mob-ls .cfg-input { height: 16px; }
   body.mob-ls .line-foot { display: none; }
   body.mob-ls .timeline-foot { display: none; }
-  body.mob-ls .line-head-row1 { flex-direction: row !important; align-items: center; gap: 3px; }
-  body.mob-ls .line-label { display: none; }
+  body.mob-ls .line-head-row1 { flex-direction: column !important; align-items: center; gap: 1px; }
+  body.mob-ls .line-label { display: block; text-align: center; font-size: 7px; letter-spacing: 1px; }
   body.mob-ls .line-num,
-  body.mob-ls .line-num.xiusheng { font-size: 15px; white-space: nowrap; }
+  body.mob-ls .line-num.xiusheng { font-size: 15px; white-space: nowrap; text-align: center; line-height: 1; }
   body.mob-ls .head-btns { flex-direction: row; }
   body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
   body.mob-ls .head-btn .ic { font-size: 9px; }
@@ -789,17 +789,16 @@
     body.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
   }
 
-  /* 手机端打印：强制按桌面布局打印，覆盖 (max-width:900px) 响应式专用规则 */
+  /* 手机端打印：覆盖 (max-width:900px) 响应式中影响打印布局的规则，按桌面方式打印 */
   @media print and (max-width: 900px) {
     html, body { font-size: 13px !important; width: auto !important; height: auto !important; overflow: visible !important; }
-    :root { --time-col-w: 64px !important; --hour-px: 140px !important; }
     .brand-sub { display: inline !important; }
     #totalAll { display: inline !important; }
     .topbar { padding: 0 12px !important; }
     .topbar-right { gap: 8px !important; font-size: 11px !important; }
 
-    /* 解除手机端单一滚动容器，恢复桌面端各自展开布局 */
-    .main { overflow: visible !important; align-items: stretch !important; height: auto !important; }
+    /* 解除手机端单一滚动容器（注意：不设 height/flex !important，避免覆盖 trimGridForExport 通过 inline 样式做的"修剪空白时间区"） */
+    .main { overflow: visible !important; align-items: stretch !important; }
     .board {
       grid-template-columns: repeat(6, 1fr) !important;
       grid-auto-rows: auto !important;
@@ -807,18 +806,19 @@
       overflow: visible !important;
     }
     .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; }
-    .cards-wrap { overflow: visible !important; height: auto !important; flex: 1 !important; }
+    .cards-wrap { overflow: visible; }
+    .timeline-body { overflow: visible; }
 
     /* 取消 sticky，避免打印分页空白 */
     .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
-    .timeline-body { overflow: visible !important; height: auto !important; flex: 1 !important; }
     .timeline-head, .timeline-foot,
     .line-head, .line-foot { position: static !important; }
 
     /* 线头恢复桌面尺寸（紧凑打印类后续会再压缩） */
     .timeline-head, .line-head { height: 110px !important; padding: 8px 10px !important; }
-    .line-num { font-size: 18px !important; }
-    .line-label { font-size: 9px !important; letter-spacing: 2px !important; }
+    .line-head-row1 { flex-direction: column !important; align-items: center !important; gap: 1px !important; }
+    .line-num { font-size: 18px !important; text-align: center !important; }
+    .line-label { display: block !important; font-size: 9px !important; letter-spacing: 2px !important; text-align: center !important; }
     .date-month, .date-day, .date-dow { font-size: 18px !important; }
     .date-year { position: absolute !important; font-size: 9px !important; top: 6px !important; left: 4px !important; padding-left: 0 !important; }
     .head-btns { flex-direction: row !important; }
