@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>便当摆盘指挥屏</title>
+<title>配置表</title>
 <style>
   :root { --bg:#0f1115; --fg:#e8e8e8; --line:#2a2d33; --accent:#fb923c; --soft:#1a1d22; --muted:#888; }
   *{box-sizing:border-box}
@@ -28,7 +28,10 @@
   .drawer.show{transform:translateX(0)}
   .drawer header{flex:0 0 auto;padding:12px;border-bottom:1px solid var(--line);font-weight:bold;background:none}
   .drawer .list{flex:1;overflow:auto;padding:8px 12px}
-  .drawer .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .drawer .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);background:#0f1115}
+  .drawer .row.dragging{opacity:.4}
+  .drawer .row .handle{cursor:grab;color:#666;user-select:none;font-size:16px;padding:0 2px;touch-action:none;flex:0 0 auto}
+  .drawer .row .handle:active{cursor:grabbing}
   .drawer .row .swatch{width:24px;height:24px;border-radius:4px;border:1px solid var(--line);cursor:pointer;flex:0 0 auto;padding:0}
   .drawer .row .name{flex:1;background:transparent;border:none;color:var(--fg);font:inherit;padding:4px;min-width:0}
   .drawer .row .name:focus{outline:1px solid var(--accent);border-radius:3px}
@@ -128,10 +131,10 @@
   .menu-item:hover{background:var(--soft);color:var(--accent)}
   @media print {
     @page { size: A4 landscape; margin: 0; }
-    html, body { height: auto !important; min-height: 0 !important; overflow: hidden !important; width: 297mm !important }
+    html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
     header, .backdrop, .drawer, .picker, .autocomplete, .modal { display:none !important; }
-    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none;width:285mm !important;font-size:14px !important}
-    #content{padding:0;position:relative;display:flex;flex-direction:column;width:285mm !important;height:198mm !important;page-break-after:avoid;break-inside:avoid}
+    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none;width:285mm !important;font-size:14px !important;overflow:visible !important}
+    #content{padding:0;position:relative;display:flex;flex-direction:column;width:285mm !important;min-height:198mm !important;height:auto !important;overflow:visible !important}
     #content > *{break-inside:avoid;page-break-inside:avoid}
     .info-bar{flex:0 0 auto;margin:0 0 4px !important;gap:6px}
     .bento-title{position:absolute;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:28px !important;min-height:0 !important;letter-spacing:4px !important;font-weight:800;line-height:1}
@@ -279,6 +282,13 @@ function migrate(s) {
     }
     s._migrations.freeLabels = true;
   }
+  // 每个便当独立的卡片布局：旧数据迁移时把全局 state.line 复制给每个便当
+  // 保留原 posId 以兼容旧 assignments 引用
+  for (const b of s.bentos) {
+    if (!Array.isArray(b.line) || b.line.length === 0) {
+      b.line = s.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label }));
+    }
+  }
 }
 
 function loadState() {
@@ -361,24 +371,33 @@ function countMaterialUsage(matId) {
   return n;
 }
 
-function addSlot() {
-  const ns = maxSlot() + 1;
-  state.line.push({ id: uid("pos"), slot: ns, row: "bottom", label: String(ns) });
+// 卡片操作函数（接受 line 数组，便于按便当独立操作）
+function addSlot(line) {
+  const ns = maxSlot(line) + 1;
+  line.push({ id: uid("pos"), slot: ns, row: "bottom", label: String(ns) });
   saveState();
 }
 
+function deleteSlotPositionFrom(bento, posId) {
+  bento.line = bento.line.filter(p => p.id !== posId);
+  delete bento.assignments[posId];
+  compactSlots(bento.line);
+  saveState();
+}
+
+// 旧 API（线设置模板编辑用） — 仅操作 state.line
 function deleteSlotPosition(posId) {
   state.line = state.line.filter(p => p.id !== posId);
-  for (const b of state.bentos) delete b.assignments[posId];
-  compactSlots();
+  compactSlots(state.line);
   saveState();
 }
 
-function compactSlots() {
-  const used = [...new Set(state.line.map(p => p.slot))].sort((a,b) => a - b);
+function compactSlots(line) {
+  if (!line || !line.length) return;
+  const used = [...new Set(line.map(p => p.slot))].sort((a,b) => a - b);
   const remap = new Map();
   used.forEach((s, i) => remap.set(s, i + 1));
-  for (const p of state.line) p.slot = remap.get(p.slot);
+  for (const p of line) p.slot = remap.get(p.slot);
 }
 
 function todayString() {
@@ -386,8 +405,8 @@ function todayString() {
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 
-function updateSlotPosition(posId, patch) {
-  const p = state.line.find(x => x.id === posId);
+function updateSlotPosition(line, posId, patch) {
+  const p = line.find(x => x.id === posId);
   if (!p) return false;
   if (patch.slot !== undefined) {
     const n = parseInt(patch.slot, 10);
@@ -403,9 +422,25 @@ function updateSlotPosition(posId, patch) {
   return true;
 }
 
+// 重置模板（state.line）；不影响每个便当已有的 line
 function resetLineToSeed() {
-  for (const b of state.bentos) b.assignments = {};
   state.line = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+  saveState();
+}
+
+// 把当前模板复制到所有便当（覆盖各便当的 line，清空 assignments）
+function applyTemplateToAll() {
+  for (const b of state.bentos) {
+    b.line = state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+    b.assignments = {};
+  }
+  saveState();
+}
+
+// 重置单个便当的卡片布局为种子
+function resetBentoLine(bento) {
+  bento.assignments = {};
+  bento.line = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
   saveState();
 }
 
@@ -424,7 +459,13 @@ function addBento(name) {
   name = (name || "").trim();
   if (!name) return null;
   if (state.bentos.some(b => b.name === name)) return null;
-  const b = { id: uid("ben"), name, assignments: {} };
+  const b = {
+    id: uid("ben"),
+    name,
+    assignments: {},
+    // 新便当：复制当前模板作为初始卡片布局（独立 posId）
+    line: state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }))
+  };
   state.bentos.push(b);
   saveState();
   return b;
@@ -448,12 +489,12 @@ function renameBento(id, name) {
   return true;
 }
 
-function maxSlot() {
-  return state.line.reduce((m,p) => p.slot > m ? p.slot : m, 0);
+function maxSlot(line) {
+  return (line || []).reduce((m,p) => p.slot > m ? p.slot : m, 0);
 }
 
-function findSlot(slot, row) {
-  return state.line.find(p => p.slot === slot && p.row === row);
+function findSlot(line, slot, row) {
+  return (line || []).find(p => p.slot === slot && p.row === row);
 }
 
 function getBentoByName(name) {
@@ -520,35 +561,34 @@ function runSelfTests() {
   // match + max slot
   const snap2 = JSON.parse(JSON.stringify(state));
   state = defaultState(); seedLineIfEmpty(state);
-  assert("maxSlot is 8", maxSlot() === 8);
-  state.bentos.push({ id:"x", name:"鸡腿便当", assignments:{} }, { id:"y", name:"牛肉便当", assignments:{} });
+  assert("maxSlot is 8", maxSlot(state.line) === 8);
+  state.bentos.push({ id:"x", name:"鸡腿便当", assignments:{}, line:[] }, { id:"y", name:"牛肉便当", assignments:{}, line:[] });
   assert("matchBentos prefix 鸡", matchBentos("鸡").length === 1);
   assert("matchBentos empty returns all", matchBentos("").length === 2);
   assert("getBentoByName exact", getBentoByName("牛肉便当")?.id === "y");
   state = snap2; saveState();
 
-  // toggleAssignment
+  // toggleAssignment (使用便当自己的 line)
   const snap3 = JSON.parse(JSON.stringify(state));
   state = defaultState(); seedLineIfEmpty(state);
   const mA = addMaterial("A");
   const bA = addBento("test便当");
-  const pos1 = state.line[0];
+  const pos1 = bA.line[0];
   toggleAssignment(bA.id, pos1.id, mA.id);
   assert("toggleAssignment adds", bA.assignments[pos1.id]?.includes(mA.id));
   toggleAssignment(bA.id, pos1.id, mA.id);
   assert("toggleAssignment removes", !bA.assignments[pos1.id] || bA.assignments[pos1.id].length === 0);
   state = snap3; saveState();
 
-  // reset
+  // 每便当独立 line
   const snap4 = JSON.parse(JSON.stringify(state));
   state = defaultState(); seedLineIfEmpty(state);
-  const mZ = addMaterial("Z");
   const bZ = addBento("z便当");
-  const posX = state.line[0];
-  toggleAssignment(bZ.id, posX.id, mZ.id);
-  resetLineToSeed();
-  assert("reset wipes assignments", Object.keys(bZ.assignments).length === 0);
-  assert("reset restores 14 positions", state.line.length === 14);
+  assert("new bento has own line copy", Array.isArray(bZ.line) && bZ.line.length === state.line.length);
+  assert("bento line ids are independent", bZ.line[0].id !== state.line[0].id);
+  addSlot(bZ.line);
+  assert("addSlot to bento increases its line", bZ.line.length === SEED_LINE.length + 1);
+  assert("addSlot does not affect template", state.line.length === SEED_LINE.length);
   state = snap4; saveState();
 
   const failed = tests.filter(t => !t.ok);
@@ -565,6 +605,13 @@ function renderMaterialsDrawer() {
   for (const m of state.materials) {
     const row = document.createElement("div");
     row.className = "row";
+    row.dataset.id = m.id;
+
+    const handle = document.createElement("span");
+    handle.className = "handle";
+    handle.textContent = "≡";
+    handle.title = "拖动排序";
+    handle.addEventListener("pointerdown", e => startDragMaterial(e, row, m.id));
 
     const sw = document.createElement("input");
     sw.type = "color";
@@ -594,9 +641,39 @@ function renderMaterialsDrawer() {
       if (confirm(msg)) { deleteMaterialCascade(m.id); renderMaterialsDrawer(); render(); }
     };
 
-    row.appendChild(sw); row.appendChild(name); row.appendChild(del);
+    row.appendChild(handle); row.appendChild(sw); row.appendChild(name); row.appendChild(del);
     list.appendChild(row);
   }
+}
+
+function startDragMaterial(e, row, id) {
+  e.preventDefault();
+  const list = document.getElementById("materials-list");
+  row.classList.add("dragging");
+  const onMove = ev => {
+    const y = ev.clientY;
+    const rows = [...list.querySelectorAll(".row:not(.dragging)")];
+    let inserted = false;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (y < rect.top + rect.height / 2) {
+        list.insertBefore(row, r);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) list.appendChild(row);
+  };
+  const onUp = () => {
+    row.classList.remove("dragging");
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    const newOrder = [...list.querySelectorAll(".row")].map(r => r.dataset.id);
+    state.materials.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+    render();
+  };
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
 }
 
 function openMaterialsDrawer() {
@@ -620,11 +697,11 @@ document.getElementById("materials-name").addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("materials-add").click();
 });
 
-function moveOrSwap(posId, targetSlot, targetRow) {
-  const pos = state.line.find(p => p.id === posId);
+function moveOrSwap(line, posId, targetSlot, targetRow) {
+  const pos = line.find(p => p.id === posId);
   if (!pos) return;
   if (pos.slot === targetSlot && pos.row === targetRow) return;
-  const occupant = state.line.find(p => p !== pos && p.slot === targetSlot && p.row === targetRow);
+  const occupant = line.find(p => p !== pos && p.slot === targetSlot && p.row === targetRow);
   if (occupant) {
     // swap
     occupant.slot = pos.slot;
@@ -632,25 +709,25 @@ function moveOrSwap(posId, targetSlot, targetRow) {
   }
   pos.slot = targetSlot;
   pos.row = targetRow;
-  compactSlots();
+  compactSlots(line);
   saveState();
 }
 
-function moveLinePosition(posId, targetCol, targetRow) {
-  const pos = state.line.find(p => p.id === posId);
+function moveLinePosition(line, posId, targetCol, targetRow) {
+  const pos = line.find(p => p.id === posId);
   if (!pos) return;
   pos.slot = -1; // detach
-  for (const p of state.line) {
+  for (const p of line) {
     if (p === pos) continue;
     if (p.slot >= targetCol) p.slot += 1;
   }
   pos.slot = targetCol;
   if (targetRow) pos.row = targetRow;
   // compact
-  const used = [...new Set(state.line.map(p => p.slot))].sort((a,b) => a - b);
+  const used = [...new Set(line.map(p => p.slot))].sort((a,b) => a - b);
   const remap = new Map();
   used.forEach((s, i) => remap.set(s, i + 1));
-  for (const p of state.line) p.slot = remap.get(p.slot);
+  for (const p of line) p.slot = remap.get(p.slot);
   saveState();
 }
 
@@ -673,19 +750,19 @@ function flipAnimate(oldRects) {
   }
 }
 
-function setupOperateDrag(wrap) {
+function setupOperateDrag(wrap, bento) {
   for (const cell of wrap.querySelectorAll(".cell[data-pos-id]")) {
-    cell.addEventListener("pointerdown", e => startCellPress(e, cell, wrap));
+    cell.addEventListener("pointerdown", e => startCellPress(e, cell, wrap, bento));
   }
 }
 
-function setupOperateDragVertical(wrap) {
+function setupOperateDragVertical(wrap, bento) {
   for (const cell of wrap.querySelectorAll(".cell[data-pos-id]")) {
-    cell.addEventListener("pointerdown", e => startCellPressVertical(e, cell, wrap));
+    cell.addEventListener("pointerdown", e => startCellPressVertical(e, cell, wrap, bento));
   }
 }
 
-function startCellPressVertical(e, cell, wrap) {
+function startCellPressVertical(e, cell, wrap, bento) {
   if (e.button !== undefined && e.button !== 0) return;
   const posId = cell.dataset.posId;
   const origin = cell.getBoundingClientRect();
@@ -789,8 +866,10 @@ function startCellPressVertical(e, cell, wrap) {
     const d = drop;
     cleanup();
     if (d) {
-      if (d.mode === "cell") moveOrSwap(posId, d.slot, d.row);
-      else moveLinePosition(posId, d.slot, d.row);
+      if (bento && bento.line) {
+        if (d.mode === "cell") moveOrSwap(bento.line, posId, d.slot, d.row);
+        else moveLinePosition(bento.line, posId, d.slot, d.row);
+      }
       render();
     }
   }
@@ -799,7 +878,7 @@ function startCellPressVertical(e, cell, wrap) {
   document.addEventListener("pointercancel", onUp);
 }
 
-function startCellPress(e, cell, wrap) {
+function startCellPress(e, cell, wrap, bento) {
   if (e.button !== undefined && e.button !== 0) return;
   const posId = cell.dataset.posId;
   const origin = cell.getBoundingClientRect();
@@ -919,8 +998,10 @@ function startCellPress(e, cell, wrap) {
         oldRects.set(c.dataset.posId, c.getBoundingClientRect());
       }
       cleanup();
-      if (d.mode === "cell") moveOrSwap(posId, d.slot, d.row);
-      else moveLinePosition(posId, d.slot, d.row);
+      if (bento && bento.line) {
+        if (d.mode === "cell") moveOrSwap(bento.line, posId, d.slot, d.row);
+        else moveLinePosition(bento.line, posId, d.slot, d.row);
+      }
       render();
       flipAnimate(oldRects);
     } else {
@@ -941,24 +1022,24 @@ function isVerticalLayout() {
 window.addEventListener("beforeprint", () => { _forceHorizontal = true; render(); });
 window.addEventListener("afterprint", () => { _forceHorizontal = false; render(); });
 
-function renderLineGridVertical(cellRenderer) {
+function renderLineGridVertical(line, cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
   const grid = document.createElement("div"); grid.className = "line-grid vertical";
-  const N = Math.max(maxSlot(), 1);
+  const N = Math.max(maxSlot(line), 1);
   for (let s = 1; s <= N; s++) {
     const vrow = document.createElement("div"); vrow.className = "vrow";
-    vrow.appendChild(cellRenderer(findSlot(s, "bottom"), s, "bottom"));
+    vrow.appendChild(cellRenderer(findSlot(line, s, "bottom"), s, "bottom"));
     const belt = document.createElement("div"); belt.className = "vbelt";
     vrow.appendChild(belt);
-    vrow.appendChild(cellRenderer(findSlot(s, "top"), s, "top"));
+    vrow.appendChild(cellRenderer(findSlot(line, s, "top"), s, "top"));
     grid.appendChild(vrow);
   }
   wrap.appendChild(grid);
   return wrap;
 }
 
-function buildGrid(cellRenderer) {
-  return isVerticalLayout() ? renderLineGridVertical(cellRenderer) : renderLineGrid(cellRenderer);
+function buildGrid(line, cellRenderer) {
+  return isVerticalLayout() ? renderLineGridVertical(line, cellRenderer) : renderLineGrid(line, cellRenderer);
 }
 
 function fitAllCells(root) {
@@ -977,17 +1058,17 @@ function fitAllCells(root) {
   });
 }
 
-function renderLineGrid(cellRenderer) {
+function renderLineGrid(line, cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
   const grid = document.createElement("div"); grid.className = "line-grid";
-  const N = Math.max(maxSlot(), 1);
+  const N = Math.max(maxSlot(line), 1);
   const cols = `repeat(${N}, minmax(var(--cell-min, 120px), 1fr))`;
 
   const top = document.createElement("div"); top.className = "row"; top.style.gridTemplateColumns = cols;
   const bot = document.createElement("div"); bot.className = "row"; bot.style.gridTemplateColumns = cols;
   for (let s = 1; s <= N; s++) {
-    top.appendChild(cellRenderer(findSlot(s, "top"), s, "top"));
-    bot.appendChild(cellRenderer(findSlot(s, "bottom"), s, "bottom"));
+    top.appendChild(cellRenderer(findSlot(line, s, "top"), s, "top"));
+    bot.appendChild(cellRenderer(findSlot(line, s, "bottom"), s, "bottom"));
   }
   grid.appendChild(top);
   const belt = document.createElement("div"); belt.className = "belt";
@@ -1015,7 +1096,8 @@ function renderOperate() {
   meta.appendChild(dateChip);
 
   const right = document.createElement("div"); right.className = "right";
-  const peopleV = document.createElement("span"); peopleV.className = "v"; peopleV.textContent = state.line.length + " 人";
+  const peopleV = document.createElement("span"); peopleV.className = "v";
+  peopleV.textContent = (bento && bento.line ? bento.line.length : state.line.length) + " 人";
   right.appendChild(mkChip("人数", peopleV));
   const speedV = document.createElement("span"); speedV.className = "v";
   speedV.textContent = (bento && bento.speed) ? bento.speed : "—";
@@ -1029,7 +1111,9 @@ function renderOperate() {
   c.appendChild(title);
 
   const vertical = isVerticalLayout();
-  const wrap = buildGrid((pos, slot, row) => {
+  // 当前操作便当的 line（未选便当时用模板）
+  const activeLine = (bento && bento.line) ? bento.line : state.line;
+  const wrap = buildGrid(activeLine, (pos, slot, row) => {
     const cell = document.createElement("div");
     cell.className = "cell" + (pos ? "" : " empty");
     cell.dataset.slot = slot;
@@ -1054,8 +1138,10 @@ function renderOperate() {
     return cell;
   });
   c.appendChild(wrap);
-  if (vertical) setupOperateDragVertical(wrap);
-  else setupOperateDrag(wrap);
+  if (bento) {
+    if (vertical) setupOperateDragVertical(wrap, bento);
+    else setupOperateDrag(wrap, bento);
+  }
   fitAllCells(wrap);
 }
 
@@ -1068,15 +1154,29 @@ function renderLine() {
   const done = document.createElement("button"); done.className = "done"; done.textContent = "完成";
   done.onclick = () => { state.current = { ...state.current, screen: "operate" }; saveState(); render(); };
   const add = document.createElement("button"); add.textContent = "+ 添加槽位";
-  add.onclick = () => { addSlot(); renderLine(); };
+  add.onclick = () => { addSlot(state.line); renderLine(); };
   const reset = document.createElement("button"); reset.className = "danger"; reset.textContent = "恢复默认布局";
   reset.onclick = () => {
-    if (confirm("将清空所有便当的材料分配并重置 14 个位置,继续?")) {
+    if (confirm("将模板重置为 14 个位置（不影响已有便当），继续?")) {
       resetLineToSeed(); renderLine();
     }
   };
-  actions.appendChild(done); actions.appendChild(add); actions.appendChild(reset);
+  const applyAll = document.createElement("button"); applyAll.textContent = "应用到所有便当";
+  applyAll.onclick = () => {
+    if (confirm("将清空所有便当的卡片和材料分配,并用当前模板覆盖,继续?")) {
+      applyTemplateToAll(); renderLine();
+    }
+  };
+  actions.appendChild(done); actions.appendChild(add); actions.appendChild(reset); actions.appendChild(applyAll);
   wrap.appendChild(actions);
+
+  // 说明：此屏编辑的是"新便当默认布局"的模板，不影响已有便当
+  const note = document.createElement("div");
+  note.style.color = "var(--muted)";
+  note.style.fontSize = "12px";
+  note.style.marginBottom = "10px";
+  note.textContent = "这里编辑的是新便当的默认卡片模板。已有便当的卡片在便当编辑页内独立管理。";
+  wrap.appendChild(note);
 
   const table = document.createElement("table");
   table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th></th></tr></thead>";
@@ -1088,7 +1188,7 @@ function renderLine() {
     const tdSlot = document.createElement("td");
     const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot;
     slotInp.onchange = () => {
-      if (!updateSlotPosition(p.id, { slot: slotInp.value })) slotInp.value = p.slot;
+      if (!updateSlotPosition(state.line, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
       else renderLine();
     };
     tdSlot.appendChild(slotInp);
@@ -1098,14 +1198,14 @@ function renderLine() {
       const label = document.createElement("label");
       const rb = document.createElement("input"); rb.type = "radio"; rb.name = "row-" + p.id; rb.value = r;
       if (p.row === r) rb.checked = true;
-      rb.onchange = () => { if (rb.checked) { updateSlotPosition(p.id, { row: r }); renderLine(); } };
+      rb.onchange = () => { if (rb.checked) { updateSlotPosition(state.line, p.id, { row: r }); renderLine(); } };
       label.appendChild(rb); label.appendChild(document.createTextNode(r === "top" ? "上" : "下"));
       tdRow.appendChild(label);
     }
 
     const tdLabel = document.createElement("td");
     const labelInp = document.createElement("input"); labelInp.className = "label"; labelInp.value = p.label;
-    labelInp.onblur = () => { updateSlotPosition(p.id, { label: labelInp.value }); };
+    labelInp.onblur = () => { updateSlotPosition(state.line, p.id, { label: labelInp.value }); };
     tdLabel.appendChild(labelInp);
 
     const tdDel = document.createElement("td");
@@ -1167,6 +1267,12 @@ function renderEdit() {
     return;
   }
 
+  // 确保便当有自己的 line（兼容老数据）
+  if (!Array.isArray(b.line) || b.line.length === 0) {
+    b.line = state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+    saveState();
+  }
+
   const tb = document.createElement("div"); tb.className = "edit-toolbar";
   const nameInp = document.createElement("input"); nameInp.value = b.name;
   nameInp.onblur = () => {
@@ -1177,14 +1283,91 @@ function renderEdit() {
   speedInp.value = b.speed || "";
   speedInp.style.flex = "0 0 140px";
   speedInp.oninput = () => { b.speed = speedInp.value; saveState(); };
+  const cardBtn = document.createElement("button"); cardBtn.textContent = "管理卡片";
+  const addCardBtn = document.createElement("button"); addCardBtn.textContent = "+ 卡片";
+  addCardBtn.onclick = () => { addSlot(b.line); renderEdit(); };
   const done = document.createElement("button"); done.className = "done"; done.textContent = "完成";
   done.onclick = () => { state.current = { ...state.current, screen: "operate", bentoId: b.id }; saveState(); render(); };
   const back = document.createElement("button"); back.textContent = "返回列表";
   back.onclick = () => { state.current = { ...state.current, screen: "bentos" }; saveState(); render(); };
-  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(done); tb.appendChild(back);
+  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(done); tb.appendChild(back);
   c.appendChild(tb);
 
-  const editWrap = buildGrid((pos, slot, row) => {
+  // 卡片管理面板（默认隐藏，按"管理卡片"展开）
+  const cardPanel = document.createElement("div");
+  cardPanel.className = "line-screen";
+  cardPanel.style.display = "none";
+  cardPanel.style.marginBottom = "10px";
+  cardBtn.onclick = () => {
+    const showing = cardPanel.style.display !== "none";
+    cardPanel.style.display = showing ? "none" : "";
+    cardBtn.textContent = showing ? "管理卡片" : "收起卡片";
+  };
+  const renderCardPanel = () => {
+    cardPanel.innerHTML = "";
+    const table = document.createElement("table");
+    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th></th></tr></thead>";
+    const tbody = document.createElement("tbody");
+    const sorted = b.line.slice().sort((a,bb) => a.slot - bb.slot || (a.row === "top" ? -1 : 1));
+    for (const p of sorted) {
+      const tr = document.createElement("tr");
+
+      const tdSlot = document.createElement("td");
+      const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot;
+      slotInp.onchange = () => {
+        if (!updateSlotPosition(b.line, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
+        else { renderCardPanel(); renderEditGrid(); }
+      };
+      tdSlot.appendChild(slotInp);
+
+      const tdRow = document.createElement("td");
+      for (const r of ["bottom","top"]) {
+        const lab = document.createElement("label");
+        const rb = document.createElement("input"); rb.type = "radio"; rb.name = "row-" + p.id; rb.value = r;
+        if (p.row === r) rb.checked = true;
+        rb.onchange = () => {
+          if (rb.checked) {
+            updateSlotPosition(b.line, p.id, { row: r });
+            renderCardPanel(); renderEditGrid();
+          }
+        };
+        lab.appendChild(rb); lab.appendChild(document.createTextNode(r === "top" ? "上" : "下"));
+        tdRow.appendChild(lab);
+      }
+
+      const tdLabel = document.createElement("td");
+      const labelInp = document.createElement("input"); labelInp.className = "label"; labelInp.value = p.label;
+      labelInp.onblur = () => {
+        updateSlotPosition(b.line, p.id, { label: labelInp.value });
+        renderEditGrid();
+      };
+      tdLabel.appendChild(labelInp);
+
+      const tdDel = document.createElement("td");
+      const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
+      del.onclick = () => {
+        if (confirm(`删除位置 "${p.label}"?`)) {
+          deleteSlotPositionFrom(b, p.id);
+          renderCardPanel(); renderEditGrid();
+        }
+      };
+      tdDel.appendChild(del);
+
+      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    cardPanel.appendChild(table);
+  };
+  renderCardPanel();
+  c.appendChild(cardPanel);
+
+  // 编辑栅格的容器 — 单独函数便于卡片管理变更后重渲
+  const gridHost = document.createElement("div");
+  c.appendChild(gridHost);
+  const renderEditGrid = () => {
+    gridHost.innerHTML = "";
+    const editWrap = buildGrid(b.line, (pos, slot, row) => {
     const cell = document.createElement("div");
     cell.className = "cell" + (pos ? " clickable" : " empty");
     if (!pos) return cell;
@@ -1212,9 +1395,11 @@ function renderEdit() {
     cell.appendChild(mats);
     cell.onclick = (e) => { e.stopPropagation(); openPicker(cell, b.id, pos.id); };
     return cell;
-  });
-  c.appendChild(editWrap);
-  fitAllCells(editWrap);
+    });
+    gridHost.appendChild(editWrap);
+    fitAllCells(editWrap);
+  };
+  renderEditGrid();
 }
 
 function renderBentos() {
@@ -1262,7 +1447,9 @@ function renderBentos() {
 }
 
 function render() {
-  compactSlots();
+  // 每渲染前压实当前操作便当 + 模板的 slot 编号
+  compactSlots(state.line);
+  for (const b of state.bentos) compactSlots(b.line);
   for (const b of document.querySelectorAll("header .btn-tab")) {
     b.classList.toggle("active", b.dataset.screen === state.current.screen);
   }
