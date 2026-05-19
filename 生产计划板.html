@@ -536,12 +536,16 @@
     /* 横屏隐藏底部统计栏 */
     .line-foot { display: none; }
     .timeline-foot { display: none; }
-    /* 横屏线头：LINE 在数字正下方（与竖屏一致） */
-    .line-head-row1 { flex-direction: column; align-items: center; gap: 1px; }
-    .line-label { display: block; text-align: center; font-size: 7px; letter-spacing: 1px; }
-    .line-num { font-size: 15px; white-space: nowrap; text-align: center; line-height: 1; }
-    .head-btns { flex-direction: row; }
-    .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
+    /* 横屏线头：LINE 在数字正下方，整体靠左；按钮固定在底部 → 跨列水平对齐 */
+    .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; flex: 1; }
+    .line-num, .line-num.xiusheng {
+      display: block; height: auto; line-height: 1;
+      font-size: 15px; font-weight: 800;
+      white-space: nowrap; text-align: left;
+    }
+    .line-label { display: block; font-size: 7px; letter-spacing: 1px; text-align: left; line-height: 1; margin-top: 2px; }
+    .head-btns { flex-direction: row; gap: 3px; margin-left: 0; width: 100%; }
+    .head-btn { flex: 1; height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; justify-content: center; }
     .head-btn .ic { font-size: 9px; }
   }
 
