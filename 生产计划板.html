@@ -666,12 +666,16 @@
   body.mob-ls .cfg-input { height: 16px; }
   body.mob-ls .line-foot { display: none; }
   body.mob-ls .timeline-foot { display: none; }
-  body.mob-ls .line-head-row1 { flex-direction: column !important; align-items: center; gap: 1px; }
-  body.mob-ls .line-label { display: block; text-align: center; font-size: 7px; letter-spacing: 1px; }
+  body.mob-ls .line-head-row1 { flex-direction: column !important; align-items: stretch; justify-content: space-between; gap: 3px; flex: 1; }
   body.mob-ls .line-num,
-  body.mob-ls .line-num.xiusheng { font-size: 15px; white-space: nowrap; text-align: center; line-height: 1; }
-  body.mob-ls .head-btns { flex-direction: row; }
-  body.mob-ls .head-btn { height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; }
+  body.mob-ls .line-num.xiusheng {
+    display: block; height: auto; line-height: 1;
+    font-size: 15px; font-weight: 800;
+    white-space: nowrap; text-align: left;
+  }
+  body.mob-ls .line-label { display: block; font-size: 7px; letter-spacing: 1px; text-align: left; line-height: 1; margin-top: 2px; }
+  body.mob-ls .head-btns { flex-direction: row; gap: 3px; margin-left: 0; width: 100%; }
+  body.mob-ls .head-btn { flex: 1; height: 16px; padding: 0 4px; font-size: 7px; border-radius: 3px; gap: 1px; justify-content: center; }
   body.mob-ls .head-btn .ic { font-size: 9px; }
 
   /* 横屏：单一滚动容器 — 6 条线 + 时间轴一起滑动 */
