@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>流水线生产计划板</title>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -713,149 +714,122 @@
   body.mob-ls .timeline-head { position: sticky; top: 0; z-index: 7; }
   body.mob-ls .line-head { position: sticky; top: 0; z-index: 5; }
 
-  @media print {
-    @page { size: A4 landscape; margin: 6mm; }
-    .export-wrap, .head-btns, .card-del, .compact-del, .drag-handle, .pager, .modal-mask,
-    .line-config, .top-btn, body::before { display: none !important; }
-    /* 打印时 #totalAll / 耗时 / 结束 — 顶栏统计栏，保留显示 */
-    #totalAll, .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
-    #totalDur { color: #f97316 !important; }
-    #totalFinish { color: #2563eb !important; }
-    html, body { overflow: visible !important; height: auto !important; }
-    /* 关键：取消应用 shell 的 position:fixed，否则 body 脱离文档流 → 手机端打印整页空白 */
-    html { position: static !important; }
-    body {
-      position: static !important;
-      top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
-      width: auto !important;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
-      background: #fff !important; color: #000 !important;
-    }
+  @media print { @page { size: A4 landscape; margin: 6mm; } }
 
-    /* 白底 */
-    .topbar, .main, .timeline, .timeline-head, .timeline-body, .timeline-foot,
-    .line, .line-head, .line-foot, .cards-wrap, .cards-grid { background: #fff !important; }
-    .topbar { border-bottom: 1px solid #555 !important; }
-    .brand, .brand-sub, .clock, .line-label, .foot-label, .foot-val,
-    .tick, .tick .label { color: #000 !important; background: #fff !important; }
-    .line-num, .foot-val.time { color: #f97316 !important; }
-    .foot-val.finish { color: #2563eb !important; }
-    .tick.hour { border-top-color: #bbb !important; }
-    .tick.hour-20 { border-top: 1.5px solid #f97316 !important; color: #f97316 !important; }
-    .grid-line.hour { border-top: 1px solid #e2e2e2 !important; }
-    .grid-line.hour-20 { border-top: 1px solid #f97316 !important; opacity: 0.55 !important; }
-
-    /* 卡片：实心描边，色彩左边框保留作品名标识 */
-    .card {
-      background: #fff !important;
-      box-shadow: none !important;
-      border-top: 1px solid #ccc !important;
-      border-right: 1px solid #ccc !important;
-      border-bottom: 1px solid #ccc !important;
-    }
-    .card-name-display, .compact-people, .compact-time { color: #000 !important; }
-    .card.rest { background: #f7f3ff !important; }
-
-    /* 列分隔线由 .board 单一背景 + grid gap 渲染，所有竖线粗细绝对一致 */
-    .board {
-      gap: 1px !important;
-      background: #555 !important;
-      grid-template-columns: repeat(6, 1fr) !important;
-    }
-    .main {
-      overflow: visible !important; height: auto !important; align-items: stretch !important;
-      border: 1.5px solid #555 !important;
-    }
-    .timeline { position: static !important; border-right: 1.5px solid #555 !important; }
-    .timeline-head, .timeline-body, .timeline-foot { position: static !important; }
-    .timeline-head { border-bottom: 1.5px solid #555 !important; }
-    .timeline-foot { border-top: 1.5px solid #555 !important; }
-    .line {
-      overflow: visible !important; min-height: 0 !important;
-      border-right: none !important;
-    }
-    .line-head { position: static !important; border-bottom: 1.5px solid #555 !important; }
-    .line-foot { position: static !important; border-top: 1.5px solid #555 !important; }
-
-    /* 视觉清简：去掉 10 分钟间隔虚线 / 子小时实线 */
-    .grid-line:not(.hour):not(.hour-20),
-    .tick:not(.hour):not(.hour-20) { display: none !important; }
-
-    /* 紧凑打印：压缩顶栏 / 线头 / 线脚 / 卡片内边距，最大化卡片区垂直空间 */
-    body.printing-compact .topbar { height: 24px !important; padding: 0 8px !important; }
-    body.printing-compact .brand { font-size: 11px !important; gap: 6px !important; }
-    body.printing-compact .brand .dot { width: 6px !important; height: 6px !important; }
-    body.printing-compact .brand-sub { font-size: 9px !important; padding-left: 6px !important; }
-    body.printing-compact .clock { font-size: 10px !important; }
-
-    body.printing-compact .timeline-head,
-    body.printing-compact .line-head { height: 56px !important; padding: 4px 6px !important; justify-content: center !important; align-items: center !important; }
-    body.printing-compact .date-year { position: static !important; align-self: center !important; padding-left: 0 !important; margin-bottom: 1px !important; line-height: 1 !important; }
-    body.printing-compact .line-num { font-size: 14px !important; line-height: 14px !important; height: 14px !important; }
-    body.printing-compact .line-num.xiusheng { font-size: 11px !important; }
-    body.printing-compact .line-label { font-size: 7px !important; letter-spacing: 1px !important; }
-    body.printing-compact .date-month,
-    body.printing-compact .date-day,
-    body.printing-compact .date-dow { font-size: 12px !important; }
-    body.printing-compact .date-year { font-size: 7px !important; }
-
-    body.printing-compact .timeline-foot,
-    body.printing-compact .line-foot { height: 36px !important; padding: 3px 6px !important; }
-    body.printing-compact .foot-label { font-size: 7px !important; }
-    body.printing-compact .foot-val { font-size: 11px !important; }
-
-    /* 卡片内部更紧凑 */
-    body.printing-compact .card { font-size: 10px !important; padding: 1px 4px !important; }
-    body.printing-compact .card-name-display { font-size: 11px !important; padding: 1px 2px !important; }
-    body.printing-compact .compact-name-letter { width: 14px !important; height: 14px !important; font-size: 9px !important; border-width: 1px !important; }
-    body.printing-compact .compact-people,
-    body.printing-compact .compact-time,
-    body.printing-compact .compact-name { font-size: 10px !important; }
-    body.printing-compact .range,
-    body.printing-compact .t-start,
-    body.printing-compact .t-end { font-size: 9px !important; }
-    body.printing-compact .duration { font-size: 9px !important; }
-
-    /* 时间刻度文字稍小 */
-    body.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
+  /* 打印 / PDF 导出 共用样式（body.printing 类触发） */
+  body.printing .export-wrap, body.printing .head-btns, body.printing .card-del, body.printing .compact-del, body.printing .drag-handle, body.printing .pager, body.printing .modal-mask,
+  body.printing .line-config, body.printing .top-btn, body.printing::before { display: none !important; }
+  body.printing #totalAll, body.printing .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
+  body.printing #totalDur { color: #f97316 !important; }
+  body.printing #totalFinish { color: #2563eb !important; }
+  body.printing, body.printing html { overflow: visible !important; height: auto !important; }
+  html:has(body.printing) { position: static !important; overflow: visible !important; height: auto !important; }
+  body.printing {
+    position: static !important;
+    top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+    width: auto !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    background: #fff !important; color: #000 !important;
   }
+  body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
+  body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
+  body.printing .topbar { border-bottom: 1px solid #555 !important; }
+  body.printing .brand, body.printing .brand-sub, body.printing .clock, body.printing .line-label, body.printing .foot-label, body.printing .foot-val,
+  body.printing .tick, body.printing .tick .label { color: #000 !important; background: #fff !important; }
+  body.printing .line-num, body.printing .foot-val.time { color: #f97316 !important; }
+  body.printing .foot-val.finish { color: #2563eb !important; }
+  body.printing .tick.hour { border-top-color: #bbb !important; }
+  body.printing .tick.hour-20 { border-top: 1.5px solid #f97316 !important; color: #f97316 !important; }
+  body.printing .grid-line.hour { border-top: 1px solid #e2e2e2 !important; }
+  body.printing .grid-line.hour-20 { border-top: 1px solid #f97316 !important; opacity: 0.55 !important; }
+  body.printing .card {
+    background: #fff !important;
+    box-shadow: none !important;
+    border-top: 1px solid #ccc !important;
+    border-right: 1px solid #ccc !important;
+    border-bottom: 1px solid #ccc !important;
+  }
+  body.printing .card-name-display, body.printing .compact-people, body.printing .compact-time { color: #000 !important; }
+  body.printing .card.rest { background: #f7f3ff !important; }
+  body.printing .board {
+    gap: 1px !important;
+    background: #555 !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+  }
+  body.printing .main {
+    overflow: visible !important; height: auto !important; align-items: stretch !important;
+    border: 1.5px solid #555 !important;
+  }
+  body.printing .timeline { position: static !important; border-right: 1.5px solid #555 !important; }
+  body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot { position: static !important; }
+  body.printing .timeline-head { border-bottom: 1.5px solid #555 !important; }
+  body.printing .timeline-foot { border-top: 1.5px solid #555 !important; }
+  body.printing .line {
+    overflow: visible !important; min-height: 0 !important;
+    border-right: none !important;
+  }
+  body.printing .line-head { position: static !important; border-bottom: 1.5px solid #555 !important; }
+  body.printing .line-foot { position: static !important; border-top: 1.5px solid #555 !important; }
+  body.printing .grid-line:not(.hour):not(.hour-20),
+  body.printing .tick:not(.hour):not(.hour-20) { display: none !important; }
 
-  /* 手机端打印：覆盖 (max-width:900px) 响应式中影响打印布局的规则，按桌面方式打印 */
-  @media print and (max-width: 900px) {
-    html, body { font-size: 13px !important; width: auto !important; height: auto !important; overflow: visible !important; }
-    .brand-sub { display: inline !important; }
-    #totalAll { display: inline !important; }
-    .topbar { padding: 0 12px !important; }
-    .topbar-right { gap: 8px !important; font-size: 11px !important; }
+  body.printing.printing-compact .topbar { height: 24px !important; padding: 0 8px !important; }
+  body.printing.printing-compact .brand { font-size: 11px !important; gap: 6px !important; }
+  body.printing.printing-compact .brand .dot { width: 6px !important; height: 6px !important; }
+  body.printing.printing-compact .brand-sub { font-size: 9px !important; padding-left: 6px !important; }
+  body.printing.printing-compact .clock { font-size: 10px !important; }
+  body.printing.printing-compact .timeline-head,
+  body.printing.printing-compact .line-head { height: 56px !important; padding: 4px 6px !important; justify-content: center !important; align-items: center !important; }
+  body.printing.printing-compact .date-year { position: static !important; align-self: center !important; padding-left: 0 !important; margin-bottom: 1px !important; line-height: 1 !important; font-size: 7px !important; }
+  body.printing.printing-compact .line-num { font-size: 14px !important; line-height: 14px !important; height: 14px !important; }
+  body.printing.printing-compact .line-num.xiusheng { font-size: 11px !important; }
+  body.printing.printing-compact .line-label { font-size: 7px !important; letter-spacing: 1px !important; }
+  body.printing.printing-compact .date-month,
+  body.printing.printing-compact .date-day,
+  body.printing.printing-compact .date-dow { font-size: 12px !important; }
+  body.printing.printing-compact .timeline-foot,
+  body.printing.printing-compact .line-foot { height: 36px !important; padding: 3px 6px !important; }
+  body.printing.printing-compact .foot-label { font-size: 7px !important; }
+  body.printing.printing-compact .foot-val { font-size: 11px !important; }
+  body.printing.printing-compact .card { font-size: 10px !important; padding: 1px 4px !important; }
+  body.printing.printing-compact .card-name-display { font-size: 11px !important; padding: 1px 2px !important; }
+  body.printing.printing-compact .compact-name-letter { width: 14px !important; height: 14px !important; font-size: 9px !important; border-width: 1px !important; }
+  body.printing.printing-compact .compact-people,
+  body.printing.printing-compact .compact-time,
+  body.printing.printing-compact .compact-name { font-size: 10px !important; }
+  body.printing.printing-compact .range,
+  body.printing.printing-compact .t-start,
+  body.printing.printing-compact .t-end { font-size: 9px !important; }
+  body.printing.printing-compact .duration { font-size: 9px !important; }
+  body.printing.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
 
-    /* 解除手机端单一滚动容器（注意：不设 height/flex !important，避免覆盖 trimGridForExport 通过 inline 样式做的"修剪空白时间区"） */
-    .main { overflow: visible !important; align-items: stretch !important; }
-    .board {
+  @media (max-width: 900px) {
+    body.printing { font-size: 13px !important; width: auto !important; height: auto !important; overflow: visible !important; }
+    body.printing .brand-sub { display: inline !important; }
+    body.printing #totalAll { display: inline !important; }
+    body.printing .topbar { padding: 0 12px !important; }
+    body.printing .topbar-right { gap: 8px !important; font-size: 11px !important; }
+    body.printing .main { overflow: visible !important; align-items: stretch !important; }
+    body.printing .board {
       grid-template-columns: repeat(6, 1fr) !important;
       grid-auto-rows: auto !important;
       min-width: 0 !important;
       overflow: visible !important;
     }
-    .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; }
-    .cards-wrap { overflow: visible; }
-    .timeline-body { overflow: visible; }
-
-    /* 取消 sticky，避免打印分页空白 */
-    .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
-    .timeline-head, .timeline-foot,
-    .line-head, .line-foot { position: static !important; }
-
-    /* 线头恢复桌面尺寸（紧凑打印类后续会再压缩） */
-    .timeline-head, .line-head { height: 110px !important; padding: 8px 10px !important; }
-    .line-head-row1 { flex-direction: column !important; align-items: center !important; gap: 1px !important; }
-    .line-num { font-size: 18px !important; text-align: center !important; }
-    .line-label { display: block !important; font-size: 9px !important; letter-spacing: 2px !important; text-align: center !important; }
-    .date-month, .date-day, .date-dow { font-size: 18px !important; }
-    .date-year { position: absolute !important; font-size: 9px !important; top: 6px !important; left: 4px !important; padding-left: 0 !important; }
-    .head-btns { flex-direction: row !important; }
-
-    /* 卡片紧凑视图隐藏的元素恢复显示（如有需要） */
-    .card-compact .compact-time { display: inline !important; }
+    body.printing .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; }
+    body.printing .cards-wrap { overflow: visible; }
+    body.printing .timeline-body { overflow: visible; }
+    body.printing .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
+    body.printing .timeline-head, body.printing .timeline-foot,
+    body.printing .line-head, body.printing .line-foot { position: static !important; }
+    body.printing .timeline-head, body.printing .line-head { height: 110px !important; padding: 8px 10px !important; }
+    body.printing .line-head-row1 { flex-direction: column !important; align-items: center !important; gap: 1px !important; }
+    body.printing .line-num { font-size: 18px !important; text-align: center !important; }
+    body.printing .line-label { display: block !important; font-size: 9px !important; letter-spacing: 2px !important; text-align: center !important; }
+    body.printing .date-month, body.printing .date-day, body.printing .date-dow { font-size: 18px !important; }
+    body.printing .date-year { position: absolute !important; font-size: 9px !important; top: 6px !important; left: 4px !important; padding-left: 0 !important; }
+    body.printing .head-btns { flex-direction: row !important; }
+    body.printing .card-compact .compact-time { display: inline !important; }
   }
 </style>
 </head>
@@ -882,6 +856,7 @@
       <div class="export-menu" id="exportMenu">
         <button onclick="saveJSON()">保存</button>
         <button onclick="doPrint()">打印</button>
+        <button onclick="doExportPdf()">导出PDF</button>
         <button onclick="doExportPng()">导出图片</button>
       </div>
     </div>
@@ -2130,15 +2105,12 @@ function trimGridForExport() {
   return () => restoreFns.forEach(fn => fn());
 }
 
-function doPrint() {
-  exportMenu.classList.remove('show');
+function setupPrintLayout() {
   setActiveCard(null);
-
   const root = document.documentElement;
   const origHourPxStr = getComputedStyle(root).getPropertyValue('--hour-px').trim();
   const origHourPx = parseFloat(origHourPxStr) || 140;
 
-  // 找当前所有卡片纵向范围
   let minTop = Infinity, maxBottom = 0;
   document.querySelectorAll('.card').forEach(c => {
     const t = parseFloat(c.style.top) || 0;
@@ -2148,47 +2120,93 @@ function doPrint() {
   });
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
-  // 启用紧凑打印 CSS：缩小 topbar / line-head / line-foot / 卡片内边距，腾出更多卡片区
   document.body.classList.add('printing-compact');
 
-  // A4 横向 @96dpi ≈ 1123×794，6mm 边距：可用约 1100×771
-  // 紧凑打印下预留：topbar 24 + line-head 56 + line-foot 36 + 缓冲 16 = 132
   const PAGE_H_FOR_CARDS = 771 - 132;
   let newHourPx = origHourPx;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
     newHourPx = Math.max(18, origHourPx * (PAGE_H_FOR_CARDS / cardRange));
   }
   const needRescale = Math.abs(newHourPx - origHourPx) > 0.5;
-
-  if (needRescale) {
-    root.style.setProperty('--hour-px', newHourPx + 'px');
-  }
+  if (needRescale) root.style.setProperty('--hour-px', newHourPx + 'px');
   renderTimeline();
   document.querySelectorAll('.cards-grid').forEach(g => {
     g.style.height = (getTotalPx() + 16) + 'px';
     renderGridLines(g);
   });
   document.querySelectorAll('.line').forEach(l => recalc(l));
+  const restore = trimGridForExport();
+  return () => {
+    restore();
+    document.body.classList.remove('printing-compact');
+    if (needRescale) root.style.setProperty('--hour-px', origHourPxStr);
+    renderTimeline();
+    document.querySelectorAll('.cards-grid').forEach(g => {
+      g.style.height = (getTotalPx() + 16) + 'px';
+      renderGridLines(g);
+    });
+    document.querySelectorAll('.line').forEach(l => recalc(l));
+  };
+}
 
+window.addEventListener('beforeprint', () => document.body.classList.add('printing'));
+window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+
+function doPrint() {
+  exportMenu.classList.remove('show');
+  let cleanup;
   setTimeout(() => {
-    const restore = trimGridForExport();
-    const cleanup = () => {
-      restore();
-      document.body.classList.remove('printing-compact');
-      if (needRescale) {
-        root.style.setProperty('--hour-px', origHourPxStr);
-      }
-      renderTimeline();
-      document.querySelectorAll('.cards-grid').forEach(g => {
-        g.style.height = (getTotalPx() + 16) + 'px';
-        renderGridLines(g);
-      });
-      document.querySelectorAll('.line').forEach(l => recalc(l));
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    window.print();
-  }, 120);
+    cleanup = setupPrintLayout();
+    setTimeout(() => {
+      const onAfter = () => { cleanup(); window.removeEventListener('afterprint', onAfter); };
+      window.addEventListener('afterprint', onAfter);
+      window.print();
+    }, 80);
+  }, 40);
+}
+
+async function doExportPdf() {
+  exportMenu.classList.remove('show');
+  if (typeof html2canvas === 'undefined' || !window.jspdf) {
+    alert('PDF 导出需要网络连接（加载 html2canvas / jsPDF），请确认网络后重试。');
+    return;
+  }
+  const orig = exportBtn.textContent;
+  exportBtn.textContent = '生成PDF…';
+  exportBtn.disabled = true;
+  let cleanup = null;
+  // A4 横向 96dpi ≈ 1123 × 794
+  const PAGE_W = 1123, PAGE_H = 794;
+  const stage = document.createElement('div');
+  stage.style.cssText = `position:fixed;left:0;top:0;width:${PAGE_W}px;height:${PAGE_H}px;background:#fff;z-index:-1;overflow:hidden;pointer-events:none`;
+  document.body.appendChild(stage);
+  const savedWidth = document.documentElement.style.width;
+  try {
+    cleanup = setupPrintLayout();
+    document.body.classList.add('printing');
+    document.documentElement.style.width = PAGE_W + 'px';
+    await new Promise(r => setTimeout(r, 120));
+    const canvas = await html2canvas(document.body, {
+      backgroundColor: '#fff', scale: 2, useCORS: true, logging: false,
+      width: PAGE_W, height: PAGE_H, windowWidth: PAGE_W, windowHeight: PAGE_H,
+    });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
+    const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+    pdf.save(`生产计划板_${date}.pdf`);
+  } catch (err) {
+    alert('PDF 导出失败: ' + err.message);
+  } finally {
+    document.body.classList.remove('printing');
+    if (cleanup) cleanup();
+    document.documentElement.style.width = savedWidth;
+    stage.remove();
+    exportBtn.textContent = orig;
+    exportBtn.disabled = false;
+  }
 }
 
 async function doExportPng() {
