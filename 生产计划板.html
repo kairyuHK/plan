@@ -682,18 +682,19 @@
     color: var(--text-mute); font-weight: 500;
   }
 
-  /* 按钮组：在数字右侧，两个按钮左右横排 */
+  /* 按钮组：在数字右侧，两个按钮左右横排；空间狭窄改为图标按钮，文字隐藏 */
   body.mob-ls .head-btns {
     flex-direction: row; gap: 4px; margin-left: auto;
-    position: static; width: auto; height: auto; flex: 1 1 auto;
+    position: static; width: auto; height: auto; flex: 0 0 auto;
     align-items: center; justify-content: flex-end;
   }
   body.mob-ls .head-btn {
-    height: 22px; padding: 0 8px; font-size: 10px;
-    border-radius: 5px; gap: 3px; justify-content: center;
-    font-weight: 600; width: auto; flex: 0 0 auto;
+    height: 22px; width: 22px; padding: 0;
+    font-size: 0; /* 隐藏 "品名"/"休息" 文字节点 */
+    border-radius: 5px; gap: 0; justify-content: center;
+    flex: 0 0 auto;
   }
-  body.mob-ls .head-btn .ic { font-size: 11px; font-weight: 700; }
+  body.mob-ls .head-btn .ic { font-size: 14px; font-weight: 700; }
 
   /* 起始 / 切换 框：放大字号 + 高度 + 圆角，视觉更舒展 */
   body.mob-ls .line-config { position: absolute; left: 10px; right: 10px; bottom: 8px; gap: 5px; }
