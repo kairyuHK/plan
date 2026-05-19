@@ -692,7 +692,15 @@
     #totalDur { color: #f97316 !important; }
     #totalFinish { color: #2563eb !important; }
     html, body { overflow: visible !important; height: auto !important; }
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; color: #000 !important; }
+    /* 关键：取消应用 shell 的 position:fixed，否则 body 脱离文档流 → 手机端打印整页空白 */
+    html { position: static !important; }
+    body {
+      position: static !important;
+      top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+      width: auto !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      background: #fff !important; color: #000 !important;
+    }
 
     /* 白底 */
     .topbar, .main, .timeline, .timeline-head, .timeline-body, .timeline-foot,
