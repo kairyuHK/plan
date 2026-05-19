@@ -517,8 +517,13 @@
     .timeline-head { height: 88px; }
     .line-head { padding: 4px 4px 8px; gap: 3px; height: 88px; }
     .line-head-row1 { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px; width: 100%; flex: 1; }
-    .line-num { text-align: center; }
-    .line-label { text-align: center; }
+    /* 统一 line-num 字号与盒模型，保证 夕盛 / 01-05 与下方 LINE 都在同一基线上 */
+    .line-num, .line-num.xiusheng {
+      display: block; height: auto; line-height: 1;
+      font-size: 14px; font-weight: 800;
+      text-align: center;
+    }
+    .line-label { text-align: center; line-height: 1; margin-top: 2px; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
     .head-btn { width: 100%; justify-content: center; height: 20px; }
   }
