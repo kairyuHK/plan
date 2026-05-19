@@ -131,13 +131,13 @@
   .menu-item:hover{background:var(--soft);color:var(--accent)}
   @media print {
     @page { size: A4 landscape; margin: 0; }
-    html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
+    html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: auto !important }
     header, .backdrop, .drawer, .picker, .autocomplete, .modal { display:none !important; }
-    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none;width:285mm !important;font-size:14px !important;overflow:visible !important}
-    #content{padding:0;position:relative;display:flex;flex-direction:column;width:285mm !important;min-height:198mm !important;height:auto !important;overflow:visible !important}
+    body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none;width:auto !important;font-size:14px !important;overflow:visible !important}
+    #content{padding:0;position:static !important;display:flex;flex-direction:column;width:100% !important;min-height:0 !important;height:auto !important;overflow:visible !important}
     #content > *{break-inside:auto;page-break-inside:auto}
-    .info-bar{flex:0 0 auto;margin:0 0 4px !important;gap:6px}
-    .bento-title{position:absolute;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:28px !important;min-height:0 !important;letter-spacing:4px !important;font-weight:800;line-height:1}
+    .info-bar{flex:0 0 auto;margin:0 0 6px !important;gap:6px}
+    .bento-title{position:static !important;text-align:center;color:#000 !important;margin:8px 0 12px !important;font-size:24px !important;min-height:0 !important;letter-spacing:3px !important;font-weight:800;line-height:1.1}
     .bento-title .muted{color:#555 !important;font-size:14px !important}
     .line-wrap{flex:0 0 auto;margin:0 !important;overflow:visible !important;width:100% !important;break-inside:auto}
     .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important;break-inside:auto}
