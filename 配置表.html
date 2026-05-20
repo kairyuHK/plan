@@ -29,9 +29,6 @@
   .drawer header{flex:0 0 auto;padding:12px;border-bottom:1px solid var(--line);font-weight:bold;background:none}
   .drawer .list{flex:1;overflow:auto;padding:8px 12px}
   .drawer .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);background:#0f1115}
-  .drawer .row.dragging{opacity:.4}
-  .drawer .row .handle{cursor:grab;color:#666;user-select:none;font-size:16px;padding:0 2px;touch-action:none;flex:0 0 auto}
-  .drawer .row .handle:active{cursor:grabbing}
   .drawer .row .swatch{width:24px;height:24px;border-radius:4px;border:1px solid var(--line);cursor:pointer;flex:0 0 auto;padding:0}
   .drawer .row .name{flex:1;background:transparent;border:none;color:var(--fg);font:inherit;padding:4px;min-width:0}
   .drawer .row .name:focus{outline:1px solid var(--accent);border-radius:3px}
@@ -602,16 +599,11 @@ function runSelfTests() {
 function renderMaterialsDrawer() {
   const list = document.getElementById("materials-list");
   list.innerHTML = "";
-  for (const m of state.materials) {
+  const sorted = [...state.materials].sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  for (const m of sorted) {
     const row = document.createElement("div");
     row.className = "row";
     row.dataset.id = m.id;
-
-    const handle = document.createElement("span");
-    handle.className = "handle";
-    handle.textContent = "≡";
-    handle.title = "拖动排序";
-    handle.addEventListener("pointerdown", e => startDragMaterial(e, row, m.id));
 
     const sw = document.createElement("input");
     sw.type = "color";
@@ -627,7 +619,8 @@ function renderMaterialsDrawer() {
     name.value = m.name;
     name.style.color = m.color;
     name.onblur = () => {
-      if (!updateMaterial(m.id, { name: name.value })) name.value = m.name;
+      if (!updateMaterial(m.id, { name: name.value })) { name.value = m.name; return; }
+      renderMaterialsDrawer();
     };
     name.onkeydown = (e) => { if (e.key === "Enter") name.blur(); };
 
@@ -641,39 +634,9 @@ function renderMaterialsDrawer() {
       if (confirm(msg)) { deleteMaterialCascade(m.id); renderMaterialsDrawer(); render(); }
     };
 
-    row.appendChild(handle); row.appendChild(sw); row.appendChild(name); row.appendChild(del);
+    row.appendChild(sw); row.appendChild(name); row.appendChild(del);
     list.appendChild(row);
   }
-}
-
-function startDragMaterial(e, row, id) {
-  e.preventDefault();
-  const list = document.getElementById("materials-list");
-  row.classList.add("dragging");
-  const onMove = ev => {
-    const y = ev.clientY;
-    const rows = [...list.querySelectorAll(".row:not(.dragging)")];
-    let inserted = false;
-    for (const r of rows) {
-      const rect = r.getBoundingClientRect();
-      if (y < rect.top + rect.height / 2) {
-        list.insertBefore(row, r);
-        inserted = true;
-        break;
-      }
-    }
-    if (!inserted) list.appendChild(row);
-  };
-  const onUp = () => {
-    row.classList.remove("dragging");
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-    const newOrder = [...list.querySelectorAll(".row")].map(r => r.dataset.id);
-    state.materials.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
-    render();
-  };
-  window.addEventListener("pointermove", onMove);
-  window.addEventListener("pointerup", onUp);
 }
 
 function openMaterialsDrawer() {
