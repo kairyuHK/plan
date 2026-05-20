@@ -186,6 +186,10 @@
     .edit-toolbar input:nth-of-type(1){flex:7 1 calc(70% - 3px) !important;min-width:0}
     .edit-toolbar input:nth-of-type(2){flex:3 1 calc(30% - 3px) !important;min-width:0}
     .edit-toolbar button{flex:1 1 calc(50% - 3px);padding:10px 8px;font-size:14px}
+    .edit-toolbar button:nth-of-type(1){order:1}
+    .edit-toolbar button:nth-of-type(4){order:2}
+    .edit-toolbar button:nth-of-type(2){order:3}
+    .edit-toolbar button:nth-of-type(3){order:4}
     .edit-toolbar .done{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
   }
   @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
@@ -1265,7 +1269,7 @@ function renderEdit() {
   done.onclick = () => { state.current = { ...state.current, screen: "operate", bentoId: b.id }; saveState(); render(); };
   const back = document.createElement("button"); back.textContent = "返回列表";
   back.onclick = () => { state.current = { ...state.current, screen: "bentos" }; saveState(); render(); };
-  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(addCardBtn); tb.appendChild(back); tb.appendChild(cardBtn); tb.appendChild(done);
+  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(done); tb.appendChild(back);
   c.appendChild(tb);
 
   // 卡片管理面板（默认隐藏，按"管理卡片"展开）
