@@ -1221,7 +1221,13 @@ function openPicker(anchor, bentoId, posId) {
       const sw = document.createElement("span"); sw.className = "swatch"; sw.style.background = m.color;
       const nm = document.createElement("span"); nm.textContent = m.name; nm.style.color = m.color;
       opt.appendChild(sw); opt.appendChild(nm);
-      opt.onclick = (e) => { e.stopPropagation(); toggleAssignment(bentoId, posId, m.id); renderEdit(); };
+      opt.onclick = (e) => {
+        e.stopPropagation();
+        toggleAssignment(bentoId, posId, m.id);
+        const nowSel = (b.assignments[posId] || []).includes(m.id);
+        opt.classList.toggle("sel", nowSel);
+        renderEdit();
+      };
       p.appendChild(opt);
     }
   }
