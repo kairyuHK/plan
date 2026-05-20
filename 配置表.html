@@ -1214,7 +1214,8 @@ function openPicker(anchor, bentoId, posId) {
   if (state.materials.length === 0) {
     p.innerHTML = '<div class="empty">先在「材料库」中添加材料</div>';
   } else {
-    for (const m of state.materials) {
+    const sortedMats = [...state.materials].sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+    for (const m of sortedMats) {
       const opt = document.createElement("div");
       opt.className = "opt" + (sel.has(m.id) ? " sel" : "");
       const sw = document.createElement("span"); sw.className = "swatch"; sw.style.background = m.color;
