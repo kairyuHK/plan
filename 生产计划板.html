@@ -1887,8 +1887,8 @@ function saveJSON() {
   setActiveCard(null);
   saveBoard();
   const d = new Date();
-  const ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-  const defaultName = `production-${ds}.json`;
+  const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const defaultName = `生产计划板${ds}.json`;
   const name = prompt('文件名', defaultName);
   if (!name) return;
   const filename = /\.json$/i.test(name) ? name : name + '.json';
