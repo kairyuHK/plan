@@ -731,6 +731,8 @@ function startCellPressVertical(e, cell, wrap, bento) {
   const origin = cell.getBoundingClientRect();
   const startX = e.clientX, startY = e.clientY;
   let dragging = false, ghost = null, indicator = null, drop = null, highlightedCell = null;
+  const blockTouch = ev => { if (dragging) ev.preventDefault(); };
+  document.addEventListener("touchmove", blockTouch, { passive: false });
 
   const timer = setTimeout(() => {
     dragging = true;
@@ -818,6 +820,7 @@ function startCellPressVertical(e, cell, wrap, bento) {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     document.removeEventListener("pointercancel", onUp);
+    document.removeEventListener("touchmove", blockTouch, { passive: false });
     if (ghost) ghost.remove();
     if (indicator) indicator.remove();
     if (highlightedCell) highlightedCell.classList.remove("drop-target");
@@ -850,6 +853,8 @@ function startCellPress(e, cell, wrap, bento) {
   let ghost = null, indicator = null;
   let drop = null; // { mode:"cell"|"insert", slot, row } or null
   let highlightedCell = null;
+  const blockTouch = ev => { if (dragging) ev.preventDefault(); };
+  document.addEventListener("touchmove", blockTouch, { passive: false });
 
   const timer = setTimeout(() => {
     dragging = true;
@@ -946,6 +951,7 @@ function startCellPress(e, cell, wrap, bento) {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     document.removeEventListener("pointercancel", onUp);
+    document.removeEventListener("touchmove", blockTouch, { passive: false });
     if (ghost) ghost.remove();
     if (indicator) indicator.remove();
     if (highlightedCell) highlightedCell.classList.remove("drop-target");
