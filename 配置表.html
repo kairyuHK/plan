@@ -510,8 +510,8 @@ function getBentoByName(name) {
 
 function matchBentos(prefix) {
   const p = (prefix || "").trim().toLowerCase();
-  if (!p) return state.bentos.slice(0, 10);
-  return state.bentos.filter(b => b.name.toLowerCase().includes(p)).slice(0, 10);
+  if (!p) return state.bentos.slice();
+  return state.bentos.filter(b => b.name.toLowerCase().includes(p));
 }
 
 function colorToHex(c) {
@@ -770,6 +770,15 @@ function startCellPressVertical(e, cell, wrap, bento) {
     ghost.style.left = (ev.clientX - origin.width/2) + "px";
     ghost.style.top = (ev.clientY - origin.height/2) + "px";
 
+    // Suppress indicator when finger is still inside the dragged cell's original rect
+    if (ev.clientX >= origin.left && ev.clientX <= origin.right &&
+        ev.clientY >= origin.top && ev.clientY <= origin.bottom) {
+      if (highlightedCell) { highlightedCell.classList.remove("drop-target"); highlightedCell = null; }
+      indicator.style.display = "none";
+      drop = null;
+      return;
+    }
+
     const allCells = [...wrap.querySelectorAll(".cell[data-slot]")].filter(c => c !== cell);
     let hitCell = null;
     for (const c of allCells) {
@@ -788,17 +797,17 @@ function startCellPressVertical(e, cell, wrap, bento) {
       indicator.style.display = "none";
     } else {
       indicator.style.display = "";
-      const bounds = new Map();
-      for (const c of allCells) {
-        const s = parseInt(c.dataset.slot,10);
-        const r = c.getBoundingClientRect();
-        if (!bounds.has(s)) bounds.set(s, { top: r.top, bottom: r.bottom });
-        else {
-          const v = bounds.get(s);
-          v.top = Math.min(v.top, r.top); v.bottom = Math.max(v.bottom, r.bottom);
-        }
+      // Use .vrow rects directly for slot bounds (each vrow is one slot)
+      const vrows = [...wrap.querySelectorAll(".vrow")];
+      const slots = [];
+      for (const v of vrows) {
+        const c = v.querySelector("[data-slot]");
+        if (!c) continue;
+        const s = parseInt(c.dataset.slot, 10);
+        const r = v.getBoundingClientRect();
+        slots.push([s, { top: r.top, bottom: r.bottom }]);
       }
-      const slots = [...bounds.entries()].sort((a,b) => a[0] - b[0]);
+      slots.sort((a,b) => a[0] - b[0]);
       const wrapRect = wrap.getBoundingClientRect();
       let targetCol, indicatorY;
       if (slots.length === 0) {
