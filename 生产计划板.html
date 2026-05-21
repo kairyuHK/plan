@@ -750,7 +750,11 @@
 
   @media (max-width: 900px) and (orientation: landscape) {
     /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
-    .timeline-head { height: 108px; }
+    .timeline-head { height: 108px; padding-top: 22px !important; }
+    .date-year { top: 5px !important; left: 4px !important; font-size: 8px !important; }
+    .date-month { font-size: 11px !important; margin-top: 0 !important; }
+    .date-day { font-size: 13px !important; margin-top: 2px !important; }
+    .date-dow { font-size: 11px !important; margin-top: 2px !important; }
     .line-head { height: 108px; padding-bottom: 12px; }
     .cfg-input { height: 16px; }
     /* 横屏隐藏底部统计栏 */
