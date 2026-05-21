@@ -211,15 +211,13 @@
   }
   .timeline {
     width: var(--time-col-w); flex-shrink: 0;
-    background: rgba(15, 21, 30, 0.55);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--panel-solid);
     border-right: 1px solid var(--border-strong);
     overflow: hidden; display: flex; flex-direction: column;
   }
   .timeline-head {
     height: 110px; flex-shrink: 0;
-    background: linear-gradient(180deg, rgba(26,34,48,0.6) 0%, rgba(26,34,48,0.2) 100%);
+    background: var(--panel-solid);
     border-bottom: 1px solid var(--accent);
     box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 -2px 12px rgba(249,115,22,0.12);
     display: flex; flex-direction: column;
@@ -310,32 +308,39 @@
     #totalAll { display: none; }
     :root { --time-col-w: 44px; --hour-px: 100px; }
 
-    /* 日期栏：年贴顶左，月日星期靠下 */
-    .timeline-head { justify-content: flex-start; align-items: center; padding: 2px 1px 6px; gap: 0; height: 80px; }
+    /* 日期栏：年绝对定位顶左,月日星期独立一组居中,可向下偏移 */
+    .timeline-head {
+      justify-content: center; align-items: center;
+      padding: 16px 1px 6px; gap: 0; height: 80px;
+      position: relative;
+    }
     .date-year {
-      position: static !important; transform: none !important;
-      font-size: 7px; align-self: flex-start;
-      padding-left: 2px; line-height: 1.4;
-      margin-bottom: 0; letter-spacing: 0.5px;
+      position: absolute !important;
+      top: 4px; left: 3px;
+      transform: none !important;
+      font-size: 7px; line-height: 1;
+      letter-spacing: 0.5px;
       color: var(--accent); opacity: 0.9;
+      padding: 0; margin: 0;
     }
     .date-month {
-      font-size: 13px; text-align: center; line-height: 1.2;
-      margin-top: 3px; margin-bottom: 0;
+      font-size: 11px; text-align: center; line-height: 1.2;
+      margin: 0; padding: 0;
       color: var(--text-dim); letter-spacing: 0.3px;
       font-weight: 500; opacity: 1;
     }
     .date-day {
-      font-size: 16px; text-align: center; line-height: 1.2;
+      font-size: 14px; text-align: center; line-height: 1.2;
       color: var(--text); font-weight: 700;
       letter-spacing: 0;
+      margin: 1px 0 0 0;
       background: none;
       -webkit-text-fill-color: var(--text);
       -webkit-background-clip: unset;
       background-clip: unset;
     }
     .date-dow {
-      font-size: 12px; text-align: center; line-height: 1.2;
+      font-size: 11px; text-align: center; line-height: 1.2;
       margin: 1px 0 0 0; padding: 0;
       border: none; background: none;
       border-radius: 0; letter-spacing: 0;
@@ -395,9 +400,7 @@
   .line-head {
     height: 110px; flex-shrink: 0;
     padding: 8px 10px;
-    background: linear-gradient(180deg, rgba(26,34,48,0.6) 0%, rgba(15,22,32,0.25) 100%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: var(--panel-solid);
     border-bottom: 1px solid var(--border-strong);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.04),
