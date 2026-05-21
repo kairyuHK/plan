@@ -748,13 +748,58 @@
     .head-btn { width: 100%; justify-content: center; height: 20px; }
   }
 
+  /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .timeline-head {
+      height: 108px !important;
+      padding: 22px 2px 6px !important;
+      justify-content: center !important;
+      align-items: center !important;
+      position: relative;
+    }
+    .date-year {
+      position: absolute !important;
+      top: 5px !important; left: 4px !important;
+      transform: none !important;
+      font-size: 8px !important;
+      letter-spacing: 0.5px !important;
+      line-height: 1 !important;
+      color: var(--accent) !important; opacity: 0.9 !important;
+      padding: 0 !important; margin: 0 !important;
+      white-space: nowrap;
+    }
+    .date-month {
+      font-size: 11px !important; line-height: 1.2 !important;
+      margin: 0 !important; padding: 0 !important;
+      color: var(--text-dim) !important; letter-spacing: 0.3px !important;
+      font-weight: 500 !important; opacity: 1 !important;
+      text-align: center !important;
+    }
+    .date-day {
+      font-size: 14px !important; line-height: 1.2 !important;
+      margin: 2px 0 0 0 !important;
+      color: var(--text) !important; font-weight: 700 !important;
+      letter-spacing: 0 !important;
+      background: none !important;
+      -webkit-text-fill-color: var(--text) !important;
+      -webkit-background-clip: unset !important;
+      background-clip: unset !important;
+      text-align: center !important;
+    }
+    .date-dow {
+      font-size: 11px !important; line-height: 1.2 !important;
+      margin: 2px 0 0 0 !important; padding: 0 !important;
+      border: none !important; background: none !important;
+      border-radius: 0 !important; letter-spacing: 0 !important;
+      font-weight: 700 !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      box-shadow: none !important;
+      text-align: center !important;
+    }
+  }
+
   @media (max-width: 900px) and (orientation: landscape) {
-    /* 横屏：年月日/夕盛等高，起始/切换底部与分界线保持间距 */
-    .timeline-head { height: 108px; padding-top: 22px !important; }
-    .date-year { top: 5px !important; left: 4px !important; font-size: 8px !important; }
-    .date-month { font-size: 11px !important; margin-top: 0 !important; }
-    .date-day { font-size: 13px !important; margin-top: 2px !important; }
-    .date-dow { font-size: 11px !important; margin-top: 2px !important; }
     .line-head { height: 108px; padding-bottom: 12px; }
     .cfg-input { height: 16px; }
     /* 横屏隐藏底部统计栏 */
