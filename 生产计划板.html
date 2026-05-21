@@ -752,7 +752,7 @@
   @media (orientation: landscape) and (max-height: 500px) {
     .timeline-head {
       height: 108px !important;
-      padding: 22px 2px 6px !important;
+      padding: 4px 2px 6px !important;
       justify-content: center !important;
       align-items: center !important;
       position: relative;
@@ -1413,7 +1413,7 @@ function renderLibList() {
     return;
   }
   libList.innerHTML = '';
-  library.forEach(item => {
+  [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
     const row = document.createElement('div');
     row.className = 'lib-item';
     row.style.setProperty('--lib-color', item.color);
@@ -1553,7 +1553,7 @@ function openPicker(line) {
     });
   } else {
     pickList.innerHTML = '';
-    library.forEach(item => {
+    [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
       const row = document.createElement('div');
       row.className = 'pick-item';
       row.style.setProperty('--lib-color', item.color);
