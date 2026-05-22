@@ -133,7 +133,7 @@ body.exporting .day-row {
   border-color: rgba(255,255,255,0.08);
 }
 body.exporting .day-row.both-rest {
-  background: #4a3020;
+  background: #5a3820;
   border-color: rgba(255,255,255,0.06);
 }
 body.exporting .day-row.today {
@@ -157,10 +157,10 @@ body.exporting .shift { border-right: 1px solid rgba(255,255,255,0.06); }
 body.exporting .shifts .shift:last-child { border-right: none; }
 
 /* shift cell 实色：rgba 透明渐变 over row bg 的合成值 */
-body.exporting .shift.work       { background: #293560; }
-body.exporting .shifts .shift + .shift.work { background: #1e3e3a; }
-body.exporting .shift.rest       { background: #4a3020; }
-body.exporting .day-row.both-rest .shift.rest { background: #4a3020; }
+body.exporting .shift.work       { background: #2d3a50; }
+body.exporting .shifts .shift + .shift.work { background: #1f463f; }
+body.exporting .shift.rest       { background: #5a3820; }
+body.exporting .day-row.both-rest .shift.rest { background: #5a3820; }
 
 /* month-col-head: linear-gradient rgba(129,140,248, 0.12→0.04) over body */
 body.exporting .month-col-head {
@@ -463,7 +463,7 @@ body.has-unsaved .btn-save::after {
 
 /* Both rest: 与单休 cell 同色 */
 .day-row.both-rest {
-  background: #4a3020;
+  background: #5a3820;
   border-color: var(--border);
 }
 
@@ -506,12 +506,12 @@ body.has-unsaved .btn-save::after {
   position: relative; z-index: 1;
 }
 .shift.work {
-  background: #293560;
+  background: #2d3a50;
   color: var(--work-fg);
   text-shadow: 0 0 12px rgba(129,140,248,0.4);
 }
 .shift.rest {
-  background: #4a3020;
+  background: #5a3820;
   color: var(--rest-fg);
   text-shadow: 0 0 12px rgba(251,146,60,0.4);
 }
@@ -519,12 +519,12 @@ body.has-unsaved .btn-save::after {
 
 /* 右侧（従業員B）出 — 薄荷绿 */
 .shifts .shift + .shift.work {
-  background: #1e3e3a;
+  background: #1f463f;
   color: var(--work-fg-b);
   text-shadow: 0 0 12px rgba(110,231,183,0.35);
 }
 .day-row.both-rest .shift.rest {
-  background: #4a3020;
+  background: #5a3820;
   color: var(--rest-fg);
   text-shadow: 0 0 12px rgba(251,146,60,0.4);
 }
