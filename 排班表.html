@@ -133,12 +133,11 @@ body.exporting .day-row {
   border-color: rgba(255,255,255,0.08);
 }
 body.exporting .day-row.both-rest {
-  background: linear-gradient(135deg, rgba(251,191,36,0.22), rgba(251,146,60,0.14)), #1f2330;
-  border-color: rgba(251,191,36,0.28);
-  border-left: 2px solid #f59e0b;
+  background: #4a3020;
+  border-color: rgba(255,255,255,0.06);
 }
 body.exporting .day-row.today {
-  border-color: rgba(251,146,60,0.5);
+  border-color: rgba(255,255,255,0.06);
 }
 
 /* day-cell: surface-soft rgba(20,23,30,0.65) over row bg */
@@ -146,7 +145,7 @@ body.exporting .day-cell {
   background: #191d28;
 }
 body.exporting .day-row.both-rest .day-cell {
-  background: #211b13;
+  background: #3a2515;
 }
 
 /* shifts: gap 颜色与 row bg 一致，消除 1px 深色分隔线 */
@@ -161,7 +160,7 @@ body.exporting .shifts .shift:last-child { border-right: none; }
 body.exporting .shift.work       { background: #293560; }
 body.exporting .shifts .shift + .shift.work { background: #1e3e3a; }
 body.exporting .shift.rest       { background: #4a3020; }
-body.exporting .day-row.both-rest .shift.rest { background: #3a2818; }
+body.exporting .day-row.both-rest .shift.rest { background: #4a3020; }
 
 /* month-col-head: linear-gradient rgba(129,140,248, 0.12→0.04) over body */
 body.exporting .month-col-head {
@@ -450,8 +449,7 @@ body.has-unsaved .btn-save::after {
 .day-row.sat .day-cell .dow { color: var(--sat); }
 
 .day-row.today {
-  border-color: rgba(251,146,60,0.4);
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(251,146,60,0.15), 0 0 20px rgba(251,146,60,0.12);
+  border-color: var(--border);
 }
 .day-row.today .day-cell .dnum {
   background: linear-gradient(135deg, #fdba74, var(--today));
@@ -463,11 +461,10 @@ body.has-unsaved .btn-save::after {
   -webkit-text-fill-color: currentColor;
 }
 
-/* Both rest: 暖色底 + 左侧色条 + 角标 */
+/* Both rest: 与单休 cell 同色 */
 .day-row.both-rest {
-  background: linear-gradient(135deg, rgba(251,191,36,0.14), rgba(251,146,60,0.08));
-  border-color: rgba(251,191,36,0.25);
-  box-shadow: inset 0.5px 0 0 #f59e0b, var(--shadow-sm), 0 0 16px rgba(251,191,36,0.1);
+  background: #4a3020;
+  border-color: var(--border);
 }
 
 .day-cell {
@@ -478,7 +475,8 @@ body.has-unsaved .btn-save::after {
   background: var(--surface-soft);
   gap: 1px;
 }
-.day-row.both-rest .day-cell { background: rgba(0,0,0,0.25); border-right-color: rgba(251,191,36,0.18); }
+.day-row.both-rest .day-cell { background: #3a2515; border-right-color: var(--border); }
+.day-row.both-rest .shifts { background: #3a3d49; }
 .day-cell .dow {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
   letter-spacing: 0.5px;
@@ -526,9 +524,9 @@ body.has-unsaved .btn-save::after {
   text-shadow: 0 0 12px rgba(110,231,183,0.35);
 }
 .day-row.both-rest .shift.rest {
-  background: #3a2818;
-  color: #fcd9b8;
-  text-shadow: none;
+  background: #4a3020;
+  color: var(--rest-fg);
+  text-shadow: 0 0 12px rgba(251,146,60,0.4);
 }
 
 /* both-rest badge */
