@@ -152,6 +152,19 @@ body.exporting .legend-card {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+body.exporting .shifts { background: #232833; }
+body.exporting .shift.work {
+  background: #232a3d;
+}
+body.exporting .shifts .shift + .shift.work {
+  background: #1d2c2b;
+}
+body.exporting .shift.rest {
+  background: #2e2620;
+}
+body.exporting .day-row.both-rest .shift.rest {
+  background: #2a221a;
+}
 body.exporting .legend-dot {
   box-shadow: none;
   border-color: rgba(255,255,255,0.18);
