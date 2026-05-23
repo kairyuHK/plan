@@ -235,7 +235,8 @@
     border-radius: 3px;
     text-align: center;
   }
-  .config input[type="number"] { width: 44px; }
+  .config input[type="number"] { width: 44px; color-scheme: light; }
+  html[data-theme="dark"] .config input[type="number"] { color-scheme: dark; }
   .config input[type="text"] { width: 130px; text-align: left; letter-spacing: 0.04em; }
 
   /* ─── Stats grid ─── */
@@ -552,6 +553,25 @@
     text-align: center;
     letter-spacing: 0.01em;
   }
+  .in-cell, .out-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-self: center;
+    position: relative;
+  }
+  .next-day, .carry-prev {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--c-sun);
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+    opacity: 0.85;
+  }
+  .carry-prev { color: var(--text-dim); }
   .day .num.work { color: var(--c-normal); }
   .day .num.ot { color: var(--c-ot); }
   .day .num.zero { color: var(--text-faint); }
@@ -865,6 +885,11 @@
     const [h, m] = t.split(':').map(Number);
     return h * 60 + m;
   }
+  function minToTime(min) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
   function fmtHours(h) {
     if (h == null || isNaN(h)) return '—';
     if (h === 0) return '0';
@@ -907,7 +932,7 @@
   }
 
   // ─── Calculation ───
-  function calcDay(rec, y, m, d) {
+  function calcDay(rec, y, m, d, prevCarryOut) {
     const tag = rec?.tag || defaultTag(y, m, d);
     const inMin = timeToMin(rec?.in);
     const outMin = timeToMin(rec?.out);
@@ -921,10 +946,23 @@
     } else if (tag === 'leave') {
       normal = state.stdHours;
       attended = true;
-    } else if (inMin != null && outMin != null && outMin > inMin) {
-      let span = (outMin - inMin) / 60;
-      if (span > 6) span -= state.lunchHours;
-      work = Math.max(0, span);
+    } else if (inMin != null && outMin != null && outMin !== inMin) {
+      // 跨日支持:下班 < 上班视为翌日
+      // 若前一日跨夜延续到今日 (prevCarryOut 为前日下班时间), 钳制今日起点
+      let effectiveIn = inMin;
+      const isTodayOvernight = outMin < inMin;
+      if (prevCarryOut != null && !isTodayOvernight && inMin < prevCarryOut) {
+        effectiveIn = prevCarryOut;
+      }
+      // 若整个今日班次都在前日跨夜区间内, work = 0
+      if (!isTodayOvernight && outMin <= effectiveIn) {
+        // 全部被前日吸收
+      } else {
+        let span = outMin > effectiveIn
+          ? (outMin - effectiveIn) / 60
+          : (outMin + 24 * 60 - effectiveIn) / 60;
+        if (span > 6) span -= state.lunchHours;
+        work = Math.max(0, span);
       attended = work > 0;
       if (tag === 'workday') {
         normal = Math.min(work, state.stdHours);
@@ -933,6 +971,7 @@
         normal = Math.min(work, state.stdHours);
         ot = Math.max(0, work - state.stdHours);
         holidayHrs = work;
+      }
       }
     }
     return { tag, work, normal, ot, holidayHrs, attended, absent };
@@ -983,7 +1022,19 @@
       const key = ymdKey(yy, mm, d);
       const wd = iter.getDay();
       const rec = state.days[key];
-      const calc = calcDay(rec, yy, mm, d);
+
+      // 前一日跨夜延伸到今日? 前日 out < 前日 in 且两者都有
+      const prevDate = new Date(yy, mm, d - 1);
+      const prevKey = ymdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+      const prevRec = state.days[prevKey];
+      let prevCarryOut = null;
+      if (prevRec?.in && prevRec?.out) {
+        const pIn = timeToMin(prevRec.in);
+        const pOut = timeToMin(prevRec.out);
+        if (pOut < pIn) prevCarryOut = pOut;
+      }
+
+      const calc = calcDay(rec, yy, mm, d, prevCarryOut);
 
       totalNormal += calc.normal;
       totalOT += calc.ot;
@@ -1002,6 +1053,7 @@
 
       const tag = TAGS[calc.tag];
       const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
+      const overnight = showTimes && rec?.in && rec?.out && timeToMin(rec.out) < timeToMin(rec.in);
 
       row.innerHTML = `
         <div class="date">
@@ -1026,11 +1078,17 @@
         </div>
         <div class="times-wrap">
           <div class="times">
-            <input type="time" class="time-input" data-field="in" data-key="${key}"
-              value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
+            <span class="in-cell">
+              ${prevCarryOut != null && showTimes ? `<span class="carry-prev" title="前日跨夜至 ${minToTime(prevCarryOut)},此前不再计入">← ${minToTime(prevCarryOut)}</span>` : ''}
+              <input type="time" class="time-input" data-field="in" data-key="${key}"
+                value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
+            </span>
             <span class="sep">→</span>
-            <input type="time" class="time-input" data-field="out" data-key="${key}"
-              value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
+            <span class="out-cell">
+              <input type="time" class="time-input" data-field="out" data-key="${key}"
+                value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
+              ${overnight ? '<span class="next-day">翌日</span>' : ''}
+            </span>
           </div>
         </div>
         <div class="nums">
