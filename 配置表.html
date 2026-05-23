@@ -43,7 +43,7 @@
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:400;line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-  .line-grid .cell .mats>div{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 22px}
   .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:22px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
   .line-grid.vertical::after{content:"▼";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);color:var(--accent);font-size:18px;line-height:1}
@@ -126,6 +126,13 @@
   .menu.show{display:block}
   .menu-item{padding:8px 12px;cursor:pointer;font:inherit;color:var(--fg)}
   .menu-item:hover{background:var(--soft);color:var(--accent)}
+  /* 临时类:在屏幕上模拟打印布局,用于打印前同步测量与缩字号 */
+  body.printing #content{width:285mm !important;padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important}
+  body.printing .line-wrap{width:100% !important;overflow:visible !important;margin:0 !important}
+  body.printing .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
+  body.printing .line-grid .row{gap:8px !important}
+  body.printing .line-grid .cell{height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important;overflow:visible !important}
+  body.printing .line-grid .cell .mats{font-size:22px !important;font-weight:500 !important;letter-spacing:.3px}
   @media print {
     @page { size: A4 landscape; margin: 0; }
     html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
@@ -510,8 +517,19 @@ function getBentoByName(name) {
 
 function matchBentos(prefix) {
   const p = (prefix || "").trim().toLowerCase();
-  if (!p) return state.bentos.slice();
-  return state.bentos.filter(b => b.name.toLowerCase().includes(p));
+  const list = p ? state.bentos.filter(b => b.name.toLowerCase().includes(p)) : state.bentos.slice();
+  // 排序:有输入时前缀匹配优先,其次包含位置靠前的优先;同档按中文名升序
+  if (p) {
+    list.sort((a, b) => {
+      const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+      const ai = an.indexOf(p), bi = bn.indexOf(p);
+      if (ai !== bi) return ai - bi;
+      return a.name.localeCompare(b.name, "zh-Hans-CN");
+    });
+  } else {
+    list.sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  }
+  return list;
 }
 
 function colorToHex(c) {
@@ -1007,8 +1025,21 @@ function isVerticalLayout() {
   if (_forceHorizontal) return false;
   return window.matchMedia("(max-width:720px) and (orientation:portrait)").matches;
 }
-window.addEventListener("beforeprint", () => { _forceHorizontal = true; render(); });
-window.addEventListener("afterprint", () => { _forceHorizontal = false; render(); });
+window.addEventListener("beforeprint", () => {
+  _forceHorizontal = true;
+  _skipFitRaf = true;
+  render();
+  document.body.classList.add("printing");
+  document.body.offsetHeight; // 强制 reflow,让 printing 布局生效后再测
+  fitAllCells(document.getElementById("content"), { sync: true, minSize: 6 });
+  document.body.classList.remove("printing");
+  // _skipFitRaf 留到 afterprint 再清,防止任何 stale rAF 在截屏前夕覆盖我们的同步 fit
+});
+window.addEventListener("afterprint", () => {
+  _forceHorizontal = false;
+  _skipFitRaf = false;
+  render();
+});
 
 function renderLineGridVertical(line, cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
@@ -1030,20 +1061,25 @@ function buildGrid(line, cellRenderer) {
   return isVerticalLayout() ? renderLineGridVertical(line, cellRenderer) : renderLineGrid(line, cellRenderer);
 }
 
-function fitAllCells(root) {
-  requestAnimationFrame(() => {
+let _skipFitRaf = false;
+function fitAllCells(root, opts) {
+  const sync = opts && opts.sync;
+  const minSize = (opts && typeof opts.minSize === "number") ? opts.minSize : 7;
+  const work = () => {
+    if (!sync && _skipFitRaf) return;
     for (const mats of root.querySelectorAll(".cell .mats")) {
       const items = [...mats.children];
       if (!items.length) continue;
       for (const el of items) el.style.fontSize = "";
       let size = parseFloat(getComputedStyle(items[0]).fontSize);
       let guard = 30;
-      while (guard-- > 0 && size > 9 && (mats.scrollHeight > mats.clientHeight + 1 || items.some(el => el.scrollWidth > el.clientWidth + 1))) {
+      while (guard-- > 0 && size > minSize && (mats.scrollHeight > mats.clientHeight + 1 || items.some(el => el.scrollWidth > el.clientWidth + 1))) {
         size -= 1;
         for (const el of items) el.style.fontSize = size + "px";
       }
     }
-  });
+  };
+  if (sync) work(); else requestAnimationFrame(work);
 }
 
 function renderLineGrid(line, cellRenderer) {
