@@ -632,13 +632,13 @@
     .day .tag-cell { grid-area: tag; justify-content: flex-start; }
     .day .times {
       grid-area: times;
-      display: flex;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 1fr 28px 1fr;
       align-items: center;
-      justify-content: flex-end;
     }
-    .day .in-cell, .day .out-cell { justify-self: auto; }
-    .day .nums { justify-content: flex-end; padding-right: 2px; }
+    .day .times .in-cell  { justify-self: end; }
+    .day .times .sep      { justify-self: center; }
+    .day .times .out-cell { justify-self: start; }
     .day .times .sep {
       color: var(--text-faint);
       font-family: var(--font-mono);
@@ -646,11 +646,14 @@
     }
     .day .nums {
       grid-area: nums;
-      display: flex;
-      gap: 20px;
+      display: grid;
+      grid-template-columns: 1fr 28px 1fr;
+      align-items: center;
       font-family: var(--font-mono);
       font-size: 12px;
     }
+    .day .nums .num.work { grid-column: 1; justify-self: end; }
+    .day .nums .num.ot   { grid-column: 3; justify-self: start; }
     .day .nums .nlbl { color: var(--text-faint); margin-right: 4px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
     .month-title { font-size: 24px; min-width: 160px; }
     .config { width: 100%; justify-content: flex-end; gap: 14px; }
