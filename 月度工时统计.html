@@ -1089,9 +1089,18 @@
     // 重建 DOM 会让选择器锚点丢失而提前关闭。
   });
 
-  // 输入框失焦后再统一重渲染,确保计算结果同步。
+  // 输入框失焦时:先兜底保存当前值(防止 change 时序未到导致丢失),再重渲染。
   els.days.addEventListener('focusout', e => {
-    if (!e.target.closest('.time-input')) return;
+    const inp = e.target.closest('.time-input');
+    if (!inp) return;
+    const key = inp.dataset.key;
+    const field = inp.dataset.field;
+    const rec = state.days[key] || {};
+    if (rec[field] !== inp.value) {
+      rec[field] = inp.value;
+      state.days[key] = rec;
+      save();
+    }
     setTimeout(() => {
       if (!els.days.contains(document.activeElement)) render();
     }, 0);
@@ -1199,15 +1208,35 @@
           throw new Error('文件格式不正确:缺少 days 字段');
         }
         if (!confirm('导入将覆盖当前所有数据,确定继续？')) return;
+        // 保留当前设置, 文件里没带的字段不被覆盖
+        const prev = {
+          cycleStart: state.cycleStart,
+          stdHours: state.stdHours,
+          lunchHours: state.lunchHours,
+          theme: state.theme,
+        };
+        const cs = Number(data.cycleStart);
         Object.keys(state).forEach(k => delete state[k]);
         Object.assign(state, {
           cursor: data.cursor || ymKey(new Date()),
-          stdHours: Number(data.stdHours) || 8,
-          lunchHours: Number(data.lunchHours) || 1,
-          theme: data.theme === 'light' ? 'light' : 'dark',
+          stdHours: Number(data.stdHours) > 0 ? Number(data.stdHours) : prev.stdHours,
+          lunchHours: Number.isFinite(Number(data.lunchHours)) ? Number(data.lunchHours) : prev.lunchHours,
+          cycleStart: Number.isFinite(cs) && cs >= 1 && cs <= 28 ? Math.floor(cs) : prev.cycleStart,
+          theme: data.theme === 'light' || data.theme === 'dark' ? data.theme : prev.theme,
           days: data.days || {},
           restdays: data.restdays || {},
         });
+        // 老格式 restdays 自动迁移
+        const _firstVal = Object.values(state.restdays)[0];
+        if (Array.isArray(_firstVal)) {
+          const old = state.restdays;
+          state.restdays = {};
+          for (const ym in old) {
+            for (const dd of old[ym]) {
+              state.restdays[`${ym}-${String(dd).padStart(2,'0')}`] = true;
+            }
+          }
+        }
         // 兼容老数据:weekend → restday
         for (const k in state.days) {
           if (state.days[k]?.tag === 'weekend') state.days[k].tag = 'restday';
