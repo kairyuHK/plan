@@ -633,8 +633,9 @@
     .day .times {
       grid-area: times;
       display: grid;
-      grid-template-columns: 1fr 28px 1fr;
+      grid-template-columns: 100px 28px 100px;
       align-items: center;
+      justify-content: end;
     }
     .day .times .in-cell  { justify-self: end; }
     .day .times .sep      { justify-self: center; }
@@ -647,8 +648,9 @@
     .day .nums {
       grid-area: nums;
       display: grid;
-      grid-template-columns: 1fr 28px 1fr;
+      grid-template-columns: 100px 28px 100px;
       align-items: center;
+      justify-content: end;
       font-family: var(--font-mono);
       font-size: 12px;
     }
