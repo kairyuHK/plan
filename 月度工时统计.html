@@ -459,14 +459,15 @@
   .tag-pill {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     padding: 6px 12px 6px 10px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--tag-color, var(--text-dim)) 10%, var(--surface-2));
+    border: 1px solid color-mix(in srgb, var(--tag-color, var(--border)) 35%, var(--border));
     border-radius: 20px;
     font-family: var(--font-body);
     font-size: 12px;
-    color: var(--text);
+    font-weight: 500;
+    color: var(--tag-color, var(--text));
     cursor: pointer;
     transition: all 0.15s ease;
     width: 100%;
@@ -474,18 +475,19 @@
     justify-content: flex-start;
   }
   .tag-pill:hover {
-    border-color: var(--text-dim);
-    background: var(--surface-3);
+    border-color: var(--tag-color, var(--text-dim));
+    background: color-mix(in srgb, var(--tag-color, var(--text-dim)) 18%, var(--surface-2));
   }
   .tag-pill .dot {
-    width: 7px; height: 7px;
+    width: 10px; height: 10px;
     border-radius: 50%;
     background: var(--tag-color, var(--text-dim));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tag-color, var(--text-dim)) 25%, transparent);
     flex-shrink: 0;
   }
   .tag-pill .chev {
     margin-left: auto;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--tag-color, var(--text-faint)) 60%, var(--text-faint));
     font-size: 10px;
   }
   .tag-menu {
@@ -519,8 +521,9 @@
   }
   .tag-menu button:hover { background: var(--surface); }
   .tag-menu button .dot {
-    width: 7px; height: 7px;
+    width: 10px; height: 10px;
     border-radius: 50%;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 0%, transparent);
   }
 
   .time-input {
@@ -760,11 +763,11 @@
   'use strict';
 
   const TAGS = {
-    workday:  { label: '工作日',     color: 'var(--c-normal)' },
-    restday:  { label: '休息日',     color: 'var(--c-weekend)' },
-    holiday:  { label: '节假日上班', color: 'var(--c-holiday)' },
-    leave:    { label: '带薪休假',   color: 'var(--c-leave)' },
-    absent:   { label: '请假缺勤',   color: 'var(--c-absent)' },
+    workday:  { label: '出勤',     color: 'var(--c-leave)' },
+    restday:  { label: '休息',     color: 'var(--c-weekend)' },
+    holiday:  { label: '祝日出勤', color: 'var(--c-holiday)' },
+    leave:    { label: '有休',     color: 'var(--c-sun)' },
+    absent:   { label: '缺勤',     color: 'var(--c-absent)' },
   };
   const WD_JP = ['日','月','火','水','木','金','土'];
   const MONTH_CN = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
