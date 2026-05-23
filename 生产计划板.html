@@ -1893,6 +1893,92 @@ function hideDropIndicator() {
   if (dropIndicator && dropIndicator.parentElement) dropIndicator.parentElement.removeChild(dropIndicator);
 }
 
+// ============ 拖拽时边缘自动滚动 ============
+// 鼠标/手指停在视口顶部或底部触发区时,自动滚动卡片区域(并同步时间轴/其他列)
+let autoScrollRAF = null;
+let autoScrollSpeed = 0;
+let autoScrollDragCtx = null; // { card, x, y } — 最近一次拖动坐标,用于滚动后重算插入位
+
+function getScrollContainer() {
+  const main = document.querySelector('.main');
+  if (main && main.scrollHeight > main.clientHeight + 1) return main;
+  return document.querySelector('.cards-wrap');
+}
+function getScrollViewportRect() {
+  const ct = getScrollContainer();
+  if (!ct) return { top: 0, bottom: window.innerHeight };
+  const r = ct.getBoundingClientRect();
+  if (ct.classList.contains('main')) {
+    const head = document.querySelector('.timeline-head');
+    const hr = head ? head.getBoundingClientRect() : null;
+    return { top: hr ? hr.bottom : r.top, bottom: r.bottom };
+  }
+  return { top: r.top, bottom: r.bottom };
+}
+function applyScroll(delta) {
+  const ct = getScrollContainer();
+  if (!ct) return;
+  if (ct.classList.contains('main')) {
+    ct.scrollTop = Math.max(0, Math.min(ct.scrollHeight - ct.clientHeight, ct.scrollTop + delta));
+  } else {
+    scrollSyncing = true;
+    document.querySelectorAll('.cards-wrap').forEach(w => {
+      w.scrollTop = Math.max(0, Math.min(w.scrollHeight - w.clientHeight, w.scrollTop + delta));
+    });
+    if (timelineBody) timelineBody.scrollTop = Math.max(0, Math.min(timelineBody.scrollHeight - timelineBody.clientHeight, timelineBody.scrollTop + delta));
+    scrollSyncing = false;
+  }
+}
+function setAutoScroll(speed) {
+  autoScrollSpeed = speed;
+  if (speed === 0) {
+    if (autoScrollRAF) { cancelAnimationFrame(autoScrollRAF); autoScrollRAF = null; }
+    return;
+  }
+  if (autoScrollRAF) return;
+  const tick = () => {
+    autoScrollRAF = null;
+    if (autoScrollSpeed === 0) return;
+    applyScroll(autoScrollSpeed);
+    // 滚动后重新计算插入位 — 不然指针不动就不刷新落点
+    if (autoScrollDragCtx) {
+      const { card, x, y } = autoScrollDragCtx;
+      reinsertAt(card, x, y);
+    }
+    autoScrollRAF = requestAnimationFrame(tick);
+  };
+  autoScrollRAF = requestAnimationFrame(tick);
+}
+function reinsertAt(card, x, y) {
+  card.style.visibility = 'hidden';
+  const el = document.elementFromPoint(x, y);
+  card.style.visibility = '';
+  if (!el) return;
+  const grid = el.closest('.cards-grid');
+  if (!grid) return;
+  insertCardInGrid(grid, card, y);
+  updateDropIndicator(grid, y);
+}
+function updateAutoScrollFromPointer(card, x, y) {
+  autoScrollDragCtx = { card, x, y };
+  const vp = getScrollViewportRect();
+  const zone = 80;
+  const maxSpeed = 18;
+  if (y < vp.top + zone) {
+    const dist = Math.max(0, y - vp.top);
+    setAutoScroll(-Math.max(2, Math.ceil(maxSpeed * (1 - dist / zone))));
+  } else if (y > vp.bottom - zone) {
+    const dist = Math.max(0, vp.bottom - y);
+    setAutoScroll(Math.max(2, Math.ceil(maxSpeed * (1 - dist / zone))));
+  } else {
+    setAutoScroll(0);
+  }
+}
+function stopAutoScroll() {
+  setAutoScroll(0);
+  autoScrollDragCtx = null;
+}
+
 function attachCardInteraction(card) {
   let holdTimer = null;
   let holdReady = false;
@@ -1908,17 +1994,12 @@ function attachCardInteraction(card) {
   }
   function doDragMove(x, y) {
     dragMode = true;
-    card.style.visibility = 'hidden';
-    const el = document.elementFromPoint(x, y);
-    card.style.visibility = '';
-    if (!el) return;
-    const grid = el.closest('.cards-grid');
-    if (!grid) return;
-    insertCardInGrid(grid, card, y);
-    updateDropIndicator(grid, y);
+    reinsertAt(card, x, y);
+    updateAutoScrollFromPointer(card, x, y);
   }
   function finalize(wasTap) {
     if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    stopAutoScroll();
     if (dragMode) {
       card.classList.remove('dragging');
       hideDropIndicator();
@@ -1961,6 +2042,7 @@ function attachCardInteraction(card) {
   card.addEventListener('touchend', () => finalize(!holdReady));
   card.addEventListener('touchcancel', () => {
     if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    stopAutoScroll();
     if (dragMode || holdReady) { card.classList.remove('dragging'); hideDropIndicator(); }
     holdReady = false; dragMode = false;
   });
