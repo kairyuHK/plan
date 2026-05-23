@@ -947,15 +947,15 @@
     const inMin = timeToMin(rec?.in);
     const outMin = timeToMin(rec?.out);
 
-    let work = 0, normal = 0, ot = 0, holidayHrs = 0, attended = false, absent = false;
+    let work = 0, normal = 0, ot = 0, holidayHrs = 0, attended = false, absent = false, paidLeave = false;
 
     if (tag === 'absent') {
       absent = true;
     } else if (tag === 'restday') {
       // 休息日: 真休息,不计工时
     } else if (tag === 'leave') {
-      normal = state.stdHours;
-      attended = true;
+      // 带薪休假: 不计工时, 单独统计为"有休"天数
+      paidLeave = true;
     } else if (inMin != null && outMin != null && outMin !== inMin) {
       // 跨日支持:下班 < 上班视为翌日
       // 若前一日跨夜延续到今日 (prevCarryOut 为前日下班时间), 钳制今日起点
@@ -984,7 +984,7 @@
       }
       }
     }
-    return { tag, work, normal, ot, holidayHrs, attended, absent };
+    return { tag, work, normal, ot, holidayHrs, attended, absent, paidLeave };
   }
 
   // ─── Render ───
@@ -1021,7 +1021,7 @@
     const today = new Date();
     const todayKey = ymdKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-    let totalNormal = 0, totalOT = 0, totalHoliday = 0, attendedCount = 0, absentCount = 0;
+    let totalNormal = 0, totalOT = 0, totalHoliday = 0, attendedCount = 0, leaveCount = 0, absentCount = 0;
 
     const frag = document.createDocumentFragment();
     const iter = new Date(start);
@@ -1050,6 +1050,7 @@
       totalOT += calc.ot;
       totalHoliday += calc.holidayHrs;
       if (calc.attended) attendedCount++;
+      if (calc.paidLeave) leaveCount++;
       if (calc.absent) absentCount++;
 
       const jpHoliday = JP_HOLIDAYS[key];
@@ -1116,16 +1117,16 @@
     els.days.innerHTML = '';
     els.days.appendChild(frag);
 
-    renderStats({ totalNormal, totalOT, totalHoliday, attendedCount, absentCount });
+    renderStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount });
   }
 
   function renderStats(s) {
     const cards = [
       { label: '上班总计', value: s.totalNormal + s.totalOT, unit: 'h', color: 'var(--accent)', sub: '正常 + 加班 全部到岗时长' },
-      { label: '正常工时', value: s.totalNormal, unit: 'h', color: 'var(--c-normal)', sub: '工作日 + 带薪休假 + 节假日上班' },
+      { label: '正常工时', value: s.totalNormal, unit: 'h', color: 'var(--c-normal)', sub: '工作日 + 节假日上班' },
       { label: '加班总计', value: s.totalOT, unit: 'h', color: 'var(--c-ot)', sub: '工作日 + 节假日上班溢出' },
       { label: '节假日工时', value: s.totalHoliday, unit: 'h', color: 'var(--c-holiday)', sub: '节假日上班时长' },
-      { label: '出勤 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.absentCount}`, color: 'var(--c-leave)', sub: '天数' },
+      { label: '出勤 / 有休 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.leaveCount} / ${s.absentCount}`, color: 'var(--c-leave)', sub: '天数' },
     ];
     els.stats.innerHTML = cards.map(c => `
       <div class="stat" style="--stat-color:${c.color}">
