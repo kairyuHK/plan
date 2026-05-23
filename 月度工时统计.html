@@ -693,9 +693,6 @@
       <label title="周期起始日:从这一天到下个月该日前一天为一个周期(1 = 自然月)">起始日
         <input type="number" id="cycleStart" min="1" max="28" step="1" value="1" />
       </label>
-      <label title="当前周期内哪几号是休息日,用逗号分隔">休息日
-        <input type="text" id="restDays" placeholder="3,7,14" />
-      </label>
     </div>
   </div>
 
@@ -949,7 +946,6 @@
     days: document.getElementById('days'),
     stdHours: document.getElementById('stdHours'),
     lunchHours: document.getElementById('lunchHours'),
-    restDays: document.getElementById('restDays'),
     cycleStart: document.getElementById('cycleStart'),
   };
 
@@ -960,16 +956,6 @@
 
     const { y, m } = parseYM(state.cursor);
     const { start, end } = periodRange(state.cursor, state.cycleStart);
-
-    // 当前周期内已设的休息日 → 按周期内日序显示
-    const restEntries = [];
-    for (const k in state.restdays) {
-      const [yy, mm, dd] = k.split('-').map(Number);
-      const dt = new Date(yy, mm - 1, dd);
-      if (dt >= start && dt <= end) restEntries.push({ dt, day: dd });
-    }
-    restEntries.sort((a, b) => a.dt - b.dt);
-    els.restDays.value = restEntries.map(r => r.day).join(', ');
 
     els.monthLabel.textContent = MONTH_CN[m];
     if (state.cycleStart > 1) {
@@ -1251,34 +1237,6 @@
     state.cursor = cursorForDate(new Date(), state.cycleStart);
     save(); render();
   });
-  els.restDays.addEventListener('change', e => {
-    const { start, end } = periodRange(state.cursor, state.cycleStart);
-    // 先清掉本周期范围内的旧设
-    for (const k of Object.keys(state.restdays)) {
-      const [yy, mm, dd] = k.split('-').map(Number);
-      const dt = new Date(yy, mm - 1, dd);
-      if (dt >= start && dt <= end) delete state.restdays[k];
-    }
-    const nums = [...new Set(
-      e.target.value
-        .split(/[,，\s]+/)
-        .map(s => parseInt(s, 10))
-        .filter(n => Number.isFinite(n) && n >= 1 && n <= 31)
-    )];
-    // 每个号码映射到周期内对应那天
-    for (const n of nums) {
-      const iter = new Date(start);
-      while (iter <= end) {
-        if (iter.getDate() === n) {
-          state.restdays[ymdKey(iter.getFullYear(), iter.getMonth(), iter.getDate())] = true;
-          break;
-        }
-        iter.setDate(iter.getDate() + 1);
-      }
-    }
-    save(); render();
-  });
-
   render();
 })();
 </script>
