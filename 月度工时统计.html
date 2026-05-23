@@ -629,13 +629,16 @@
       row-gap: 10px;
     }
     .day .date { grid-area: date; align-self: flex-start; }
-    .day .tag-cell { grid-area: tag; }
+    .day .tag-cell { grid-area: tag; justify-content: flex-start; }
     .day .times {
       grid-area: times;
       display: flex;
       gap: 12px;
       align-items: center;
+      justify-content: flex-start;
     }
+    .day .in-cell, .day .out-cell { justify-self: auto; }
+    .day .nums { justify-content: flex-start; padding-left: 2px; }
     .day .times .sep {
       color: var(--text-faint);
       font-family: var(--font-mono);
