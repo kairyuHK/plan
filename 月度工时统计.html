@@ -71,13 +71,15 @@
 
   body {
     background-image:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212,165,116,0.06), transparent 60%),
-      radial-gradient(ellipse 60% 40% at 90% 100%, rgba(138,163,192,0.04), transparent 60%);
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(212,165,116,0.11), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 100%, rgba(138,163,192,0.07), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 10% 40%, rgba(208,133,102,0.05), transparent 60%);
   }
 
   html[data-theme="light"] body {
     background-image:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(154,111,62,0.08), transparent 60%);
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(154,111,62,0.12), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 90% 80%, rgba(95,122,152,0.05), transparent 60%);
   }
 
   .wrap {
@@ -255,6 +257,7 @@
     gap: 8px;
     position: relative;
     overflow: hidden;
+    transition: transform 0.32s cubic-bezier(0.2,0.7,0.2,1), background 0.32s ease;
   }
   .stat::after {
     content: '';
@@ -262,14 +265,33 @@
     top: 0; left: 0; right: 0;
     height: 2px;
     background: var(--stat-color, var(--accent));
-    opacity: 0.6;
+    opacity: 0.55;
+    transform-origin: left;
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2,0.7,0.2,1);
   }
+  .stat:hover { transform: translateY(-2px); background: var(--surface-2); }
+  .stat:hover::after { opacity: 1; }
+  .stat:first-child {
+    background:
+      radial-gradient(ellipse 120% 80% at 0% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+      var(--surface);
+  }
+  .stat:first-child::before {
+    content: '';
+    position: absolute;
+    right: -40px; bottom: -40px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+    pointer-events: none;
+  }
+  .stat:first-child .value { font-size: 56px; }
   .stat .label {
     font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: var(--text-dim);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -283,7 +305,7 @@
   .stat .value {
     font-family: var(--font-display);
     font-variation-settings: "opsz" 144;
-    font-weight: 300;
+    font-weight: 400;
     font-size: 44px;
     line-height: 1;
     letter-spacing: -0.025em;
@@ -293,15 +315,23 @@
   .stat .value .unit {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--text-faint);
+    color: var(--text-dim);
     margin-left: 4px;
-    font-weight: 300;
+    font-weight: 400;
     letter-spacing: 0.05em;
+  }
+  .stat .value .dec {
+    font-size: 0.55em;
+    color: var(--text-dim);
+    font-weight: 400;
+    letter-spacing: 0;
+    margin-left: 1px;
+    vertical-align: 0.05em;
   }
   .stat .sub {
     font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-dim);
+    font-size: 11.5px;
+    color: var(--text-faint);
     margin-top: 2px;
   }
 
@@ -321,7 +351,8 @@
     font-size: 10.5px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: var(--text);
+    opacity: 0.75;
     border-bottom: 1px solid var(--border);
     background: var(--surface-2);
   }
@@ -336,14 +367,28 @@
     padding: 14px 24px;
     align-items: center;
     border-bottom: 1px solid var(--border-soft);
-    transition: background 0.15s ease;
+    transition: background 0.2s ease;
     gap: 12px;
+    position: relative;
   }
   .day:last-child { border-bottom: none; }
+  .day::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 14%; bottom: 14%;
+    width: 2px;
+    background: var(--accent-dim);
+    transform: scaleY(0);
+    transition: transform 0.28s cubic-bezier(0.2,0.7,0.2,1);
+    pointer-events: none;
+  }
   .day:hover { background: var(--surface-2); }
+  .day:not(.today):hover::after { transform: scaleY(1); }
   .day.today {
-    background: linear-gradient(90deg, rgba(212,165,116,0.05), transparent 40%);
-    position: relative;
+    background: linear-gradient(90deg, rgba(212,165,116,0.07), transparent 40%);
+  }
+  html[data-theme="light"] .day.today {
+    background: linear-gradient(90deg, rgba(154,111,62,0.08), transparent 40%);
   }
   .day.today::before {
     content: '';
@@ -351,6 +396,11 @@
     left: 0; top: 0; bottom: 0;
     width: 2px;
     background: var(--accent);
+    animation: todayPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes todayPulse {
+    0%, 100% { opacity: 0.55; box-shadow: 0 0 0 0 transparent; }
+    50%      { opacity: 1;    box-shadow: 0 0 12px 0 var(--accent); }
   }
   .day.dow-sun .date .d, .day.dow-sun .date .wd,
   .day.is-jp-holiday .date .d, .day.is-jp-holiday .date .wd { color: var(--c-sun); }
@@ -640,7 +690,10 @@
         <input type="number" id="lunchHours" min="0" max="4" step="0.5" value="1" />
         <span>h</span>
       </label>
-      <label title="本月哪几号是你的休息日,用逗号分隔">休息日
+      <label title="周期起始日:从这一天到下个月该日前一天为一个周期(1 = 自然月)">起始日
+        <input type="number" id="cycleStart" min="1" max="28" step="1" value="1" />
+      </label>
+      <label title="当前周期内哪几号是休息日,用逗号分隔">休息日
         <input type="text" id="restDays" placeholder="3,7,14" />
       </label>
     </div>
@@ -768,9 +821,22 @@
     theme: 'dark',
     days: {},
     restdays: {},
+    cycleStart: 1,
   };
   // Migrate older saves
   if (!state.restdays) state.restdays = {};
+  if (state.cycleStart == null) state.cycleStart = 1;
+  // 旧格式 restdays: { 'YYYY-MM': [day,...] } → 新格式 { 'YYYY-MM-DD': true }
+  const _firstVal = Object.values(state.restdays)[0];
+  if (Array.isArray(_firstVal)) {
+    const old = state.restdays;
+    state.restdays = {};
+    for (const ym in old) {
+      for (const d of old[ym]) {
+        state.restdays[`${ym}-${String(d).padStart(2,'0')}`] = true;
+      }
+    }
+  }
   for (const k in state.days) {
     if (state.days[k]?.tag === 'weekend') state.days[k].tag = 'restday';
   }
@@ -806,12 +872,40 @@
     if (h === 0) return '0';
     return h.toFixed(1).replace(/\.0$/, '');
   }
+  function fmtStatValue(h) {
+    const s = fmtHours(h);
+    return s.replace(/\.(\d+)/, '<span class="dec">.$1</span>');
+  }
   function defaultTag(y, m, d) {
     const dateKey = ymdKey(y, m, d);
     if (JP_HOLIDAYS[dateKey]) return 'holiday';
-    const ym = `${y}-${String(m+1).padStart(2,'0')}`;
-    const list = state.restdays[ym] || [];
-    return list.includes(d) ? 'restday' : 'workday';
+    if (state.restdays[dateKey]) return 'restday';
+    return 'workday';
+  }
+
+  // 返回当前 cursor 对应的周期 [start, end](Date 对象, 不含时分秒)
+  function periodRange(cursor, cycleStart) {
+    const { y, m } = parseYM(cursor);
+    if (cycleStart <= 1) {
+      return { start: new Date(y, m, 1), end: new Date(y, m, daysInMonth(y, m)) };
+    }
+    // 起始日 = 前一个日历月的 cycleStart 号
+    const prevY = m === 0 ? y - 1 : y;
+    const prevM = (m + 11) % 12;
+    const startDay = Math.min(cycleStart, daysInMonth(prevY, prevM));
+    const start = new Date(prevY, prevM, startDay);
+    const endDay = Math.min(cycleStart - 1, daysInMonth(y, m));
+    const end = new Date(y, m, endDay);
+    return { start, end };
+  }
+
+  // 返回某个日期归属的 cursor("YYYY-MM")
+  function cursorForDate(date, cycleStart) {
+    if (cycleStart <= 1) return ymKey(date);
+    if (date.getDate() >= cycleStart) {
+      return ymKey(new Date(date.getFullYear(), date.getMonth() + 1, 1));
+    }
+    return ymKey(date);
   }
 
   // ─── Calculation ───
@@ -856,33 +950,53 @@
     stdHours: document.getElementById('stdHours'),
     lunchHours: document.getElementById('lunchHours'),
     restDays: document.getElementById('restDays'),
+    cycleStart: document.getElementById('cycleStart'),
   };
 
   function render() {
     els.stdHours.value = state.stdHours;
     els.lunchHours.value = state.lunchHours;
-    els.restDays.value = (state.restdays[state.cursor] || []).join(', ');
+    els.cycleStart.value = state.cycleStart;
 
     const { y, m } = parseYM(state.cursor);
+    const { start, end } = periodRange(state.cursor, state.cycleStart);
+
+    // 当前周期内已设的休息日 → 按周期内日序显示
+    const restEntries = [];
+    for (const k in state.restdays) {
+      const [yy, mm, dd] = k.split('-').map(Number);
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt >= start && dt <= end) restEntries.push({ dt, day: dd });
+    }
+    restEntries.sort((a, b) => a.dt - b.dt);
+    els.restDays.value = restEntries.map(r => r.day).join(', ');
+
     els.monthLabel.textContent = MONTH_CN[m];
-    els.yearLabel.textContent = `${y}`;
+    if (state.cycleStart > 1) {
+      const fmt = dt => `${dt.getMonth() + 1}/${dt.getDate()}`;
+      els.yearLabel.textContent = `${fmt(start)} – ${fmt(end)}`;
+    } else {
+      els.yearLabel.textContent = `${y}`;
+    }
     els.monthInput.value = state.cursor;
 
     document.documentElement.dataset.theme = state.theme;
 
-    const totalDays = daysInMonth(y, m);
     const today = new Date();
     const todayKey = ymdKey(today.getFullYear(), today.getMonth(), today.getDate());
 
     let totalNormal = 0, totalOT = 0, totalHoliday = 0, attendedCount = 0, absentCount = 0;
 
     const frag = document.createDocumentFragment();
-    for (let d = 1; d <= totalDays; d++) {
-      const key = ymdKey(y, m, d);
-      const dt = new Date(y, m, d);
-      const wd = dt.getDay();
+    const iter = new Date(start);
+    while (iter <= end) {
+      const yy = iter.getFullYear();
+      const mm = iter.getMonth();
+      const d = iter.getDate();
+      const key = ymdKey(yy, mm, d);
+      const wd = iter.getDay();
       const rec = state.days[key];
-      const calc = calcDay(rec, y, m, d);
+      const calc = calcDay(rec, yy, mm, d);
 
       totalNormal += calc.normal;
       totalOT += calc.ot;
@@ -942,6 +1056,7 @@
         </div>
       `;
       frag.appendChild(row);
+      iter.setDate(iter.getDate() + 1);
     }
     els.days.innerHTML = '';
     els.days.appendChild(frag);
@@ -960,7 +1075,7 @@
     els.stats.innerHTML = cards.map(c => `
       <div class="stat" style="--stat-color:${c.color}">
         <div class="label">${c.label}</div>
-        <div class="value">${typeof c.value === 'number' ? fmtHours(c.value) : c.value}<span class="unit">${c.unit}</span></div>
+        <div class="value">${typeof c.value === 'number' ? fmtStatValue(c.value) : c.value}<span class="unit">${c.unit}</span></div>
         <div class="sub">${c.sub}</div>
       </div>
     `).join('');
@@ -1002,8 +1117,13 @@
       e.preventDefault();
       e.stopPropagation();
       const key = opt.dataset.key;
+      const newTag = opt.dataset.setTag;
       const rec = state.days[key] || {};
-      rec.tag = opt.dataset.setTag;
+      rec.tag = newTag;
+      if (newTag === 'restday' || newTag === 'absent' || newTag === 'leave') {
+        delete rec.in;
+        delete rec.out;
+      }
       state.days[key] = rec;
       save();
       render();
@@ -1042,7 +1162,7 @@
     save(); render();
   });
   document.getElementById('todayBtn').addEventListener('click', () => {
-    state.cursor = ymKey(new Date());
+    state.cursor = cursorForDate(new Date(), state.cycleStart);
     save(); render();
   });
   els.monthInput.addEventListener('change', e => {
@@ -1056,10 +1176,12 @@
     save(); render();
   });
   document.getElementById('clearBtn').addEventListener('click', () => {
-    if (!confirm('清空当月所有录入数据？')) return;
-    const prefix = state.cursor + '-';
+    if (!confirm('清空当前周期所有录入数据？')) return;
+    const { start, end } = periodRange(state.cursor, state.cycleStart);
     Object.keys(state.days).forEach(k => {
-      if (k.startsWith(prefix)) delete state.days[k];
+      const [yy, mm, dd] = k.split('-').map(Number);
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt >= start && dt <= end) delete state.days[k];
     });
     save(); render();
   });
@@ -1122,15 +1244,38 @@
     state.lunchHours = Math.max(0, parseFloat(e.target.value) || 0);
     save(); render();
   });
+  els.cycleStart.addEventListener('change', e => {
+    const v = parseInt(e.target.value, 10);
+    state.cycleStart = Math.max(1, Math.min(28, Number.isFinite(v) ? v : 1));
+    // 调整 cursor 到包含 "今天" 的周期, 让感觉自然
+    state.cursor = cursorForDate(new Date(), state.cycleStart);
+    save(); render();
+  });
   els.restDays.addEventListener('change', e => {
-    const max = daysInMonth(...Object.values(parseYM(state.cursor)));
-    const nums = e.target.value
-      .split(/[,，\s]+/)
-      .map(s => parseInt(s, 10))
-      .filter(n => Number.isFinite(n) && n >= 1 && n <= max);
-    const uniq = [...new Set(nums)].sort((a, b) => a - b);
-    if (uniq.length) state.restdays[state.cursor] = uniq;
-    else delete state.restdays[state.cursor];
+    const { start, end } = periodRange(state.cursor, state.cycleStart);
+    // 先清掉本周期范围内的旧设
+    for (const k of Object.keys(state.restdays)) {
+      const [yy, mm, dd] = k.split('-').map(Number);
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt >= start && dt <= end) delete state.restdays[k];
+    }
+    const nums = [...new Set(
+      e.target.value
+        .split(/[,，\s]+/)
+        .map(s => parseInt(s, 10))
+        .filter(n => Number.isFinite(n) && n >= 1 && n <= 31)
+    )];
+    // 每个号码映射到周期内对应那天
+    for (const n of nums) {
+      const iter = new Date(start);
+      while (iter <= end) {
+        if (iter.getDate() === n) {
+          state.restdays[ymdKey(iter.getFullYear(), iter.getMonth(), iter.getDate())] = true;
+          break;
+        }
+        iter.setDate(iter.getDate() + 1);
+      }
+    }
     save(); render();
   });
 
