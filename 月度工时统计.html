@@ -983,7 +983,16 @@
     rec[field] = inp.value;
     state.days[key] = rec;
     save();
-    render();
+    // 不在这里 render —— 移动端原生选择器还没选完分钟时,
+    // 重建 DOM 会让选择器锚点丢失而提前关闭。
+  });
+
+  // 输入框失焦后再统一重渲染,确保计算结果同步。
+  els.days.addEventListener('focusout', e => {
+    if (!e.target.closest('.time-input')) return;
+    setTimeout(() => {
+      if (!els.days.contains(document.activeElement)) render();
+    }, 0);
   });
 
   // mousedown so the action fires before any focus/blur side-effects.
