@@ -126,13 +126,18 @@
   .menu.show{display:block}
   .menu-item{padding:8px 12px;cursor:pointer;font:inherit;color:var(--fg)}
   .menu-item:hover{background:var(--soft);color:var(--accent)}
+  .chip.toggle{cursor:pointer;user-select:none;transition:background .15s,border-color .15s}
+  .chip.toggle:hover{border-color:var(--accent)}
+  .chip.toggle.on{background:var(--accent);border-color:var(--accent)}
+  .chip.toggle.on .k,.chip.toggle.on .v{color:#000}
+  body.mono .line-grid .cell .mats>div{color:var(--fg) !important}
   /* 临时类:在屏幕上模拟打印布局,用于打印前同步测量与缩字号 */
   body.printing #content{width:285mm !important;padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important}
   body.printing .line-wrap{width:100% !important;overflow:visible !important;margin:0 !important}
   body.printing .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
   body.printing .line-grid .row{gap:8px !important}
   body.printing .line-grid .cell{height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important;overflow:visible !important}
-  body.printing .line-grid .cell .mats{font-size:22px !important;font-weight:500 !important;letter-spacing:.3px}
+  body.printing .line-grid .cell .mats{font-size:17px !important;font-weight:500 !important;letter-spacing:.3px}
   @media print {
     @page { size: A4 landscape; margin: 0; }
     html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
@@ -149,7 +154,7 @@
     .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important}
     .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
-    .line-grid .cell .mats{color:#000;font-size:22px !important;font-weight:500 !important;letter-spacing:.3px}
+    .line-grid .cell .mats{color:#000;font-size:17px !important;font-weight:500 !important;letter-spacing:.3px}
     .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
     .belt::after{color:#000 !important;font-size:18px !important;top:-9px !important}
     .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:4px 12px !important;font-size:12px !important}
@@ -163,6 +168,8 @@
     .chip input.v{color:#000 !important}
     .line-grid.vertical::before{background:#999 !important}
     .line-grid.vertical::after{color:#000 !important}
+    body.mono .line-grid .cell .mats>div{color:#000 !important}
+    .chip.toggle{display:none !important}
   }
   @media (max-width: 720px) {
     body{font-size:14px}
@@ -276,6 +283,7 @@ function defaultState() {
     line: [],
     bentos: [],
     meta: { people: "", speed: "" },
+    mono: false,
     current: { screen: "operate", bentoId: null, editingBentoId: null }
   };
 }
@@ -289,6 +297,7 @@ function seedLineIfEmpty(s) {
 function migrate(s) {
   s._migrations = s._migrations || {};
   if (!s.meta) s.meta = { people: "", speed: "" };
+  if (typeof s.mono !== "boolean") s.mono = false;
   if (!s._migrations.freeLabels) {
     for (const p of s.line) {
       if (p.label === "10") p.label = "フリー1";
@@ -1126,6 +1135,21 @@ function renderOperate() {
   const speedV = document.createElement("span"); speedV.className = "v";
   speedV.textContent = (bento && bento.speed) ? bento.speed : "—";
   right.appendChild(mkChip("LINE速度", speedV));
+  // 黑白/彩色 切换
+  const monoChip = document.createElement("span");
+  monoChip.className = "chip toggle" + (state.mono ? " on" : "");
+  monoChip.title = "切换材料字体配色";
+  const monoK = document.createElement("span"); monoK.className = "k"; monoK.textContent = "字体";
+  const monoV = document.createElement("span"); monoV.className = "v"; monoV.textContent = state.mono ? "黑白" : "彩色";
+  monoChip.appendChild(monoK); monoChip.appendChild(monoV);
+  monoChip.onclick = () => {
+    state.mono = !state.mono;
+    document.body.classList.toggle("mono", state.mono);
+    monoChip.classList.toggle("on", state.mono);
+    monoV.textContent = state.mono ? "黑白" : "彩色";
+    saveState();
+  };
+  right.appendChild(monoChip);
   meta.appendChild(right);
   c.appendChild(meta);
 
@@ -1684,6 +1708,7 @@ function init() {
     state.current.bentoId = state.bentos[0].id;
     saveState();
   }
+  if (state.mono) document.body.classList.add("mono");
   render();
   if (new URLSearchParams(location.search).get("test") === "1") runSelfTests();
 }
