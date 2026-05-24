@@ -23,25 +23,30 @@
   --text-dim: #a0a7b4;
   --muted: #6b7280;
 
-  /* 主色：靛蓝紫 */
-  --primary: #818cf8;
-  --primary-hover: #a5b4fc;
-  --primary-soft: rgba(129,140,248,0.14);
-  --primary-glow: rgba(129,140,248,0.32);
+  /* 主色：柔和天蓝 — 与下方出勤A同调,统一冷暖 */
+  --primary: #93c5fd;
+  --primary-hover: #bfdbfe;
+  --primary-soft: rgba(147,197,253,0.14);
+  --primary-glow: rgba(147,197,253,0.28);
 
-  /* 出勤 / 休息 */
-  --work-bg: rgba(129,140,248,0.12);
-  --work-fg: #a5b4fc;
-  --work-fg-b: #6ee7b7;
-  --work-bg-b: rgba(110,231,183,0.10);
+  /* 三色家族 — 同明度(~75%)、同饱和度(~50%),互不打架 */
+  /* 出勤 A：柔蓝 */
+  --work-fg:   #9fc4ee;
+  --work-bg-cell: #233148;
 
-  --rest-bg: rgba(251,146,60,0.14);
-  --rest-fg: #fdba74;
-  --rest-strong: #fb923c;
+  /* 出勤 B：苔绿 */
+  --work-fg-b: #9fd4b3;
+  --work-bg-cell-b: #243c30;
+
+  /* 休：暖陶橙 */
+  --rest-fg:    #efbb86;
+  --rest-strong:#e8a565;
+  --rest-bg-cell: #3a2a1c;
+  --rest-bg: rgba(232,165,101,0.12);
 
   --sun: #f87171;
   --sat: #60a5fa;
-  --today: #fb923c;
+  --today: #f0b878;
 
   --rest-day-bg: rgba(251,191,36,0.06);
   --rest-day-stripe: rgba(251,191,36,0.14);
@@ -133,7 +138,7 @@ body.exporting .day-row {
   border-color: rgba(255,255,255,0.08);
 }
 body.exporting .day-row.both-rest {
-  background: #5a3820;
+  background: #3a2a1c;
   border-color: rgba(255,255,255,0.06);
 }
 body.exporting .day-row.today {
@@ -145,7 +150,7 @@ body.exporting .day-cell {
   background: #191d28;
 }
 body.exporting .day-row.both-rest .day-cell {
-  background: #3a2515;
+  background: #2b1f14;
 }
 
 /* shifts: gap 颜色与 row bg 一致，消除 1px 深色分隔线 */
@@ -156,15 +161,15 @@ body.exporting .shifts {
 body.exporting .shift { border-right: 1px solid rgba(255,255,255,0.06); }
 body.exporting .shifts .shift:last-child { border-right: none; }
 
-/* shift cell 实色：rgba 透明渐变 over row bg 的合成值 */
-body.exporting .shift.work       { background: #2d3a50; }
-body.exporting .shifts .shift + .shift.work { background: #1f463f; }
-body.exporting .shift.rest       { background: #5a3820; }
-body.exporting .day-row.both-rest .shift.rest { background: #5a3820; }
+/* shift cell 实色 */
+body.exporting .shift.work       { background: #233148; }
+body.exporting .shifts .shift + .shift.work { background: #243c30; }
+body.exporting .shift.rest       { background: #3a2a1c; }
+body.exporting .day-row.both-rest .shift.rest { background: #3a2a1c; }
 
-/* month-col-head: linear-gradient rgba(129,140,248, 0.12→0.04) over body */
+/* month-col-head */
 body.exporting .month-col-head {
-  background: linear-gradient(180deg, #242a4a 0%, #1c2238 100%);
+  background: linear-gradient(180deg, #1f2c3e 0%, #18222f 100%);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -407,14 +412,14 @@ body.has-unsaved .btn-save::after {
 .month-col-head {
   display: flex; align-items: center; justify-content: center;
   gap: 4px;
-  background: linear-gradient(180deg, rgba(129,140,248,0.12) 0%, rgba(129,140,248,0.04) 100%);
+  background: linear-gradient(180deg, rgba(147,197,253,0.10) 0%, rgba(147,197,253,0.03) 100%);
   color: var(--primary-hover);
   font-size: 12px; font-weight: 800; letter-spacing: 2px;
   text-transform: uppercase;
   padding: 9px 0;
-  border: 1px solid rgba(129,140,248,0.22);
+  border: 1px solid rgba(147,197,253,0.20);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm), 0 0 16px rgba(129,140,248,0.1);
+  box-shadow: var(--shadow-sm), 0 0 16px rgba(147,197,253,0.08);
   margin-bottom: 4px;
   position: relative;
   backdrop-filter: blur(8px);
@@ -452,18 +457,18 @@ body.has-unsaved .btn-save::after {
   border-color: var(--border);
 }
 .day-row.today .day-cell .dnum {
-  background: linear-gradient(135deg, #fdba74, var(--today));
+  background: linear-gradient(135deg, #f5cd9c, var(--today));
   color: #0a0d12;
   width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 12.5px; font-weight: 900;
-  box-shadow: 0 4px 12px rgba(251,146,60,0.5), 0 1px 0 rgba(255,255,255,0.3) inset;
+  box-shadow: 0 4px 12px rgba(240,184,120,0.38), 0 1px 0 rgba(255,255,255,0.25) inset;
   -webkit-text-fill-color: currentColor;
 }
 
 /* Both rest: 与单休 cell 同色 */
 .day-row.both-rest {
-  background: #5a3820;
+  background: var(--rest-bg-cell);
   border-color: var(--border);
 }
 
@@ -475,8 +480,8 @@ body.has-unsaved .btn-save::after {
   background: var(--surface-soft);
   gap: 1px;
 }
-.day-row.both-rest .day-cell { background: #3a2515; border-right-color: var(--border); }
-.day-row.both-rest .shifts { background: #3a3d49; }
+.day-row.both-rest .day-cell { background: #2b1f14; border-right-color: var(--border); }
+.day-row.both-rest .shifts { background: var(--border-strong); }
 .day-cell .dow {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
   letter-spacing: 0.5px;
@@ -506,27 +511,27 @@ body.has-unsaved .btn-save::after {
   position: relative; z-index: 1;
 }
 .shift.work {
-  background: #2d3a50;
+  background: var(--work-bg-cell);
   color: var(--work-fg);
-  text-shadow: 0 0 12px rgba(129,140,248,0.4);
+  text-shadow: 0 0 10px rgba(147,197,253,0.28);
 }
 .shift.rest {
-  background: #5a3820;
+  background: var(--rest-bg-cell);
   color: var(--rest-fg);
-  text-shadow: 0 0 12px rgba(251,146,60,0.4);
+  text-shadow: 0 0 10px rgba(232,165,101,0.28);
 }
 .shift.rest .shift-mark { font-size: 16px; }
 
-/* 右侧（従業員B）出 — 薄荷绿 */
+/* 右侧（従業員B）出 — 苔绿 */
 .shifts .shift + .shift.work {
-  background: #1f463f;
+  background: var(--work-bg-cell-b);
   color: var(--work-fg-b);
-  text-shadow: 0 0 12px rgba(110,231,183,0.35);
+  text-shadow: 0 0 10px rgba(159,212,179,0.25);
 }
 .day-row.both-rest .shift.rest {
-  background: #5a3820;
+  background: var(--rest-bg-cell);
   color: var(--rest-fg);
-  text-shadow: 0 0 12px rgba(251,146,60,0.4);
+  text-shadow: 0 0 10px rgba(232,165,101,0.28);
 }
 
 /* both-rest badge */
@@ -680,9 +685,10 @@ body.edit-mode .day-row {
     <div class="legend-card">
       <div class="legend-title">凡例</div>
       <div class="legend-list">
-        <div class="legend-item"><span class="legend-dot" style="background:rgba(129,140,248,0.25)"></span>出勤</div>
-        <div class="legend-item"><span class="legend-dot" style="background:rgba(251,146,60,0.25)"></span>休み</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#fb923c;border-radius:50%"></span>今日</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#233148"></span>出勤A</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#243c30"></span>出勤B</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3a2a1c"></span>休み</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f0b878;border-radius:50%"></span>今日</div>
         <div class="legend-item" style="color:#60a5fa;font-weight:700">土</div>
         <div class="legend-item" style="color:#f87171;font-weight:700">日・祝</div>
       </div>
