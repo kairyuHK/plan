@@ -1994,6 +1994,7 @@ function attachCardInteraction(card) {
   let holdTimer = null;
   let holdReady = false;
   let dragMode = false;
+  let movedPastThreshold = false; // 手指/鼠标移过阈值,触发了滚动→ touchend 不应弹窗
   let startX = 0, startY = 0;
   let activePointerId = null;
 
@@ -2020,10 +2021,10 @@ function attachCardInteraction(card) {
       // Held but didn't move — treat as tap
       card.classList.remove('dragging');
       setActiveCard(card);
-    } else if (wasTap) {
+    } else if (wasTap && !movedPastThreshold) {
       setActiveCard(card);
     }
-    holdReady = false; dragMode = false; activePointerId = null;
+    holdReady = false; dragMode = false; movedPastThreshold = false; activePointerId = null;
   }
 
   // --- Touch (mobile): hold-then-drag, with passive control of preventDefault
@@ -2032,13 +2033,13 @@ function attachCardInteraction(card) {
     if (e.touches.length !== 1) {
       if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
       if (holdReady || dragMode) { card.classList.remove('dragging'); hideDropIndicator(); stopAutoScroll(); }
-      holdReady = false; dragMode = false;
+      holdReady = false; dragMode = false; movedPastThreshold = true; // 缩放后 touchend 也不要弹窗
       return;
     }
     if (e.target.closest('input, button, .card-expanded')) return;
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
-    holdReady = false; dragMode = false;
+    holdReady = false; dragMode = false; movedPastThreshold = false;
     holdTimer = setTimeout(startDrag, HOLD_MS);
   }, { passive: true });
 
@@ -2049,6 +2050,7 @@ function attachCardInteraction(card) {
     if (!holdReady) {
       if (Math.hypot(dx, dy) > MOVE_THRESHOLD) {
         clearTimeout(holdTimer); holdTimer = null;
+        movedPastThreshold = true; // 用户是在滚动,touchend 不要当成 tap
       }
       return;
     }
@@ -2061,7 +2063,7 @@ function attachCardInteraction(card) {
     if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
     stopAutoScroll();
     if (dragMode || holdReady) { card.classList.remove('dragging'); hideDropIndicator(); }
-    holdReady = false; dragMode = false;
+    holdReady = false; dragMode = false; movedPastThreshold = true;
   });
 
   // --- Mouse (desktop): move threshold OR hold time triggers drag
