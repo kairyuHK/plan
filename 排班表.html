@@ -153,13 +153,9 @@ body.exporting .day-row.both-rest .day-cell {
   background: #2b1f14;
 }
 
-/* shifts: gap 颜色与 row bg 一致，消除 1px 深色分隔线 */
-body.exporting .shifts {
-  background: #1f2330;
-  gap: 0;
-}
-body.exporting .shift { border-right: 1px solid rgba(255,255,255,0.06); }
-body.exporting .shifts .shift:last-child { border-right: none; }
+/* shifts: 与显示模式一致,统一用 border-left 1px */
+body.exporting .shifts { background: transparent; }
+body.exporting .shifts .shift + .shift { border-left: 1px solid rgba(255,255,255,0.10); }
 
 /* shift cell 实色 */
 body.exporting .shift.work       { background: #233148; }
@@ -481,7 +477,6 @@ body.has-unsaved .btn-save::after {
   gap: 1px;
 }
 .day-row.both-rest .day-cell { background: #2b1f14; border-right-color: var(--border); }
-.day-row.both-rest .shifts { background: var(--border-strong); }
 .day-cell .dow {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
   letter-spacing: 0.5px;
@@ -494,10 +489,9 @@ body.has-unsaved .btn-save::after {
   letter-spacing: -0.3px;
 }
 
-/* Shifts area */
+/* Shifts area — 用边框做分隔线（颜色与行底色无关,前后都一致） */
 .shifts {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
-  background: var(--border-strong);
+  display: grid; grid-template-columns: 1fr 1fr;
 }
 .shift {
   display: flex; align-items: center; justify-content: center;
@@ -505,6 +499,9 @@ body.has-unsaved .btn-save::after {
   font-weight: 700;
   transition: all 0.18s var(--ease);
   position: relative;
+}
+.shifts .shift + .shift {
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
 }
 .shift-mark {
   font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
