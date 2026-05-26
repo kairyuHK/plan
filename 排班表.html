@@ -135,14 +135,14 @@ body.exporting .day-row {
   background: #1f2330;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-color: rgba(255,255,255,0.08);
+  border-color: #262a36;
 }
 body.exporting .day-row.both-rest {
   background: #3a2a1c;
-  border-color: rgba(255,255,255,0.06);
+  border-color: #262a36;
 }
 body.exporting .day-row.today {
-  border-color: rgba(255,255,255,0.06);
+  border-color: #262a36;
 }
 
 /* day-cell: surface-soft rgba(20,23,30,0.65) over row bg */
@@ -150,7 +150,7 @@ body.exporting .day-cell {
   background: #191d28;
 }
 body.exporting .day-row.both-rest .day-cell {
-  background: #2b1f14;
+  background: #191d28;
 }
 
 /* shifts: 与显示模式一致,统一用 border-left 1px */
@@ -431,14 +431,14 @@ body.has-unsaved .btn-save::after {
   background: var(--surface);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
+  border: 1px solid #262a36;
   border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: var(--shadow-xs);
   transition: all 0.18s var(--ease);
 }
 .day-row:hover {
-  border-color: var(--border-strong);
+  border-color: #353a48;
   transform: translateX(1px);
   box-shadow: var(--shadow-sm);
 }
@@ -450,7 +450,7 @@ body.has-unsaved .btn-save::after {
 .day-row.sat .day-cell .dow { color: var(--sat); }
 
 .day-row.today {
-  border-color: var(--border);
+  border-color: #262a36;
 }
 .day-row.today .day-cell .dnum {
   background: linear-gradient(135deg, #f5cd9c, var(--today));
@@ -465,7 +465,7 @@ body.has-unsaved .btn-save::after {
 /* Both rest: 与单休 cell 同色 */
 .day-row.both-rest {
   background: var(--rest-bg-cell);
-  border-color: var(--border);
+  border-color: #262a36;
 }
 
 .day-cell {
@@ -476,7 +476,7 @@ body.has-unsaved .btn-save::after {
   background: var(--surface-soft);
   gap: 1px;
 }
-.day-row.both-rest .day-cell { background: #2b1f14; border-right-color: var(--border); }
+.day-row.both-rest .day-cell { background: var(--surface-soft); border-right-color: var(--border); }
 .day-cell .dow {
   font-size: 9px; font-weight: 700; color: var(--text-dim);
   letter-spacing: 0.5px;
