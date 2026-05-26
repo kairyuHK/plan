@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>岗位排班表</title>
+<style>
+:root{
+  --bg:#0a0a0b; --card:#161618; --border:#26262a;
+  --text:#e8e8ea; --muted:#8a8a90;
+  --accent:#7c5cff; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
+  --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
+  --r-card:12px; --r-btn:8px;
+  --font: -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono: ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{background:#1f1f23}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#6a4def}
+input,select{font:inherit;color:inherit;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 10px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+.nav{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
+.nav .brand{font-weight:600;margin-right:auto}
+.nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page{padding:16px;max-width:1400px;margin:0 auto}
+.hidden{display:none!important}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:0;margin-bottom:16px;overflow:hidden}
+.card-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:2px solid var(--border);font-weight:600}
+.card .muted{color:var(--muted);font-weight:400;font-size:13px}
+.pos-list{list-style:none;margin:0;padding:8px 16px}
+.pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.pos-list li:last-child{border-bottom:none}
+.pos-name{flex:1}
+.pos-list button{padding:4px 10px;font-size:12px}
+.pos-list button.danger{border-color:var(--danger);color:var(--danger)}
+.pos-list button:disabled{opacity:.4;cursor:not-allowed}
+.add-pos{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+.add-pos input{flex:1}
+.toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.toolbar input[type=search]{flex:1;max-width:320px}
+.people-list{list-style:none;margin:0;padding:8px 16px}
+.people-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.people-list li:last-child{border-bottom:none}
+.pname{flex:1}
+.people-list select{padding:4px 8px;font-size:12px}
+.people-list button{padding:4px 10px;font-size:12px}
+.people-list button.danger{border-color:var(--danger);color:var(--danger)}
+.sched-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.sched-bar input[type=date]{font-family:var(--font-mono)}
+.sched-bar .danger-btn{border-color:var(--danger);color:var(--danger)}
+#autosave-status{margin-left:auto;font-size:12px}
+.line-tabs{display:none;gap:4px;margin-bottom:12px;overflow-x:auto}
+.line-tabs button{flex:0 0 auto;padding:6px 14px;border-color:var(--border)}
+.line-tabs button.active{background:var(--c,var(--accent));border-color:var(--c,var(--accent));color:#fff}
+.line-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.line-card{margin-bottom:0}
+.assign-list{list-style:none;margin:0;padding:8px 16px 16px}
+.assign-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.assign-list li:last-child{border-bottom:none}
+.assign-list .pos-name{flex:1;color:var(--muted);font-size:13px}
+.assign-btn{min-width:120px;text-align:left;font-size:13px;padding:6px 10px}
+.assign-btn.empty{border-style:dashed;color:var(--muted)}
+.borrowed{color:var(--accent);font-size:11px}
+
+@media (max-width: 1023px){
+  .line-tabs{display:flex}
+  .line-grid{grid-template-columns:1fr}
+  .line-card{display:none}
+  .line-card.mobile-active{display:block}
+  .assign-btn{min-width:0;flex:0 0 50%;min-height:44px}
+}
+@media (min-width: 1600px){
+  .line-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+#picker-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+#picker-host.hidden{display:none}
+.picker{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;animation:pickerIn .2s ease}
+@keyframes pickerIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.picker .ph-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.picker .ph-head .title{font-weight:600;flex:1}
+.picker .ph-body{padding:8px 16px 16px;overflow:auto}
+.picker .ph-search{padding:8px 16px;border-bottom:1px solid var(--border)}
+.picker .ph-search input{width:100%}
+.picker .person-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-radius:6px;cursor:pointer;min-height:44px}
+.picker .person-row:hover{background:#1f1f23}
+.picker .person-row.disabled{opacity:.35;cursor:not-allowed;background:transparent}
+.picker .person-row .pname{flex:1}
+.picker .person-row .home{color:var(--muted);font-size:12px}
+.picker .section-title{font-size:12px;color:var(--muted);margin:12px 4px 4px;text-transform:uppercase;letter-spacing:.5px}
+.picker .btn-row{display:flex;gap:8px;padding:8px 16px;border-top:1px solid var(--border)}
+.picker .btn-row .spacer{flex:1}
+@media (max-width: 1023px){
+  #picker-host{align-items:flex-end}
+  .picker{max-width:none;max-height:90vh;border-radius:var(--r-card) var(--r-card) 0 0;animation:pickerInUp .25s ease}
+  @keyframes pickerInUp{from{transform:translateY(100%)}to{transform:none}}
+}
+.date-wrap{position:relative;display:inline-block}
+.date-trigger{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);padding:6px 12px;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);cursor:pointer;color:var(--text)}
+.date-trigger:hover{border-color:var(--accent)}
+.date-trigger .caret{color:var(--muted);font-size:11px}
+.cal-host{position:absolute;top:calc(100% + 6px);left:0;z-index:50;background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:12px;box-shadow:0 8px 28px rgba(0,0,0,.55);width:280px}
+.cal-host.hidden{display:none}
+.cal-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.cal-head .title{flex:1;text-align:center;font-weight:600;font-family:var(--font-mono)}
+.cal-head button{padding:4px 8px;font-size:12px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-grid .wd{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:600}
+.cal-grid .wd.sat{color:#3b82f6}
+.cal-grid .wd.sun{color:var(--danger)}
+.cal-grid .day{text-align:center;padding:6px 0;border-radius:6px;cursor:pointer;position:relative;font-size:13px;font-family:var(--font-mono);min-height:32px}
+.cal-grid .day:hover{background:#1f1f23}
+.cal-grid .day.sat{color:#3b82f6}
+.cal-grid .day.sun,.cal-grid .day.holiday{color:var(--danger)}
+.cal-grid .day.other-month{opacity:.3}
+.cal-grid .day.today{outline:1px solid var(--accent);outline-offset:-1px}
+.cal-grid .day.selected{background:var(--accent);color:#fff!important}
+.cal-grid .day .has-data{position:absolute;left:50%;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--ok);transform:translateX(-50%)}
+.cal-grid .day.selected .has-data{background:#fff}
+.cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:6px;min-height:14px;font-weight:600}
+@media (max-width: 1023px){
+  .cal-host{position:fixed;top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-card) var(--r-card) 0 0}
+}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.stat-big{font-size:24px;font-weight:600;font-family:var(--font-mono)}
+.btn-like{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-btn);cursor:pointer}
+.btn-like:hover{background:#1f1f23}
+.danger-btn{border-color:var(--danger);color:var(--danger)}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="brand">岗位排班表</div>
+  <button data-route="schedule" class="active">📅 排班</button>
+  <button data-route="people">👥 人员</button>
+  <button data-route="settings">⚙ 设置</button>
+  <button data-route="data">⬇⬆ 数据</button>
+</header>
+<main>
+  <section id="page-schedule" class="page"><h2>排班</h2></section>
+  <section id="page-people" class="page hidden"><h2>人员库</h2></section>
+  <section id="page-settings" class="page hidden"><h2>设置</h2></section>
+  <section id="page-data" class="page hidden"><h2>数据</h2></section>
+</main>
+<div id="picker-host" class="hidden"></div>
+<script>
+const Util = (() => {
+  const todayISO = () => {
+    const d = new Date();
+    const z = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+  };
+  const prevDay = iso => {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate()-1);
+    const z = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+  };
+  const uid = (prefix='p') => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const clone = obj => JSON.parse(JSON.stringify(obj));
+  return { todayISO, prevDay, uid, clone };
+})();
+</script>
+<script>
+const JpHolidays = (() => {
+  const pad = n => String(n).padStart(2,'0');
+  const iso = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+  const nthMonday = (y, m, n) => {
+    const first = new Date(y, m-1, 1);
+    const firstMon = ((8 - first.getDay()) % 7) + 1;
+    return firstMon + (n-1)*7;
+  };
+  const vernal = y => Math.floor(20.8431 + 0.242194 * (y - 1980)) - Math.floor((y - 1980) / 4);
+  const autumnal = y => Math.floor(23.2488 + 0.242194 * (y - 1980)) - Math.floor((y - 1980) / 4);
+  function compute(y){
+    const list = [
+      [1, 1, '元日'],
+      [1, nthMonday(y,1,2), '成人の日'],
+      [2, 11, '建国記念の日'],
+      [2, 23, '天皇誕生日'],
+      [3, vernal(y), '春分の日'],
+      [4, 29, '昭和の日'],
+      [5, 3, '憲法記念日'],
+      [5, 4, 'みどりの日'],
+      [5, 5, 'こどもの日'],
+      [7, nthMonday(y,7,3), '海の日'],
+      [8, 11, '山の日'],
+      [9, nthMonday(y,9,3), '敬老の日'],
+      [9, autumnal(y), '秋分の日'],
+      [10, nthMonday(y,10,2), 'スポーツの日'],
+      [11, 3, '文化の日'],
+      [11, 23, '勤労感謝の日'],
+    ];
+    const map = new Map();
+    list.forEach(([m,d,name]) => map.set(iso(y,m,d), name));
+    // 振替休日: holiday on Sunday → next non-holiday day becomes a substitute
+    list.forEach(([m,d]) => {
+      const dt = new Date(y, m-1, d);
+      if(dt.getDay() === 0){
+        do { dt.setDate(dt.getDate()+1); } while(map.has(iso(dt.getFullYear(), dt.getMonth()+1, dt.getDate())));
+        map.set(iso(dt.getFullYear(), dt.getMonth()+1, dt.getDate()), '振替休日');
+      }
+    });
+    // 国民の休日: any non-Sunday weekday sandwiched between two holidays
+    [...map.keys()].sort().forEach(k => {
+      const [yy,mm,dd] = k.split('-').map(Number);
+      const between = new Date(yy, mm-1, dd-1);
+      const before = new Date(yy, mm-1, dd-2);
+      const bIso = iso(before.getFullYear(), before.getMonth()+1, before.getDate());
+      const mIso = iso(between.getFullYear(), between.getMonth()+1, between.getDate());
+      if(map.has(bIso) && !map.has(mIso) && between.getDay() !== 0){
+        map.set(mIso, '国民の休日');
+      }
+    });
+    return map;
+  }
+  const cache = new Map();
+  function forYear(y){ if(!cache.has(y)) cache.set(y, compute(y)); return cache.get(y); }
+  function nameOf(isoStr){
+    const y = Number(isoStr.slice(0,4));
+    return forYear(y).get(isoStr) || null;
+  }
+  return { forYear, nameOf };
+})();
+</script>
+<script>
+const Store = (() => {
+  const KEY = 'shift-schedule-data-v1';
+  const DEFAULT_LINES = [
+    {id:'xs', name:'夕盛'},
+    {id:'l01', name:'01'}, {id:'l02', name:'02'},
+    {id:'l03', name:'03'}, {id:'l04', name:'04'}, {id:'l05', name:'05'}
+  ];
+  function emptyData(){
+    const positions = {}; DEFAULT_LINES.forEach(l => positions[l.id]=[]);
+    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, people:[], schedules:{}, lastExportAt:null, lastChangeAt:null };
+  }
+  function sanitize(s){
+    const d = emptyData();
+    if(!s || typeof s !== 'object') return d;
+    s.version = 1;
+    s.lines = Array.isArray(s.lines) && s.lines.length ? s.lines : d.lines;
+    s.positions = (s.positions && typeof s.positions === 'object') ? s.positions : {};
+    s.lines.forEach(l => { if(!Array.isArray(s.positions[l.id])) s.positions[l.id] = []; });
+    s.people = Array.isArray(s.people) ? s.people : [];
+    s.schedules = (s.schedules && typeof s.schedules === 'object') ? s.schedules : {};
+    if(s.lastExportAt === undefined) s.lastExportAt = null;
+    if(s.lastChangeAt === undefined) s.lastChangeAt = null;
+    return s;
+  }
+  let state = emptyData();
+  const listeners = new Set();
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        state = sanitize(Object.assign(emptyData(), parsed));
+      } else {
+        state = emptyData();
+      }
+    }catch(e){ console.warn('load failed', e); state = emptyData(); }
+  }
+  function save(){
+    state.lastChangeAt = new Date().toISOString();
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
+    listeners.forEach(fn => fn());
+  }
+  function subscribe(fn){ listeners.add(fn); return () => listeners.delete(fn); }
+  function get(){ return state; }
+  function replace(newState){ state = sanitize(Object.assign(emptyData(), newState)); save(); }
+  function reset(){ state = emptyData(); save(); }
+
+  // People
+  function addPerson(name, homeLine){
+    state.people.push({ id: Util.uid('p'), name: name.trim(), homeLine });
+    save();
+  }
+  function updatePerson(id, patch){
+    const p = state.people.find(x=>x.id===id); if(!p) return;
+    Object.assign(p, patch); save();
+  }
+  function deletePerson(id){
+    state.people = state.people.filter(p=>p.id!==id);
+    // null out their assignments
+    for(const date in state.schedules){
+      for(const ln in state.schedules[date]){
+        for(const pos in state.schedules[date][ln]){
+          if(state.schedules[date][ln][pos]===id) state.schedules[date][ln][pos]=null;
+        }
+      }
+    }
+    save();
+  }
+  function findPersonUsage(id){
+    let count = 0;
+    for(const date in state.schedules){
+      for(const ln in state.schedules[date]){
+        for(const pos in state.schedules[date][ln]){
+          if(state.schedules[date][ln][pos]===id){ count++; }
+        }
+      }
+    }
+    return count;
+  }
+
+  // Positions
+  function addPosition(lineId, name){
+    if(!state.positions[lineId]) state.positions[lineId]=[];
+    state.positions[lineId].push(name.trim()); save();
+  }
+  function renamePosition(lineId, idx, newName){
+    state.positions[lineId][idx] = newName.trim(); save();
+  }
+  function deletePosition(lineId, idx){
+    state.positions[lineId].splice(idx,1); save();
+  }
+  function movePosition(lineId, idx, dir){
+    const arr = state.positions[lineId]; const j = idx+dir;
+    if(j<0 || j>=arr.length) return;
+    [arr[idx], arr[j]] = [arr[j], arr[idx]]; save();
+  }
+
+  // Schedules
+  function ensureDay(date){
+    if(!state.schedules[date]){
+      state.schedules[date] = {};
+      state.lines.forEach(l => state.schedules[date][l.id] = {});
+    }
+  }
+  function getDay(date){
+    const day = state.schedules[date];
+    const out = {};
+    state.lines.forEach(l => {
+      out[l.id] = {};
+      const positions = state.positions[l.id] || [];
+      positions.forEach(pos => {
+        out[l.id][pos] = (day && day[l.id] && day[l.id][pos]) ? day[l.id][pos] : null;
+      });
+    });
+    return out;
+  }
+  function assign(date, lineId, posName, personId){
+    ensureDay(date);
+    if(!state.schedules[date][lineId]) state.schedules[date][lineId] = {};
+    state.schedules[date][lineId][posName] = personId; // personId or null
+    save();
+  }
+  function clearDay(date){
+    ensureDay(date);
+    state.lines.forEach(l => { state.schedules[date][l.id] = {}; });
+    save();
+  }
+  function copyDay(fromDate, toDate){
+    if(!state.schedules[fromDate]) return false;
+    ensureDay(toDate);
+    state.schedules[toDate] = Util.clone(state.schedules[fromDate]);
+    save();
+    return true;
+  }
+  function lastScheduledDate(beforeDate){
+    const keys = Object.keys(state.schedules).filter(d => d < beforeDate).sort();
+    return keys.length ? keys[keys.length-1] : null;
+  }
+  function assignedPeopleOnDay(date, exceptLine, exceptPos){
+    const set = new Set();
+    const day = state.schedules[date]; if(!day) return set;
+    for(const ln in day){
+      for(const pos in day[ln]){
+        if(ln===exceptLine && pos===exceptPos) continue;
+        const v = day[ln][pos]; if(v) set.add(v);
+      }
+    }
+    return set;
+  }
+
+  function markExported(){ state.lastExportAt = new Date().toISOString(); save(); }
+
+  return {
+    load, save, subscribe, get, replace, reset,
+    addPerson, updatePerson, deletePerson, findPersonUsage,
+    addPosition, renamePosition, deletePosition, movePosition,
+    ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
+    markExported, emptyData,
+  };
+})();
+</script>
+<script>
+const Pages = (() => {
+  const $ = sel => document.querySelector(sel);
+
+  // ---- Settings ----
+  function renderSettings(){
+    const root = $('#page-settings');
+    const s = Store.get();
+    const html = ['<h2>设置 — 岗位</h2>'];
+    s.lines.forEach(line => {
+      const positions = s.positions[line.id] || [];
+      html.push(`<div class="card" data-line="${line.id}">
+        <div class="card-head" style="border-top-color:var(--line-${line.id})">
+          <span class="line-name">${line.name}</span>
+          <span class="muted">${positions.length} 个岗位</span>
+        </div>
+        <ul class="pos-list">
+          ${positions.map((p,i)=>`
+            <li>
+              <span class="pos-name">${escapeHtml(p)}</span>
+              <button data-act="up" data-i="${i}" ${i===0?'disabled':''}>↑</button>
+              <button data-act="down" data-i="${i}" ${i===positions.length-1?'disabled':''}>↓</button>
+              <button data-act="rename" data-i="${i}">改名</button>
+              <button data-act="del" data-i="${i}" class="danger">删</button>
+            </li>`).join('')}
+        </ul>
+        <form class="add-pos">
+          <input type="text" placeholder="新岗位名" required maxlength="40">
+          <button type="submit" class="primary">+ 新增</button>
+        </form>
+      </div>`);
+    });
+    root.innerHTML = html.join('');
+
+    root.querySelectorAll('[data-line]').forEach(card => {
+      const lineId = card.dataset.line;
+      card.querySelectorAll('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = +btn.dataset.i;
+          const act = btn.dataset.act;
+          if(act==='up') Store.movePosition(lineId, i, -1);
+          else if(act==='down') Store.movePosition(lineId, i, +1);
+          else if(act==='rename'){
+            const cur = Store.get().positions[lineId][i];
+            const v = prompt('新岗位名:', cur);
+            if(v && v.trim() && v.trim()!==cur) Store.renamePosition(lineId, i, v.trim());
+          } else if(act==='del'){
+            if(confirm(`删除岗位「${Store.get().positions[lineId][i]}」?历史排班保留原数据。`)) Store.deletePosition(lineId, i);
+          }
+        });
+      });
+      const form = card.querySelector('form.add-pos');
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const input = form.querySelector('input');
+        const v = input.value.trim(); if(!v) return;
+        Store.addPosition(lineId, v); input.value='';
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---- People ----
+  function renderPeople(){
+    const root = document.querySelector('#page-people');
+    const s = Store.get();
+    const query = (root.querySelector('#people-search')?.value || '').trim().toLowerCase();
+    const html = [`
+      <h2>人员库</h2>
+      <div class="toolbar">
+        <input type="search" id="people-search" placeholder="搜索姓名…" value="${escapeHtml(query)}">
+        <button class="primary" id="people-add">+ 新增人员</button>
+      </div>
+    `];
+    s.lines.forEach(line => {
+      const list = s.people.filter(p => p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)));
+      html.push(`<div class="card" data-line="${line.id}">
+        <div class="card-head" style="border-top-color:var(--line-${line.id})">
+          <span class="line-name">${line.name}</span>
+          <span class="muted">${list.length} 人</span>
+        </div>
+        <ul class="people-list">
+          ${list.map(p => `<li data-pid="${p.id}">
+            <span class="pname">${escapeHtml(p.name)}</span>
+            <select data-act="move">
+              ${s.lines.map(l => `<option value="${l.id}" ${l.id===p.homeLine?'selected':''}>${l.name}</option>`).join('')}
+            </select>
+            <button data-act="rename">改名</button>
+            <button data-act="del" class="danger">删</button>
+          </li>`).join('') || '<li class="muted" style="padding:8px 0">（无)</li>'}
+        </ul>
+      </div>`);
+    });
+    root.innerHTML = html.join('');
+
+    const searchEl = root.querySelector('#people-search');
+    if(query){ searchEl.focus(); searchEl.setSelectionRange(query.length, query.length); }
+    searchEl.addEventListener('input', renderPeople);
+    root.querySelector('#people-add').addEventListener('click', () => {
+      const name = prompt('姓名:'); if(!name || !name.trim()) return;
+      const lineOpts = s.lines.map((l,i)=>`${i+1}. ${l.name}`).join('\n');
+      const pick = prompt(`主属线 (输入数字 1-6):\n${lineOpts}`, '1');
+      const idx = parseInt(pick,10) - 1;
+      if(idx<0 || idx>=s.lines.length) return;
+      Store.addPerson(name.trim(), s.lines[idx].id);
+    });
+    root.querySelectorAll('li[data-pid]').forEach(li => {
+      const pid = li.dataset.pid;
+      li.querySelector('[data-act="rename"]').addEventListener('click', () => {
+        const cur = Store.get().people.find(p=>p.id===pid).name;
+        const v = prompt('新姓名:', cur);
+        if(v && v.trim() && v.trim()!==cur) Store.updatePerson(pid, {name: v.trim()});
+      });
+      li.querySelector('[data-act="del"]').addEventListener('click', () => {
+        const usage = Store.findPersonUsage(pid);
+        const cur = Store.get().people.find(p=>p.id===pid).name;
+        const msg = usage>0
+          ? `「${cur}」被 ${usage} 条排班使用,删除后这些岗位会变为空。确认删除?`
+          : `确认删除「${cur}」?`;
+        if(confirm(msg)) Store.deletePerson(pid);
+      });
+      li.querySelector('[data-act="move"]').addEventListener('change', e => {
+        Store.updatePerson(pid, {homeLine: e.target.value});
+      });
+    });
+  }
+
+  let currentDate = null;
+  let currentTabLine = null;
+  let calViewYear = null;
+  let calViewMonth = null;
+
+  const JP_WD_SHORT = ['日','月','火','水','木','金','土'];
+  function fmtDateJp(iso){
+    const [y,m,d] = iso.split('-').map(Number);
+    const wd = JP_WD_SHORT[new Date(y, m-1, d).getDay()];
+    const pad = n => String(n).padStart(2,'0');
+    const holiday = JpHolidays.nameOf(iso);
+    return `${y}/${pad(m)}/${pad(d)} (${wd})${holiday ? ' · ' + holiday : ''}`;
+  }
+
+  function openCalendar(){
+    const [y,m] = currentDate.split('-').map(Number);
+    calViewYear = y; calViewMonth = m;
+    document.getElementById('cal-host').classList.remove('hidden');
+    renderCalendar();
+  }
+  function closeCalendar(){
+    const host = document.getElementById('cal-host');
+    if(host) host.classList.add('hidden');
+  }
+  function calOutsideListener(e){
+    const host = document.getElementById('cal-host');
+    if(!host || host.classList.contains('hidden')) return;
+    if(host.contains(e.target)) return;
+    if(e.target.id === 'sched-date-btn' || e.target.closest('#sched-date-btn')) return;
+    closeCalendar();
+  }
+
+  function renderCalendar(){
+    const host = document.getElementById('cal-host'); if(!host) return;
+    const y = calViewYear, m = calViewMonth;
+    const firstDow = new Date(y, m-1, 1).getDay(); // 0=Sun
+    const offset = (firstDow + 6) % 7; // Monday-first offset
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const daysInPrev = new Date(y, m-1, 0).getDate();
+    const cells = [];
+    for(let i = offset; i > 0; i--){
+      cells.push({d: daysInPrev - i + 1, y: m===1?y-1:y, m: m===1?12:m-1, other: true});
+    }
+    for(let d = 1; d <= daysInMonth; d++){ cells.push({d, y, m, other: false}); }
+    while(cells.length < 42){
+      const k = cells.length - offset - daysInMonth + 1;
+      cells.push({d: k, y: m===12?y+1:y, m: m===12?1:m+1, other: true});
+    }
+    const sched = Store.get().schedules;
+    const todayIso = Util.todayISO();
+    const pad = n => String(n).padStart(2,'0');
+    let selectedHoliday = '';
+    const cellHtml = cells.map((c, idx) => {
+      const wd = idx % 7;
+      const iso = `${c.y}-${pad(c.m)}-${pad(c.d)}`;
+      const hname = JpHolidays.nameOf(iso);
+      const isToday = iso === todayIso;
+      const isSel = iso === currentDate;
+      const hasData = !!sched[iso];
+      const cls = ['day'];
+      if(c.other) cls.push('other-month');
+      if(wd === 6) cls.push('sun');
+      else if(hname) cls.push('holiday');
+      else if(wd === 5) cls.push('sat');
+      if(isToday) cls.push('today');
+      if(isSel){ cls.push('selected'); if(hname) selectedHoliday = hname; }
+      return `<div class="${cls.join(' ')}" data-iso="${iso}" title="${hname?escapeHtml(hname):''}">${c.d}${hasData?'<span class="has-data"></span>':''}</div>`;
+    }).join('');
+    host.innerHTML = `
+      <div class="cal-head">
+        <button data-cal="prev">‹</button>
+        <div class="title">${y}年${pad(m)}月</div>
+        <button data-cal="today">今日</button>
+        <button data-cal="next">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="wd">月</div><div class="wd">火</div><div class="wd">水</div><div class="wd">木</div><div class="wd">金</div><div class="wd sat">土</div><div class="wd sun">日</div>
+        ${cellHtml}
+      </div>
+      <div class="holiday-label">${selectedHoliday}</div>
+    `;
+    host.querySelector('[data-cal="prev"]').onclick = e => { e.stopPropagation(); if(calViewMonth===1){calViewYear--;calViewMonth=12;} else calViewMonth--; renderCalendar(); };
+    host.querySelector('[data-cal="next"]').onclick = e => { e.stopPropagation(); if(calViewMonth===12){calViewYear++;calViewMonth=1;} else calViewMonth++; renderCalendar(); };
+    host.querySelector('[data-cal="today"]').onclick = e => {
+      e.stopPropagation();
+      const [ty,tm] = Util.todayISO().split('-').map(Number);
+      calViewYear = ty; calViewMonth = tm; renderCalendar();
+    };
+    host.querySelectorAll('.day').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        currentDate = el.dataset.iso;
+        closeCalendar();
+        renderSchedule();
+      });
+    });
+  }
+
+  function renderSchedule(){
+    const root = document.querySelector('#page-schedule');
+    const s = Store.get();
+    if(!currentDate) currentDate = Util.todayISO();
+    if(!currentTabLine || !s.lines.find(l=>l.id===currentTabLine)) currentTabLine = s.lines[0].id;
+    const day = Store.getDay(currentDate);
+    const peopleById = Object.fromEntries(s.people.map(p => [p.id, p]));
+    const html = [`
+      <div class="sched-bar">
+        <span class="date-wrap">
+          <button class="date-trigger" id="sched-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
+          <div class="cal-host hidden" id="cal-host"></div>
+        </span>
+        <button id="copy-yesterday">复制昨天</button>
+        <button id="copy-last">复制上次</button>
+        <button id="clear-day" class="danger-btn">清空当日</button>
+        <span id="autosave-status" class="muted"></span>
+      </div>
+      <div class="line-tabs" id="line-tabs">
+        ${s.lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
+      </div>
+      <div class="line-grid">
+        ${s.lines.map(line => {
+          const positions = s.positions[line.id] || [];
+          return `<div class="card line-card" data-line="${line.id}">
+            <div class="card-head" style="border-top-color:var(--line-${line.id})">
+              <span class="line-name">${line.name}</span>
+              <span class="muted">${positions.length} 个岗位</span>
+            </div>
+            <ul class="assign-list">
+              ${positions.length===0 ? '<li class="muted" style="padding:8px 0">（未配置岗位)</li>' :
+                positions.map(pos => {
+                  const pid = day[line.id][pos];
+                  const person = pid ? peopleById[pid] : null;
+                  const borrowed = person && person.homeLine !== line.id;
+                  return `<li data-pos="${escapeHtml(pos)}">
+                    <span class="pos-name">${escapeHtml(pos)}</span>
+                    <button class="assign-btn ${person?'':'empty'}" data-line="${line.id}" data-pos="${escapeHtml(pos)}">
+                      ${person ? escapeHtml(person.name) + (borrowed?' <span class="borrowed">⇄</span>':'') : '未分配'}
+                    </button>
+                  </li>`;
+                }).join('')
+              }
+            </ul>
+          </div>`;
+        }).join('')}
+      </div>
+    `];
+    root.innerHTML = html.join('');
+
+    document.getElementById('sched-date-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const host = document.getElementById('cal-host');
+      if(host.classList.contains('hidden')){ openCalendar(); } else { closeCalendar(); }
+    });
+    document.addEventListener('click', calOutsideListener);
+    root.querySelectorAll('#line-tabs button').forEach(b => {
+      b.addEventListener('click', () => {
+        currentTabLine = b.dataset.line;
+        root.querySelectorAll('#line-tabs button').forEach(x => x.classList.toggle('active', x===b));
+        root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
+      });
+    });
+    root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
+
+    document.getElementById('copy-yesterday').addEventListener('click', () => {
+      const prev = Util.prevDay(currentDate);
+      if(!Store.get().schedules[prev]){ alert('前一天 (' + prev + ') 暂无排班'); return; }
+      if(confirm(`将 ${prev} 的排班复制到 ${currentDate},覆盖当前数据?`)) Store.copyDay(prev, currentDate);
+    });
+    document.getElementById('copy-last').addEventListener('click', () => {
+      const last = Store.lastScheduledDate(currentDate);
+      if(!last){ alert('暂无更早的排班可复制'); return; }
+      if(confirm(`将 ${last}(最近有数据)的排班复制到 ${currentDate},覆盖当前数据?`)) Store.copyDay(last, currentDate);
+    });
+    document.getElementById('clear-day').addEventListener('click', () => {
+      if(confirm(`清空 ${currentDate} 全部排班?`)) Store.clearDay(currentDate);
+    });
+    root.querySelectorAll('.assign-btn').forEach(b => {
+      b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
+    });
+    updateAutosaveStatus();
+  }
+
+  function openPicker(lineId, posName){
+    const host = document.getElementById('picker-host');
+    const s = Store.get();
+    const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
+    const currentPid = (Store.get().schedules[currentDate]?.[lineId]?.[posName]) || null;
+    let query = '';
+
+    function render(){
+      const q = query.trim().toLowerCase();
+      const match = p => !q || p.name.toLowerCase().includes(q);
+      const home = s.people.filter(p => p.homeLine===lineId && match(p));
+      const others = s.people.filter(p => p.homeLine!==lineId && match(p));
+      const row = (p) => {
+        const disabled = used.has(p.id) && p.id!==currentPid;
+        return `<div class="person-row ${disabled?'disabled':''}" data-pid="${p.id}">
+          <span class="pname">${escapeHtml(p.name)}</span>
+          <span class="home">${s.lines.find(l=>l.id===p.homeLine)?.name||''}</span>
+        </div>`;
+      };
+      host.innerHTML = `
+        <div class="picker">
+          <div class="ph-head">
+            <div class="title">选择 ${escapeHtml(s.lines.find(l=>l.id===lineId).name)} · ${escapeHtml(posName)}</div>
+            <button data-act="close">✕</button>
+          </div>
+          <div class="ph-search"><input id="picker-search" placeholder="搜索…" value="${escapeHtml(query)}" autofocus></div>
+          <div class="ph-body">
+            <div class="section-title">本线人员 (${home.length})</div>
+            ${home.length? home.map(row).join('') : '<div class="muted" style="padding:8px 4px">（无)</div>'}
+            ${others.length? `<details><summary class="section-title" style="cursor:pointer">借调 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
+          </div>
+          <div class="btn-row">
+            <button data-act="clear">清空(此岗留空)</button>
+            <div class="spacer"></div>
+            <button data-act="cancel">取消</button>
+          </div>
+        </div>
+      `;
+      host.classList.remove('hidden');
+      const close = () => { host.classList.add('hidden'); host.innerHTML=''; };
+      host.querySelector('[data-act="close"]').onclick = close;
+      host.querySelector('[data-act="cancel"]').onclick = close;
+      host.querySelector('[data-act="clear"]').onclick = () => { Store.assign(currentDate, lineId, posName, null); close(); };
+      host.querySelectorAll('.person-row').forEach(r => {
+        if(r.classList.contains('disabled')) return;
+        r.onclick = () => { Store.assign(currentDate, lineId, posName, r.dataset.pid); close(); };
+      });
+      const search = host.querySelector('#picker-search');
+      search.addEventListener('input', e => { query = e.target.value; render(); search.focus(); search.setSelectionRange(query.length, query.length); });
+      host.onclick = e => { if(e.target===host) close(); };
+    }
+    render();
+  }
+
+  function updateAutosaveStatus(){
+    const el = document.getElementById('autosave-status'); if(!el) return;
+    const s = Store.get();
+    const change = s.lastChangeAt ? new Date(s.lastChangeAt) : null;
+    const exp = s.lastExportAt ? new Date(s.lastExportAt) : null;
+    if(!change){ el.textContent = '✓ 暂无数据'; el.style.color = 'var(--muted)'; return; }
+    if(!exp || change > exp){
+      el.textContent = '⚠ 有未导出的更改';
+      el.style.color = 'var(--warn)';
+    } else {
+      el.textContent = '✓ 已暂存 · 已导出';
+      el.style.color = 'var(--ok)';
+    }
+  }
+
+  function renderData(){
+    const root = document.querySelector('#page-data');
+    const s = Store.get();
+    const totalPeople = s.people.length;
+    const perLine = s.lines.map(l => `${l.name}: ${s.people.filter(p=>p.homeLine===l.id).length}`).join(' · ');
+    const days = Object.keys(s.schedules).length;
+    const lastExp = s.lastExportAt ? new Date(s.lastExportAt).toLocaleString('zh-CN') : '从未导出';
+    const lastChg = s.lastChangeAt ? new Date(s.lastChangeAt).toLocaleString('zh-CN') : '无';
+
+    root.innerHTML = `
+    <h2>数据</h2>
+    <div class="card" style="padding:16px">
+      <div class="stat-grid">
+        <div><div class="muted">人员总数</div><div class="stat-big">${totalPeople}</div></div>
+        <div><div class="muted">排班天数</div><div class="stat-big">${days}</div></div>
+        <div><div class="muted">最近导出</div><div>${lastExp}</div></div>
+        <div><div class="muted">最近修改</div><div>${lastChg}</div></div>
+      </div>
+      <div class="muted" style="margin-top:8px">分线人数: ${perLine}</div>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3 style="margin-top:0">导入 / 导出</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="primary" id="btn-export">⬇ 导出 JSON</button>
+        <label class="btn-like">
+          <input type="file" id="file-import" accept="application/json,.json" hidden>
+          <span>⬆ 导入 JSON</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="merge-mode"> 合并模式 (不覆盖)</label>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <h3 style="margin-top:0;color:var(--danger)">危险操作</h3>
+      <button class="danger-btn" id="btn-reset">重置所有数据</button>
+    </div>
+  `;
+
+    root.querySelector('#btn-export').addEventListener('click', () => {
+      const data = Store.get();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const z = n => String(n).padStart(2,'0');
+      const d = new Date();
+      a.href = url;
+      a.download = `岗位排班表-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      Store.markExported();
+    });
+
+    root.querySelector('#file-import').addEventListener('change', e => {
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const incoming = JSON.parse(reader.result);
+          if(!incoming || typeof incoming !== 'object' || !Array.isArray(incoming.lines)){
+            alert('文件格式不正确'); return;
+          }
+          const merge = root.querySelector('#merge-mode').checked;
+          if(!merge){
+            if(!confirm('将覆盖当前全部数据。建议先导出备份。是否继续?')) { e.target.value=''; return; }
+            Store.replace(incoming);
+          } else {
+            const cur = Util.clone(Store.get());
+            // merge people by id (incoming wins on conflict)
+            const byId = new Map(cur.people.map(p=>[p.id,p]));
+            (incoming.people||[]).forEach(p => byId.set(p.id, p));
+            cur.people = [...byId.values()];
+            // merge positions: union, preserving order; incoming order takes precedence for new
+            (incoming.lines||[]).forEach(l => {
+              const a = cur.positions[l.id] || [];
+              const b = (incoming.positions||{})[l.id] || [];
+              const set = new Set(a);
+              b.forEach(x => { if(!set.has(x)){ a.push(x); set.add(x); } });
+              cur.positions[l.id] = a;
+            });
+            // merge schedules: incoming overrides per-date
+            Object.assign(cur.schedules, incoming.schedules||{});
+            Store.replace(cur);
+          }
+          alert('导入完成');
+        }catch(err){ alert('解析失败: ' + err.message); }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    root.querySelector('#btn-reset').addEventListener('click', () => {
+      if(!confirm('确定清空 localStorage 中全部数据?此操作不可撤销。')) return;
+      if(!confirm('再次确认:所有人员、岗位、排班将全部删除。')) return;
+      Store.reset();
+    });
+  }
+
+  return { renderSettings, renderPeople, renderSchedule, openPicker, updateAutosaveStatus, renderData, escapeHtml };
+})();
+</script>
+<script>
+(function(){
+  if(!location.search.includes('test=1')) return;
+  const KEY = 'shift-schedule-data-v1';
+  const backup = localStorage.getItem(KEY);
+  const results = [];
+  const assert = (name, cond, detail='') => results.push({name, ok: !!cond, detail});
+
+  // Util
+  assert('todayISO returns YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(Util.todayISO()));
+  assert('prevDay subtracts one day', Util.prevDay('2026-03-01')==='2026-02-28');
+  assert('prevDay handles month boundary', Util.prevDay('2026-01-01')==='2025-12-31');
+  assert('uid returns string with prefix', Util.uid('p').startsWith('p'));
+  assert('clone produces independent copy', (()=>{const a={x:[1]};const b=Util.clone(a);b.x.push(2);return a.x.length===1;})());
+
+  // Store
+  localStorage.removeItem(KEY);
+  Store.replace(Store.emptyData());
+  Store.addPosition('xs','岗位A');
+  Store.addPosition('xs','岗位B');
+  assert('addPosition stores in order', JSON.stringify(Store.get().positions.xs)==='["岗位A","岗位B"]');
+  Store.movePosition('xs',0,1);
+  assert('movePosition swaps', Store.get().positions.xs[0]==='岗位B');
+  Store.renamePosition('xs',0,'岗位B2');
+  assert('renamePosition updates', Store.get().positions.xs[0]==='岗位B2');
+  Store.deletePosition('xs',0);
+  assert('deletePosition removes', Store.get().positions.xs.length===1);
+
+  Store.addPerson('张三','xs');
+  const pid = Store.get().people[0].id;
+  assert('addPerson creates with id', !!pid && Store.get().people[0].name==='张三');
+  Store.updatePerson(pid,{name:'张三丰'});
+  assert('updatePerson updates fields', Store.get().people[0].name==='张三丰');
+
+  Store.addPosition('xs','岗位C');
+  Store.assign('2026-05-26','xs','岗位C', pid);
+  assert('assign stores person id', Store.get().schedules['2026-05-26'].xs['岗位C']===pid);
+  assert('findPersonUsage counts assignments', Store.findPersonUsage(pid)===1);
+
+  const day = Store.getDay('2026-05-26');
+  assert('getDay returns all lines', Object.keys(day).length===6);
+  assert('getDay fills missing positions as null', day.xs['岗位C']===pid);
+
+  // Stronger: assignedPeopleOnDay should exclude the (lineId, posName) pair passed in.
+  // Single assignment at 岗位C — querying with except=岗位C should NOT include pid.
+  const usedExceptC = Store.assignedPeopleOnDay('2026-05-26','xs','岗位C');
+  assert('assignedPeopleOnDay excludes exceptPos', !usedExceptC.has(pid));
+  // Now also assign to 岗位A, query excepting 岗位C → pid should appear (via 岗位A).
+  Store.assign('2026-05-26','xs','岗位A', pid);
+  const usedAlsoA = Store.assignedPeopleOnDay('2026-05-26','xs','岗位C');
+  assert('assignedPeopleOnDay includes others', usedAlsoA.has(pid) && !usedAlsoA.has('xxx'));
+
+  Store.copyDay('2026-05-26','2026-05-27');
+  assert('copyDay copies assignments', Store.get().schedules['2026-05-27'].xs['岗位C']===pid);
+
+  Store.deletePerson(pid);
+  assert('deletePerson removes person', Store.get().people.length===0);
+  assert('deletePerson nulls assignments', Store.get().schedules['2026-05-26'].xs['岗位C']===null);
+
+  assert('lastScheduledDate returns most recent before', Store.lastScheduledDate('2026-06-01')==='2026-05-27');
+
+  // Render results
+  const div = document.createElement('div');
+  div.style.cssText='position:fixed;inset:0;background:#000;color:#fff;padding:16px;overflow:auto;z-index:9999;font-family:monospace;font-size:12px';
+  const pass = results.filter(r=>r.ok).length;
+  div.innerHTML = `<h3>Tests: ${pass}/${results.length} passed</h3>` +
+    results.map(r => `<div style="color:${r.ok?'#10b981':'#ef4444'}">${r.ok?'✓':'✗'} ${r.name}${r.detail?' — '+r.detail:''}</div>`).join('');
+  document.body.appendChild(div);
+  // Restore real user data (do NOT leave test data in either localStorage or in-memory store)
+  if(backup !== null) localStorage.setItem(KEY, backup); else localStorage.removeItem(KEY);
+  Store.load();
+})();
+</script>
+<script>
+(function(){
+  Store.load();
+  const pages = ['schedule','people','settings','data'];
+  const renderers = {
+    schedule: Pages.renderSchedule,
+    people: Pages.renderPeople,
+    settings: Pages.renderSettings,
+    data: Pages.renderData,
+  };
+  let current = 'schedule';
+  function route(name){
+    if(!pages.includes(name)) name='schedule';
+    current = name;
+    pages.forEach(p => document.getElementById('page-'+p).classList.toggle('hidden', p!==name));
+    document.querySelectorAll('.nav button[data-route]').forEach(b => b.classList.toggle('active', b.dataset.route===name));
+    if(location.hash !== '#/'+name) location.hash = '#/'+name;
+    renderers[name]();
+  }
+  document.querySelectorAll('.nav button[data-route]').forEach(b => b.addEventListener('click', () => route(b.dataset.route)));
+  window.addEventListener('hashchange', () => route((location.hash.match(/^#\/(\w+)/)||[])[1]));
+  Store.subscribe(() => renderers[current]());
+  route((location.hash.match(/^#\/(\w+)/)||[])[1]);
+})();
+</script>
+</body>
+</html>
