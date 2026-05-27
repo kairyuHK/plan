@@ -2423,6 +2423,14 @@ function fmtDuration(seconds) {
   if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
   return `${m}:${String(ss).padStart(2,'0')}`;
 }
+function fmtDurationHM(seconds) {
+  if (!isFinite(seconds) || seconds <= 0) return '—';
+  const totalMin = Math.round(seconds / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}`;
+  return `0:${String(m).padStart(2,'0')}`;
+}
 function parseClock(str) {
   if (!str || !/^\d{1,2}:\d{2}$/.test(str)) return null;
   const [h, m] = str.split(':').map(Number);
@@ -3378,7 +3386,7 @@ function recalc(line) {
     syncPopupState(card);
   });
   setFootVal(line.querySelector('.qty-total'), totalQty.toLocaleString());
-  setFootVal(line.querySelector('.time-total'), fmtDuration(totalSec));
+  setFootVal(line.querySelector('.time-total'), fmtDurationHM(totalSec));
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   recalcGlobal();
 }
@@ -3389,8 +3397,8 @@ function setFootVal(el, text) {
   el.style.fontSize = '';
   requestAnimationFrame(() => {
     let fs = parseFloat(getComputedStyle(el).fontSize) || 13;
-    let guard = 24;
-    while (el.scrollWidth > el.clientWidth + 1 && fs > 7 && guard-- > 0) {
+    let guard = 40;
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 4 && guard-- > 0) {
       fs -= 0.5;
       el.style.fontSize = fs + 'px';
     }
