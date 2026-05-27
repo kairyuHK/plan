@@ -1843,6 +1843,8 @@ const Pages = (() => {
     .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: baseline; }
     .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
+    /* 数量数字固定 4px，保证再窄的列宽也能完整显示 */
+    .line-foot .qty-total { font-size: 4px !important; }
   }
 
   /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
