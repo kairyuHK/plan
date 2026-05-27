@@ -201,20 +201,86 @@
     cursor: pointer;
   }
   .timeline-head:hover { background: #1a1f27; }
-  .date-input {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    opacity: 0; border: none; background: transparent;
-    cursor: pointer; padding: 0; margin: 0;
-    font-size: 16px; /* iOS 防自动缩放 */
-    color: transparent;
-    -webkit-appearance: none; appearance: none;
-    z-index: 2;
+  /* 日式日历弹层 */
+  .cal-popover {
+    position: fixed; z-index: 1500;
+    background: var(--panel-elevated);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 12px;
+    width: 280px;
+    max-width: calc(100vw - 16px);
+    user-select: none; -webkit-user-select: none;
+    font-family: inherit;
+    animation: popupIn 0.16s var(--ease);
   }
-  .date-input::-webkit-calendar-picker-indicator {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    opacity: 0; cursor: pointer; margin: 0; padding: 0;
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
   }
+  .cal-title {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.1px; font-variant-numeric: tabular-nums;
+  }
+  .cal-nav {
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-dim); width: 26px; height: 26px;
+    border-radius: 6px; cursor: pointer;
+    font-size: 16px; line-height: 1; font-family: inherit;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .cal-nav:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .cal-dows {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    font-size: 10.5px; font-weight: 600; color: var(--text-mute);
+    text-align: center; padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px; letter-spacing: 0.5px;
+  }
+  .cal-dow.sat { color: var(--blue); }
+  .cal-dow.sun { color: var(--red); }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-day {
+    height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 500;
+    color: var(--text-dim);
+    border-radius: 5px; cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    font-family: inherit; font-variant-numeric: tabular-nums;
+    transition: background 0.12s var(--ease), color 0.12s var(--ease);
+    padding: 0;
+  }
+  .cal-day:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .cal-day.other { color: var(--text-mute); opacity: 0.4; }
+  .cal-day.sat { color: var(--blue); }
+  .cal-day.sun { color: var(--red); }
+  .cal-day.today { border-color: rgba(249,115,22,0.5); }
+  .cal-day.selected {
+    background: var(--accent); color: #14181f !important;
+    font-weight: 700; border-color: var(--accent);
+  }
+  .cal-foot {
+    display: flex; justify-content: center; margin-top: 10px;
+    padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .cal-today-btn {
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(249,115,22,0.30);
+    padding: 6px 16px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .cal-today-btn:hover { background: var(--accent); color: #14181f; }
+
   .date-back-today {
     position: absolute; bottom: 3px; right: 3px;
     height: 14px; padding: 0 4px;
@@ -668,6 +734,20 @@
   }
   .card-meta .range { color: var(--blue); font-size: 11px; white-space: nowrap; letter-spacing: 0.2px; font-weight: 500; }
 
+  .card-next-btn {
+    width: 100%; margin-top: 4px;
+    padding: 9px 12px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(249,115,22,0.30);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .card-next-btn:hover { background: var(--accent); color: #14181f; border-color: var(--accent); }
+  .card-next-btn .ic { font-size: 14px; font-weight: 400; line-height: 1; }
+
   .card.rest {
     background: #1c1a2a;
     border-left-color: var(--rest);
@@ -1033,7 +1113,7 @@
 
   /* 打印 / PDF 导出 共用样式（body.printing 类触发） */
   body.printing .export-wrap, body.printing .head-btns, body.printing .card-del, body.printing .compact-del, body.printing .drag-handle, body.printing .pager, body.printing .modal-mask,
-  body.printing .line-config, body.printing .top-btn, body.printing .date-input, body.printing .date-back-today, body.printing::before { display: none !important; }
+  body.printing .line-config, body.printing .top-btn, body.printing .date-back-today, body.printing .cal-popover, body.printing::before { display: none !important; }
   body.printing .timeline-head { cursor: default !important; }
   body.printing #totalAll, body.printing .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
   body.printing #totalDur { color: #f97316 !important; }
@@ -1700,11 +1780,20 @@ function addJobCard(grid, libItem, savedData) {
         <span class="duration">耗时 —</span>
         <span class="range"><span class="t-start">—</span> → <span class="t-end">—</span></span>
       </div>
+      <button type="button" class="card-next-btn"><span class="ic">+</span> 下一个品名</button>
     </div>
   `;
   wireCardEvents(node, 'job');
   grid.appendChild(node);
   recalc(grid.closest('.line'));
+  // 弹窗里"+ 下一个品名" — 关掉当前弹窗,直接为同一条线开品名选择器
+  const nextBtn = node.querySelector('.card-next-btn');
+  if (nextBtn) nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const line = node.closest('.line') || (activeCard && activeCard.closest('.line'));
+    setActiveCard(null);
+    if (line) openPicker(line);
+  });
   if (!savedData) {
     scrollCardIntoView(node);
     setActiveCard(node);
@@ -2843,6 +2932,117 @@ function isJpHoliday(date) {
   }
   return false;
 }
+// ============ 日式自定义日历 ============
+let calPopover = null;
+let calView = null; // {year, month}
+function openCalendar(anchorEl) {
+  if (calPopover) { closeCalendar(); return; }
+  const [y, m] = currentDate.split('-').map(Number);
+  calView = { year: y, month: m };
+  calPopover = document.createElement('div');
+  calPopover.className = 'cal-popover';
+  document.body.appendChild(calPopover);
+  renderCalendar();
+  positionCalendar(anchorEl);
+  setTimeout(() => {
+    document.addEventListener('mousedown', calOutside);
+    document.addEventListener('touchstart', calOutside, { passive: true });
+    window.addEventListener('resize', closeCalendar);
+  }, 0);
+}
+function closeCalendar() {
+  if (calPopover) { calPopover.remove(); calPopover = null; }
+  document.removeEventListener('mousedown', calOutside);
+  document.removeEventListener('touchstart', calOutside);
+  window.removeEventListener('resize', closeCalendar);
+}
+function calOutside(e) {
+  if (!calPopover) return;
+  if (calPopover.contains(e.target)) return;
+  if (e.target.closest('.timeline-head')) return;
+  closeCalendar();
+}
+function renderCalendar() {
+  if (!calPopover) return;
+  const { year, month } = calView;
+  const first = new Date(year, month - 1, 1);
+  const firstDow = (first.getDay() + 6) % 7; // 月=0 ... 日=6
+  const lastDay = new Date(year, month, 0).getDate();
+  const prevLast = new Date(year, month - 1, 0).getDate();
+  const today = todayStr();
+  const cells = [];
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const pm = month === 1 ? 12 : month - 1;
+    const py = month === 1 ? year - 1 : year;
+    cells.push({ y: py, m: pm, d: prevLast - i, other: true });
+  }
+  for (let d = 1; d <= lastDay; d++) cells.push({ y: year, m: month, d, other: false });
+  let nextD = 1;
+  while (cells.length < 42) {
+    const nm = month === 12 ? 1 : month + 1;
+    const ny = month === 12 ? year + 1 : year;
+    cells.push({ y: ny, m: nm, d: nextD++, other: true });
+  }
+  let html = `
+    <div class="cal-head">
+      <button class="cal-nav" data-act="prev" type="button" aria-label="上一月">‹</button>
+      <div class="cal-title">${year}年 ${String(month).padStart(2,'0')}月</div>
+      <button class="cal-nav" data-act="next" type="button" aria-label="下一月">›</button>
+    </div>
+    <div class="cal-dows">
+      <div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div><div class="cal-dow sun">日</div>
+    </div>
+    <div class="cal-grid">`;
+  cells.forEach(c => {
+    const dt = new Date(c.y, c.m - 1, c.d);
+    const dow = dt.getDay();
+    const holi = isJpHoliday(dt);
+    const ds = `${c.y}-${String(c.m).padStart(2,'0')}-${String(c.d).padStart(2,'0')}`;
+    const cls = ['cal-day'];
+    if (c.other) cls.push('other');
+    if (dow === 6) cls.push('sat');
+    if (dow === 0 || holi) cls.push('sun');
+    if (ds === today) cls.push('today');
+    if (ds === currentDate) cls.push('selected');
+    html += `<button type="button" class="${cls.join(' ')}" data-date="${ds}">${c.d}</button>`;
+  });
+  html += `</div>
+    <div class="cal-foot">
+      <button type="button" class="cal-today-btn" data-act="today">今日</button>
+    </div>`;
+  calPopover.innerHTML = html;
+  calPopover.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t.dataset && t.dataset.act;
+    if (act === 'prev') {
+      calView.month--; if (calView.month < 1) { calView.month = 12; calView.year--; }
+      renderCalendar();
+    } else if (act === 'next') {
+      calView.month++; if (calView.month > 12) { calView.month = 1; calView.year++; }
+      renderCalendar();
+    } else if (act === 'today') {
+      switchDate(todayStr()); closeCalendar();
+    } else if (t.dataset && t.dataset.date) {
+      switchDate(t.dataset.date); closeCalendar();
+    }
+  });
+}
+function positionCalendar(anchor) {
+  if (!calPopover) return;
+  const r = anchor.getBoundingClientRect();
+  const pop = calPopover.getBoundingClientRect();
+  const margin = 8;
+  let left = r.left + r.width / 2 - pop.width / 2;
+  let top = r.bottom + 6;
+  if (left + pop.width > window.innerWidth - margin) left = window.innerWidth - pop.width - margin;
+  if (left < margin) left = margin;
+  if (top + pop.height > window.innerHeight - margin) {
+    top = Math.max(margin, window.innerHeight - pop.height - margin);
+  }
+  calPopover.style.left = left + 'px';
+  calPopover.style.top = top + 'px';
+}
+
 function updateDateHeader() {
   const [y, m, day] = currentDate.split('-').map(Number);
   const d = new Date(y, m - 1, day);
@@ -2852,18 +3052,18 @@ function updateDateHeader() {
   const isToday = currentDate === todayStr();
   const head = document.getElementById('timelineHead');
   head.innerHTML =
-    `<input type="date" class="date-input" value="${currentDate}" aria-label="选择日期">` +
     `<span class="date-year">${y}年</span>` +
     `<span class="date-month ${dowClass}">${String(m).padStart(2,'0')}月</span>` +
     `<span class="date-day ${dowClass}">${String(day).padStart(2,'0')}日</span>` +
     `<span class="date-dow ${dowClass}">（${DOW_JP[dow]}）</span>` +
     (isToday ? '' : `<button class="date-back-today" type="button" title="回到今天">今</button>`);
-  const inp = head.querySelector('.date-input');
-  inp.addEventListener('change', (e) => { if (e.target.value) switchDate(e.target.value); });
-  inp.addEventListener('click', (e) => { e.stopPropagation(); try { inp.showPicker && inp.showPicker(); } catch (_) {} });
   const backBtn = head.querySelector('.date-back-today');
   if (backBtn) backBtn.addEventListener('click', (e) => { e.stopPropagation(); switchDate(todayStr()); });
 }
+document.getElementById('timelineHead').addEventListener('click', (e) => {
+  if (e.target.closest('.date-back-today')) return;
+  openCalendar(document.getElementById('timelineHead'));
+});
 function switchDate(newDate) {
   if (newDate === currentDate) return;
   try { saveBoard(); } catch (e) {} // 先把当前日期数据落盘
