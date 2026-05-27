@@ -1838,30 +1838,13 @@ const Pages = (() => {
     .line-label { text-align: left; line-height: 1; margin-top: 2px; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
     .head-btn { width: 100%; justify-content: center; height: 20px; }
-    /* 竖屏顶栏：允许多行换行，保证"导出/导入/品名库"等按钮全部可见 */
-    body { display: flex; flex-direction: column; }
-    .topbar {
-      height: auto; min-height: 44px;
-      flex: 0 0 auto; flex-wrap: wrap;
-      padding: 4px 8px; row-gap: 4px; column-gap: 6px;
-      align-items: center;
-    }
-    .topbar-right {
-      flex-wrap: wrap; row-gap: 4px; column-gap: 4px;
-      justify-content: flex-end;
-      flex: 1 1 auto;
-    }
-    .topbar-right > *, .brand > * { flex-shrink: 0; }
-    .top-btn { height: 26px; padding: 0 9px; font-size: 11px; }
-    .clock { font-size: 11px; margin-left: 6px; }
-    .main { height: auto; flex: 1 1 auto; min-height: 0; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
     .line-foot { padding: 8px 8px; overflow: hidden; }
     .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: baseline; }
     .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
-    /* 数量数字固定 11px */
-    .line-foot .qty-total { font-size: 11px !important; }
+    /* 数量数字固定 10px */
+    .line-foot .qty-total { font-size: 10px !important; }
   }
 
   /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
@@ -2286,7 +2269,7 @@ const Pages = (() => {
     <span class="brand-sub">流水线生产计划板</span>
     <button class="top-btn" id="undoBtn" title="撤回 (Ctrl+Z)" style="padding:0 8px;margin-left:8px" disabled>↶</button>
     <button class="top-btn" id="redoBtn" title="重做 (Ctrl+Shift+Z)" style="padding:0 8px" disabled>↷</button>
-    <button class="top-btn" id="copyYesterdayBtn" title="复制昨天的数据到当前日期" style="margin-left:8px">复制昨天</button>
+    <button class="top-btn" id="copyYesterdayBtn" title="复制昨天的数据到当前日期" style="margin-left:8px;padding:0 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
   </div>
   <div class="topbar-right">
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
