@@ -138,13 +138,13 @@ input:focus,select:focus{border-color:var(--accent)}
   <button data-route="schedule" class="active">📅 排班</button>
   <button data-route="people">👥 人员</button>
   <button data-route="settings">⚙ 设置</button>
-  <button data-route="data">⬇⬆ 数据</button>
+  <button data-action="import">导入</button>
+  <button data-action="export">导出</button>
 </header>
 <main>
   <section id="page-schedule" class="page"><h2>排班</h2></section>
   <section id="page-people" class="page hidden"><h2>人员库</h2></section>
   <section id="page-settings" class="page hidden"><h2>设置</h2></section>
-  <section id="page-data" class="page hidden"><h2>数据</h2></section>
 </main>
 <div id="picker-host" class="hidden"></div>
 <script>
@@ -409,8 +409,6 @@ const Pages = (() => {
           ${positions.map((p,i)=>`
             <li>
               <span class="pos-name">${escapeHtml(p)}</span>
-              <button data-act="up" data-i="${i}" ${i===0?'disabled':''}>↑</button>
-              <button data-act="down" data-i="${i}" ${i===positions.length-1?'disabled':''}>↓</button>
               <button data-act="rename" data-i="${i}">改名</button>
               <button data-act="del" data-i="${i}" class="danger">删</button>
             </li>`).join('')}
@@ -429,9 +427,7 @@ const Pages = (() => {
         btn.addEventListener('click', () => {
           const i = +btn.dataset.i;
           const act = btn.dataset.act;
-          if(act==='up') Store.movePosition(lineId, i, -1);
-          else if(act==='down') Store.movePosition(lineId, i, +1);
-          else if(act==='rename'){
+          if(act==='rename'){
             const cur = Store.get().positions[lineId][i];
             const v = prompt('新岗位名:', cur);
             if(v && v.trim() && v.trim()!==cur) Store.renamePosition(lineId, i, v.trim());
@@ -776,59 +772,26 @@ const Pages = (() => {
     }
   }
 
-  function renderData(){
-    const root = document.querySelector('#page-data');
-    const s = Store.get();
-    const totalPeople = s.people.length;
-    const perLine = s.lines.map(l => `${l.name}: ${s.people.filter(p=>p.homeLine===l.id).length}`).join(' · ');
-    const days = Object.keys(s.schedules).length;
-    const lastExp = s.lastExportAt ? new Date(s.lastExportAt).toLocaleString('zh-CN') : '从未导出';
-    const lastChg = s.lastChangeAt ? new Date(s.lastChangeAt).toLocaleString('zh-CN') : '无';
+  function doExport(){
+    const data = Store.get();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const z = n => String(n).padStart(2,'0');
+    const d = new Date();
+    a.href = url;
+    a.download = `岗位排班表${String(d.getFullYear()).slice(-2)}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    Store.markExported();
+  }
 
-    root.innerHTML = `
-    <h2>数据</h2>
-    <div class="card" style="padding:16px">
-      <div class="stat-grid">
-        <div><div class="muted">人员总数</div><div class="stat-big">${totalPeople}</div></div>
-        <div><div class="muted">排班天数</div><div class="stat-big">${days}</div></div>
-        <div><div class="muted">最近导出</div><div>${lastExp}</div></div>
-        <div><div class="muted">最近修改</div><div>${lastChg}</div></div>
-      </div>
-      <div class="muted" style="margin-top:8px">分线人数: ${perLine}</div>
-    </div>
-    <div class="card" style="padding:16px">
-      <h3 style="margin-top:0">导入 / 导出</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="primary" id="btn-export">⬇ 导出 JSON</button>
-        <label class="btn-like">
-          <input type="file" id="file-import" accept="application/json,.json" hidden>
-          <span>⬆ 导入 JSON</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="merge-mode"> 合并模式 (不覆盖)</label>
-      </div>
-    </div>
-    <div class="card" style="padding:16px">
-      <h3 style="margin-top:0;color:var(--danger)">危险操作</h3>
-      <button class="danger-btn" id="btn-reset">重置所有数据</button>
-    </div>
-  `;
-
-    root.querySelector('#btn-export').addEventListener('click', () => {
-      const data = Store.get();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const z = n => String(n).padStart(2,'0');
-      const d = new Date();
-      a.href = url;
-      a.download = `岗位排班表${String(d.getFullYear()).slice(-2)}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      Store.markExported();
-    });
-
-    root.querySelector('#file-import').addEventListener('change', e => {
-      const file = e.target.files[0]; if(!file) return;
+  function doImport(){
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.addEventListener('change', () => {
+      const file = input.files[0]; if(!file) return;
       const reader = new FileReader();
       reader.onload = () => {
         try{
@@ -836,43 +799,39 @@ const Pages = (() => {
           if(!incoming || typeof incoming !== 'object' || !Array.isArray(incoming.lines)){
             alert('文件格式不正确'); return;
           }
-          const merge = root.querySelector('#merge-mode').checked;
-          if(!merge){
-            if(!confirm('将覆盖当前全部数据。建议先导出备份。是否继续?')) { e.target.value=''; return; }
+          const cur = Store.get();
+          const hasExisting = cur.people.length || Object.keys(cur.schedules).length;
+          let mode = 'replace';
+          if(hasExisting){
+            const ans = confirm('确定用此文件覆盖当前全部数据?\n\n确定 = 覆盖(建议先导出备份)\n取消 = 合并模式(保留现有内容并合并新数据)');
+            mode = ans ? 'replace' : 'merge';
+          }
+          if(mode === 'replace'){
             Store.replace(incoming);
           } else {
-            const cur = Util.clone(Store.get());
-            // merge people by id (incoming wins on conflict)
-            const byId = new Map(cur.people.map(p=>[p.id,p]));
+            const merged = Util.clone(Store.get());
+            const byId = new Map(merged.people.map(p=>[p.id,p]));
             (incoming.people||[]).forEach(p => byId.set(p.id, p));
-            cur.people = [...byId.values()];
-            // merge positions: union, preserving order; incoming order takes precedence for new
+            merged.people = [...byId.values()];
             (incoming.lines||[]).forEach(l => {
-              const a = cur.positions[l.id] || [];
+              const a = merged.positions[l.id] || [];
               const b = (incoming.positions||{})[l.id] || [];
               const set = new Set(a);
               b.forEach(x => { if(!set.has(x)){ a.push(x); set.add(x); } });
-              cur.positions[l.id] = a;
+              merged.positions[l.id] = a;
             });
-            // merge schedules: incoming overrides per-date
-            Object.assign(cur.schedules, incoming.schedules||{});
-            Store.replace(cur);
+            Object.assign(merged.schedules, incoming.schedules||{});
+            Store.replace(merged);
           }
           alert('导入完成');
         }catch(err){ alert('解析失败: ' + err.message); }
-        e.target.value = '';
       };
       reader.readAsText(file);
     });
-
-    root.querySelector('#btn-reset').addEventListener('click', () => {
-      if(!confirm('确定清空 localStorage 中全部数据?此操作不可撤销。')) return;
-      if(!confirm('再次确认:所有人员、岗位、排班将全部删除。')) return;
-      Store.reset();
-    });
+    input.click();
   }
 
-  return { renderSettings, renderPeople, renderSchedule, openPicker, updateAutosaveStatus, renderData, escapeHtml };
+  return { renderSettings, renderPeople, renderSchedule, openPicker, updateAutosaveStatus, doImport, doExport, escapeHtml };
 })();
 </script>
 <script>
@@ -951,12 +910,11 @@ const Pages = (() => {
 <script>
 (function(){
   Store.load();
-  const pages = ['schedule','people','settings','data'];
+  const pages = ['schedule','people','settings'];
   const renderers = {
     schedule: Pages.renderSchedule,
     people: Pages.renderPeople,
     settings: Pages.renderSettings,
-    data: Pages.renderData,
   };
   let current = 'schedule';
   function route(name){
@@ -968,6 +926,10 @@ const Pages = (() => {
     renderers[name]();
   }
   document.querySelectorAll('.nav button[data-route]').forEach(b => b.addEventListener('click', () => route(b.dataset.route)));
+  document.querySelectorAll('.nav button[data-action]').forEach(b => b.addEventListener('click', () => {
+    if(b.dataset.action === 'import') Pages.doImport();
+    else if(b.dataset.action === 'export') Pages.doExport();
+  }));
   window.addEventListener('hashchange', () => route((location.hash.match(/^#\/(\w+)/)||[])[1]));
   Store.subscribe(() => renderers[current]());
   route((location.hash.match(/^#\/(\w+)/)||[])[1]);
