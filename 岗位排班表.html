@@ -49,6 +49,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .people-list select{padding:4px 8px;font-size:12px}
 .people-list button{padding:4px 10px;font-size:12px}
 .people-list button.danger{border-color:var(--danger);color:var(--danger)}
+.people-list button:disabled{opacity:.4;cursor:not-allowed}
 .sched-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .sched-bar input[type=date]{font-family:var(--font-mono)}
 .sched-bar .danger-btn{border-color:var(--danger);color:var(--danger)}
@@ -452,6 +453,7 @@ const Pages = (() => {
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  const byName = (a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN');
 
   // ---- People ----
   function renderPeople(){
@@ -466,7 +468,9 @@ const Pages = (() => {
       </div>
     `];
     s.lines.forEach(line => {
-      const list = s.people.filter(p => p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)));
+      const list = s.people
+        .filter(p => p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
+        .sort(byName);
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
           <span class="line-name">${line.name}</span>
@@ -499,6 +503,8 @@ const Pages = (() => {
     });
     root.querySelectorAll('li[data-pid]').forEach(li => {
       const pid = li.dataset.pid;
+      li.querySelector('[data-act="up"]').addEventListener('click', () => Store.movePerson(pid, -1));
+      li.querySelector('[data-act="down"]').addEventListener('click', () => Store.movePerson(pid, +1));
       li.querySelector('[data-act="rename"]').addEventListener('click', () => {
         const cur = Store.get().people.find(p=>p.id===pid).name;
         const v = prompt('新姓名:', cur);
@@ -640,10 +646,11 @@ const Pages = (() => {
       <div class="line-grid">
         ${s.lines.map(line => {
           const positions = s.positions[line.id] || [];
+          const linePeopleCount = s.people.filter(p => p.homeLine===line.id).length;
           return `<div class="card line-card" data-line="${line.id}">
             <div class="card-head" style="border-top-color:var(--line-${line.id})">
               <span class="line-name">${line.name}</span>
-              <span class="muted">${positions.length} 个岗位</span>
+              <span class="muted">${positions.length} 岗位 · 共 ${linePeopleCount} 人</span>
             </div>
             <ul class="assign-list">
               ${positions.length===0 ? '<li class="muted" style="padding:8px 0">（未配置岗位)</li>' :
@@ -710,8 +717,8 @@ const Pages = (() => {
     function render(){
       const q = query.trim().toLowerCase();
       const match = p => !q || p.name.toLowerCase().includes(q);
-      const home = s.people.filter(p => p.homeLine===lineId && match(p));
-      const others = s.people.filter(p => p.homeLine!==lineId && match(p));
+      const home = s.people.filter(p => p.homeLine===lineId && match(p)).sort(byName);
+      const others = s.people.filter(p => p.homeLine!==lineId && match(p)).sort(byName);
       const row = (p) => {
         const disabled = used.has(p.id) && p.id!==currentPid;
         return `<div class="person-row ${disabled?'disabled':''}" data-pid="${p.id}">
@@ -814,7 +821,7 @@ const Pages = (() => {
       const z = n => String(n).padStart(2,'0');
       const d = new Date();
       a.href = url;
-      a.download = `岗位排班表-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.json`;
+      a.download = `岗位排班表${String(d.getFullYear()).slice(-2)}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       Store.markExported();
