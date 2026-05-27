@@ -1843,8 +1843,8 @@ const Pages = (() => {
     .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: baseline; }
     .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
-    /* 数量数字固定 4px，保证再窄的列宽也能完整显示 */
-    .line-foot .qty-total { font-size: 4px !important; }
+    /* 数量数字固定 12px */
+    .line-foot .qty-total { font-size: 12px !important; }
   }
 
   /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
@@ -2269,6 +2269,7 @@ const Pages = (() => {
     <span class="brand-sub">流水线生产计划板</span>
     <button class="top-btn" id="undoBtn" title="撤回 (Ctrl+Z)" style="padding:0 8px;margin-left:8px" disabled>↶</button>
     <button class="top-btn" id="redoBtn" title="重做 (Ctrl+Shift+Z)" style="padding:0 8px" disabled>↷</button>
+    <button class="top-btn" id="copyYesterdayBtn" title="复制昨天的数据到当前日期" style="margin-left:8px">复制昨天</button>
   </div>
   <div class="topbar-right">
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
@@ -3501,6 +3502,18 @@ function doRedo() {
   updateUndoButtons();
 }
 
+function collectAllBoards() {
+  const boards = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_BOARD_PREFIX)) {
+      const date = key.slice(STORAGE_BOARD_PREFIX.length);
+      try { boards[date] = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
+    }
+  }
+  return boards;
+}
+
 function saveJSON() {
   exportMenu && exportMenu.classList.remove('show');
   setActiveCard(null);
@@ -3512,17 +3525,18 @@ function saveJSON() {
   if (!name) return;
   const filename = /\.json$/i.test(name) ? name : name + '.json';
   let library = [];
-  let board = {};
   try { library = JSON.parse(localStorage.getItem(STORAGE_LIB) || '[]'); } catch (e) {}
-  try { board = JSON.parse(localStorage.getItem(boardKey()) || '{}'); } catch (e) {}
-  const payload = { version: 1, type: 'production-board', library, board };
+  const boards = collectAllBoards();
+  // version 2: 包含 boards(全部历史日期); board 字段保留当天数据作旧版兼容
+  const payload = { version: 2, type: 'production-board', library, boards, board: boards[currentDate] || {} };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.download = filename;
   a.href = URL.createObjectURL(blob);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  showToast(`📤 已保存 ${filename}`);
+  const dayCount = Object.keys(boards).length;
+  showToast(`📤 已保存 ${filename}(${dayCount} 天数据)`);
 }
 
 function importJSON() {
@@ -3537,10 +3551,27 @@ function importJSON() {
         const data = JSON.parse(r.result);
         if (data.type !== 'production-board') throw new Error('文件类型不匹配');
         if (!Array.isArray(data.library)) throw new Error('品名库数据结构错误');
-        if (!data.board || typeof data.board !== 'object') throw new Error('计划板数据结构错误');
-        if (!confirm('将覆盖当前所有数据,继续?')) return;
+        const hasBoards = data.boards && typeof data.boards === 'object' && Object.keys(data.boards).length > 0;
+        const hasBoard = data.board && typeof data.board === 'object';
+        if (!hasBoards && !hasBoard) throw new Error('计划板数据结构错误');
+        const dayCount = hasBoards ? Object.keys(data.boards).length : 1;
+        if (!confirm(`将覆盖当前所有数据(导入 ${dayCount} 天),继续?`)) return;
         localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
-        localStorage.setItem(boardKey(), JSON.stringify(data.board));
+        // 清除旧的每日数据
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(STORAGE_BOARD_PREFIX)) keysToRemove.push(k);
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        // 写入新数据(新格式优先,否则按旧格式写入当天)
+        if (hasBoards) {
+          for (const date in data.boards) {
+            localStorage.setItem(STORAGE_BOARD_PREFIX + date, JSON.stringify(data.boards[date]));
+          }
+        } else {
+          localStorage.setItem(boardKey(), JSON.stringify(data.board));
+        }
         skipAutoSave = true;
         location.reload();
       } catch (e) {
@@ -3685,6 +3716,39 @@ document.getElementById('clearAll').addEventListener('click', () => {
   document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; recalc(l); });
   saveBoard();
   clearUnsaved();
+});
+
+function prevDayISO(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  const z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+
+document.getElementById('copyYesterdayBtn').addEventListener('click', () => {
+  const prev = prevDayISO(currentDate);
+  const raw = localStorage.getItem(STORAGE_BOARD_PREFIX + prev);
+  if (!raw) { alert('前一天 (' + prev + ') 暂无数据'); return; }
+  if (!confirm(`将 ${prev} 的生产计划复制到 ${currentDate},覆盖当前数据?`)) return;
+  let state;
+  try { state = JSON.parse(raw); } catch (e) { alert('复制失败: 数据解析错误'); return; }
+  setActiveCard(null);
+  document.querySelectorAll('.line').forEach(line => {
+    line.querySelectorAll('.card').forEach(c => c.remove());
+    const st = line.querySelector('.start-time'); if (st) st.value = '08:00';
+    const gp = line.querySelector('.gap'); if (gp) gp.value = '0';
+  });
+  hiddenLines = new Set();
+  applyState(state);
+  document.querySelectorAll('.line').forEach(l => recalc(l));
+  updateBoardLayout();
+  saveBoard();
+  // 重置撤回栈,把"复制昨天"作为新起点
+  undoStack.length = 0; redoStack.length = 0;
+  lastSnapshot = snapshotStr();
+  updateUndoButtons();
+  markUnsaved();
+  showToast(`📋 已复制 ${prev} 的数据到 ${currentDate}`);
 });
 
 // ============ 导出功能 ============
