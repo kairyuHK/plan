@@ -122,6 +122,11 @@ input:focus,select:focus{border-color:var(--accent)}
 .picker .person-row.disabled{opacity:.35;cursor:not-allowed;background:transparent}
 .picker .person-row .pname{flex:1}
 .picker .person-row .home{color:var(--muted);font-size:12px}
+.picker .person-row .check{width:16px;flex-shrink:0;color:var(--accent);font-weight:700;text-align:center}
+.picker .person-row.selected{background:rgba(124,92,255,.16)}
+.picker .ph-head .count{color:var(--muted);font-weight:400;font-size:12px;margin-left:6px}
+.picker .btn-row button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.assign-btn{white-space:normal;line-height:1.35}
 .picker .section-title{font-size:12px;color:var(--muted);margin:12px 4px 4px;text-transform:uppercase;letter-spacing:.5px}
 .picker .btn-row{display:flex;gap:8px;padding:8px 16px;border-top:1px solid var(--border)}
 .picker .btn-row .spacer{flex:1}
@@ -282,6 +287,15 @@ const Store = (() => {
     s.lines.forEach(l => { if(!Array.isArray(s.positions[l.id])) s.positions[l.id] = []; });
     s.people = Array.isArray(s.people) ? s.people : [];
     s.schedules = (s.schedules && typeof s.schedules === 'object') ? s.schedules : {};
+    for(const date in s.schedules){
+      for(const ln in s.schedules[date]){
+        for(const pos in s.schedules[date][ln]){
+          const v = s.schedules[date][ln][pos];
+          if(v && !Array.isArray(v)) s.schedules[date][ln][pos] = [v];
+          else if(Array.isArray(v) && v.length === 0) s.schedules[date][ln][pos] = null;
+        }
+      }
+    }
     if(s.lastExportAt === undefined) s.lastExportAt = null;
     if(s.lastChangeAt === undefined) s.lastChangeAt = null;
     return s;
@@ -320,11 +334,14 @@ const Store = (() => {
   }
   function deletePerson(id){
     state.people = state.people.filter(p=>p.id!==id);
-    // null out their assignments
     for(const date in state.schedules){
       for(const ln in state.schedules[date]){
         for(const pos in state.schedules[date][ln]){
-          if(state.schedules[date][ln][pos]===id) state.schedules[date][ln][pos]=null;
+          const v = state.schedules[date][ln][pos];
+          if(Array.isArray(v)){
+            const filtered = v.filter(pid => pid !== id);
+            state.schedules[date][ln][pos] = filtered.length ? filtered : null;
+          }
         }
       }
     }
@@ -335,7 +352,8 @@ const Store = (() => {
     for(const date in state.schedules){
       for(const ln in state.schedules[date]){
         for(const pos in state.schedules[date][ln]){
-          if(state.schedules[date][ln][pos]===id){ count++; }
+          const v = state.schedules[date][ln][pos];
+          if(Array.isArray(v) && v.includes(id)) count++;
         }
       }
     }
@@ -373,15 +391,22 @@ const Store = (() => {
       out[l.id] = {};
       const positions = state.positions[l.id] || [];
       positions.forEach(pos => {
-        out[l.id][pos] = (day && day[l.id] && day[l.id][pos]) ? day[l.id][pos] : null;
+        const v = day && day[l.id] && day[l.id][pos];
+        out[l.id][pos] = Array.isArray(v) ? v : (v ? [v] : []);
       });
     });
     return out;
   }
-  function assign(date, lineId, posName, personId){
+  function assign(date, lineId, posName, personIds){
     ensureDay(date);
     if(!state.schedules[date][lineId]) state.schedules[date][lineId] = {};
-    state.schedules[date][lineId][posName] = personId; // personId or null
+    if(personIds == null || (Array.isArray(personIds) && personIds.length === 0)){
+      state.schedules[date][lineId][posName] = null;
+    } else if(Array.isArray(personIds)){
+      state.schedules[date][lineId][posName] = personIds.slice(0, 3);
+    } else {
+      state.schedules[date][lineId][posName] = [personIds];
+    }
     save();
   }
   function clearDay(date){
@@ -406,7 +431,9 @@ const Store = (() => {
     for(const ln in day){
       for(const pos in day[ln]){
         if(ln===exceptLine && pos===exceptPos) continue;
-        const v = day[ln][pos]; if(v) set.add(v);
+        const v = day[ln][pos];
+        if(Array.isArray(v)) v.forEach(id => set.add(id));
+        else if(v) set.add(v);
       }
     }
     return set;
@@ -533,8 +560,6 @@ const Pages = (() => {
     });
     root.querySelectorAll('li[data-pid]').forEach(li => {
       const pid = li.dataset.pid;
-      li.querySelector('[data-act="up"]').addEventListener('click', () => Store.movePerson(pid, -1));
-      li.querySelector('[data-act="down"]').addEventListener('click', () => Store.movePerson(pid, +1));
       li.querySelector('[data-act="rename"]').addEventListener('click', () => {
         const cur = Store.get().people.find(p=>p.id===pid).name;
         const v = prompt('新姓名:', cur);
@@ -685,13 +710,15 @@ const Pages = (() => {
             <ul class="assign-list">
               ${positions.length===0 ? '<li class="muted" style="padding:8px 0">（未配置岗位)</li>' :
                 positions.map(pos => {
-                  const pid = day[line.id][pos];
-                  const person = pid ? peopleById[pid] : null;
-                  const borrowed = person && person.homeLine !== line.id;
+                  const pids = day[line.id][pos];
+                  const persons = pids.map(id => peopleById[id]).filter(Boolean);
+                  const text = persons.length === 0
+                    ? '未分配'
+                    : persons.map(p => escapeHtml(p.name) + (p.homeLine !== line.id ? ' <span class="borrowed">⇄</span>' : '')).join('、');
                   return `<li data-pos="${escapeHtml(pos)}">
                     <span class="pos-name">${escapeHtml(pos)}</span>
-                    <button class="assign-btn ${person?'':'empty'}" data-line="${line.id}" data-pos="${escapeHtml(pos)}">
-                      ${person ? escapeHtml(person.name) + (borrowed?' <span class="borrowed">⇄</span>':'') : '未分配'}
+                    <button class="assign-btn ${persons.length?'':'empty'}" data-line="${line.id}" data-pos="${escapeHtml(pos)}">
+                      ${text}
                     </button>
                   </li>`;
                 }).join('')
@@ -740,18 +767,26 @@ const Pages = (() => {
   function openPicker(lineId, posName){
     const host = document.getElementById('picker-host');
     const s = Store.get();
-    const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
-    const currentPid = (Store.get().schedules[currentDate]?.[lineId]?.[posName]) || null;
     let query = '';
 
+    function getCurrentIds(){
+      const v = Store.get().schedules[currentDate]?.[lineId]?.[posName];
+      return Array.isArray(v) ? v.slice() : (v ? [v] : []);
+    }
+
     function render(){
+      const currentIds = getCurrentIds();
+      const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
       const q = query.trim().toLowerCase();
       const match = p => !q || p.name.toLowerCase().includes(q);
       const home = s.people.filter(p => p.homeLine===lineId && match(p)).sort(byName);
       const others = s.people.filter(p => p.homeLine!==lineId && match(p)).sort(byName);
       const row = (p) => {
-        const disabled = used.has(p.id) && p.id!==currentPid;
-        return `<div class="person-row ${disabled?'disabled':''}" data-pid="${p.id}">
+        const selected = currentIds.includes(p.id);
+        const full = currentIds.length >= 3 && !selected;
+        const disabled = (used.has(p.id) && !selected) || full;
+        return `<div class="person-row ${disabled?'disabled':''} ${selected?'selected':''}" data-pid="${p.id}">
+          <span class="check">${selected ? '✓' : ''}</span>
           <span class="pname">${escapeHtml(p.name)}</span>
           <span class="home">${s.lines.find(l=>l.id===p.homeLine)?.name||''}</span>
         </div>`;
@@ -759,7 +794,7 @@ const Pages = (() => {
       host.innerHTML = `
         <div class="picker">
           <div class="ph-head">
-            <div class="title">选择 ${escapeHtml(s.lines.find(l=>l.id===lineId).name)} · ${escapeHtml(posName)}</div>
+            <div class="title">选择 ${escapeHtml(s.lines.find(l=>l.id===lineId).name)} · ${escapeHtml(posName)} <span class="count">${currentIds.length}/3</span></div>
             <button data-act="close">✕</button>
           </div>
           <div class="ph-search"><input id="picker-search" placeholder="搜索…" value="${escapeHtml(query)}" autofocus></div>
@@ -769,20 +804,27 @@ const Pages = (() => {
             ${others.length? `<details><summary class="section-title" style="cursor:pointer">借调 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
           </div>
           <div class="btn-row">
-            <button data-act="clear">清空(此岗留空)</button>
+            <button data-act="clear">清空</button>
             <div class="spacer"></div>
-            <button data-act="cancel">取消</button>
+            <button data-act="done" class="primary">完成</button>
           </div>
         </div>
       `;
       host.classList.remove('hidden');
       const close = () => { host.classList.add('hidden'); host.innerHTML=''; };
       host.querySelector('[data-act="close"]').onclick = close;
-      host.querySelector('[data-act="cancel"]').onclick = close;
-      host.querySelector('[data-act="clear"]').onclick = () => { Store.assign(currentDate, lineId, posName, null); close(); };
+      host.querySelector('[data-act="done"]').onclick = close;
+      host.querySelector('[data-act="clear"]').onclick = () => { Store.assign(currentDate, lineId, posName, null); render(); };
       host.querySelectorAll('.person-row').forEach(r => {
         if(r.classList.contains('disabled')) return;
-        r.onclick = () => { Store.assign(currentDate, lineId, posName, r.dataset.pid); close(); };
+        r.onclick = () => {
+          const ids = getCurrentIds();
+          const i = ids.indexOf(r.dataset.pid);
+          if(i >= 0) ids.splice(i, 1);
+          else if(ids.length < 3) ids.push(r.dataset.pid);
+          Store.assign(currentDate, lineId, posName, ids.length ? ids : null);
+          render();
+        };
       });
       const search = host.querySelector('#picker-search');
       search.addEventListener('input', e => { query = e.target.value; render(); search.focus(); search.setSelectionRange(query.length, query.length); });
@@ -903,29 +945,37 @@ const Pages = (() => {
   assert('updatePerson updates fields', Store.get().people[0].name==='张三丰');
 
   Store.addPosition('xs','岗位C');
-  Store.assign('2026-05-26','xs','岗位C', pid);
-  assert('assign stores person id', Store.get().schedules['2026-05-26'].xs['岗位C']===pid);
+  Store.assign('2026-05-26','xs','岗位C', [pid]);
+  assert('assign stores person ids as array', Array.isArray(Store.get().schedules['2026-05-26'].xs['岗位C']) && Store.get().schedules['2026-05-26'].xs['岗位C'][0]===pid);
   assert('findPersonUsage counts assignments', Store.findPersonUsage(pid)===1);
 
   const day = Store.getDay('2026-05-26');
   assert('getDay returns all lines', Object.keys(day).length===7);
-  assert('getDay fills missing positions as null', day.xs['岗位C']===pid);
+  assert('getDay returns positions as arrays', Array.isArray(day.xs['岗位C']) && day.xs['岗位C'][0]===pid);
 
-  // Stronger: assignedPeopleOnDay should exclude the (lineId, posName) pair passed in.
-  // Single assignment at 岗位C — querying with except=岗位C should NOT include pid.
   const usedExceptC = Store.assignedPeopleOnDay('2026-05-26','xs','岗位C');
   assert('assignedPeopleOnDay excludes exceptPos', !usedExceptC.has(pid));
-  // Now also assign to 岗位A, query excepting 岗位C → pid should appear (via 岗位A).
-  Store.assign('2026-05-26','xs','岗位A', pid);
+  Store.assign('2026-05-26','xs','岗位A', [pid]);
   const usedAlsoA = Store.assignedPeopleOnDay('2026-05-26','xs','岗位C');
   assert('assignedPeopleOnDay includes others', usedAlsoA.has(pid) && !usedAlsoA.has('xxx'));
 
+  // Multi-person at one position
+  Store.get().people.push({id:'p2', name:'李四', homeLine:'xs'});
+  Store.assign('2026-05-26','xs','岗位C', [pid, 'p2']);
+  assert('assign supports multiple people', Store.get().schedules['2026-05-26'].xs['岗位C'].length===2);
+  assert('findPersonUsage spans positions', Store.findPersonUsage(pid)===2);
+  Store.assign('2026-05-26','xs','岗位C', [pid, 'p2', 'p3', 'p4']);
+  assert('assign caps at 3', Store.get().schedules['2026-05-26'].xs['岗位C'].length===3);
+
   Store.copyDay('2026-05-26','2026-05-27');
-  assert('copyDay copies assignments', Store.get().schedules['2026-05-27'].xs['岗位C']===pid);
+  assert('copyDay copies assignments', Store.get().schedules['2026-05-27'].xs['岗位C'][0]===pid);
 
   Store.deletePerson(pid);
-  assert('deletePerson removes person', Store.get().people.length===0);
-  assert('deletePerson nulls assignments', Store.get().schedules['2026-05-26'].xs['岗位C']===null);
+  assert('deletePerson removes person', !Store.get().people.find(p=>p.id===pid));
+  assert('deletePerson removes from arrays', !Store.get().schedules['2026-05-26'].xs['岗位C'].includes(pid));
+  assert('deletePerson keeps others', Store.get().schedules['2026-05-26'].xs['岗位C'].includes('p2'));
+  Store.assign('2026-05-26','xs','岗位C', null);
+  assert('assign null clears position', Store.get().schedules['2026-05-26'].xs['岗位C']===null);
 
   assert('lastScheduledDate returns most recent before', Store.lastScheduledDate('2026-06-01')==='2026-05-27');
 
@@ -1788,6 +1838,11 @@ const Pages = (() => {
     .line-label { text-align: left; line-height: 1; margin-top: 2px; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
     .head-btn { width: 100%; justify-content: center; height: 20px; }
+    /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
+    .line-foot { padding: 8px 8px; overflow: hidden; }
+    .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: baseline; }
+    .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
+    .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
   }
 
   /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
@@ -3322,11 +3377,34 @@ function recalc(line) {
     }
     syncPopupState(card);
   });
-  line.querySelector('.qty-total').textContent = totalQty.toLocaleString();
-  line.querySelector('.time-total').textContent = fmtDuration(totalSec);
-  line.querySelector('.finish-total').textContent = (lastEnd != null) ? fmtClock(lastEnd) : '—';
+  setFootVal(line.querySelector('.qty-total'), totalQty.toLocaleString());
+  setFootVal(line.querySelector('.time-total'), fmtDuration(totalSec));
+  setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   recalcGlobal();
 }
+
+function setFootVal(el, text) {
+  if (!el) return;
+  el.textContent = text;
+  el.style.fontSize = '';
+  requestAnimationFrame(() => {
+    let fs = parseFloat(getComputedStyle(el).fontSize) || 13;
+    let guard = 24;
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 7 && guard-- > 0) {
+      fs -= 0.5;
+      el.style.fontSize = fs + 'px';
+    }
+  });
+}
+
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.line').forEach(line => {
+    ['.qty-total','.time-total','.finish-total'].forEach(sel => {
+      const el = line.querySelector(sel);
+      if (el) setFootVal(el, el.textContent);
+    });
+  });
+});
 
 function recalcGlobal() {
   let q = 0, s = 0, cnt = 0, latestFinish = null;
