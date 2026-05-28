@@ -6,14 +6,14 @@
 <title>生产管理</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0a0a0b;color:#e8e8ea;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
-.tabs{display:flex;height:44px;background:#0f1115;border-bottom:1px solid #2a2d33;align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:auto}
+html,body{margin:0;height:100%;background:#14181f;color:#ebedf0;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
+.tabs{display:flex;height:44px;background:#14181f;border-bottom:1px solid rgba(255,255,255,0.09);align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:auto}
 .tabs button{font:inherit;color:#9097a3;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;flex:0 0 auto}
-.tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8ea}
+.tabs button:hover{background:rgba(255,255,255,.05);color:#ebedf0}
 .tabs button.active{background:#f97316;color:#0a0a0b;border-color:#f97316;font-weight:600}
-.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0}
-iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#0a0a0b}
-iframe.active{display:block}
+.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#14181f}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#14181f;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
+iframe.active{opacity:1;visibility:visible;pointer-events:auto}
 @media (max-width:600px){.tabs button{padding:6px 10px;font-size:13px}}
 </style>
 </head>
@@ -36,9 +36,10 @@ iframe.active{display:block}
 <title>岗位排班表</title>
 <style>
 :root{
-  --bg:#0a0a0b; --card:#161618; --border:#26262a;
-  --text:#e8e8ea; --muted:#8a8a90;
-  --accent:#7c5cff; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  /* 与生产计划板共用色板,保证三个 app 视觉一致 */
+  --bg:#14181f; --card:#161a22; --border:rgba(255,255,255,0.09);
+  --text:#ebedf0; --muted:#9097a3;
+  --accent:#f97316; --ok:#34d399; --warn:#f59e0b; --danger:#f87171;
   --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
   --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
   --line-tsk:#8b5cf6;
@@ -51,7 +52,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-button.primary:hover{background:#6a4def}
+button.primary:hover{background:#ea6f12}
 input,select{font:inherit;color:inherit;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 10px;outline:none}
 input:focus,select:focus{border-color:var(--accent)}
 .nav{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
@@ -4283,7 +4284,7 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>配置表</title>
 <style>
-  :root { --bg:#0f1115; --fg:#e8e8e8; --line:#2a2d33; --accent:#fb923c; --soft:#1a1d22; --muted:#888; }
+  :root { --bg:#14181f; --fg:#ebedf0; --line:rgba(255,255,255,0.09); --accent:#f97316; --soft:#161a22; --muted:#9097a3; }
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
