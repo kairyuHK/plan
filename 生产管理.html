@@ -6,13 +6,13 @@
 <title>生产管理</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#14181f;color:#ebedf0;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
-.tabs{display:flex;height:44px;background:#14181f;border-bottom:1px solid rgba(255,255,255,0.09);align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:auto}
-.tabs button{font:inherit;color:#9097a3;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;flex:0 0 auto}
-.tabs button:hover{background:rgba(255,255,255,.05);color:#ebedf0}
-.tabs button.active{background:#f97316;color:#0a0a0b;border-color:#f97316;font-weight:600}
-.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#14181f}
-iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#14181f;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
+html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
+.tabs{display:flex;height:44px;background:#0a0c10;border-bottom:1px solid #2a2d33;align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:auto}
+.tabs button{font:inherit;color:#888;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;flex:0 0 auto}
+.tabs button:hover{background:#15181d;color:#e8e8e8}
+.tabs button.active{background:#fb923c;color:#000;border-color:#fb923c;font-weight:600}
+.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
 iframe.active{opacity:1;visibility:visible;pointer-events:auto}
 @media (max-width:600px){.tabs button{padding:6px 10px;font-size:13px}}
 </style>
@@ -36,10 +36,10 @@ iframe.active{opacity:1;visibility:visible;pointer-events:auto}
 <title>岗位排班表</title>
 <style>
 :root{
-  /* 与生产计划板共用色板,保证三个 app 视觉一致 */
-  --bg:#14181f; --card:#161a22; --border:rgba(255,255,255,0.09);
-  --text:#ebedf0; --muted:#9097a3;
-  --accent:#f97316; --ok:#34d399; --warn:#f59e0b; --danger:#f87171;
+  /* 与配置表共用色板,保证三个 app 视觉一致 */
+  --bg:#0f1115; --card:#1a1d22; --border:#2a2d33;
+  --text:#e8e8e8; --muted:#888;
+  --accent:#fb923c; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
   --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
   --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
   --line-tsk:#8b5cf6;
@@ -52,7 +52,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-button.primary:hover{background:#ea6f12}
+button.primary:hover{background:#fa8520}
 input,select{font:inherit;color:inherit;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 10px;outline:none}
 input:focus,select:focus{border-color:var(--accent)}
 .nav{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
@@ -1039,22 +1039,23 @@ const Pages = (() => {
   input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
   :root {
-    --bg: #14181f;
-    --bg-2: #0d1015;
-    --line-bg: #11151c;
-    --panel: rgba(20, 24, 31, 0.85);
-    --panel-solid: #161a22;
-    --panel-2: rgba(17, 21, 28, 0.85);
-    --panel-elevated: rgba(26, 31, 40, 0.92);
-    --border: rgba(255, 255, 255, 0.05);
-    --border-strong: rgba(255, 255, 255, 0.09);
-    --border-line: #1e242e;
-    --text: #ebedf0;
-    --text-dim: #9097a3;
-    --text-mute: #5b6371;
-    --accent: #f97316;
-    --accent-soft: rgba(249, 115, 22, 0.10);
-    --accent-glow: rgba(249, 115, 22, 0.18);
+    /* 与配置表共用色板,保证三个 app 视觉一致 */
+    --bg: #0f1115;
+    --bg-2: #0a0c10;
+    --line-bg: #12151a;
+    --panel: #1a1d22;
+    --panel-solid: #1a1d22;
+    --panel-2: #15181d;
+    --panel-elevated: #1f2229;
+    --border: #2a2d33;
+    --border-strong: #3a3f47;
+    --border-line: #2a2d33;
+    --text: #f1f1f3;
+    --text-dim: #9ca0a8;
+    --text-mute: #707783;
+    --accent: #fb923c;
+    --accent-soft: rgba(251, 146, 60, 0.10);
+    --accent-glow: rgba(251, 146, 60, 0.18);
     --green: #34d399;
     --red: #f87171;
     --blue: #60a5fa;
@@ -1079,6 +1080,9 @@ const Pages = (() => {
     font-size: 13px;
     overflow: hidden;
     overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   body {
     position: fixed;
@@ -1095,9 +1099,7 @@ const Pages = (() => {
   .topbar {
     position: relative; z-index: 10;
     height: 48px;
-    background: rgba(15, 18, 24, 0.85);
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    background: var(--bg-2);
     border-bottom: 1px solid var(--border-strong);
     display: flex; align-items: center;
     padding: 0 14px; gap: 8px;
@@ -1179,8 +1181,6 @@ const Pages = (() => {
     display: none;
     position: absolute; top: calc(100% + 6px); right: 0;
     background: var(--panel-elevated);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
     border: 1px solid var(--border-strong);
     border-radius: 8px; overflow: hidden; min-width: 160px;
     box-shadow: var(--shadow-lg);
@@ -1230,8 +1230,6 @@ const Pages = (() => {
   .cal-popover {
     position: fixed; z-index: 1500;
     background: var(--panel-elevated);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -1581,7 +1579,7 @@ const Pages = (() => {
 
   .card {
     position: absolute; left: 6px; right: 6px;
-    background: #1d222b;
+    background: #232934;
     border: 1px solid var(--border-strong);
     border-left: 2px solid var(--border-strong);
     border-radius: 6px;
@@ -1628,8 +1626,6 @@ const Pages = (() => {
     width: 288px; max-width: calc(100vw - 16px);
     max-height: calc(100vh - 16px); overflow-y: auto;
     background: var(--panel-elevated);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     padding: 12px 14px;
@@ -1811,8 +1807,8 @@ const Pages = (() => {
   .pager {
     display: none; position: fixed; bottom: 8px; left: 50%;
     transform: translateX(-50%); z-index: 20; gap: 6px;
-    background: rgba(17,24,39,0.9); padding: 6px 10px;
-    border: 1px solid var(--border); border-radius: 20px; backdrop-filter: blur(8px);
+    background: var(--panel-elevated); padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 20px;
   }
   .pager .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: all 0.2s; }
   .pager .pip.active { background: var(--accent); width: 18px; border-radius: 3px; }
@@ -1936,8 +1932,6 @@ const Pages = (() => {
   @keyframes maskIn { from { opacity: 0; } to { opacity: 1; } }
   .modal {
     background: var(--panel-elevated);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     width: 100%; max-width: 640px;
@@ -4093,7 +4087,7 @@ function renderCalendar() {
   if (!calPopover) return;
   const { year, month } = calView;
   const first = new Date(year, month - 1, 1);
-  const firstDow = (first.getDay() + 6) % 7; // 月=0 ... 日=6
+  const firstDow = first.getDay(); // 日=0 ... 土=6
   const lastDay = new Date(year, month, 0).getDate();
   const prevLast = new Date(year, month - 1, 0).getDate();
   const today = todayStr();
@@ -4117,7 +4111,7 @@ function renderCalendar() {
       <button class="cal-nav" data-act="next" type="button" aria-label="下一月">›</button>
     </div>
     <div class="cal-dows">
-      <div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div><div class="cal-dow sun">日</div>
+      <div class="cal-dow sun">日</div><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div>
     </div>
     <div class="cal-grid">`;
   cells.forEach(c => {
@@ -4284,7 +4278,7 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>配置表</title>
 <style>
-  :root { --bg:#14181f; --fg:#ebedf0; --line:rgba(255,255,255,0.09); --accent:#f97316; --soft:#161a22; --muted:#9097a3; }
+  :root { --bg:#0f1115; --fg:#e8e8e8; --line:#2a2d33; --accent:#fb923c; --soft:#1a1d22; --muted:#888; }
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
