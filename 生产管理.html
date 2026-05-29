@@ -318,7 +318,27 @@ const Store = (() => {
     state.lastChangeAt = new Date().toISOString();
     try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
     listeners.forEach(fn => fn());
+    broadcastSchedule();
   }
+  function broadcastSchedule(){
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'schedule-changed',
+          lines: state.lines,
+          positions: state.positions,
+          people: state.people,
+          schedules: state.schedules
+        }, '*');
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('message', (e) => {
+    if (!e.data || typeof e.data !== 'object') return;
+    if (e.data.type === 'schedule-request') broadcastSchedule();
+  });
+  // 加载完后广播一次,让其他 iframe 同步初始数据
+  setTimeout(broadcastSchedule, 0);
   function subscribe(fn){ listeners.add(fn); return () => listeners.delete(fn); }
   function get(){ return state; }
   function replace(newState){ state = sanitize(Object.assign(emptyData(), newState)); save(); }
@@ -674,9 +694,41 @@ const Pages = (() => {
         currentDate = el.dataset.iso;
         closeCalendar();
         renderSchedule();
+        broadcastDate();
       });
     });
   }
+
+  // === 跨 iframe 日期同步 ===
+  let _suppressDateBroadcast = false;
+  function broadcastDate(){
+    if (_suppressDateBroadcast) return;
+    if (!currentDate) return;
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'plan-date-changed', date: currentDate }, '*');
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('message', (e) => {
+    if (!e.data || typeof e.data !== 'object') return;
+    if (e.data.type === 'plan-date-changed') {
+      const d = e.data.date;
+      if (typeof d !== 'string' || !d || d === currentDate) return;
+      _suppressDateBroadcast = true;
+      currentDate = d;
+      _suppressDateBroadcast = false;
+      // 切到排班 Tab 时才需要重渲;此时若在排班页直接 render
+      const root = document.querySelector('#page-schedule');
+      if (root) renderSchedule();
+    }
+  });
+  // 启动时向父壳要一次共享日期
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'plan-date-request' }, '*');
+    }
+  } catch (e) {}
 
   function renderSchedule(){
     const root = document.querySelector('#page-schedule');
@@ -2042,6 +2094,27 @@ const Pages = (() => {
   .lib-add-form input:disabled { opacity: 0.55; cursor: not-allowed; background: rgba(255,255,255,0.015); }
   .lib-item-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .lib-item-btn.del:disabled:hover { color: var(--text-mute); border-color: var(--border); background: transparent; }
+  .copy-day-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .copy-day-row input[type="date"] {
+    flex: 1; background: rgba(255,255,255,0.025); border: 1px solid var(--border-strong);
+    color: var(--text); padding: 9px 12px; font: inherit; font-size: 13px;
+    outline: none; border-radius: var(--radius-sm); font-variant-numeric: tabular-nums;
+  }
+  .copy-day-row input[type="date"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .copy-day-row input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  .copy-day-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+  .copy-day-list .copy-day-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); transition: background 0.15s, border-color 0.15s;
+  }
+  .copy-day-list .copy-day-item:hover { background: var(--accent-soft); border-color: rgba(251,146,60,0.4); }
+  .copy-day-list .copy-day-item .date { flex: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .copy-day-list .copy-day-item .dow { color: var(--text-dim); font-size: 11px; min-width: 28px; }
+  .copy-day-list .copy-day-item .meta { color: var(--text-mute); font-size: 11px; }
+  .copy-day-list .copy-day-item.today { border-color: var(--accent); }
+  .copy-day-list .copy-day-empty { text-align: center; color: var(--text-mute); padding: 24px 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 12px; }
   .lib-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; flex-shrink: 0; }
   .lib-item-info .ns { color: var(--accent); font-weight: 600; }
   .lib-item-btns { display: flex; gap: 4px; flex-shrink: 0; }
@@ -2268,7 +2341,7 @@ const Pages = (() => {
     <span class="brand-sub">流水线生产计划板</span>
     <button class="top-btn" id="undoBtn" title="撤回 (Ctrl+Z)" style="padding:0 8px;margin-left:8px" disabled>↶</button>
     <button class="top-btn" id="redoBtn" title="重做 (Ctrl+Shift+Z)" style="padding:0 8px" disabled>↷</button>
-    <button class="top-btn" id="copyYesterdayBtn" title="复制昨天的数据到当前日期" style="margin-left:8px;padding:0 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+    <button class="top-btn" id="copyDayBtn" title="复制某日的数据到当前日期" style="margin-left:8px;padding:0 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
   </div>
   <div class="topbar-right">
     <button class="top-btn clear" id="clearAll" title="清空所有牌子">清空</button>
@@ -2327,6 +2400,26 @@ const Pages = (() => {
         <button class="lib-add-btn" id="libAddBtn">添加</button>
       </div>
       <div class="lib-list" id="libList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="copyDayModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">复制某日的数据</div>
+        <div class="modal-sub" id="copyDaySub">选中日期的全部生产计划将覆盖当前日期</div>
+      </div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-body">
+      <div class="copy-day-row">
+        <input type="date" id="copyDayInput">
+        <button id="copyDayDoBtn" class="lib-add-btn" style="width:auto;padding:9px 18px">复制</button>
+      </div>
+      <div class="modal-sub" style="margin:8px 0 6px">最近已保存的日期</div>
+      <div id="copyDayList" class="copy-day-list"></div>
     </div>
   </div>
 </div>
@@ -2638,6 +2731,11 @@ function renderLibList() {
     libList.innerHTML = '<div class="lib-empty">还没有品名，添加你的第一个品名</div>';
     return;
   }
+  // 统计每个 bentoId 被多少个品名库项链接,用于处理"重复共享项"
+  const linkCount = new Map();
+  library.forEach(it => {
+    if (it && it.bentoId) linkCount.set(it.bentoId, (linkCount.get(it.bentoId) || 0) + 1);
+  });
   libList.innerHTML = '';
   [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
     const row = document.createElement('div');
@@ -2646,10 +2744,17 @@ function renderLibList() {
     const peopleText = fmtPeople(item.people);
     const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
     const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
-    const linkBadge = item._bentoLinked ? '<span class="bento-link" title="已链接配置表便当库,LINE速度与人数自动同步">🍱</span> ' : '';
-    const delBtnHtml = item._bentoLinked
+    // 同一便当被多于 1 项链接时,这些重复项允许手动删除,直至只剩 1 项
+    const isDup = item._bentoLinked && (linkCount.get(item.bentoId) || 0) > 1;
+    const lockedByBento = item._bentoLinked && !isDup;
+    const linkBadge = item._bentoLinked
+      ? (isDup
+          ? '<span class="bento-link" title="此便当在品名库中有重复条目,可删除多余的">🍱<sup style="color:var(--warn);font-size:9px">×N</sup></span> '
+          : '<span class="bento-link" title="已链接配置表便当库,LINE速度与人数自动同步">🍱</span> ')
+      : '';
+    const delBtnHtml = lockedByBento
       ? `<button class="lib-item-btn del" title="已链接便当库,不可删除(请在配置表 · 便当库中删除该便当)" disabled>×</button>`
-      : `<button class="lib-item-btn del" title="删除">×</button>`;
+      : `<button class="lib-item-btn del" title="${isDup ? '删除重复的共享项' : '删除'}">×</button>`;
     row.innerHTML = `
       <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
       <div class="lib-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
@@ -2659,7 +2764,7 @@ function renderLibList() {
       </div>
     `;
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
-    if (!item._bentoLinked) {
+    if (!lockedByBento) {
       row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
         library = library.filter(x => x.id !== item.id);
         saveLibrary();
@@ -3862,11 +3967,13 @@ function prevDayISO(iso) {
   return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
 }
 
-document.getElementById('copyYesterdayBtn').addEventListener('click', () => {
-  const prev = prevDayISO(currentDate);
-  const raw = localStorage.getItem(STORAGE_BOARD_PREFIX + prev);
-  if (!raw) { alert('前一天 (' + prev + ') 暂无数据'); return; }
-  if (!confirm(`将 ${prev} 的生产计划复制到 ${currentDate},覆盖当前数据?`)) return;
+// 执行从指定日期复制到当前日期
+function doCopyFromDate(srcDate) {
+  if (!srcDate) return;
+  if (srcDate === currentDate) { alert('源日期不能是当前日期'); return; }
+  const raw = localStorage.getItem(STORAGE_BOARD_PREFIX + srcDate);
+  if (!raw) { alert(`${srcDate} 暂无数据`); return; }
+  if (!confirm(`将 ${srcDate} 的生产计划复制到 ${currentDate},覆盖当前数据?`)) return;
   let state;
   try { state = JSON.parse(raw); } catch (e) { alert('复制失败: 数据解析错误'); return; }
   setActiveCard(null);
@@ -3880,12 +3987,70 @@ document.getElementById('copyYesterdayBtn').addEventListener('click', () => {
   document.querySelectorAll('.line').forEach(l => recalc(l));
   updateBoardLayout();
   saveBoard();
-  // 重置撤回栈,把"复制昨天"作为新起点
   undoStack.length = 0; redoStack.length = 0;
   lastSnapshot = snapshotStr();
   updateUndoButtons();
   markUnsaved();
-  showToast(`📋 已复制 ${prev} 的数据到 ${currentDate}`);
+  document.getElementById('copyDayModal').classList.remove('show');
+  showToast(`📋 已复制 ${srcDate} 的数据到 ${currentDate}`);
+}
+
+// 渲染已保存日期列表
+function renderCopyDayList() {
+  const listEl = document.getElementById('copyDayList');
+  const subEl = document.getElementById('copyDaySub');
+  subEl.textContent = `选中日期的生产计划将覆盖当前日期 (${currentDate})`;
+  const dates = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_BOARD_PREFIX)) {
+      const date = k.slice(STORAGE_BOARD_PREFIX.length);
+      if (date === currentDate) continue;
+      let cardCount = 0;
+      try {
+        const s = JSON.parse(localStorage.getItem(k) || '{}');
+        if (Array.isArray(s.lines)) s.lines.forEach(ln => { if (Array.isArray(ln.cards)) cardCount += ln.cards.length; });
+      } catch (e) {}
+      dates.push({ date, cardCount });
+    }
+  }
+  dates.sort((a, b) => b.date.localeCompare(a.date));
+  if (dates.length === 0) {
+    listEl.innerHTML = '<div class="copy-day-empty">还没有其他日期的存档</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  const today = todayStr();
+  dates.forEach(({ date, cardCount }) => {
+    const row = document.createElement('div');
+    row.className = 'copy-day-item' + (date === today ? ' today' : '');
+    const [y, m, d] = date.split('-').map(Number);
+    const dow = new Date(y, m-1, d).getDay();
+    row.innerHTML = `
+      <span class="date">${date}</span>
+      <span class="dow">（${DOW_JP[dow]}）</span>
+      <span class="meta">${cardCount} 张卡片${date === today ? ' · 今日' : ''}</span>
+    `;
+    row.addEventListener('click', () => doCopyFromDate(date));
+    listEl.appendChild(row);
+  });
+}
+
+document.getElementById('copyDayBtn').addEventListener('click', () => {
+  const modal = document.getElementById('copyDayModal');
+  const inp = document.getElementById('copyDayInput');
+  // 默认填入昨天作为快捷起点
+  inp.value = prevDayISO(currentDate);
+  inp.max = currentDate;
+  renderCopyDayList();
+  modal.classList.add('show');
+});
+
+document.getElementById('copyDayDoBtn').addEventListener('click', () => {
+  const inp = document.getElementById('copyDayInput');
+  const v = (inp.value || '').trim();
+  if (!v) { inp.focus(); return; }
+  doCopyFromDate(v);
 });
 
 // ============ 导出功能 ============
@@ -4327,12 +4492,22 @@ document.getElementById('timelineHead').addEventListener('click', (e) => {
   if (e.target.closest('.date-back-today')) return;
   openCalendar(document.getElementById('timelineHead'));
 });
+let _suppressDateBroadcast = false;
+function broadcastPlanDate() {
+  if (_suppressDateBroadcast) return;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'plan-date-changed', date: currentDate }, '*');
+    }
+  } catch (e) {}
+}
 function switchDate(newDate) {
   if (newDate === currentDate) return;
   try { saveBoard(); } catch (e) {} // 先把当前日期数据落盘
   setActiveCard(null);
   currentDate = newDate;
   try { localStorage.setItem(STORAGE_CURRENT_DATE, currentDate); } catch (e) {}
+  broadcastPlanDate();
   // 清空所有线的卡片和设置,再加载新日期
   document.querySelectorAll('.line').forEach(line => {
     line.querySelectorAll('.card').forEach(c => c.remove());
@@ -4391,6 +4566,19 @@ window.addEventListener('message', (e) => {
 });
 // 启动时向父壳请求一次最新便当数据(若 配置表 已加载或父壳有缓存,会立即回放)
 try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'bento-request' }, '*'); } catch (_) {}
+// 响应其他 iframe 询问"当前日期" + 接收他人切换的日期(三 app 公用一个日期)
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'plan-date-request') broadcastPlanDate();
+  else if (e.data.type === 'plan-date-changed') {
+    const d = e.data.date;
+    if (typeof d !== 'string' || !d || d === currentDate) return;
+    _suppressDateBroadcast = true;
+    try { switchDate(d); } finally { _suppressDateBroadcast = false; }
+  }
+});
+// 启动时广播一次当前日期
+setTimeout(broadcastPlanDate, 0);
 renderTimeline();
 for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
 (function syncFootH() {
@@ -4493,6 +4681,8 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
   .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:78px;min-height:78px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
+  .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:12px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
+  .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:400;line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 22px}
@@ -4589,10 +4779,12 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
   body.printing .line-grid .row{gap:8px !important}
   body.printing .line-grid .cell{height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important;overflow:visible !important}
   body.printing .line-grid .cell .mats{font-size:17px !important;font-weight:500 !important;letter-spacing:.3px}
+  body.printing .line-grid .cell .person{display:none !important}
   @media print {
     @page { size: A4 landscape; margin: 0; }
     html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
     header, .backdrop, .drawer, .picker, .autocomplete, .modal { display:none !important; }
+    .line-grid .cell .person { display:none !important; }
     body{background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:6mm;min-height:0 !important;max-height:none;width:285mm !important;font-size:14px !important;overflow:visible !important}
     #content{padding:0;position:relative !important;display:flex;flex-direction:column;width:285mm !important;min-height:186mm !important;height:auto !important;overflow:visible !important}
     #content > *{break-inside:auto;page-break-inside:auto}
@@ -4793,6 +4985,84 @@ function loadState() {
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   broadcastBentos();
+}
+// === 排班数据 & 计划板日期(跨 iframe 接收) ===
+let scheduleData = { lines: [], positions: {}, people: [], schedules: {} };
+let planDate = (function(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+})();
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'schedule-changed') {
+    scheduleData = {
+      lines: Array.isArray(e.data.lines) ? e.data.lines : [],
+      positions: e.data.positions || {},
+      people: Array.isArray(e.data.people) ? e.data.people : [],
+      schedules: e.data.schedules || {}
+    };
+    render();
+  } else if (e.data.type === 'plan-date-changed') {
+    if (typeof e.data.date === 'string' && e.data.date) {
+      planDate = e.data.date;
+      render();
+    }
+  }
+});
+// 启动时主动请求一次
+try {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'schedule-request' }, '*');
+    window.parent.postMessage({ type: 'plan-date-request' }, '*');
+  }
+} catch (_) {}
+// 工具:取某便当某位置已排班的人名(可能是 [id...] 或 [[id...]])
+// 位置名匹配做归一化 + 别名映射,双向兼容排班表/配置表的不同写法
+const POS_ALIAS = {
+  // 排班表写法 → 配置表写法
+  '蓋1': '盖盖1',
+  '蓋2': '盖盖2',
+  '取り': '装框'
+};
+// 反向映射:配置表写法 → 排班表写法
+const POS_ALIAS_REV = {};
+for (const k in POS_ALIAS) POS_ALIAS_REV[POS_ALIAS[k]] = k;
+function getPersonNamesForCell(bento, posLabel) {
+  if (!bento || !bento.lineId || posLabel == null) return [];
+  const dateSched = scheduleData.schedules[planDate];
+  if (!dateSched) return [];
+  const lineSched = dateSched[bento.lineId];
+  if (!lineSched) return [];
+  // 候选键:原值、trim、纯数字时去零和补零、自定义别名
+  const tries = new Set();
+  const orig = String(posLabel);
+  tries.add(orig);
+  const trimmed = orig.trim();
+  tries.add(trimmed);
+  if (/^\d+$/.test(trimmed)) {
+    const n = parseInt(trimmed, 10);
+    tries.add(String(n));                  // 去前导零:"01" → "1"
+    tries.add(String(n).padStart(2, '0')); // 补两位:  "1"  → "01"
+  }
+  // 别名映射(双向)
+  if (POS_ALIAS[trimmed]) tries.add(POS_ALIAS[trimmed]);
+  if (POS_ALIAS_REV[trimmed]) tries.add(POS_ALIAS_REV[trimmed]);
+  let raw = null;
+  for (const key of tries) {
+    if (lineSched[key] != null) { raw = lineSched[key]; break; }
+  }
+  if (!raw) return [];
+  const ids = [];
+  const visit = v => {
+    if (v == null) return;
+    if (Array.isArray(v)) v.forEach(visit);
+    else ids.push(v);
+  };
+  visit(raw);
+  return ids.map(id => {
+    const p = scheduleData.people.find(x => x.id === id);
+    return p ? p.name : null;
+  }).filter(Boolean);
 }
 // === 跨 iframe 桥:把便当库变更广播给父壳(由父壳中转给计划板) ===
 function broadcastBentos() {
@@ -5652,6 +5922,17 @@ function renderOperate() {
       }
     }
     cell.appendChild(mats);
+    // 右下角人名(来自排班表;只读)
+    if (bento) {
+      const names = getPersonNamesForCell(bento, pos.label);
+      if (names.length) {
+        const personEl = document.createElement("div");
+        personEl.className = "person";
+        personEl.textContent = names.join("/");
+        personEl.title = `${planDate} · ${pos.label} 排班人员`;
+        cell.appendChild(personEl);
+      }
+    }
     return cell;
   });
   c.appendChild(wrap);
@@ -5807,6 +6088,18 @@ function renderEdit() {
   speedInp.value = b.speed || "";
   speedInp.style.flex = "0 0 140px";
   speedInp.oninput = () => { b.speed = speedInp.value; saveState(); };
+  // 生产线下拉(来自排班表)
+  const lineSel = document.createElement("select");
+  lineSel.style.cssText = "flex:0 0 130px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
+  const emptyOpt = document.createElement("option"); emptyOpt.value = ""; emptyOpt.textContent = "（未选生产线）";
+  lineSel.appendChild(emptyOpt);
+  (scheduleData.lines || []).forEach(ln => {
+    const opt = document.createElement("option");
+    opt.value = ln.id; opt.textContent = ln.name;
+    lineSel.appendChild(opt);
+  });
+  lineSel.value = b.lineId || "";
+  lineSel.onchange = () => { b.lineId = lineSel.value || null; saveState(); };
   const cardBtn = document.createElement("button"); cardBtn.textContent = "管理卡片";
   const addCardBtn = document.createElement("button"); addCardBtn.textContent = "+ 卡片";
   addCardBtn.onclick = () => { addSlot(b.line); renderEdit(); };
@@ -5814,7 +6107,7 @@ function renderEdit() {
   done.onclick = () => { state.current = { ...state.current, screen: "operate", bentoId: b.id }; saveState(); render(); };
   const back = document.createElement("button"); back.textContent = "返回列表";
   back.onclick = () => { state.current = { ...state.current, screen: "bentos" }; saveState(); render(); };
-  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(done); tb.appendChild(back);
+  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(lineSel); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(done); tb.appendChild(back);
   c.appendChild(tb);
 
   // 卡片管理面板（默认隐藏，按"管理卡片"展开）
@@ -5917,6 +6210,15 @@ function renderEdit() {
       }
     }
     cell.appendChild(mats);
+    // 右下角:排班人名(只读)
+    const names = getPersonNamesForCell(b, pos.label);
+    if (names.length) {
+      const personEl = document.createElement("div");
+      personEl.className = "person";
+      personEl.textContent = names.join("/");
+      personEl.title = `${planDate} · ${pos.label} 排班人员`;
+      cell.appendChild(personEl);
+    }
     cell.onclick = (e) => { e.stopPropagation(); openPicker(cell, b.id, pos.id); };
     return cell;
     });
@@ -6192,22 +6494,28 @@ init();
 const btns = document.querySelectorAll('.tabs button');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
-// === 跨 iframe 数据桥:中转便当库变更/请求,缓存最新快照 ===
-let lastBentoSnapshot = null;
+// === 跨 iframe 数据桥:中转便当/排班/日期变更与请求,缓存最新快照 ===
+const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
+const requestToChange = {
+  'bento-request': 'bento-changed',
+  'schedule-request': 'schedule-changed',
+  'plan-date-request': 'plan-date-changed'
+};
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
-  if (e.data.type === 'bento-changed') {
-    lastBentoSnapshot = e.data;
+  const t = e.data.type;
+  if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed') {
+    snapshots[t] = e.data;
     frames.forEach(f => {
       if (f.contentWindow && f.contentWindow !== e.source) {
         try { f.contentWindow.postMessage(e.data, '*'); } catch (_) {}
       }
     });
-  } else if (e.data.type === 'bento-request') {
-    if (lastBentoSnapshot && e.source) {
-      try { e.source.postMessage(lastBentoSnapshot, '*'); } catch (_) {}
+  } else if (t in requestToChange) {
+    const snap = snapshots[requestToChange[t]];
+    if (snap && e.source) {
+      try { e.source.postMessage(snap, '*'); } catch (_) {}
     }
-    // 同时也转发请求给其他 iframe(让 config 主动回应)
     frames.forEach(f => {
       if (f.contentWindow && f.contentWindow !== e.source) {
         try { f.contentWindow.postMessage(e.data, '*'); } catch (_) {}
@@ -6237,13 +6545,21 @@ window.addEventListener('hashchange', () => {
   if(['schedule','plan','config'].includes(app)) activate(app);
 });
 (function init(){
+  // 决定首屏激活的 Tab
+  let firstApp = 'plan';
   const fromHash = location.hash.slice(1);
-  if(['schedule','plan','config'].includes(fromHash)){ activate(fromHash); return; }
-  try{
-    const last = localStorage.getItem('workbench-last-app');
-    if(['schedule','plan','config'].includes(last)){ activate(last); return; }
-  }catch(_){}
-  activate('plan');
+  if(['schedule','plan','config'].includes(fromHash)) firstApp = fromHash;
+  else {
+    try{
+      const last = localStorage.getItem('workbench-last-app');
+      if(['schedule','plan','config'].includes(last)) firstApp = last;
+    }catch(_){}
+  }
+  activate(firstApp);
+  // 预加载其余 iframe(隐藏运行,后台广播数据让跨 app 同步生效)
+  setTimeout(() => {
+    ['plan','config','schedule'].forEach(app => { if(!loaded.has(app)) ensureLoaded(app); });
+  }, 50);
 })();
 </script>
 </body>
