@@ -2038,6 +2038,10 @@ const Pages = (() => {
   }
   .lib-item:hover { background: rgba(255,255,255,0.04); border-color: var(--border-strong); border-left-color: var(--lib-color, var(--border-strong)); }
   .lib-item-name { flex: 1; font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bento-link { display: inline-block; font-size: 12px; vertical-align: -1px; margin-right: 2px; opacity: 0.9; cursor: help; }
+  .lib-add-form input:disabled { opacity: 0.55; cursor: not-allowed; background: rgba(255,255,255,0.015); }
+  .lib-item-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .lib-item-btn.del:disabled:hover { color: var(--text-mute); border-color: var(--border); background: transparent; }
   .lib-item-info { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.5; flex-shrink: 0; }
   .lib-item-info .ns { color: var(--accent); font-weight: 600; }
   .lib-item-btns { display: flex; gap: 4px; flex-shrink: 0; }
@@ -2308,7 +2312,7 @@ const Pages = (() => {
     <div class="modal-head">
       <div>
         <div class="modal-title">品名库管理</div>
-        <div class="modal-sub">耗时 = 数量 / (品名速度 × 计量人数) · 人数可填 ?</div>
+        <div class="modal-sub">耗时 = 数量 / (品名速度 × 计量人数) · 人数可填 ? · 🍱 表示已与配置表便当库同步</div>
       </div>
       <button class="modal-close" data-close>×</button>
     </div>
@@ -2348,6 +2352,105 @@ const STORAGE_LIB = 'productLibrary_v3';
 const STORAGE_BOARD_PREFIX = 'productionBoard_v1_';
 const STORAGE_BOARD_LEGACY = 'productionBoard_v1';
 const STORAGE_CURRENT_DATE = 'productionBoardCurrentDate';
+// 配置表(便当库)使用的 localStorage 键 — 与 data-config iframe 中的 STORAGE_KEY 保持一致
+const BENTO_STORAGE_KEY = 'bento-conveyor-v1';
+let bentoMap = new Map();
+function setBentoMapFromArray(bentos) {
+  bentoMap = new Map();
+  (Array.isArray(bentos) ? bentos : []).forEach(b => {
+    if (b && typeof b.name === 'string' && b.name.trim()) bentoMap.set(b.name.trim(), b);
+  });
+}
+function refreshBentoMapFromStorage() {
+  try {
+    const raw = localStorage.getItem(BENTO_STORAGE_KEY);
+    if (!raw) { bentoMap = new Map(); return; }
+    const s = JSON.parse(raw);
+    setBentoMapFromArray(s && s.bentos);
+  } catch (e) { bentoMap = new Map(); }
+}
+// 兼容旧调用名:刷新策略改为优先用最近一次 postMessage 数据;若无则读 localStorage
+function refreshBentoMap() {
+  if (bentoMap && bentoMap.size > 0) return; // 已经有 postMessage 同步的数据,不要被本地存储覆盖
+  refreshBentoMapFromStorage();
+}
+// 把便当库的 名字 / LINE 速度 / 人数覆盖到品名库匹配项上;返回受影响 lib 项的 id 列表
+// 链接策略:优先 bentoId(可跟随便当改名);若无 bentoId 或失效则按 name 兜底匹配,并写入 bentoId 形成稳定链接
+// 注意:调用前请先用 refreshBentoMapFromStorage() 或 setBentoMapFromArray() 准备好 bentoMap
+function applyBentoOverlay() {
+  const bentoIdMap = new Map();
+  for (const b of bentoMap.values()) {
+    if (b && b.id) bentoIdMap.set(b.id, b);
+  }
+  const affected = [];
+  if (!Array.isArray(library)) return affected;
+  library.forEach(item => {
+    if (!item) return;
+    const wasLinked = !!item._bentoLinked;
+    const prevName = item.name;
+    const prevSpeed = item.lineSpeed;
+    const prevPeople = item.people;
+    let b = null;
+    // 1) 用 bentoId 找(便当改名也能跟随)
+    if (item.bentoId) {
+      b = bentoIdMap.get(item.bentoId) || null;
+      if (!b) delete item.bentoId; // 便当已被删除,清掉失效链接
+    }
+    // 2) 兜底:用名字找;命中即写入 bentoId 建立稳定链接
+    if (!b && item.name) {
+      const m = bentoMap.get(item.name.trim());
+      if (m) { b = m; if (m.id) item.bentoId = m.id; }
+    }
+    if (b) {
+      item._bentoLinked = true;
+      if (typeof b.name === 'string' && b.name.trim()) item.name = b.name.trim();
+      const spd = parseFloat(b.speed);
+      if (spd > 0) item.lineSpeed = spd;
+      if (Array.isArray(b.line)) item.people = b.line.length;
+    } else {
+      item._bentoLinked = false;
+    }
+    if (wasLinked !== item._bentoLinked
+        || prevName !== item.name
+        || prevSpeed !== item.lineSpeed
+        || prevPeople !== item.people) {
+      affected.push(item.id);
+    }
+  });
+  // 3) 自动建项:便当库里有但品名库还没对应项的便当,直接生成一条新品名(已链接)
+  const linkedIds = new Set();
+  library.forEach(it => { if (it && it.bentoId) linkedIds.add(it.bentoId); });
+  for (const b of bentoMap.values()) {
+    if (!b || !b.id || linkedIds.has(b.id)) continue;
+    // 名字撞库时建立链接,不重复创建
+    const byName = library.find(it => it && it.name && b.name && it.name.trim() === b.name.trim());
+    if (byName) {
+      byName.bentoId = b.id;
+      byName._bentoLinked = true;
+      const spd = parseFloat(b.speed);
+      if (spd > 0) byName.lineSpeed = spd;
+      if (Array.isArray(b.line)) byName.people = b.line.length;
+      linkedIds.add(b.id);
+      if (!affected.includes(byName.id)) affected.push(byName.id);
+      continue;
+    }
+    const newItem = {
+      id: uid(),
+      name: (b.name || '').trim(),
+      speed: 0, // 品名速度:便当库没有此字段,由用户后续手动填写
+      lineSpeed: parseFloat(b.speed) > 0 ? parseFloat(b.speed) : 0,
+      people: Array.isArray(b.line) ? b.line.length : 0,
+      meterPeople: 1,
+      color: COLORS[library.length % COLORS.length],
+      bentoId: b.id,
+      _bentoLinked: true
+    };
+    library.push(newItem);
+    linkedIds.add(b.id);
+    affected.push(newItem.id);
+  }
+  return affected;
+}
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -2393,6 +2496,8 @@ function loadLibrary() {
     if (item.lineSpeed == null) item.lineSpeed = 0;
     if (item.meterPeople == null || item.meterPeople <= 0) item.meterPeople = 1;
   });
+  refreshBentoMapFromStorage();
+  applyBentoOverlay();
 }
 function fmtPeople(v) {
   if (v === '?' || v === '？') return '?';
@@ -2406,7 +2511,9 @@ function parsePeople(raw) {
   return n > 0 ? n : 0;
 }
 function saveLibrary() {
-  try { localStorage.setItem(STORAGE_LIB, JSON.stringify(library)); } catch (e) {}
+  // 持久化时剔除运行时字段(_bentoLinked)
+  const toStore = library.map(({ _bentoLinked, ...rest }) => rest);
+  try { localStorage.setItem(STORAGE_LIB, JSON.stringify(toStore)); } catch (e) {}
 }
 function findLibItem(id) {
   return library.find(x => x.id === id);
@@ -2539,21 +2646,27 @@ function renderLibList() {
     const peopleText = fmtPeople(item.people);
     const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
     const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
+    const linkBadge = item._bentoLinked ? '<span class="bento-link" title="已链接配置表便当库,LINE速度与人数自动同步">🍱</span> ' : '';
+    const delBtnHtml = item._bentoLinked
+      ? `<button class="lib-item-btn del" title="已链接便当库,不可删除(请在配置表 · 便当库中删除该便当)" disabled>×</button>`
+      : `<button class="lib-item-btn del" title="删除">×</button>`;
     row.innerHTML = `
-      <div class="lib-item-name">${escapeHtml(item.name)}</div>
+      <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
       <div class="lib-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
       <div class="lib-item-btns">
         <button class="lib-item-btn edit" title="编辑">✎</button>
-        <button class="lib-item-btn del" title="删除">×</button>
+        ${delBtnHtml}
       </div>
     `;
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
-    row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
-      library = library.filter(x => x.id !== item.id);
-      saveLibrary();
-      if (editingLibId === item.id) cancelEditLib();
-      renderLibList();
-    });
+    if (!item._bentoLinked) {
+      row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
+        library = library.filter(x => x.id !== item.id);
+        saveLibrary();
+        if (editingLibId === item.id) cancelEditLib();
+        renderLibList();
+      });
+    }
     libList.appendChild(row);
   });
 }
@@ -2571,6 +2684,7 @@ function startEditLib(id) {
   renderColorPicker();
   libAddBtn.textContent = '保存修改';
   libAddBtn.classList.add('editing');
+  updateBentoLinkUI(libNameInput.value);
   libNameInput.focus();
 }
 function cancelEditLib() {
@@ -2582,6 +2696,30 @@ function cancelEditLib() {
   libMeterPeopleInput.value = '';
   libAddBtn.textContent = '添加';
   libAddBtn.classList.remove('editing');
+  updateBentoLinkUI('');
+}
+// 当输入的名字命中便当库时,锁定 LINE 速度与人数输入,并填入便当数据
+function updateBentoLinkUI(name) {
+  const key = (name || '').trim();
+  const b = key ? bentoMap.get(key) : null;
+  if (b) {
+    const spd = parseFloat(b.speed);
+    if (spd > 0) libLineSpeedInput.value = spd;
+    if (Array.isArray(b.line)) libPeopleInput.value = b.line.length;
+    libLineSpeedInput.disabled = true;
+    libPeopleInput.disabled = true;
+    libLineSpeedInput.title = '由配置表 · 便当库自动同步';
+    libPeopleInput.title = '由配置表 · 便当库自动同步';
+    libLineSpeedInput.placeholder = '由便当库同步';
+    libPeopleInput.placeholder = '由便当库同步';
+  } else {
+    libLineSpeedInput.disabled = false;
+    libPeopleInput.disabled = false;
+    libLineSpeedInput.title = '';
+    libPeopleInput.title = '';
+    libLineSpeedInput.placeholder = '流水线速度';
+    libPeopleInput.placeholder = '人数 (可输入?)';
+  }
 }
 
 libAddBtn.addEventListener('click', () => {
@@ -2597,15 +2735,19 @@ libAddBtn.addEventListener('click', () => {
     if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.meterPeople = meterPeople; item.color = selectedColor; }
     const editedId = editingLibId;
     cancelEditLib();
+    applyBentoOverlay();
     propagateLibChange(editedId);
   } else {
     library.push({ id: uid(), name, speed, lineSpeed, people, meterPeople, color: selectedColor });
     libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = ''; libMeterPeopleInput.value = '';
+    applyBentoOverlay();
+    updateBentoLinkUI('');
   }
   saveLibrary();
   renderLibList();
   libNameInput.focus();
 });
+libNameInput.addEventListener('input', () => updateBentoLinkUI(libNameInput.value));
 
 function propagateLibChange(libId) {
   const item = findLibItem(libId);
@@ -4213,6 +4355,42 @@ updateDateHeader();
 setInterval(() => { if (currentDate === todayStr()) updateDateHeader(); }, 60000);
 
 loadLibrary();
+// 统一处理便当库同步后的 UI/牌子刷新
+function onBentoSynced(affected) {
+  saveLibrary();
+  const libModalEl = document.getElementById('libModal');
+  if (libModalEl && libModalEl.classList.contains('show')) {
+    renderLibList();
+    if (editingLibId && affected.includes(editingLibId)) {
+      const it = findLibItem(editingLibId);
+      if (it) {
+        libNameInput.value = it.name;
+        libLineSpeedInput.value = it.lineSpeed || '';
+        libPeopleInput.value = (it.people === '?' || it.people === '？') ? '?' : (it.people || '');
+      }
+    }
+    updateBentoLinkUI(libNameInput.value);
+  }
+  affected.forEach(id => propagateLibChange(id));
+}
+// 监听 localStorage 同源变化(如果 iframe 共享存储)
+window.addEventListener('storage', (e) => {
+  if (e.key !== BENTO_STORAGE_KEY) return;
+  // 强制从存储重新读取,覆盖内存
+  refreshBentoMapFromStorage();
+  const affected = applyBentoOverlay();
+  onBentoSynced(affected);
+});
+// 监听父壳中转的 postMessage(主要的跨 iframe 桥)
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type !== 'bento-changed') return;
+  setBentoMapFromArray(e.data.bentos);
+  const affected = applyBentoOverlay();
+  onBentoSynced(affected);
+});
+// 启动时向父壳请求一次最新便当数据(若 配置表 已加载或父壳有缓存,会立即回放)
+try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'bento-request' }, '*'); } catch (_) {}
 renderTimeline();
 for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
 (function syncFootH() {
@@ -4612,7 +4790,25 @@ function loadState() {
   }
 }
 
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  broadcastBentos();
+}
+// === 跨 iframe 桥:把便当库变更广播给父壳(由父壳中转给计划板) ===
+function broadcastBentos() {
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'bento-changed',
+        bentos: Array.isArray(state.bentos) ? state.bentos : []
+      }, '*');
+    }
+  } catch (e) {}
+}
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'bento-request') broadcastBentos();
+});
 
 let state = loadState();
 saveState();
@@ -5984,6 +6180,8 @@ function init() {
   if (state.mono) document.body.classList.add("mono");
   render();
   if (new URLSearchParams(location.search).get("test") === "1") runSelfTests();
+  // 配置表加载后立即广播一次便当库,让计划板可同步
+  broadcastBentos();
 }
 init();
 <\/script>
@@ -5994,6 +6192,29 @@ init();
 const btns = document.querySelectorAll('.tabs button');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
+// === 跨 iframe 数据桥:中转便当库变更/请求,缓存最新快照 ===
+let lastBentoSnapshot = null;
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'bento-changed') {
+    lastBentoSnapshot = e.data;
+    frames.forEach(f => {
+      if (f.contentWindow && f.contentWindow !== e.source) {
+        try { f.contentWindow.postMessage(e.data, '*'); } catch (_) {}
+      }
+    });
+  } else if (e.data.type === 'bento-request') {
+    if (lastBentoSnapshot && e.source) {
+      try { e.source.postMessage(lastBentoSnapshot, '*'); } catch (_) {}
+    }
+    // 同时也转发请求给其他 iframe(让 config 主动回应)
+    frames.forEach(f => {
+      if (f.contentWindow && f.contentWindow !== e.source) {
+        try { f.contentWindow.postMessage(e.data, '*'); } catch (_) {}
+      }
+    });
+  }
+});
 function getHtml(app){
   return document.getElementById('data-'+app).textContent.replaceAll('<\\/script', '</script');
 }
