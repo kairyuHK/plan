@@ -4705,6 +4705,30 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
   .chip.accent .v{color:var(--accent)}
   .chip input.v{background:transparent;border:none;outline:none;width:60px;padding:0;text-align:center;font:inherit;font-weight:600}
   .chip input.v::placeholder{color:#555;font-weight:400}
+  .chip.clickable{cursor:pointer}
+  .chip.clickable:hover{border-color:var(--accent)}
+  .chip .caret{color:var(--muted);font-size:11px;margin-left:2px}
+  /* 简易日历弹窗(对齐计划板样式) */
+  .cal-popover{position:fixed;z-index:1500;background:#1f2229;border:1px solid #3a3f47;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.6);padding:12px;width:280px;max-width:calc(100vw - 16px);user-select:none;-webkit-user-select:none;font-family:inherit;animation:calPopIn .16s ease-out}
+  @keyframes calPopIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-title{font-size:13px;font-weight:600;color:var(--fg);letter-spacing:-.1px;font-variant-numeric:tabular-nums}
+  .cal-nav{background:transparent;border:1px solid #3a3f47;color:#9ca0a8;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;font-family:inherit;padding:0;transition:background .15s,color .15s}
+  .cal-nav:hover{background:rgba(255,255,255,.05);color:var(--fg)}
+  .cal-dows{display:grid;grid-template-columns:repeat(7,1fr);font-size:10.5px;font-weight:600;color:#707783;text-align:center;padding:6px 0;border-bottom:1px solid var(--line);margin-bottom:4px;letter-spacing:.5px}
+  .cal-dow.sat{color:#3b82f6}
+  .cal-dow.sun{color:#ef4444}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal-day{height:32px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:500;color:#9ca0a8;border-radius:5px;cursor:pointer;background:transparent;border:1px solid transparent;font-family:inherit;font-variant-numeric:tabular-nums;padding:0;transition:background .12s,color .12s}
+  .cal-day:hover{background:rgba(255,255,255,.06);color:var(--fg)}
+  .cal-day.other{color:#707783;opacity:.4}
+  .cal-day.sat{color:#3b82f6}
+  .cal-day.sun{color:#ef4444}
+  .cal-day.today{border-color:rgba(251,146,60,.5)}
+  .cal-day.selected{background:var(--accent);color:#14181f!important;font-weight:700;border-color:var(--accent)}
+  .cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .cal-today-btn{background:rgba(251,146,60,.1);color:var(--accent);border:1px solid rgba(251,146,60,.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
+  .cal-today-btn:hover{background:var(--accent);color:#14181f}
   .bento-title{text-align:center;font-size:32px;font-weight:700;letter-spacing:3px;margin:14px 0 6px;min-height:40px}
   .bento-title .muted{color:#5a5f68;font-weight:400;font-size:15px;letter-spacing:1px}
   .line-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -5016,6 +5040,152 @@ try {
     window.parent.postMessage({ type: 'plan-date-request' }, '*');
   }
 } catch (_) {}
+
+// === 简易日历(切换 planDate,广播给计划板/排班表) ===
+const CAL_DOW_JP = ['日','月','火','水','木','金','土'];
+const CAL_FIXED_HOL = new Set(['01-01','02-11','02-23','04-29','05-03','05-04','05-05','08-11','11-03','11-23']);
+function calNthWd(y, mo, wd, n) {
+  let c = 0;
+  for (let d = 1; d <= 31; d++) {
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getMonth() !== mo - 1) break;
+    if (dt.getDay() === wd && ++c === n) return d;
+  }
+  return -1;
+}
+function calIsJpHol(date) {
+  const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
+  const md = `${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if (CAL_FIXED_HOL.has(md)) return true;
+  if (m === 1  && d === calNthWd(y, 1,  1, 2)) return true;
+  if (m === 3  && (d === 20 || d === 21)) return true;
+  if (m === 7  && d === calNthWd(y, 7,  1, 3)) return true;
+  if (m === 9  && d === calNthWd(y, 9,  1, 3)) return true;
+  if (m === 9  && (d === 22 || d === 23)) return true;
+  if (m === 10 && d === calNthWd(y, 10, 1, 2)) return true;
+  if (date.getDay() === 1) {
+    const sun = new Date(y, m - 1, d - 1);
+    const smd = `${String(sun.getMonth()+1).padStart(2,'0')}-${String(sun.getDate()).padStart(2,'0')}`;
+    if (CAL_FIXED_HOL.has(smd)) return true;
+  }
+  return false;
+}
+let _dateCal = null;
+let _dateCalView = null;
+function openDateCal(anchor) {
+  if (_dateCal) { closeDateCal(); return; }
+  const [y, m] = planDate.split('-').map(Number);
+  _dateCalView = { year: y, month: m };
+  _dateCal = document.createElement('div');
+  _dateCal.className = 'cal-popover';
+  document.body.appendChild(_dateCal);
+  renderDateCal();
+  positionDateCal(anchor);
+  setTimeout(() => {
+    document.addEventListener('mousedown', dateCalOutside);
+    document.addEventListener('touchstart', dateCalOutside, { passive: true });
+    window.addEventListener('resize', closeDateCal);
+  }, 0);
+}
+function closeDateCal() {
+  if (_dateCal) { _dateCal.remove(); _dateCal = null; }
+  document.removeEventListener('mousedown', dateCalOutside);
+  document.removeEventListener('touchstart', dateCalOutside);
+  window.removeEventListener('resize', closeDateCal);
+}
+function dateCalOutside(e) {
+  if (!_dateCal) return;
+  if (_dateCal.contains(e.target)) return;
+  if (e.target.closest && e.target.closest('.chip.accent.clickable')) return;
+  closeDateCal();
+}
+function renderDateCal() {
+  if (!_dateCal) return;
+  const { year, month } = _dateCalView;
+  const firstDow = new Date(year, month - 1, 1).getDay();
+  const lastDay = new Date(year, month, 0).getDate();
+  const prevLast = new Date(year, month - 1, 0).getDate();
+  const today = todayString();
+  const cells = [];
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const pm = month === 1 ? 12 : month - 1;
+    const py = month === 1 ? year - 1 : year;
+    cells.push({ y: py, m: pm, d: prevLast - i, other: true });
+  }
+  for (let d = 1; d <= lastDay; d++) cells.push({ y: year, m: month, d, other: false });
+  let nd = 1;
+  while (cells.length < 42) {
+    const nm = month === 12 ? 1 : month + 1;
+    const ny = month === 12 ? year + 1 : year;
+    cells.push({ y: ny, m: nm, d: nd++, other: true });
+  }
+  let html = `
+    <div class="cal-head">
+      <button class="cal-nav" data-act="prev" type="button" aria-label="上一月">‹</button>
+      <div class="cal-title">${year}年 ${String(month).padStart(2,'0')}月</div>
+      <button class="cal-nav" data-act="next" type="button" aria-label="下一月">›</button>
+    </div>
+    <div class="cal-dows">
+      <div class="cal-dow sun">日</div><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div>
+    </div>
+    <div class="cal-grid">`;
+  cells.forEach(c => {
+    const dt = new Date(c.y, c.m - 1, c.d);
+    const dow = dt.getDay();
+    const holi = calIsJpHol(dt);
+    const ds = `${c.y}-${String(c.m).padStart(2,'0')}-${String(c.d).padStart(2,'0')}`;
+    const cls = ['cal-day'];
+    if (c.other) cls.push('other');
+    if (dow === 6) cls.push('sat');
+    if (dow === 0 || holi) cls.push('sun');
+    if (ds === today) cls.push('today');
+    if (ds === planDate) cls.push('selected');
+    html += `<button type="button" class="${cls.join(' ')}" data-date="${ds}">${c.d}</button>`;
+  });
+  html += `</div>
+    <div class="cal-foot">
+      <button type="button" class="cal-today-btn" data-act="today">今日</button>
+    </div>`;
+  _dateCal.innerHTML = html;
+  _dateCal.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t.dataset && t.dataset.act;
+    if (act === 'prev') {
+      _dateCalView.month--; if (_dateCalView.month < 1) { _dateCalView.month = 12; _dateCalView.year--; }
+      renderDateCal();
+    } else if (act === 'next') {
+      _dateCalView.month++; if (_dateCalView.month > 12) { _dateCalView.month = 1; _dateCalView.year++; }
+      renderDateCal();
+    } else if (act === 'today') {
+      pickDate(todayString()); closeDateCal();
+    } else if (t.dataset && t.dataset.date) {
+      pickDate(t.dataset.date); closeDateCal();
+    }
+  });
+}
+function positionDateCal(anchor) {
+  if (!_dateCal) return;
+  const r = anchor.getBoundingClientRect();
+  const pop = _dateCal.getBoundingClientRect();
+  const margin = 8;
+  let left = r.left + r.width / 2 - pop.width / 2;
+  let top = r.bottom + 6;
+  if (left + pop.width > window.innerWidth - margin) left = window.innerWidth - pop.width - margin;
+  if (left < margin) left = margin;
+  if (top + pop.height > window.innerHeight - margin) top = Math.max(margin, r.top - pop.height - 6);
+  _dateCal.style.left = left + 'px';
+  _dateCal.style.top = top + 'px';
+}
+function pickDate(newDate) {
+  if (newDate === planDate) return;
+  planDate = newDate;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'plan-date-changed', date: planDate }, '*');
+    }
+  } catch (_) {}
+  render();
+}
 // 工具:取某便当某位置已排班的人名(可能是 [id...] 或 [[id...]])
 // 位置名匹配做归一化 + 别名映射,双向兼容排班表/配置表的不同写法
 const POS_ALIAS = {
@@ -5862,9 +6032,12 @@ function renderOperate() {
     chip.appendChild(k); chip.appendChild(valNode);
     return chip;
   };
-  const dateChip = document.createElement("span"); dateChip.className = "chip accent";
-  const dateV = document.createElement("span"); dateV.className = "v"; dateV.textContent = todayString();
-  dateChip.appendChild(dateV);
+  const dateChip = document.createElement("span"); dateChip.className = "chip accent clickable";
+  dateChip.title = "点击切换日期";
+  const dateV = document.createElement("span"); dateV.className = "v"; dateV.textContent = planDate;
+  const dateCaret = document.createElement("span"); dateCaret.className = "caret"; dateCaret.textContent = "▾";
+  dateChip.appendChild(dateV); dateChip.appendChild(dateCaret);
+  dateChip.onclick = (e) => { e.stopPropagation(); openDateCal(dateChip); };
   meta.appendChild(dateChip);
 
   const right = document.createElement("div"); right.className = "right";
