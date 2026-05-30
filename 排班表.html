@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>シフト管理</title>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -69,7 +72,8 @@
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
   font-size: 14px;
   line-height: 1.45;
   overscroll-behavior: none;
@@ -191,20 +195,15 @@ body.exporting .legend-stripe {
   margin-bottom: 16px; gap: 10px;
 }
 .title {
-  font-size: 20px; font-weight: 800; letter-spacing: -0.4px;
+  font-size: 19px; font-weight: 700; letter-spacing: -0.018em;
   display: flex; align-items: center; gap: 10px;
   color: var(--text);
-  background: linear-gradient(135deg, #ffffff 0%, #c8d0dc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 .title-icon {
-  width: 26px; height: 26px;
+  width: 22px; height: 22px;
   display: inline-block; flex-shrink: 0;
   color: var(--primary);
-  filter: drop-shadow(0 0 8px var(--primary-glow));
-  -webkit-text-fill-color: currentColor;
+  opacity: 0.92;
 }
 .period-btn {
   background: var(--surface);
@@ -271,10 +270,10 @@ body.exporting .legend-stripe {
 .toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 11px 12px; border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 600;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 600;
   border: 1px solid transparent; cursor: pointer;
-  font-family: inherit; letter-spacing: 0.2px;
+  font-family: inherit; letter-spacing: 0.01em;
   transition: all 0.18s var(--ease);
   flex: 1; min-width: 0;
   position: relative;
@@ -406,20 +405,39 @@ body.has-unsaved .btn-save::after {
   min-width: 0;
 }
 .month-col-head {
-  display: flex; align-items: center; justify-content: center;
-  gap: 4px;
-  background: linear-gradient(180deg, rgba(147,197,253,0.10) 0%, rgba(147,197,253,0.03) 100%);
-  color: var(--primary-hover);
-  font-size: 12px; font-weight: 800; letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 9px 0;
-  border: 1px solid rgba(147,197,253,0.20);
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 3px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 8px 0;
+  border: 1px solid #262a36;
+  background: var(--surface);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm), 0 0 16px rgba(147,197,253,0.08);
   margin-bottom: 4px;
   position: relative;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  font-variant-numeric: tabular-nums;
+}
+.month-col-head::before {
+  content: '';
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.85;
+}
+.month-col-head .m-num {
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.month-col-head .m-suffix {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 1px;
 }
 
 /* Day row */
@@ -453,12 +471,11 @@ body.has-unsaved .btn-save::after {
   border-color: #262a36;
 }
 .day-row.today .day-cell .dnum {
-  background: linear-gradient(135deg, #f5cd9c, var(--today));
+  background: var(--today);
   color: #0a0d12;
-  width: 24px; height: 24px; border-radius: 50%;
+  width: 22px; height: 22px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12.5px; font-weight: 900;
-  box-shadow: 0 4px 12px rgba(240,184,120,0.38), 0 1px 0 rgba(255,255,255,0.25) inset;
+  font-size: 12px; font-weight: 800;
   -webkit-text-fill-color: currentColor;
 }
 
@@ -510,12 +527,10 @@ body.has-unsaved .btn-save::after {
 .shift.work {
   background: var(--work-bg-cell);
   color: var(--work-fg);
-  text-shadow: 0 0 10px rgba(147,197,253,0.28);
 }
 .shift.rest {
   background: var(--rest-bg-cell);
   color: var(--rest-fg);
-  text-shadow: 0 0 10px rgba(232,165,101,0.28);
 }
 .shift.rest .shift-mark { font-size: 16px; }
 
@@ -523,21 +538,23 @@ body.has-unsaved .btn-save::after {
 .shifts .shift + .shift.work {
   background: var(--work-bg-cell-b);
   color: var(--work-fg-b);
-  text-shadow: 0 0 10px rgba(159,212,179,0.25);
 }
 .day-row.both-rest .shift.rest {
   background: var(--rest-bg-cell);
   color: var(--rest-fg);
-  text-shadow: 0 0 10px rgba(232,165,101,0.28);
 }
 
 /* both-rest badge */
 .both-rest-tag {
   position: absolute; top: 4px; right: 4px;
-  background: linear-gradient(135deg, #fcd34d, #f59e0b);
-  color: #1a1d24; font-size: 8px; font-weight: 900;
-  padding: 2px 6px; border-radius: 999px; letter-spacing: 0.8px;
-  box-shadow: 0 3px 10px rgba(251,191,36,0.4), 0 1px 0 rgba(255,255,255,0.4) inset;
+  background: rgba(10,13,18,0.55);
+  color: var(--rest-fg);
+  font-size: 8px; font-weight: 700;
+  padding: 2px 5px; border-radius: 3px;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(232,165,101,0.30);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   pointer-events: none; z-index: 2;
 }
 
@@ -561,14 +578,9 @@ body.edit-mode .day-row {
   box-shadow: var(--shadow-sm);
 }
 .legend-title {
-  font-size: 10px; font-weight: 800; color: var(--muted);
-  letter-spacing: 3px; margin-bottom: 12px;
+  font-size: 10.5px; font-weight: 600; color: var(--muted);
+  letter-spacing: 0.15em; margin-bottom: 14px;
   text-transform: uppercase;
-  display: flex; align-items: center; gap: 8px;
-}
-.legend-title::before, .legend-title::after {
-  content: ''; flex: 1; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
 }
 .legend-list {
   display: flex; flex-wrap: wrap; gap: 10px 18px;
@@ -620,9 +632,9 @@ body.edit-mode .day-row {
   box-shadow: var(--shadow-sm);
 }
 .empty-state .ic {
-  font-size: 42px; display: block; margin-bottom: 16px;
-  filter: grayscale(0.2) drop-shadow(0 4px 12px rgba(129,140,248,0.2));
-  opacity: 0.7;
+  font-size: 32px; display: block; margin-bottom: 14px;
+  color: var(--primary); opacity: 0.6; font-weight: 300;
+  line-height: 1;
 }
 </style>
 </head>
@@ -656,16 +668,16 @@ body.edit-mode .day-row {
   </div>
 
   <div class="toolbar" id="toolbar">
-    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">✏️ 編集</button>
-    <button class="btn btn-primary" onclick="importJSON()">📥 読取</button>
+    <button class="btn btn-edit" id="editBtn" onclick="toggleEditMode()">編集</button>
+    <button class="btn btn-primary" onclick="importJSON()">読込</button>
     <div class="export-wrap">
-      <button class="btn btn-save" id="exportBtn" onclick="toggleExportMenu(event)">📤 出力 ▾</button>
+      <button class="btn btn-save" id="exportBtn" onclick="toggleExportMenu(event)">出力</button>
       <div class="export-menu" id="exportMenu">
-        <button onclick="saveJSON()">💾 保存</button>
-        <button onclick="exportPNG()">📸 PNG</button>
+        <button onclick="saveJSON()">JSON 保存</button>
+        <button onclick="exportPNG()">PNG 画像</button>
       </div>
     </div>
-    <button class="btn btn-danger" onclick="clearData()">🗑 リセット</button>
+    <button class="btn btn-danger" onclick="clearData()">リセット</button>
   </div>
 
   <div id="alertContainer"></div>
@@ -673,7 +685,7 @@ body.edit-mode .day-row {
 
   <div class="day-list" id="dayList">
     <div class="empty-state">
-      <span class="ic">✏️</span>
+      <span class="ic">＋</span>
       「編集」を押してシフトを入力してください
     </div>
   </div>
@@ -847,7 +859,7 @@ function renderCalendar() {
 
   const html = monthGroups.map(g => `
     <div class="month-col">
-      <div class="month-col-head">${g.month}月</div>
+      <div class="month-col-head"><span class="m-num">${g.month}</span><span class="m-suffix">月</span></div>
       ${g.dates.map(renderDay).join('')}
     </div>
   `).join('');
@@ -888,7 +900,7 @@ function toggleEditMode() {
   editMode = !editMode;
   document.body.classList.toggle('edit-mode', editMode);
   const btn = document.getElementById('editBtn');
-  btn.textContent = editMode ? '✅ 完了' : '✏️ 編集';
+  btn.textContent = editMode ? '完了' : '編集';
   btn.classList.toggle('active', editMode);
   if (editMode) {
     if (!state.period) setDefaultPeriod();
@@ -915,10 +927,10 @@ function clearData() {
   editMode = false;
   document.body.classList.remove('edit-mode');
   const btn = document.getElementById('editBtn');
-  btn.textContent = '✏️ 編集'; btn.classList.remove('active');
+  btn.textContent = '編集'; btn.classList.remove('active');
   setDefaultPeriod();
   document.getElementById('dayList').innerHTML =
-    '<div class="empty-state"><span class="ic">✏️</span>「編集」を押してシフトを入力してください</div>';
+    '<div class="empty-state"><span class="ic">＋</span>「編集」を押してシフトを入力してください</div>';
   document.getElementById('legendCard').style.display = 'none';
 }
 
@@ -952,7 +964,7 @@ async function exportPNG() {
   toolbar.style.display = 'none';
   pe.style.display = 'none';
   ac.style.display = 'none';
-  btn.textContent = '⏳ 出力中…'; btn.disabled = true;
+  btn.textContent = '出力中…'; btn.disabled = true;
 
   await new Promise(r => setTimeout(r, 50));
 
@@ -965,7 +977,7 @@ async function exportPNG() {
     const { year, month } = state.period || { year: 0, month: 0 };
     link.download = `shift-${year}${String(month).padStart(2,'0')}.png`;
     link.href = canvas.toDataURL('image/png'); link.click();
-    showAlert('📸 PNG出力完了！', 'info');
+    showAlert('PNG出力完了', 'info');
   } catch(err) {
     showAlert('出力エラー: ' + err.message, 'warn');
   } finally {
@@ -1000,7 +1012,7 @@ function saveJSON() {
   a.href = URL.createObjectURL(blob);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  showAlert(`📤 ${filename} を保存しました。`, 'info');
+  showAlert(`${filename} を保存しました。`, 'info');
 }
 
 function importJSON() {
@@ -1023,7 +1035,7 @@ function importJSON() {
         saveState();
         clearUnsaved();
         renderCalendar();
-        showAlert(`📥 読込完了 — ${periodLabel(state.period.year, state.period.month)}`, 'info');
+        showAlert(`読込完了 — ${periodLabel(state.period.year, state.period.month)}`, 'info');
       } catch (e) {
         showAlert('読込エラー: ' + e.message, 'warn');
       }
