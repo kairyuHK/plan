@@ -1883,7 +1883,7 @@ const Pages = (() => {
   /* 去掉 Chrome 内部 datetime 编辑区的默认 padding,让数字紧贴 input 右边缘 */
   .foot-val.actual-finish::-webkit-datetime-edit,
   .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper { padding: 0; margin: 0; }
-  /* 显式把 Chrome 时间输入的各个字段都染成紫色 + 字号对齐"结束"行(否则 color/font-size 不会完整继承到 ::-webkit-datetime-edit-*) */
+  /* 显式把 Chrome 时间输入的各个字段都染成紫色;font 从 input 继承,这样手机端 JS 缩字号能跟随 */
   .foot-val.actual-finish::-webkit-datetime-edit,
   .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper,
   .foot-val.actual-finish::-webkit-datetime-edit-hour-field,
@@ -1891,9 +1891,7 @@ const Pages = (() => {
   .foot-val.actual-finish::-webkit-datetime-edit-text,
   .foot-val.actual-finish::-webkit-datetime-edit-ampm-field {
     color: var(--rest);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: inherit;
+    font: inherit;
     font-variant-numeric: tabular-nums;
   }
   .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
@@ -3682,7 +3680,18 @@ function recalc(line) {
   setFootVal(line.querySelector('.qty-total'), totalQty.toLocaleString());
   setFootVal(line.querySelector('.time-total'), fmtDurationHM(totalSec));
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
+  mirrorActualFinishSize(line);
   recalcGlobal();
+}
+
+function mirrorActualFinishSize(line) {
+  const ft = line.querySelector('.finish-total');
+  const af = line.querySelector('.actual-finish');
+  if (!ft || !af) return;
+  // setFootVal 在下一帧才设最终字号,这里也等一帧再读
+  requestAnimationFrame(() => {
+    af.style.fontSize = getComputedStyle(ft).fontSize;
+  });
 }
 
 function setFootVal(el, text) {
@@ -3705,6 +3714,7 @@ window.addEventListener('resize', () => {
       const el = line.querySelector(sel);
       if (el) setFootVal(el, el.textContent);
     });
+    mirrorActualFinishSize(line);
   });
 });
 
