@@ -6449,7 +6449,7 @@ function renderEdit() {
   done.onclick = () => { state.current = { ...state.current, screen: "operate", bentoId: b.id }; saveState(); render(); };
   const back = document.createElement("button"); back.textContent = "返回列表";
   back.onclick = () => { state.current = { ...state.current, screen: "bentos" }; saveState(); render(); };
-  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(lineSel); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(done); tb.appendChild(back);
+  tb.appendChild(nameInp); tb.appendChild(speedInp); tb.appendChild(lineSel); tb.appendChild(addCardBtn); tb.appendChild(cardBtn); tb.appendChild(back); tb.appendChild(done);
   c.appendChild(tb);
 
   // 卡片管理面板（默认隐藏，按"管理卡片"展开）
