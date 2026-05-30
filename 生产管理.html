@@ -5030,6 +5030,13 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell{--cell-min:78px}
     .line-grid .cell .mats{font-size:14px}
     .line-grid .cell .lbl{font-size:10px}
+    /* 卡片管理表格在手机竖屏下收紧,确保最右侧「×」按钮在视野内 */
+    .line-screen{max-width:none}
+    .line-screen td{padding:6px 4px}
+    .line-screen td input{width:54px;font-size:14px;padding:6px}
+    .line-screen td input.label{width:88px}
+    .line-screen td label{margin-right:4px;font-size:13px}
+    .line-screen td button.del{font-size:22px;padding:6px 12px;min-width:40px;min-height:40px;line-height:1}
     .edit-toolbar{flex-wrap:wrap;gap:6px;margin-bottom:8px}
     .edit-toolbar input{font-size:16px;padding:8px 10px}
     /* 行 1:便当名 70% | 速度 30% */
@@ -6505,7 +6512,8 @@ function renderEdit() {
 
       const tdDel = document.createElement("td");
       const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
-      del.onclick = () => {
+      del.onclick = (e) => {
+        e.stopPropagation();
         if (confirm(`删除位置 "${p.label}"?`)) {
           deleteSlotPositionFrom(b, p.id);
           renderCardPanel(); renderEditGrid();
