@@ -12,8 +12,8 @@ html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -a
 .tabs button:hover{background:#15181d;color:#e8e8e8}
 .tabs button.active{background:#fb923c;color:#000;border-color:#fb923c;font-weight:600}
 .tabs .spacer{flex:1 1 auto}
-.tabs .io-btn{border:1px solid #2a2d33;color:#bbb;padding:5px 10px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
-.tabs .io-btn:hover{border-color:#fb923c;color:#fb923c;background:transparent}
+.tabs .io-btn{border:none;color:#bbb;padding:5px 10px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.tabs .io-btn:hover{color:#fb923c;background:transparent}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
 iframe.active{opacity:1;visibility:visible;pointer-events:auto}
@@ -33,8 +33,8 @@ iframe.active{opacity:1;visibility:visible;pointer-events:auto}
   <button data-app="config">⚙ 配置表</button>
   <button data-app="schedule">📅 岗位排班表</button>
   <span class="spacer"></span>
-  <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">⇧ 导入</button>
-  <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">⇩ 导出</button>
+  <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
+  <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
 </div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
@@ -803,10 +803,14 @@ const Pages = (() => {
         ${s.lines.map(line => {
           const positions = s.positions[line.id] || [];
           const linePeopleCount = s.people.filter(p => p.homeLine===line.id).length;
+          // 当日实际分配到此线的不同人数(含借调)
+          const assignedSet = new Set();
+          positions.forEach(pos => (day[line.id][pos] || []).forEach(id => assignedSet.add(id)));
+          const assignedCount = assignedSet.size;
           return `<div class="card line-card" data-line="${line.id}">
             <div class="card-head" style="border-top-color:var(--line-${line.id})">
               <span class="line-name">${line.name}</span>
-              <span class="muted">${positions.length} 岗位 · 共 ${linePeopleCount} 人</span>
+              <span class="muted">${positions.length} 岗位 · 分配 ${assignedCount} 人 · 共 ${linePeopleCount} 人</span>
             </div>
             <ul class="assign-list">
               ${positions.length===0 ? '<li class="muted" style="padding:8px 0">（未配置岗位)</li>' :
@@ -4846,9 +4850,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:400;line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 22px}
-  .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:22px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
-  .line-grid.vertical::after{content:"▼";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);color:var(--accent);font-size:18px;line-height:1}
+  .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 16px}
+  .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:16px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
+  /* 向下三角形,贴在 ::before 末端,纯 border 几何实现,像素级精确 */
+  .line-grid.vertical::after{content:"";position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--accent)}
   .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch;position:relative;z-index:1}
   .line-grid.vertical .cell{height:62px;min-height:62px;padding:6px;border-radius:6px}
   .line-grid.vertical .cell .lbl{font-size:10px;top:2px;left:4px}
@@ -4856,7 +4861,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .vbelt{background:transparent}
   .meta-bar .date{color:var(--accent);font-weight:600}
   .belt{height:8px;background:linear-gradient(90deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;position:relative;margin:6px 0}
-  .belt::after{content:"▶";position:absolute;right:-2px;top:-9px;color:var(--accent);font-size:20px}
+  /* 向右三角形,垂直居中到 belt 中线,水平贴右端略带重叠 */
+  .belt::after{content:"";position:absolute;left:100%;top:50%;transform:translate(-2px,-50%);width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:10px solid var(--accent)}
   .info-bar{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:8px 0 6px}
   .info-bar .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
   .chip{display:inline-flex;align-items:center;gap:8px;background:#15181d;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:13px;line-height:1.4;transition:border-color .15s}
@@ -4984,7 +4990,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
     .line-grid .cell .mats{color:#000;font-size:17px !important;font-weight:500 !important;letter-spacing:.3px}
     .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
-    .belt::after{color:#000 !important;font-size:18px !important;top:-9px !important}
+    .belt::after{border-left-color:#000 !important}
     .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:4px 12px !important;font-size:12px !important}
     .chip .k{color:#666 !important}
     .chip .v{color:#000 !important;font-weight:700}
@@ -4995,7 +5001,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .chip .v{color:#000 !important}
     .chip input.v{color:#000 !important}
     .line-grid.vertical::before{background:#999 !important}
-    .line-grid.vertical::after{color:#000 !important}
+    .line-grid.vertical::after{border-top-color:#000 !important}
     body.mono .line-grid .cell .mats>div{color:#000 !important}
     .chip.toggle{display:none !important}
   }
@@ -5025,13 +5031,17 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell .lbl{font-size:10px}
     .edit-toolbar{flex-wrap:wrap;gap:6px;margin-bottom:8px}
     .edit-toolbar input{font-size:16px;padding:8px 10px}
-    .edit-toolbar input:nth-of-type(1){flex:7 1 calc(70% - 3px) !important;min-width:0}
-    .edit-toolbar input:nth-of-type(2){flex:3 1 calc(30% - 3px) !important;min-width:0}
-    .edit-toolbar button{flex:1 1 calc(50% - 3px);padding:10px 8px;font-size:14px}
-    .edit-toolbar button:nth-of-type(1){order:1}
-    .edit-toolbar button:nth-of-type(4){order:2}
-    .edit-toolbar button:nth-of-type(2){order:3}
-    .edit-toolbar button:nth-of-type(3){order:4}
+    /* 行 1:便当名 70% | 速度 30% */
+    .edit-toolbar input:nth-of-type(1){flex:7 1 calc(70% - 3px) !important;min-width:0;order:1}
+    .edit-toolbar input:nth-of-type(2){flex:3 1 calc(30% - 3px) !important;min-width:0;order:1}
+    /* 行 2:生产线 | + 卡片 | 管理卡片 三列同行 */
+    .edit-toolbar select{flex:1 1 calc(33.333% - 4px) !important;min-width:0;order:2;padding:8px;font-size:14px}
+    .edit-toolbar button:nth-of-type(1){flex:1 1 calc(33.333% - 4px);order:2}
+    .edit-toolbar button:nth-of-type(2){flex:1 1 calc(33.333% - 4px);order:2}
+    /* 行 3:完成 | 返回列表 */
+    .edit-toolbar button:nth-of-type(3){flex:1 1 calc(50% - 3px);order:3}
+    .edit-toolbar button:nth-of-type(4){flex:1 1 calc(50% - 3px);order:3}
+    .edit-toolbar button{padding:10px 8px;font-size:14px}
     .edit-toolbar .done{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
   }
   @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
