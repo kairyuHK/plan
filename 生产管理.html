@@ -6,8 +6,8 @@
 <title>生产管理</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
-.tabs{display:flex;height:44px;background:#0a0c10;border-bottom:1px solid #2a2d33;align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:auto}
+html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
+.tabs{display:flex;height:44px;background:#0a0c10;border-bottom:1px solid #2a2d33;align-items:center;padding:0 8px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation}
 .tabs button{font:inherit;color:#888;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;flex:0 0 auto}
 .tabs button:hover{background:#15181d;color:#e8e8e8}
 .tabs button.active{background:#fb923c;color:#000;border-color:#fb923c;font-weight:600}
@@ -7030,7 +7030,7 @@ function ensureLoaded(app){
   frame.srcdoc = getHtml(app);
   loaded.add(app);
 }
-function activate(app){
+function activate(app, instant){
   ensureLoaded(app);
   const targetIdx = APP_ORDER.indexOf(app);
   if (targetIdx === -1) return;
@@ -7039,8 +7039,13 @@ function activate(app){
     const idx = APP_ORDER.indexOf(f.dataset.app);
     if (idx === -1) return;
     // 当前 = translateX(0),左侧 app = -100%,右侧 app = +100%
+    if (instant) { f.style.transition = 'none'; void f.offsetHeight; }
     f.style.transform = `translateX(${(idx - targetIdx) * 100}%)`;
     f.classList.toggle('active', idx === targetIdx);
+    if (instant) {
+      void f.offsetHeight;
+      requestAnimationFrame(() => { f.style.transition = ''; });
+    }
   });
   if(location.hash !== '#'+app) location.hash = app;
   try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
@@ -7109,7 +7114,7 @@ window.addEventListener('hashchange', () => {
       if(['schedule','plan','config'].includes(last)) firstApp = last;
     }catch(_){}
   }
-  activate(firstApp);
+  activate(firstApp, true); // 首次定位无动画
   // 预加载其余 iframe(隐藏运行,后台广播数据让跨 app 同步生效)
   setTimeout(() => {
     ['plan','config','schedule'].forEach(app => { if(!loaded.has(app)) ensureLoaded(app); });
