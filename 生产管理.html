@@ -2922,6 +2922,10 @@ function renderLibList() {
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
     if (!lockedByBento) {
       row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
+        const msg = isDup
+          ? `删除重复的共享项 "${item.name}"?(库中还会保留另一条同名条目)`
+          : `确定删除品名 "${item.name}"?`;
+        if (!confirm(msg)) return;
         library = library.filter(x => x.id !== item.id);
         saveLibrary();
         if (editingLibId === item.id) cancelEditLib();
