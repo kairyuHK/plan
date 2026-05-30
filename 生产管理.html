@@ -1854,6 +1854,42 @@ const Pages = (() => {
   .foot-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
   .foot-val.time { color: var(--accent); font-size: 14px; }
   .foot-val.finish { color: var(--blue); font-size: 14px; }
+  .actual-finish-wrap {
+    display: inline-flex; align-items: center; gap: 4px;
+    cursor: pointer;
+    background: transparent; border: 1px dashed transparent;
+    /* 右侧不留 padding/margin,确保 input 右边缘和上面"结束"行数字右边缘对齐 */
+    padding: 1px 0 1px 6px; border-radius: 4px; margin: -1px 0 -1px -6px;
+    transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+  }
+  .actual-finish-wrap:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
+  .actual-finish-wrap:focus-within { border-color: var(--ok); background: rgba(16,185,129,0.06); }
+  .actual-finish-icon {
+    font-size: 13px; line-height: 1; opacity: 0.8;
+    color: var(--ok);
+  }
+  .foot-val.actual-finish {
+    color: var(--ok); font-size: 14px;
+    background: transparent; border: none;
+    padding: 0; margin: 0 -3px 0 0;
+    font-family: inherit; font-variant-numeric: tabular-nums;
+    outline: none; cursor: pointer;
+    color-scheme: dark;
+    -webkit-appearance: none; appearance: none;
+    /* 在 wrapper 里不要 flex-grow,让图标 + 时间整体贴右 */
+    flex: 0 0 auto; width: auto; min-width: 0;
+    text-align: right;
+  }
+  /* 干掉原生右侧的小箭头/图标,因为我们已在左边放了自己的 🕐 */
+  .foot-val.actual-finish::-webkit-calendar-picker-indicator { display: none; -webkit-appearance: none; }
+  .foot-val.actual-finish::-webkit-inner-spin-button,
+  .foot-val.actual-finish::-webkit-clear-button { display: none; }
+  /* 去掉 Chrome 内部 datetime 编辑区的默认 padding,让数字紧贴 input 右边缘 */
+  .foot-val.actual-finish::-webkit-datetime-edit,
+  .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper { padding: 0; margin: 0; }
+  /* 没选时间时的占位提示色 */
+  .foot-val.actual-finish:not([value]),
+  .foot-val.actual-finish[value=""] { color: var(--text-mute); }
   .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
 
   .pager {
@@ -2984,6 +3020,13 @@ function buildLine(num) {
         <span class="foot-label">结束</span>
         <span class="foot-val finish finish-total">—</span>
       </div>
+      <div class="foot-row">
+        <span class="foot-label">实结</span>
+        <label class="actual-finish-wrap" title="点击选择实际结束时间">
+          <span class="actual-finish-icon" aria-hidden="true">🕐</span>
+          <input class="foot-val actual-finish" type="time">
+        </label>
+      </div>
     </div>
   `;
   const grid = line.querySelector('.cards-grid');
@@ -2993,6 +3036,7 @@ function buildLine(num) {
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
   line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -3850,7 +3894,7 @@ function doSaveOverwrite() {
 function captureState() {
   const state = { lines: [], hiddenLines: [...hiddenLines] };
   document.querySelectorAll('.line').forEach(line => {
-    const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, cards: [] };
+    const lineData = { startTime: line.querySelector('.start-time').value, gap: line.querySelector('.gap').value, actualFinish: line.querySelector('.actual-finish').value, cards: [] };
     line.querySelectorAll('.card').forEach(card => {
       const type = card.dataset.type;
       if (type === 'job') {
@@ -3882,6 +3926,7 @@ function applyState(state) {
     if (!lineEl) return;
     if (lineData.startTime) lineEl.querySelector('.start-time').value = lineData.startTime;
     if (lineData.gap != null) lineEl.querySelector('.gap').value = lineData.gap;
+    lineEl.querySelector('.actual-finish').value = lineData.actualFinish || '';
     const grid = lineEl.querySelector('.cards-grid');
     (lineData.cards || []).forEach(c => {
       if (c.type === 'job') {
@@ -3955,7 +4000,7 @@ document.getElementById('clearAll').addEventListener('click', () => {
   if (!confirm('确定清空所有牌子吗？(品名库不会被清空)')) return;
   document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
   activeCard = null;
-  document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; recalc(l); });
+  document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; l.querySelector('.actual-finish').value = ''; recalc(l); });
   saveBoard();
   clearUnsaved();
 });
@@ -4513,6 +4558,7 @@ function switchDate(newDate) {
     line.querySelectorAll('.card').forEach(c => c.remove());
     const st = line.querySelector('.start-time'); if (st) st.value = '08:00';
     const gp = line.querySelector('.gap'); if (gp) gp.value = '0';
+    const af = line.querySelector('.actual-finish'); if (af) af.value = '';
   });
   hiddenLines = new Set();
   updateBoardLayout();
