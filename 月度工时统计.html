@@ -357,6 +357,11 @@
     background: radial-gradient(circle, var(--accent-glow), transparent 70%);
     pointer-events: none;
   }
+  /* 有休残 — spans last 2 cols of row 2 */
+  .stat.span-2 { grid-column: span 2; }
+  .stat.span-2 .value { font-size: 40px; }
+  .stat.low { border-color: color-mix(in srgb, var(--c-leave) 50%, var(--border)); }
+  .stat.low .value { color: var(--c-leave); }
 
   .stat .label {
     font-family: var(--font-body);
@@ -711,8 +716,10 @@
       grid-row: auto;
       grid-column: 1 / -1;
     }
+    .stat.span-2 { grid-column: 1 / -1; }
     .stat:first-child .value { font-size: 48px; }
     .stat .value { font-size: 26px; }
+    .stat.span-2 .value { font-size: 36px; }
     .ledger-head { display: none; }
     .day {
       grid-template-columns: 80px 1fr;
@@ -810,6 +817,13 @@
       </label>
       <label title="周期起始日:从这一天到下个月该日前一天为一个周期(1 = 自然月)">起始日
         <input type="number" id="cycleStart" min="1" max="28" step="1" value="1" />
+      </label>
+      <label title="每年固定月份重置的年度有休总天数">年度有休
+        <input type="number" id="annualLeave" min="0" max="365" step="1" value="20" />
+        <span>天</span>
+      </label>
+      <label title="有休重置的月份(1-12)">重置月
+        <input type="number" id="leaveResetMonth" min="1" max="12" step="1" value="11" />
       </label>
     </div>
   </div>
@@ -937,10 +951,14 @@
     days: {},
     restdays: {},
     cycleStart: 1,
+    annualLeave: 20,
+    leaveResetMonth: 11,
   };
   // Migrate older saves
   if (!state.restdays) state.restdays = {};
   if (state.cycleStart == null) state.cycleStart = 1;
+  if (state.annualLeave == null) state.annualLeave = 20;
+  if (state.leaveResetMonth == null) state.leaveResetMonth = 11;
   // 旧格式 restdays: { 'YYYY-MM': [day,...] } → 新格式 { 'YYYY-MM-DD': true }
   const _firstVal = Object.values(state.restdays)[0];
   if (Array.isArray(_firstVal)) {
@@ -1028,6 +1046,27 @@
     return ymKey(date);
   }
 
+  // 返回 today 所在的年度有休周期 [start, end](Date 对象, 含端点)
+  // 周期: resetMonth 月 1 日 → 次年同月前一日
+  function leaveYearWindow(today, resetMonth) {
+    const m = today.getMonth() + 1;
+    const y = today.getFullYear();
+    const startYear = m >= resetMonth ? y : y - 1;
+    const start = new Date(startYear, resetMonth - 1, 1);
+    const end = new Date(startYear + 1, resetMonth - 1, 0); // 上一日
+    return { start, end };
+  }
+  function countLeaveDaysInWindow(start, end) {
+    let n = 0;
+    for (const k in state.days) {
+      if (state.days[k]?.tag !== 'leave') continue;
+      const [yy, mm, dd] = k.split('-').map(Number);
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt >= start && dt <= end) n++;
+    }
+    return n;
+  }
+
   // ─── Calculation ───
   function calcDay(rec, y, m, d, prevCarryOut) {
     const tag = rec?.tag || defaultTag(y, m, d);
@@ -1084,12 +1123,16 @@
     stdHours: document.getElementById('stdHours'),
     lunchHours: document.getElementById('lunchHours'),
     cycleStart: document.getElementById('cycleStart'),
+    annualLeave: document.getElementById('annualLeave'),
+    leaveResetMonth: document.getElementById('leaveResetMonth'),
   };
 
   function render() {
     els.stdHours.value = state.stdHours;
     els.lunchHours.value = state.lunchHours;
     els.cycleStart.value = state.cycleStart;
+    els.annualLeave.value = state.annualLeave;
+    els.leaveResetMonth.value = state.leaveResetMonth;
 
     const { y, m } = parseYM(state.cursor);
     const { start, end } = periodRange(state.cursor, state.cycleStart);
@@ -1204,19 +1247,37 @@
     els.days.innerHTML = '';
     els.days.appendChild(frag);
 
-    renderStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount });
+    // 年度有休剩余
+    const { start: lvStart, end: lvEnd } = leaveYearWindow(today, state.leaveResetMonth);
+    const leaveUsed = countLeaveDaysInWindow(lvStart, lvEnd);
+    const leaveRemaining = Math.max(0, state.annualLeave - leaveUsed);
+    const lvPeriod = `${lvStart.getFullYear()}/${String(lvStart.getMonth()+1).padStart(2,'0')} – ${lvEnd.getFullYear()}/${String(lvEnd.getMonth()+1).padStart(2,'0')}`;
+
+    renderStats({
+      totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount,
+      leaveUsed, leaveRemaining, leavePeriod: lvPeriod, leaveTotal: state.annualLeave,
+    });
   }
 
   function renderStats(s) {
+    const lowLeave = s.leaveRemaining <= 5;
     const cards = [
       { label: '上班总计', value: s.totalNormal + s.totalOT, unit: 'h', color: 'var(--accent)', sub: '正常 + 加班 全部到岗时长' },
       { label: '正常工时', value: s.totalNormal, unit: 'h', color: 'var(--c-normal)', sub: '工作日 + 节假日上班' },
       { label: '加班总计', value: s.totalOT, unit: 'h', color: 'var(--c-ot)', sub: '工作日 + 节假日上班溢出' },
       { label: '节假日工时', value: s.totalHoliday, unit: 'h', color: 'var(--c-holiday)', sub: '节假日上班时长' },
-      { label: '出勤 / 有休 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.leaveCount} / ${s.absentCount}`, color: 'var(--c-leave)', sub: '天数' },
+      { label: '出勤 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.absentCount}`, color: 'var(--c-normal)', sub: '天数' },
+      {
+        label: '有休残',
+        value: s.leaveRemaining,
+        unit: `天 / ${s.leaveTotal}`,
+        color: 'var(--c-leave)',
+        sub: `已用 ${s.leaveUsed} 天 · 周期 ${s.leavePeriod}`,
+        cls: `span-2${lowLeave ? ' low' : ''}`,
+      },
     ];
     els.stats.innerHTML = cards.map(c => `
-      <div class="stat" style="--stat-color:${c.color}">
+      <div class="stat ${c.cls || ''}" style="--stat-color:${c.color}">
         <div class="label">${c.label}</div>
         <div class="value">${typeof c.value === 'number' ? fmtStatValue(c.value) : c.value}<span class="unit">${c.unit}</span></div>
         <div class="sub">${c.sub}</div>
@@ -1370,14 +1431,20 @@
           stdHours: state.stdHours,
           lunchHours: state.lunchHours,
           theme: state.theme,
+          annualLeave: state.annualLeave,
+          leaveResetMonth: state.leaveResetMonth,
         };
         const cs = Number(data.cycleStart);
+        const al = Number(data.annualLeave);
+        const lrm = Number(data.leaveResetMonth);
         Object.keys(state).forEach(k => delete state[k]);
         Object.assign(state, {
           cursor: data.cursor || ymKey(new Date()),
           stdHours: Number(data.stdHours) > 0 ? Number(data.stdHours) : prev.stdHours,
           lunchHours: Number.isFinite(Number(data.lunchHours)) ? Number(data.lunchHours) : prev.lunchHours,
           cycleStart: Number.isFinite(cs) && cs >= 1 && cs <= 28 ? Math.floor(cs) : prev.cycleStart,
+          annualLeave: Number.isFinite(al) && al >= 0 ? al : prev.annualLeave,
+          leaveResetMonth: Number.isFinite(lrm) && lrm >= 1 && lrm <= 12 ? Math.floor(lrm) : prev.leaveResetMonth,
           theme: data.theme === 'light' || data.theme === 'dark' ? data.theme : prev.theme,
           days: data.days || {},
           restdays: data.restdays || {},
@@ -1421,6 +1488,16 @@
     state.cycleStart = Math.max(1, Math.min(28, Number.isFinite(v) ? v : 1));
     // 调整 cursor 到包含 "今天" 的周期, 让感觉自然
     state.cursor = cursorForDate(new Date(), state.cycleStart);
+    save(); render();
+  });
+  els.annualLeave.addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    state.annualLeave = Math.max(0, Number.isFinite(v) ? v : 20);
+    save(); render();
+  });
+  els.leaveResetMonth.addEventListener('change', e => {
+    const v = parseInt(e.target.value, 10);
+    state.leaveResetMonth = Math.max(1, Math.min(12, Number.isFinite(v) ? v : 11));
     save(); render();
   });
   render();
