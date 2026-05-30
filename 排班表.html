@@ -993,9 +993,13 @@ async function exportPNG() {
 function saveJSON() {
   document.getElementById('exportMenu')?.classList.remove('show');
   if (!state.period) { showAlert('保存するデータがありません。', 'warn'); return; }
-  const d = new Date();
-  const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  const defaultName = `排班表${ds}.json`;
+  const { year, month } = state.period;
+  const endY = month === 12 ? year + 1 : year;
+  const endM = month === 12 ? 1 : month + 1;
+  const mm    = String(month).padStart(2, '0');
+  const endMm = String(endM ).padStart(2, '0');
+  const yearPart = year === endY ? `${year}` : `${year}-${endY}`;
+  const defaultName = `排班表${yearPart}_${mm}16-${endMm}15.json`;
   const name = prompt('ファイル名を入力してください', defaultName);
   if (!name) return;
   const filename = /\.json$/i.test(name) ? name : name + '.json';
