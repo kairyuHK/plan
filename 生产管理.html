@@ -1863,13 +1863,9 @@ const Pages = (() => {
     transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
   }
   .actual-finish-wrap:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
-  .actual-finish-wrap:focus-within { border-color: var(--ok); background: rgba(16,185,129,0.06); }
-  .actual-finish-icon {
-    font-size: 13px; line-height: 1; opacity: 0.8;
-    color: var(--ok);
-  }
+  .actual-finish-wrap:focus-within { border-color: var(--rest); background: rgba(167,139,250,0.08); }
   .foot-val.actual-finish {
-    color: var(--ok); font-size: 14px;
+    color: var(--rest); font-size: 14px;
     background: transparent; border: none;
     padding: 0; margin: 0 -3px 0 0;
     font-family: inherit; font-variant-numeric: tabular-nums;
@@ -1887,9 +1883,13 @@ const Pages = (() => {
   /* 去掉 Chrome 内部 datetime 编辑区的默认 padding,让数字紧贴 input 右边缘 */
   .foot-val.actual-finish::-webkit-datetime-edit,
   .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper { padding: 0; margin: 0; }
-  /* 没选时间时的占位提示色 */
-  .foot-val.actual-finish:not([value]),
-  .foot-val.actual-finish[value=""] { color: var(--text-mute); }
+  /* 显式把 Chrome 时间输入的各个字段都染成紫色(否则 color 不会继承到 ::-webkit-datetime-edit-*) */
+  .foot-val.actual-finish::-webkit-datetime-edit,
+  .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper,
+  .foot-val.actual-finish::-webkit-datetime-edit-hour-field,
+  .foot-val.actual-finish::-webkit-datetime-edit-minute-field,
+  .foot-val.actual-finish::-webkit-datetime-edit-text,
+  .foot-val.actual-finish::-webkit-datetime-edit-ampm-field { color: var(--rest); }
   .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
 
   .pager {
@@ -3023,7 +3023,6 @@ function buildLine(num) {
       <div class="foot-row">
         <span class="foot-label">实结</span>
         <label class="actual-finish-wrap" title="点击选择实际结束时间">
-          <span class="actual-finish-icon" aria-hidden="true">🕐</span>
           <input class="foot-val actual-finish" type="time">
         </label>
       </div>
