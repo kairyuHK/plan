@@ -230,34 +230,157 @@
   }
   .month-title {
     font-family: var(--font-display);
-    font-variation-settings: "opsz" 36, "wdth" 100;
-    font-size: 26px;
     font-weight: 500;
-    letter-spacing: -0.022em;
-    min-width: 200px;
+    min-width: 240px;
     text-align: center;
     cursor: pointer;
     position: relative;
-    padding: 4px 14px;
-    border-radius: 9px;
+    padding: 6px 18px;
+    border-radius: 10px;
     transition: background 0.15s;
   }
   .month-title:hover { background: var(--surface); }
+  #monthLabel {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    line-height: 1;
+  }
+  #monthLabel .m-num {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 96, "wdth" 100;
+    font-weight: 500;
+    font-feature-settings: "tnum", "lnum";
+    letter-spacing: -0.045em;
+    font-size: 46px;
+    color: var(--text);
+  }
+  #monthLabel .m-unit {
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+    margin-left: 2px;
+    transform: translateY(-4px);
+  }
   .month-title .yr {
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 11.5px;
     color: var(--text-faint);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     display: block;
-    margin-top: 3px;
+    margin-top: 6px;
     font-weight: 400;
   }
-  .month-title input {
+  /* ─── Month picker popover ─── */
+  .month-picker {
     position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 12px;
+    z-index: 300;
+    width: 280px;
+    display: none;
+    text-align: left;
+    cursor: default;
   }
+  .month-picker.open {
+    display: block;
+    animation: pickerIn 0.18s cubic-bezier(0.2,0.7,0.2,1);
+  }
+  @keyframes pickerIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  .mp-year {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .mp-year .y {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 24;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .mp-year button {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    font-family: var(--font-body);
+  }
+  .mp-year button:hover {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    background: var(--surface-3);
+  }
+  .mp-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .mp-grid button {
+    padding: 10px 0;
+    border: 1px solid transparent;
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+  }
+  .mp-grid button .m-num {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum";
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .mp-grid button .m-unit {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+    margin-left: 1px;
+  }
+  .mp-grid button:hover {
+    background: var(--surface-3);
+    border-color: var(--border);
+  }
+  .mp-grid button.today {
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .mp-grid button.today .m-num { color: var(--accent); }
+  .mp-grid button.current {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+  .mp-grid button.current .m-num { color: #07120f; }
+  .mp-grid button.current .m-unit { color: rgba(7,18,15,0.6); }
 
   .config {
     display: flex;
@@ -768,7 +891,10 @@
     .day .nums .num.work { grid-column: 1; justify-self: end; }
     .day .nums .num.ot   { grid-column: 3; justify-self: start; }
     .day .nums .nlbl { color: var(--text-faint); margin-right: 4px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .month-title { font-size: 22px; min-width: 160px; }
+    .month-title { min-width: 180px; padding: 4px 12px; }
+    #monthLabel .m-num { font-size: 36px; }
+    #monthLabel .m-unit { font-size: 14px; transform: translateY(-3px); }
+    .month-title .yr { font-size: 10.5px; margin-top: 4px; }
     .config { width: 100%; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
   }
 
@@ -818,7 +944,14 @@
       <div class="month-title" id="monthTitle">
         <span id="monthLabel">五月</span>
         <span class="yr" id="yearLabel">2026</span>
-        <input type="month" id="monthInput" />
+        <div class="month-picker" id="monthPicker">
+          <div class="mp-year">
+            <button id="mpPrevYear" aria-label="上一年">‹</button>
+            <div class="y" id="mpYearLabel">2026</div>
+            <button id="mpNextYear" aria-label="下一年">›</button>
+          </div>
+          <div class="mp-grid" id="mpGrid"></div>
+        </div>
       </div>
       <button class="nav" id="nextBtn" aria-label="下月">›</button>
     </div>
@@ -876,7 +1009,7 @@
     absent:   { label: '缺勤',     color: 'var(--c-absent)' },
   };
   const WD_JP = ['日','月','火','水','木','金','土'];
-  const MONTH_CN = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  const MONTH_CN = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const LS_KEY = 'hours-ledger-v1';
 
   // 日本の祝日 (2024 – 2027). 春分/秋分は官報の確定日に基づく。振替休日・国民の休日を含む。
@@ -1133,7 +1266,10 @@
   const els = {
     monthLabel: document.getElementById('monthLabel'),
     yearLabel: document.getElementById('yearLabel'),
-    monthInput: document.getElementById('monthInput'),
+    monthTitle: document.getElementById('monthTitle'),
+    monthPicker: document.getElementById('monthPicker'),
+    mpYearLabel: document.getElementById('mpYearLabel'),
+    mpGrid: document.getElementById('mpGrid'),
     stats: document.getElementById('stats'),
     days: document.getElementById('days'),
     stdHours: document.getElementById('stdHours'),
@@ -1142,6 +1278,30 @@
     annualLeave: document.getElementById('annualLeave'),
     leaveResetMonth: document.getElementById('leaveResetMonth'),
   };
+
+  let pickerYear = null;
+
+  function renderPicker() {
+    els.mpYearLabel.textContent = pickerYear;
+    const { y: curY, m: curM } = parseYM(state.cursor);
+    const today = new Date();
+    const todayY = today.getFullYear();
+    const todayM = today.getMonth();
+    els.mpGrid.innerHTML = MONTH_CN.map((_, i) => {
+      const isCurrent = pickerYear === curY && i === curM;
+      const isToday = pickerYear === todayY && i === todayM;
+      const cls = [isCurrent && 'current', isToday && !isCurrent && 'today'].filter(Boolean).join(' ');
+      return `<button data-month="${i}" class="${cls}"><span class="m-num">${i + 1}</span><span class="m-unit">月</span></button>`;
+    }).join('');
+  }
+  function openPicker() {
+    pickerYear = parseYM(state.cursor).y;
+    renderPicker();
+    els.monthPicker.classList.add('open');
+  }
+  function closePicker() {
+    els.monthPicker.classList.remove('open');
+  }
 
   function render() {
     els.stdHours.value = state.stdHours;
@@ -1153,14 +1313,17 @@
     const { y, m } = parseYM(state.cursor);
     const { start, end } = periodRange(state.cursor, state.cycleStart);
 
-    els.monthLabel.textContent = MONTH_CN[m];
+    els.monthLabel.innerHTML = `<span class="m-num">${m + 1}</span><span class="m-unit">月</span>`;
     if (state.cycleStart > 1) {
       const fmt = dt => `${dt.getMonth() + 1}/${dt.getDate()}`;
       els.yearLabel.textContent = `${fmt(start)} – ${fmt(end)}`;
     } else {
       els.yearLabel.textContent = `${y}`;
     }
-    els.monthInput.value = state.cursor;
+    if (els.monthPicker.classList.contains('open')) {
+      pickerYear = parseYM(state.cursor).y;
+      renderPicker();
+    }
 
     document.documentElement.dataset.theme = state.theme;
 
@@ -1403,11 +1566,34 @@
     state.cursor = cursorForDate(new Date(), state.cycleStart);
     save(); render();
   });
-  els.monthInput.addEventListener('change', e => {
-    if (e.target.value) {
-      state.cursor = e.target.value;
-      save(); render();
-    }
+  // Month picker
+  els.monthTitle.addEventListener('mousedown', e => {
+    if (e.target.closest('.month-picker')) return;
+    e.preventDefault();
+    if (els.monthPicker.classList.contains('open')) closePicker();
+    else openPicker();
+  });
+  document.getElementById('mpPrevYear').addEventListener('click', e => {
+    e.stopPropagation();
+    pickerYear--;
+    renderPicker();
+  });
+  document.getElementById('mpNextYear').addEventListener('click', e => {
+    e.stopPropagation();
+    pickerYear++;
+    renderPicker();
+  });
+  els.mpGrid.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-month]');
+    if (!btn) return;
+    e.stopPropagation();
+    const m = parseInt(btn.dataset.month, 10);
+    state.cursor = `${pickerYear}-${String(m + 1).padStart(2,'0')}`;
+    closePicker();
+    save(); render();
+  });
+  document.addEventListener('mousedown', e => {
+    if (!e.target.closest('.month-title')) closePicker();
   });
   document.getElementById('themeBtn').addEventListener('click', () => {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
