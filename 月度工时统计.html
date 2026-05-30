@@ -418,7 +418,12 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: hidden;
+    /* 不能 hidden,否则 tag-menu 下拉会被截 */
+    overflow: visible;
+  }
+  .day:last-child {
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
   }
   .day.menu-open { position: relative; z-index: 100; }
 
@@ -566,8 +571,19 @@
     display: block;
     animation: menuIn 0.16s ease;
   }
+  .tag-menu.up {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+  .tag-menu.up.open {
+    animation: menuInUp 0.16s ease;
+  }
   @keyframes menuIn {
     from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes menuInUp {
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .tag-menu button {
@@ -1266,7 +1282,7 @@
       { label: '正常工时', value: s.totalNormal, unit: 'h', color: 'var(--c-normal)', sub: '工作日 + 节假日上班' },
       { label: '加班总计', value: s.totalOT, unit: 'h', color: 'var(--c-ot)', sub: '工作日 + 节假日上班溢出' },
       { label: '节假日工时', value: s.totalHoliday, unit: 'h', color: 'var(--c-holiday)', sub: '节假日上班时长' },
-      { label: '出勤 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.absentCount}`, color: 'var(--c-normal)', sub: '天数' },
+      { label: '出勤 / 有休 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.leaveCount} / ${s.absentCount}`, color: 'var(--c-normal)', sub: '天数' },
       {
         label: '有休残',
         value: s.leaveRemaining,
@@ -1351,6 +1367,11 @@
       const isOpen = menu?.classList.contains('open');
       closeAllMenus();
       if (menu && !isOpen) {
+        // 若下方空间不够,菜单向上展开
+        const rect = pill.getBoundingClientRect();
+        const menuH = Object.keys(TAGS).length * 36 + 16;
+        const flipUp = rect.bottom + menuH + 12 > window.innerHeight && rect.top - menuH - 12 > 0;
+        menu.classList.toggle('up', flipUp);
         menu.classList.add('open');
         menu.closest('.day')?.classList.add('menu-open');
       }
