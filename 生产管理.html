@@ -14,9 +14,9 @@ html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -a
 .tabs .spacer{flex:1 1 auto}
 .tabs .io-btn{border:none;color:#bbb;padding:5px 10px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
 .tabs .io-btn:hover{color:#fb923c;background:transparent}
-.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115}
-iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
-iframe.active{opacity:1;visibility:visible;pointer-events:auto}
+.frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform}
+iframe.active{pointer-events:auto}
 @media (max-width:600px){.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
 /* 导出提醒横幅 */
 #export-reminder{position:fixed;bottom:16px;right:16px;background:#f59e0b;color:#14181f;padding:10px 14px;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;font-size:13px;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);font-weight:500;animation:reminderIn .25s ease-out}
@@ -7032,8 +7032,16 @@ function ensureLoaded(app){
 }
 function activate(app){
   ensureLoaded(app);
+  const targetIdx = APP_ORDER.indexOf(app);
+  if (targetIdx === -1) return;
   btns.forEach(b => b.classList.toggle('active', b.dataset.app === app));
-  frames.forEach(f => f.classList.toggle('active', f.dataset.app === app));
+  frames.forEach(f => {
+    const idx = APP_ORDER.indexOf(f.dataset.app);
+    if (idx === -1) return;
+    // 当前 = translateX(0),左侧 app = -100%,右侧 app = +100%
+    f.style.transform = `translateX(${(idx - targetIdx) * 100}%)`;
+    f.classList.toggle('active', idx === targetIdx);
+  });
   if(location.hash !== '#'+app) location.hash = app;
   try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
 }
