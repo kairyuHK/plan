@@ -1928,10 +1928,15 @@ const Pages = (() => {
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
     .head-btn { width: 100%; justify-content: center; height: 20px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
-    .line-foot { padding: 8px 8px; overflow: hidden; }
-    .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: baseline; }
+    .line-foot { padding: 8px 8px; overflow: hidden; box-sizing: border-box; }
+    /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
+    .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
+    .line-foot .foot-row:last-child { margin-bottom: 0; }
     .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
+    /* 实结 input + wrapper 都限制成 18px 高,避免比其他行高 */
+    .line-foot .actual-finish-wrap { height: 18px; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; }
+    .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; }
     /* 数量数字固定 10px */
     .line-foot .qty-total { font-size: 10px !important; }
   }
