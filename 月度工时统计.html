@@ -1263,15 +1263,19 @@
     els.days.innerHTML = '';
     els.days.appendChild(frag);
 
-    // 年度有休剩余
-    const { start: lvStart, end: lvEnd } = leaveYearWindow(today, state.leaveResetMonth);
-    const leaveUsed = countLeaveDaysInWindow(lvStart, lvEnd);
+    // 年度有休剩余 — 以当前查看周期的截止日为"截至时点"累计
+    const asOf = end;
+    const { start: lvStart, end: lvEnd } = leaveYearWindow(asOf, state.leaveResetMonth);
+    const cutoff = asOf < lvEnd ? asOf : lvEnd;
+    const leaveUsed = countLeaveDaysInWindow(lvStart, cutoff);
     const leaveRemaining = Math.max(0, state.annualLeave - leaveUsed);
     const lvPeriod = `${lvStart.getFullYear()}/${String(lvStart.getMonth()+1).padStart(2,'0')} – ${lvEnd.getFullYear()}/${String(lvEnd.getMonth()+1).padStart(2,'0')}`;
+    const asOfStr = `${asOf.getFullYear()}/${String(asOf.getMonth()+1).padStart(2,'0')}/${String(asOf.getDate()).padStart(2,'0')}`;
 
     renderStats({
       totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount,
       leaveUsed, leaveRemaining, leavePeriod: lvPeriod, leaveTotal: state.annualLeave,
+      leaveAsOf: asOfStr,
     });
   }
 
@@ -1288,7 +1292,7 @@
         value: s.leaveRemaining,
         unit: `天 / ${s.leaveTotal}`,
         color: 'var(--c-leave)',
-        sub: `已用 ${s.leaveUsed} 天 · 周期 ${s.leavePeriod}`,
+        sub: `截至 ${s.leaveAsOf} 已用 ${s.leaveUsed} 天 · 周期 ${s.leavePeriod}`,
         cls: `span-2${lowLeave ? ' low' : ''}`,
       },
     ];
