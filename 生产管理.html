@@ -5480,6 +5480,19 @@ function countMaterialUsage(matId) {
   return n;
 }
 
+function getBentosUsingMaterial(matId) {
+  const result = [];
+  for (const b of state.bentos) {
+    for (const k in b.assignments) {
+      if (b.assignments[k].includes(matId)) {
+        result.push({ id: b.id, name: b.name });
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 // 卡片操作函数（接受 line 数组，便于按便当独立操作）
 function addSlot(line) {
   const ns = maxSlot(line) + 1;
@@ -5741,7 +5754,10 @@ function renderMaterialsDrawer() {
     name.className = "name";
     name.value = m.name;
     name.style.color = m.color;
+    name.style.cursor = "pointer";
+    name.title = "点击查看用了此材料的便当";
     name.onblur = () => {
+      if (name.value === m.name) return; // 没改 → 不重渲,保留已展开的便当列表
       if (!updateMaterial(m.id, { name: name.value })) { name.value = m.name; return; }
       renderMaterialsDrawer();
     };
@@ -5757,8 +5773,46 @@ function renderMaterialsDrawer() {
       if (confirm(msg)) { deleteMaterialCascade(m.id); renderMaterialsDrawer(); render(); }
     };
 
+    // 点击材料名展开/收起"使用此材料的便当"列表
+    const usageBox = document.createElement("div");
+    usageBox.className = "usage-details";
+    usageBox.style.cssText = "display:none;padding:2px 8px 8px 36px;font-size:12px;line-height:1.6";
+    name.addEventListener("focus", () => {
+      // 收起其他材料的展开
+      list.querySelectorAll(".usage-details").forEach(el => { if (el !== usageBox) el.style.display = "none"; });
+      const bentos = getBentosUsingMaterial(m.id);
+      usageBox.innerHTML = "";
+      if (bentos.length === 0) {
+        const empty = document.createElement("span");
+        empty.style.color = "var(--muted)";
+        empty.textContent = "未在任何便当中使用";
+        usageBox.appendChild(empty);
+      } else {
+        const title = document.createElement("div");
+        title.style.cssText = "color:var(--muted);font-size:11px;margin-bottom:3px";
+        title.textContent = `${bentos.length} 个便当使用 (点击进入编辑):`;
+        usageBox.appendChild(title);
+        for (const b of bentos) {
+          const btn = document.createElement("button");
+          btn.style.cssText = "display:block;background:transparent;border:none;color:var(--accent);font:inherit;font-size:12px;padding:2px 0;cursor:pointer;text-align:left;text-decoration:underline;width:100%";
+          btn.textContent = b.name;
+          // 阻止 mousedown 移焦,避免 input 失焦/重渲冲掉点击
+          btn.onmousedown = (e) => e.preventDefault();
+          btn.onclick = () => {
+            state.current = { ...state.current, screen: "edit", editingBentoId: b.id };
+            saveState();
+            closeMaterialsDrawer();
+            render();
+          };
+          usageBox.appendChild(btn);
+        }
+      }
+      usageBox.style.display = "";
+    });
+
     row.appendChild(sw); row.appendChild(name); row.appendChild(del);
     list.appendChild(row);
+    list.appendChild(usageBox);
   }
 }
 
