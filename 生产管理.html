@@ -4715,6 +4715,7 @@ function onBentoSynced(affected) {
 }
 // 监听 localStorage 同源变化(如果 iframe 共享存储)
 window.addEventListener('storage', (e) => {
+  if (window.skipAutoSave) return; // 父壳导入数据时设此 flag,阻止旧内存 library 被回写
   if (e.key !== BENTO_STORAGE_KEY) return;
   // 强制从存储重新读取,覆盖内存
   refreshBentoMapFromStorage();
@@ -6954,7 +6955,11 @@ function importAll() {
       }
       const keyCount = Object.keys(bundle.entries).length;
       if (!confirm(`将覆盖当前所有数据(${keyCount} 项),继续?\n建议先点「导出」备份当前数据。`)) return;
-      // 1) 清除现有相关 key,确保不残留旧日期
+      // 1) 先关掉各 iframe 的自动保存 + storage 事件回写,防止它们在导入写盘期间用旧内存数据覆盖刚写入的 key
+      frames.forEach(f => {
+        try { if (f.contentWindow) f.contentWindow.skipAutoSave = true; } catch (_) {}
+      });
+      // 2) 清除现有相关 key
       const toRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -6962,14 +6967,10 @@ function importAll() {
         if (BUNDLE_KEYS_EXACT.includes(k) || BUNDLE_KEY_PREFIXES.some(p => k.startsWith(p))) toRemove.push(k);
       }
       toRemove.forEach(k => localStorage.removeItem(k));
-      // 2) 写入新数据
+      // 3) 写入新数据
       for (const k in bundle.entries) {
         try { localStorage.setItem(k, bundle.entries[k]); } catch (e) { console.warn('write fail', k, e); }
       }
-      // 3) 关闭各 iframe 的卸载时自动保存,防止 beforeunload 把旧 DOM 状态写回 localStorage 覆盖刚导入的数据
-      frames.forEach(f => {
-        try { if (f.contentWindow) f.contentWindow.skipAutoSave = true; } catch (_) {}
-      });
       // 4) 重载所有 iframe,让它们从最新 localStorage 重新 init
       loaded.clear();
       frames.forEach(f => {
@@ -7031,6 +7032,52 @@ function activate(app){
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
 document.getElementById('exportAllBtn').addEventListener('click', exportAll);
 document.getElementById('importAllBtn').addEventListener('click', importAll);
+
+// === 手机端左右滑屏切换 app ===
+const APP_ORDER = ['plan', 'config', 'schedule'];
+function switchAppByDirection(dir) {
+  const cur = (location.hash.slice(1)) || APP_ORDER[0];
+  const i = APP_ORDER.indexOf(cur);
+  if (i === -1) return;
+  const next = dir === 'left' ? i + 1 : i - 1;
+  if (next < 0 || next >= APP_ORDER.length) return;
+  activate(APP_ORDER[next]);
+}
+function attachSwipe(doc) {
+  if (!doc || doc.__swipeAttached) return;
+  doc.__swipeAttached = true;
+  let sx = null, sy = 0, st = 0;
+  doc.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { sx = null; return; }
+    const t = e.target;
+    // 在交互元素或显式标 data-no-swipe 的容器内不触发,避免和按钮/输入冲突
+    if (t.matches && t.matches('input,select,textarea,button,a,label')) { sx = null; return; }
+    if (t.closest && t.closest('[data-no-swipe]')) { sx = null; return; }
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    st = Date.now();
+  }, { passive: true });
+  doc.addEventListener('touchend', (e) => {
+    if (sx == null) return;
+    const tc = e.changedTouches[0];
+    const dx = tc.clientX - sx;
+    const dy = tc.clientY - sy;
+    const dt = Date.now() - st;
+    sx = null;
+    // 阈值:水平 > 80px,水平远大于垂直,时长 < 500ms(一个"挥手")
+    if (Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 500) {
+      switchAppByDirection(dx > 0 ? 'right' : 'left');
+    }
+  }, { passive: true });
+}
+// 父壳自身也挂一份(切到边界露出空白区时也能滑)
+attachSwipe(document);
+// 每个 iframe 加载完成后给它的 document 挂监听;重载(导入时)会重置 __swipeAttached
+frames.forEach(f => {
+  f.addEventListener('load', () => {
+    try { attachSwipe(f.contentDocument); } catch (_) {}
+  });
+});
 window.addEventListener('hashchange', () => {
   const app = location.hash.slice(1);
   if(['schedule','plan','config'].includes(app)) activate(app);
