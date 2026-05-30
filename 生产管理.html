@@ -181,25 +181,32 @@ input:focus,select:focus{border-color:var(--accent)}
 .date-trigger{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);padding:6px 12px;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);cursor:pointer;color:var(--text)}
 .date-trigger:hover{border-color:var(--accent)}
 .date-trigger .caret{color:var(--muted);font-size:11px}
-.cal-host{position:absolute;top:calc(100% + 6px);left:0;z-index:50;background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:12px;box-shadow:0 8px 28px rgba(0,0,0,.55);width:280px}
+/* 简易日历(样式对齐计划板) */
+.cal-host{position:absolute;top:calc(100% + 6px);left:0;z-index:50;background:#1f2229;border:1px solid #3a3f47;border-radius:10px;padding:12px;box-shadow:0 16px 48px rgba(0,0,0,.6);width:280px;max-width:calc(100vw - 16px);user-select:none;-webkit-user-select:none;animation:calPopIn .16s ease-out}
 .cal-host.hidden{display:none}
-.cal-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.cal-head .title{flex:1;text-align:center;font-weight:600;font-family:var(--font-mono)}
-.cal-head button{padding:4px 8px;font-size:12px}
+@keyframes calPopIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-title{font-size:13px;font-weight:600;color:var(--text);letter-spacing:-.1px;font-variant-numeric:tabular-nums}
+.cal-nav{background:transparent;border:1px solid #3a3f47;color:#9ca0a8;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;font-family:inherit;padding:0;transition:background .15s,color .15s}
+.cal-nav:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.cal-dows{display:grid;grid-template-columns:repeat(7,1fr);font-size:10.5px;font-weight:600;color:#707783;text-align:center;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:.5px}
+.cal-dow.sat{color:#3b82f6}
+.cal-dow.sun{color:var(--danger)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-grid .wd{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:600}
-.cal-grid .wd.sat{color:#3b82f6}
-.cal-grid .wd.sun{color:var(--danger)}
-.cal-grid .day{text-align:center;padding:6px 0;border-radius:6px;cursor:pointer;position:relative;font-size:13px;font-family:var(--font-mono);min-height:32px}
-.cal-grid .day:hover{background:#1f1f23}
-.cal-grid .day.sat{color:#3b82f6}
-.cal-grid .day.sun,.cal-grid .day.holiday{color:var(--danger)}
-.cal-grid .day.other-month{opacity:.3}
-.cal-grid .day.today{outline:1px solid var(--accent);outline-offset:-1px}
-.cal-grid .day.selected{background:var(--accent);color:#fff!important}
-.cal-grid .day .has-data{position:absolute;left:50%;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--ok);transform:translateX(-50%)}
-.cal-grid .day.selected .has-data{background:#fff}
-.cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:6px;min-height:14px;font-weight:600}
+.cal-day{height:32px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:500;color:#9ca0a8;border-radius:5px;cursor:pointer;background:transparent;border:1px solid transparent;font-family:inherit;font-variant-numeric:tabular-nums;padding:0;position:relative;transition:background .12s,color .12s}
+.cal-day:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.cal-day.other{color:#707783;opacity:.4}
+.cal-day.sat{color:#3b82f6}
+.cal-day.sun{color:var(--danger)}
+.cal-day.today{border-color:rgba(251,146,60,.5)}
+.cal-day.selected{background:var(--accent);color:#fff!important;font-weight:700;border-color:var(--accent)}
+.cal-day .has-data{position:absolute;left:50%;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--ok);transform:translateX(-50%)}
+.cal-day.selected .has-data{background:#fff}
+.cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cal-today-btn{background:rgba(251,146,60,.1);color:var(--accent);border:1px solid rgba(251,146,60,.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
+.cal-today-btn:hover{background:var(--accent);color:#fff}
+.cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:8px;min-height:14px;font-weight:600}
+.cal-host .holiday-label:empty{display:none}
 @media (max-width: 1023px){
   .cal-host{position:fixed;top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-card) var(--r-card) 0 0}
 }
@@ -676,7 +683,7 @@ const Pages = (() => {
     const host = document.getElementById('cal-host'); if(!host) return;
     const y = calViewYear, m = calViewMonth;
     const firstDow = new Date(y, m-1, 1).getDay(); // 0=Sun
-    const offset = (firstDow + 6) % 7; // Monday-first offset
+    const offset = firstDow; // 周日起首,和计划板一致
     const daysInMonth = new Date(y, m, 0).getDate();
     const daysInPrev = new Date(y, m-1, 0).getDate();
     const cells = [];
@@ -692,32 +699,34 @@ const Pages = (() => {
     const todayIso = Util.todayISO();
     const pad = n => String(n).padStart(2,'0');
     let selectedHoliday = '';
-    const cellHtml = cells.map((c, idx) => {
-      const wd = idx % 7;
+    const cellHtml = cells.map(c => {
+      const dt = new Date(c.y, c.m - 1, c.d);
+      const dow = dt.getDay();
       const iso = `${c.y}-${pad(c.m)}-${pad(c.d)}`;
       const hname = JpHolidays.nameOf(iso);
       const isToday = iso === todayIso;
       const isSel = iso === currentDate;
       const hasData = !!sched[iso];
-      const cls = ['day'];
-      if(c.other) cls.push('other-month');
-      if(wd === 6) cls.push('sun');
-      else if(hname) cls.push('holiday');
-      else if(wd === 5) cls.push('sat');
+      const cls = ['cal-day'];
+      if(c.other) cls.push('other');
+      if(dow === 0 || hname) cls.push('sun');
+      else if(dow === 6) cls.push('sat');
       if(isToday) cls.push('today');
       if(isSel){ cls.push('selected'); if(hname) selectedHoliday = hname; }
-      return `<div class="${cls.join(' ')}" data-iso="${iso}" title="${hname?escapeHtml(hname):''}">${c.d}${hasData?'<span class="has-data"></span>':''}</div>`;
+      return `<button type="button" class="${cls.join(' ')}" data-iso="${iso}" title="${hname?escapeHtml(hname):''}">${c.d}${hasData?'<span class="has-data"></span>':''}</button>`;
     }).join('');
     host.innerHTML = `
       <div class="cal-head">
-        <button data-cal="prev">‹</button>
-        <div class="title">${y}年${pad(m)}月</div>
-        <button data-cal="today">今日</button>
-        <button data-cal="next">›</button>
+        <button class="cal-nav" data-cal="prev" type="button" aria-label="上一月">‹</button>
+        <div class="cal-title">${y}年${pad(m,2)}月</div>
+        <button class="cal-nav" data-cal="next" type="button" aria-label="下一月">›</button>
       </div>
-      <div class="cal-grid">
-        <div class="wd">月</div><div class="wd">火</div><div class="wd">水</div><div class="wd">木</div><div class="wd">金</div><div class="wd sat">土</div><div class="wd sun">日</div>
-        ${cellHtml}
+      <div class="cal-dows">
+        <div class="cal-dow sun">日</div><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div>
+      </div>
+      <div class="cal-grid">${cellHtml}</div>
+      <div class="cal-foot">
+        <button type="button" class="cal-today-btn" data-cal="today">今日</button>
       </div>
       <div class="holiday-label">${selectedHoliday}</div>
     `;
@@ -725,10 +734,12 @@ const Pages = (() => {
     host.querySelector('[data-cal="next"]').onclick = e => { e.stopPropagation(); if(calViewMonth===12){calViewYear++;calViewMonth=1;} else calViewMonth++; renderCalendar(); };
     host.querySelector('[data-cal="today"]').onclick = e => {
       e.stopPropagation();
-      const [ty,tm] = Util.todayISO().split('-').map(Number);
-      calViewYear = ty; calViewMonth = tm; renderCalendar();
+      currentDate = Util.todayISO();
+      closeCalendar();
+      renderSchedule();
+      broadcastDate();
     };
-    host.querySelectorAll('.day').forEach(el => {
+    host.querySelectorAll('.cal-day').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
         currentDate = el.dataset.iso;
@@ -6899,12 +6910,14 @@ function exportAll() {
     exportedAt: new Date().toISOString(),
     entries
   };
-  const d = new Date();
-  const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const yymmdd = d => String(d.getFullYear() % 100).padStart(2,'0') + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // 下月 0 号 = 本月最后一天
   const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `生产管理_全部数据_${ds}.json`;
+  a.download = `生产管理${yymmdd(monthStart)}-${yymmdd(monthEnd)}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   // 记录本次导出时间;关闭横幅(如果有)
