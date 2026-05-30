@@ -4864,6 +4864,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
   .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:12px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
+  .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
+  .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:20px;font-weight:400;line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -5390,13 +5392,8 @@ const POS_ALIAS = {
 // 反向映射:配置表写法 → 排班表写法
 const POS_ALIAS_REV = {};
 for (const k in POS_ALIAS) POS_ALIAS_REV[POS_ALIAS[k]] = k;
-function getPersonNamesForCell(bento, posLabel) {
-  if (!bento || !bento.lineId || posLabel == null) return [];
-  const dateSched = scheduleData.schedules[planDate];
-  if (!dateSched) return [];
-  const lineSched = dateSched[bento.lineId];
-  if (!lineSched) return [];
-  // 候选键:原值、trim、纯数字时去零和补零、自定义别名
+// 把一个 posLabel 展开成可能的等价 key 集合(原值、trim、数字去零/补零、别名双向映射)
+function _posLabelKeys(posLabel) {
   const tries = new Set();
   const orig = String(posLabel);
   tries.add(orig);
@@ -5407,11 +5404,20 @@ function getPersonNamesForCell(bento, posLabel) {
     tries.add(String(n));                  // 去前导零:"01" → "1"
     tries.add(String(n).padStart(2, '0')); // 补两位:  "1"  → "01"
   }
-  // 别名映射(双向)
   if (POS_ALIAS[trimmed]) tries.add(POS_ALIAS[trimmed]);
   if (POS_ALIAS_REV[trimmed]) tries.add(POS_ALIAS_REV[trimmed]);
+  return tries;
+}
+
+// 在某条线某日的排班里,根据 posLabel 取出已分配的人员 ID 列表
+function _personIdsAt(bento, posLabel) {
+  if (!bento || !bento.lineId || posLabel == null) return [];
+  const dateSched = scheduleData.schedules[planDate];
+  if (!dateSched) return [];
+  const lineSched = dateSched[bento.lineId];
+  if (!lineSched) return [];
   let raw = null;
-  for (const key of tries) {
+  for (const key of _posLabelKeys(posLabel)) {
     if (lineSched[key] != null) { raw = lineSched[key]; break; }
   }
   if (!raw) return [];
@@ -5422,10 +5428,55 @@ function getPersonNamesForCell(bento, posLabel) {
     else ids.push(v);
   };
   visit(raw);
-  return ids.map(id => {
+  return ids;
+}
+
+// 返回 [{name, borrowed}] —— borrowed=true 时表示该人 homeLine ≠ bento.lineId(借调)
+function getPersonInfosForCell(bento, posLabel) {
+  return _personIdsAt(bento, posLabel).map(id => {
     const p = scheduleData.people.find(x => x.id === id);
-    return p ? p.name : null;
+    if (!p) return null;
+    return { name: p.name, borrowed: !!(p.homeLine && p.homeLine !== bento.lineId) };
   }).filter(Boolean);
+}
+
+// 当日某条线是否有任意岗位被分配过人(用于"全线空班"判定)
+function _lineHasAnyAssignment(lineId) {
+  if (!lineId) return false;
+  const dateSched = scheduleData.schedules && scheduleData.schedules[planDate];
+  if (!dateSched) return false;
+  const lineSched = dateSched[lineId];
+  if (!lineSched) return false;
+  for (const key in lineSched) {
+    const v = lineSched[key];
+    if (Array.isArray(v) ? v.length > 0 : v != null) return true;
+  }
+  return false;
+}
+
+// "応援"位置:卡片标签不在排班表中该线已配置的标准位置列表里
+// (例:线 1 标准位是 1~9,卡片标 "10" 即视为支援/借调位)
+function isSupportCell(bento, posLabel) {
+  if (!bento || !bento.lineId || posLabel == null) return false;
+  const positions = scheduleData.positions && scheduleData.positions[bento.lineId];
+  if (!Array.isArray(positions) || positions.length === 0) return false;
+  const norm = s => String(s).trim();
+  const set = new Set();
+  positions.forEach(p => {
+    const t = norm(p);
+    set.add(t);
+    if (/^\d+$/.test(t)) {
+      const n = parseInt(t, 10);
+      set.add(String(n));
+      set.add(String(n).padStart(2, '0'));
+    }
+    if (POS_ALIAS[t]) set.add(POS_ALIAS[t]);
+    if (POS_ALIAS_REV[t]) set.add(POS_ALIAS_REV[t]);
+  });
+  for (const k of _posLabelKeys(posLabel)) {
+    if (set.has(k)) return false;
+  }
+  return true;
 }
 // === 跨 iframe 桥:把便当库变更广播给父壳(由父壳中转给计划板) ===
 function broadcastBentos() {
@@ -6342,14 +6393,29 @@ function renderOperate() {
       }
     }
     cell.appendChild(mats);
-    // 右下角人名(来自排班表;只读)
+    // 右下角:有人名时按本线/借调分别上色;没人 + 是応援位置 + 当日该线有人 时显示「応援」
     if (bento) {
-      const names = getPersonNamesForCell(bento, pos.label);
-      if (names.length) {
+      const infos = getPersonInfosForCell(bento, pos.label);
+      if (infos.length) {
         const personEl = document.createElement("div");
         personEl.className = "person";
-        personEl.textContent = names.join("/");
+        infos.forEach((info, i) => {
+          if (i > 0) personEl.appendChild(document.createTextNode("/"));
+          const sp = document.createElement("span");
+          sp.textContent = info.name;
+          if (info.borrowed) sp.className = "borrowed-name";
+          personEl.appendChild(sp);
+        });
         personEl.title = `${planDate} · ${pos.label} 排班人员`;
+        cell.appendChild(personEl);
+      } else if (isSupportCell(bento, pos.label) && _lineHasAnyAssignment(bento.lineId)) {
+        const personEl = document.createElement("div");
+        personEl.className = "person";
+        const tag = document.createElement("span");
+        tag.className = "support-tag";
+        tag.textContent = "応援";
+        personEl.appendChild(tag);
+        personEl.title = `${planDate} · ${pos.label} · 応援位置(尚无人员)`;
         cell.appendChild(personEl);
       }
     }
@@ -6631,13 +6697,28 @@ function renderEdit() {
       }
     }
     cell.appendChild(mats);
-    // 右下角:排班人名(只读)
-    const names = getPersonNamesForCell(b, pos.label);
-    if (names.length) {
+    // 右下角:有人名时按本线/借调分别上色;没人 + 是応援位置 + 当日该线有人 时显示「応援」
+    const infos = getPersonInfosForCell(b, pos.label);
+    if (infos.length) {
       const personEl = document.createElement("div");
       personEl.className = "person";
-      personEl.textContent = names.join("/");
+      infos.forEach((info, i) => {
+        if (i > 0) personEl.appendChild(document.createTextNode("/"));
+        const sp = document.createElement("span");
+        sp.textContent = info.name;
+        if (info.borrowed) sp.className = "borrowed-name";
+        personEl.appendChild(sp);
+      });
       personEl.title = `${planDate} · ${pos.label} 排班人员`;
+      cell.appendChild(personEl);
+    } else if (isSupportCell(b, pos.label) && _lineHasAnyAssignment(b.lineId)) {
+      const personEl = document.createElement("div");
+      personEl.className = "person";
+      const tag = document.createElement("span");
+      tag.className = "support-tag";
+      tag.textContent = "応援";
+      personEl.appendChild(tag);
+      personEl.title = `${planDate} · ${pos.label} · 応援位置(尚无人员)`;
       cell.appendChild(personEl);
     }
     cell.onclick = (e) => { e.stopPropagation(); openPicker(cell, b.id, pos.id); };
