@@ -11,10 +11,20 @@ html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -a
 .tabs button{font:inherit;color:#888;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;flex:0 0 auto}
 .tabs button:hover{background:#15181d;color:#e8e8e8}
 .tabs button.active{background:#fb923c;color:#000;border-color:#fb923c;font-weight:600}
+.tabs .spacer{flex:1 1 auto}
+.tabs .io-btn{border:1px solid #2a2d33;color:#bbb;padding:5px 10px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.tabs .io-btn:hover{border-color:#fb923c;color:#fb923c;background:transparent}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease}
 iframe.active{opacity:1;visibility:visible;pointer-events:auto}
-@media (max-width:600px){.tabs button{padding:6px 10px;font-size:13px}}
+@media (max-width:600px){.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
+/* 导出提醒横幅 */
+#export-reminder{position:fixed;bottom:16px;right:16px;background:#f59e0b;color:#14181f;padding:10px 14px;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;font-size:13px;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);font-weight:500;animation:reminderIn .25s ease-out}
+@keyframes reminderIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#export-reminder button{background:#14181f;color:#f59e0b;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font:inherit;font-weight:600}
+#export-reminder button:hover{background:#000;color:#fff}
+#export-reminder .close{background:transparent;color:#14181f;padding:0 4px;font-size:18px;line-height:1}
+#export-reminder .close:hover{background:transparent;color:#000}
 </style>
 </head>
 <body>
@@ -22,6 +32,9 @@ iframe.active{opacity:1;visibility:visible;pointer-events:auto}
   <button data-app="plan" class="active">🏭 生产计划板</button>
   <button data-app="config">⚙ 配置表</button>
   <button data-app="schedule">📅 岗位排班表</button>
+  <span class="spacer"></span>
+  <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">⇧ 导入</button>
+  <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">⇩ 导出</button>
 </div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
@@ -85,6 +98,34 @@ input:focus,select:focus{border-color:var(--accent)}
 .sched-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .sched-bar input[type=date]{font-family:var(--font-mono)}
 .sched-bar .danger-btn{border-color:var(--danger);color:var(--danger)}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;line-height:1;color:var(--text)}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn svg{display:block}
+/* 复制某日 弹窗 (复用 #picker-host 的遮罩样式) */
+#copy-day-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:101;padding:16px}
+#copy-day-host.hidden{display:none}
+.copy-modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);width:100%;max-width:440px;max-height:80vh;display:flex;flex-direction:column;padding:14px 16px;gap:10px;animation:pickerIn .2s ease}
+.copy-modal .head{display:flex;align-items:center;gap:8px}
+.copy-modal .head .title{font-weight:600;flex:1;font-size:14px}
+.copy-modal .head .close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:22px;padding:0 4px;line-height:1}
+.copy-modal .head .close:hover{color:var(--text)}
+.copy-modal .row{display:flex;gap:8px;align-items:center}
+.copy-modal .row input[type=date]{flex:1;font-family:var(--font-mono);background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);color:var(--text);padding:8px 10px}
+.copy-modal .row input[type=date]:focus{border-color:var(--accent);outline:none}
+.copy-modal .row button{background:var(--accent);border:1px solid var(--accent);color:#fff;padding:8px 16px;border-radius:var(--r-btn);cursor:pointer;font:inherit}
+.copy-modal .list-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.copy-modal .list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:300px}
+.copy-modal .item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1a1d22;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:background .12s,border-color .12s}
+.copy-modal .item:hover{background:rgba(124,92,255,.12);border-color:var(--accent)}
+.copy-modal .item .date{flex:1;font-weight:600;font-variant-numeric:tabular-nums}
+.copy-modal .item .dow{color:var(--muted);font-size:11px;min-width:28px}
+.copy-modal .item .meta{color:var(--muted);font-size:11px}
+.copy-modal .item.today .date{color:var(--accent)}
+.copy-modal .empty{color:var(--muted);text-align:center;padding:20px;font-size:13px}
+@media (max-width:1023px){
+  #copy-day-host{align-items:flex-end}
+  .copy-modal{max-width:none;border-radius:var(--r-card) var(--r-card) 0 0}
+}
 #autosave-status{margin-left:auto;font-size:12px}
 .line-tabs{display:none;gap:4px;margin-bottom:12px;overflow-x:auto}
 .line-tabs button{flex:0 0 auto;padding:6px 14px;border-color:var(--border)}
@@ -175,8 +216,6 @@ input:focus,select:focus{border-color:var(--accent)}
   <button data-route="schedule" class="active">📅 排班</button>
   <button data-route="people">👥 人员</button>
   <button data-route="settings">⚙ 设置</button>
-  <button data-action="import">导入</button>
-  <button data-action="export">导出</button>
 </header>
 <main>
   <section id="page-schedule" class="page"><h2>排班</h2></section>
@@ -184,6 +223,7 @@ input:focus,select:focus{border-color:var(--accent)}
   <section id="page-settings" class="page hidden"><h2>设置</h2></section>
 </main>
 <div id="picker-host" class="hidden"></div>
+<div id="copy-day-host" class="hidden"></div>
 <script>
 const Util = (() => {
   const todayISO = () => {
@@ -743,10 +783,7 @@ const Pages = (() => {
           <button class="date-trigger" id="sched-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
           <div class="cal-host hidden" id="cal-host"></div>
         </span>
-        <button id="copy-yesterday">复制昨天</button>
-        <button id="copy-last">复制上次</button>
-        <button id="clear-day" class="danger-btn">清空当日</button>
-        <span id="autosave-status" class="muted"></span>
+        <button id="copy-day" class="icon-btn" title="复制某日的排班到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="line-tabs" id="line-tabs">
         ${s.lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
@@ -798,23 +835,72 @@ const Pages = (() => {
     });
     root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
 
-    document.getElementById('copy-yesterday').addEventListener('click', () => {
-      const prev = Util.prevDay(currentDate);
-      if(!Store.get().schedules[prev]){ alert('前一天 (' + prev + ') 暂无排班'); return; }
-      if(confirm(`将 ${prev} 的排班复制到 ${currentDate},覆盖当前数据?`)) Store.copyDay(prev, currentDate);
-    });
-    document.getElementById('copy-last').addEventListener('click', () => {
-      const last = Store.lastScheduledDate(currentDate);
-      if(!last){ alert('暂无更早的排班可复制'); return; }
-      if(confirm(`将 ${last}(最近有数据)的排班复制到 ${currentDate},覆盖当前数据?`)) Store.copyDay(last, currentDate);
-    });
-    document.getElementById('clear-day').addEventListener('click', () => {
-      if(confirm(`清空 ${currentDate} 全部排班?`)) Store.clearDay(currentDate);
-    });
+    document.getElementById('copy-day').addEventListener('click', () => openCopyDayHost());
     root.querySelectorAll('.assign-btn').forEach(b => {
       b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
     });
     updateAutosaveStatus();
+  }
+
+  const DOW_JP_S = ['日','月','火','水','木','金','土'];
+  function openCopyDayHost(){
+    const host = document.getElementById('copy-day-host');
+    const sched = Store.get().schedules || {};
+    const todayIso = Util.todayISO();
+    const dates = Object.keys(sched).filter(d => d !== currentDate && sched[d]).sort((a,b) => b.localeCompare(a));
+    const items = dates.length === 0
+      ? '<div class="empty">还没有其他日期的排班数据</div>'
+      : dates.map(d => {
+          const [y,m,da] = d.split('-').map(Number);
+          const dow = new Date(y, m-1, da).getDay();
+          let cnt = 0;
+          const dd = sched[d];
+          if (dd) for (const ln in dd) for (const pos in dd[ln]) {
+            const v = dd[ln][pos];
+            if (Array.isArray(v)) cnt += v.length;
+            else if (v) cnt++;
+          }
+          const isToday = d === todayIso;
+          return `<div class="item${isToday?' today':''}" data-date="${d}">
+            <span class="date">${d}</span>
+            <span class="dow">（${DOW_JP_S[dow]}）</span>
+            <span class="meta">${cnt} 人${isToday?' · 今日':''}</span>
+          </div>`;
+        }).join('');
+    const def = Util.prevDay(currentDate);
+    host.innerHTML = `
+      <div class="copy-modal" data-stop>
+        <div class="head">
+          <span class="title">复制某日排班 → ${currentDate}</span>
+          <button class="close" type="button" data-close>×</button>
+        </div>
+        <div class="row">
+          <input type="date" id="copy-day-input" value="${def}" max="${currentDate}">
+          <button id="copy-day-do" type="button">复制</button>
+        </div>
+        <div class="list-label">已保存的日期</div>
+        <div class="list">${items}</div>
+      </div>
+    `;
+    host.classList.remove('hidden');
+    host.querySelector('[data-close]').onclick = () => host.classList.add('hidden');
+    host.onclick = (e) => { if (e.target === host) host.classList.add('hidden'); };
+    host.querySelector('.copy-modal').onclick = (e) => e.stopPropagation();
+    host.querySelector('#copy-day-do').onclick = () => {
+      const v = (host.querySelector('#copy-day-input').value || '').trim();
+      if (!v) return;
+      doCopyFromSchedDate(v);
+    };
+    host.querySelectorAll('.item').forEach(it => {
+      it.onclick = () => doCopyFromSchedDate(it.dataset.date);
+    });
+  }
+  function doCopyFromSchedDate(srcDate){
+    if (srcDate === currentDate) { alert('源日期不能是当前日期'); return; }
+    if (!Store.get().schedules[srcDate]) { alert(`${srcDate} 暂无排班数据`); return; }
+    if (!confirm(`将 ${srcDate} 的排班复制到 ${currentDate},覆盖当前数据?`)) return;
+    Store.copyDay(srcDate, currentDate);
+    document.getElementById('copy-day-host').classList.add('hidden');
   }
 
   function openPicker(lineId, posName){
@@ -2395,11 +2481,9 @@ const Pages = (() => {
       <button class="top-btn" id="linesBtn">生产线 ▾</button>
       <div class="export-menu" id="linesMenu"></div>
     </div>
-    <button class="top-btn" onclick="importJSON()">导入</button>
     <div class="export-wrap">
-      <button class="top-btn accent" id="exportBtn">导出 ▾</button>
+      <button class="top-btn accent" id="exportBtn">输出 ▾</button>
       <div class="export-menu" id="exportMenu">
-        <button onclick="saveJSON()">保存</button>
         <button onclick="doPrint()">打印</button>
         <button onclick="doExportPdf()">导出PDF</button>
         <button onclick="doExportPng()">导出图片</button>
@@ -3878,7 +3962,7 @@ function importJSON() {
         } else {
           localStorage.setItem(boardKey(), JSON.stringify(data.board));
         }
-        skipAutoSave = true;
+        window.skipAutoSave = true;
         location.reload();
       } catch (e) {
         alert('导入失败: ' + e.message);
@@ -4694,9 +4778,9 @@ document.addEventListener('keydown', e => {
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
   else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); doRedo(); }
 });
-let skipAutoSave = false;
-window.addEventListener('pagehide', () => { if (skipAutoSave) return; try { saveBoard(); } catch (e) {} });
-window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { saveBoard(); } catch (e) {} });
+window.skipAutoSave = false;
+window.addEventListener('pagehide', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
+window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 
 <\/script>
 
@@ -4958,10 +5042,8 @@ window.addEventListener('beforeunload', () => { if (skipAutoSave) return; try { 
   <button id="btn-materials">材料库</button>
   <button class="btn-tab" data-screen="line">线设置</button>
   <span class="grow"></span>
-  <button id="btn-import">导入</button>
-  <div class="menu-wrap"><button id="btn-export">导出 ▾</button>
+  <div class="menu-wrap"><button id="btn-export">输出 ▾</button>
     <div class="menu" id="export-menu">
-      <div class="menu-item" data-act="save">保存</div>
       <div class="menu-item" data-act="print">打印</div>
       <div class="menu-item" data-act="image">导出图片</div>
     </div>
@@ -6694,8 +6776,6 @@ function importJSON() {
   };
   inp.click();
 }
-document.getElementById("btn-import").onclick = importJSON;
-
 const exportMenu = document.getElementById("export-menu");
 document.getElementById("btn-export").onclick = (e) => {
   e.stopPropagation();
@@ -6705,8 +6785,7 @@ exportMenu.onclick = (e) => {
   const act = e.target.dataset.act;
   if (!act) return;
   exportMenu.classList.remove("show");
-  if (act === "save") saveJSON();
-  else if (act === "print") window.print();
+  if (act === "print") window.print();
   else if (act === "image") exportImage();
 };
 document.addEventListener("click", (e) => {
@@ -6730,9 +6809,157 @@ init();
 </html>
 </script>
 <script>
-const btns = document.querySelectorAll('.tabs button');
+const btns = document.querySelectorAll('.tabs button[data-app]');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
+
+// === 统一导入导出:覆盖三个 app 全部 localStorage 数据 ===
+const BUNDLE_KEYS_EXACT = [
+  'shift-schedule-data-v1',     // 排班表
+  'productLibrary_v3',          // 计划板 品名库
+  'productionBoardCurrentDate', // 计划板 当前日期
+  'productionBoard_v1',         // 计划板 legacy 单日
+  'bento-conveyor-v1',          // 配置表
+];
+const BUNDLE_KEY_PREFIXES = ['productionBoard_v1_']; // 计划板 每日存档
+const STORAGE_LAST_EXPORT_AT = 'production-management-last-export-at';
+const EXPORT_KEEP_DAYS = 30;
+const EXPORT_REMIND_DAYS = 25;
+
+function isoDateNDaysAgo(n) {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function collectBundleEntries() {
+  const out = {};
+  const cutoff = isoDateNDaysAgo(EXPORT_KEEP_DAYS); // YYYY-MM-DD 字典序可直接比较
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    // 排班表:parse 后只保留近 30 天的 schedules
+    if (k === 'shift-schedule-data-v1') {
+      try {
+        const obj = JSON.parse(localStorage.getItem(k) || 'null');
+        if (obj && obj.schedules && typeof obj.schedules === 'object') {
+          const filtered = {};
+          for (const date in obj.schedules) {
+            if (date >= cutoff) filtered[date] = obj.schedules[date];
+          }
+          obj.schedules = filtered;
+        }
+        out[k] = JSON.stringify(obj);
+      } catch (_) {
+        out[k] = localStorage.getItem(k);
+      }
+      continue;
+    }
+    // 计划板每日存档:key 末尾 YYYY-MM-DD,旧于截止日直接丢
+    if (k.startsWith('productionBoard_v1_')) {
+      const date = k.slice('productionBoard_v1_'.length);
+      if (date >= cutoff) out[k] = localStorage.getItem(k);
+      continue;
+    }
+    // 其他全局 key:整包含
+    if (BUNDLE_KEYS_EXACT.includes(k)) {
+      out[k] = localStorage.getItem(k);
+    }
+  }
+  return out;
+}
+
+function checkExportReminder() {
+  let last;
+  try { last = localStorage.getItem(STORAGE_LAST_EXPORT_AT); } catch (_) { return; }
+  if (!last) return; // 还从没导出过,不打扰
+  const lastTs = Date.parse(last);
+  if (isNaN(lastTs)) return;
+  const daysSince = Math.floor((Date.now() - lastTs) / (1000 * 60 * 60 * 24));
+  if (daysSince < EXPORT_REMIND_DAYS) return;
+  if (document.getElementById('export-reminder')) return;
+  const b = document.createElement('div');
+  b.id = 'export-reminder';
+  b.innerHTML = `⚠ 距离上次导出已 <b>&nbsp;${daysSince} 天</b>&nbsp;,建议尽快备份 <button id="reminderExport">立即导出</button><button class="close" id="reminderClose" title="关闭">×</button>`;
+  document.body.appendChild(b);
+  b.querySelector('#reminderExport').onclick = () => { b.remove(); exportAll(); };
+  b.querySelector('#reminderClose').onclick = () => b.remove();
+}
+
+function exportAll() {
+  const entries = collectBundleEntries();
+  if (Object.keys(entries).length === 0) {
+    alert('当前没有可导出的数据');
+    return;
+  }
+  const bundle = {
+    version: 1,
+    type: 'production-management-bundle',
+    exportedAt: new Date().toISOString(),
+    entries
+  };
+  const d = new Date();
+  const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `生产管理_全部数据_${ds}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  // 记录本次导出时间;关闭横幅(如果有)
+  try { localStorage.setItem(STORAGE_LAST_EXPORT_AT, new Date().toISOString()); } catch (_) {}
+  const b = document.getElementById('export-reminder');
+  if (b) b.remove();
+}
+
+function importAll() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'application/json,.json';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      let bundle;
+      try { bundle = JSON.parse(r.result); }
+      catch (e) { alert('文件不是有效 JSON: ' + e.message); return; }
+      if (!bundle || bundle.type !== 'production-management-bundle' || !bundle.entries) {
+        alert('不是「生产管理」统一导出文件(type 或 entries 字段不符)');
+        return;
+      }
+      const keyCount = Object.keys(bundle.entries).length;
+      if (!confirm(`将覆盖当前所有数据(${keyCount} 项),继续?\n建议先点「导出」备份当前数据。`)) return;
+      // 1) 清除现有相关 key,确保不残留旧日期
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (BUNDLE_KEYS_EXACT.includes(k) || BUNDLE_KEY_PREFIXES.some(p => k.startsWith(p))) toRemove.push(k);
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+      // 2) 写入新数据
+      for (const k in bundle.entries) {
+        try { localStorage.setItem(k, bundle.entries[k]); } catch (e) { console.warn('write fail', k, e); }
+      }
+      // 3) 关闭各 iframe 的卸载时自动保存,防止 beforeunload 把旧 DOM 状态写回 localStorage 覆盖刚导入的数据
+      frames.forEach(f => {
+        try { if (f.contentWindow) f.contentWindow.skipAutoSave = true; } catch (_) {}
+      });
+      // 4) 重载所有 iframe,让它们从最新 localStorage 重新 init
+      loaded.clear();
+      frames.forEach(f => {
+        const app = f.dataset.app;
+        if (app) f.srcdoc = getHtml(app);
+        loaded.add(app);
+      });
+      alert(`✓ 已导入 ${keyCount} 项数据,所有 app 已重新加载。`);
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
 // === 跨 iframe 数据桥:中转便当/排班/日期变更与请求,缓存最新快照 ===
 const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
 const requestToChange = {
@@ -6779,6 +7006,8 @@ function activate(app){
   try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
 }
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
+document.getElementById('exportAllBtn').addEventListener('click', exportAll);
+document.getElementById('importAllBtn').addEventListener('click', importAll);
 window.addEventListener('hashchange', () => {
   const app = location.hash.slice(1);
   if(['schedule','plan','config'].includes(app)) activate(app);
@@ -6799,6 +7028,8 @@ window.addEventListener('hashchange', () => {
   setTimeout(() => {
     ['plan','config','schedule'].forEach(app => { if(!loaded.has(app)) ensureLoaded(app); });
   }, 50);
+  // 检查导出提醒
+  setTimeout(checkExportReminder, 600);
 })();
 </script>
 </body>
