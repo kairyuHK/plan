@@ -413,18 +413,10 @@ const Store = (() => {
     Object.assign(p, patch); save();
   }
   function deletePerson(id){
-    state.people = state.people.filter(p=>p.id!==id);
-    for(const date in state.schedules){
-      for(const ln in state.schedules[date]){
-        for(const pos in state.schedules[date][ln]){
-          const v = state.schedules[date][ln][pos];
-          if(Array.isArray(v)){
-            const filtered = v.filter(pid => pid !== id);
-            state.schedules[date][ln][pos] = filtered.length ? filtered : null;
-          }
-        }
-      }
-    }
+    // 软删除:从人员库移除,但保留 state.people 里的记录(打 deleted 标记),
+    // 这样历史排班卡片仍能通过 id 查到姓名,不会被抹除。
+    const p = state.people.find(x=>x.id===id);
+    if(p) p.deleted = true;
     save();
   }
   function findPersonUsage(id){
@@ -606,7 +598,7 @@ const Pages = (() => {
     `];
     s.lines.forEach(line => {
       const list = s.people
-        .filter(p => p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
+        .filter(p => !p.deleted && p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
         .sort(byName);
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
@@ -649,7 +641,7 @@ const Pages = (() => {
         const usage = Store.findPersonUsage(pid);
         const cur = Store.get().people.find(p=>p.id===pid).name;
         const msg = usage>0
-          ? `「${cur}」被 ${usage} 条排班使用,删除后这些岗位会变为空。确认删除?`
+          ? `「${cur}」被 ${usage} 条排班使用,删除后将从人员库移除,但历史排班卡片里的名字会保留。确认删除?`
           : `确认删除「${cur}」?`;
         if(confirm(msg)) Store.deletePerson(pid);
       });
@@ -813,7 +805,7 @@ const Pages = (() => {
       <div class="line-grid">
         ${s.lines.map(line => {
           const positions = s.positions[line.id] || [];
-          const linePeopleCount = s.people.filter(p => p.homeLine===line.id).length;
+          const linePeopleCount = s.people.filter(p => !p.deleted && p.homeLine===line.id).length;
           // 当日实际分配到此线的不同人数(含借调)
           const assignedSet = new Set();
           positions.forEach(pos => (day[line.id][pos] || []).forEach(id => assignedSet.add(id)));
@@ -944,8 +936,8 @@ const Pages = (() => {
       const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
       const q = query.trim().toLowerCase();
       const match = p => !q || p.name.toLowerCase().includes(q);
-      const home = s.people.filter(p => p.homeLine===lineId && match(p)).sort(byName);
-      const others = s.people.filter(p => p.homeLine!==lineId && match(p)).sort(byName);
+      const home = s.people.filter(p => !p.deleted && p.homeLine===lineId && match(p)).sort(byName);
+      const others = s.people.filter(p => !p.deleted && p.homeLine!==lineId && match(p)).sort(byName);
       const row = (p) => {
         const selected = currentIds.includes(p.id);
         const full = currentIds.length >= 3 && !selected;
@@ -1136,8 +1128,8 @@ const Pages = (() => {
   assert('copyDay copies assignments', Store.get().schedules['2026-05-27'].xs['岗位C'][0]===pid);
 
   Store.deletePerson(pid);
-  assert('deletePerson removes person', !Store.get().people.find(p=>p.id===pid));
-  assert('deletePerson removes from arrays', !Store.get().schedules['2026-05-26'].xs['岗位C'].includes(pid));
+  assert('deletePerson soft-deletes person', !!Store.get().people.find(p=>p.id===pid && p.deleted));
+  assert('deletePerson keeps id in past schedules', Store.get().schedules['2026-05-26'].xs['岗位C'].includes(pid));
   assert('deletePerson keeps others', Store.get().schedules['2026-05-26'].xs['岗位C'].includes('p2'));
   Store.assign('2026-05-26','xs','岗位C', null);
   assert('assign null clears position', Store.get().schedules['2026-05-26'].xs['岗位C']===null);
@@ -4757,6 +4749,10 @@ window.addEventListener('message', (e) => {
     _suppressDateBroadcast = true;
     try { switchDate(d); } finally { _suppressDateBroadcast = false; }
   }
+  else if (e.data.type === 'flush-save') {
+    // 父壳导出前的同步落盘请求:此时当天卡片只在内存里,必须先 saveBoard() 才能被导出读到
+    try { saveBoard(); } catch (_) {}
+  }
 });
 // 启动时广播一次当前日期
 setTimeout(broadcastPlanDate, 0);
@@ -7070,6 +7066,14 @@ function checkExportReminder() {
 }
 
 function exportAll() {
+  // 先让所有 iframe 把内存里的未落盘状态写回 localStorage(主要是计划板当天卡片),
+  // 否则 collectBundleEntries() 读到的是旧快照,今天的卡片会丢。
+  frames.forEach(f => {
+    try { f.contentWindow && f.contentWindow.postMessage({ type: 'flush-save' }, '*'); } catch (_) {}
+  });
+  setTimeout(exportAllNow, 80);
+}
+function exportAllNow() {
   const entries = collectBundleEntries();
   if (Object.keys(entries).length === 0) {
     alert('当前没有可导出的数据');
@@ -7131,7 +7135,13 @@ function importAll() {
       for (const k in bundle.entries) {
         try { localStorage.setItem(k, bundle.entries[k]); } catch (e) { console.warn('write fail', k, e); }
       }
-      // 4) 重载所有 iframe,让它们从最新 localStorage 重新 init
+      // 4) 清掉父壳里缓存的旧快照,否则新 iframe 启动时发的 *-request
+      //    会被父壳用导入前的旧数据回放回去,直接覆盖刚导入的状态
+      //   (典型表现:计划板被切回旧日期 / 便当库被旧版本回写 → 当天卡片不显示)
+      snapshots['bento-changed'] = null;
+      snapshots['schedule-changed'] = null;
+      snapshots['plan-date-changed'] = null;
+      // 5) 重载所有 iframe,让它们从最新 localStorage 重新 init
       loaded.clear();
       frames.forEach(f => {
         const app = f.dataset.app;
