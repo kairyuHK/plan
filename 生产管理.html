@@ -56,7 +56,7 @@ iframe.active{pointer-events:auto}
   --accent:#fb923c; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
   --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
   --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
-  --line-tsk:#8b5cf6;
+  --line-tsk:#8b5cf6; --line-short:#64748b;
   --r-card:12px; --r-btn:8px;
   --font: -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
   --font-mono: ui-monospace,Consolas,monospace;
@@ -330,7 +330,11 @@ const Store = (() => {
     {id:'xs', name:'夕盛'},
     {id:'l01', name:'01'}, {id:'l02', name:'02'},
     {id:'l03', name:'03'}, {id:'l04', name:'04'}, {id:'l05', name:'05'},
-    {id:'tsk', name:'値付け'}
+    {id:'tsk', name:'値付け'},
+    // virtual: true 的线只在「人员库」里作为 homeLine 选项出现,
+    // 不会渲染到排班表的线 tab / 卡片网格、配置表的便当生产线下拉里。
+    // 这里挂的人在任何真实线的岗位弹窗里会自动出现在「借调」区。
+    {id:'short', name:'短期', virtual:true}
   ];
   function emptyData(){
     const positions = {}; DEFAULT_LINES.forEach(l => positions[l.id]=[]);
@@ -450,16 +454,17 @@ const Store = (() => {
   }
 
   // Schedules
+  function realLines(){ return state.lines.filter(l => !l.virtual); }
   function ensureDay(date){
     if(!state.schedules[date]){
       state.schedules[date] = {};
-      state.lines.forEach(l => state.schedules[date][l.id] = {});
+      realLines().forEach(l => state.schedules[date][l.id] = {});
     }
   }
   function getDay(date){
     const day = state.schedules[date];
     const out = {};
-    state.lines.forEach(l => {
+    realLines().forEach(l => {
       out[l.id] = {};
       const positions = state.positions[l.id] || [];
       positions.forEach(pos => {
@@ -483,7 +488,7 @@ const Store = (() => {
   }
   function clearDay(date){
     ensureDay(date);
-    state.lines.forEach(l => { state.schedules[date][l.id] = {}; });
+    realLines().forEach(l => { state.schedules[date][l.id] = {}; });
     save();
   }
   function copyDay(fromDate, toDate){
@@ -531,7 +536,8 @@ const Pages = (() => {
     const root = $('#page-settings');
     const s = Store.get();
     const html = ['<h2>设置 — 岗位</h2>'];
-    s.lines.forEach(line => {
+    // 虚拟线(如「短期」)不参与排班,所以不在此处配置岗位
+    s.lines.filter(l => !l.virtual).forEach(line => {
       const positions = s.positions[line.id] || [];
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
@@ -786,7 +792,9 @@ const Pages = (() => {
     const root = document.querySelector('#page-schedule');
     const s = Store.get();
     if(!currentDate) currentDate = Util.todayISO();
-    if(!currentTabLine || !s.lines.find(l=>l.id===currentTabLine)) currentTabLine = s.lines[0].id;
+    // 排班表只渲染真实生产线(过滤掉 virtual,如「短期」)
+    const lines = s.lines.filter(l => !l.virtual);
+    if(!currentTabLine || !lines.find(l=>l.id===currentTabLine)) currentTabLine = lines[0].id;
     const day = Store.getDay(currentDate);
     const peopleById = Object.fromEntries(s.people.map(p => [p.id, p]));
     const html = [`
@@ -799,11 +807,11 @@ const Pages = (() => {
           <button id="copy-day" class="icon-btn" title="复制某日的排班到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         </div>
         <div class="line-tabs" id="line-tabs">
-          ${s.lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
+          ${lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
         </div>
       </div>
       <div class="line-grid">
-        ${s.lines.map(line => {
+        ${lines.map(line => {
           const positions = s.positions[line.id] || [];
           const linePeopleCount = s.people.filter(p => !p.deleted && p.homeLine===line.id).length;
           // 当日实际分配到此线的不同人数(含借调)
@@ -1861,6 +1869,8 @@ const Pages = (() => {
 
   .card-top { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .card-name-display { flex: 1; color: var(--text); font-size: 13.5px; font-weight: 600; padding: 3px 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.1px; }
+  .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
+  .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
   .card-del {
     background: transparent; border: 1px solid transparent;
     color: var(--text-mute); cursor: pointer;
@@ -3005,6 +3015,14 @@ libAddBtn.addEventListener('click', () => {
 });
 libNameInput.addEventListener('input', () => updateBentoLinkUI(libNameInput.value));
 
+// 同步「弹窗便当名」的可点状态:只有当 libItem 已链接到配置表的便当(有 bentoId)时,
+// 才显示成可点的链接样式 + tooltip;否则就是普通文本,点了也不响应。
+function refreshNameLinkState(nameEl, libId) {
+  const it = findLibItem(libId);
+  const linked = !!(it && it.bentoId);
+  nameEl.classList.toggle('is-bento-link', linked);
+  nameEl.title = linked ? `跳转到配置表 · ${it.name}` : '';
+}
 function propagateLibChange(libId) {
   const item = findLibItem(libId);
   if (!item) return;
@@ -3017,7 +3035,7 @@ function propagateLibChange(libId) {
     const letterEl = card.querySelector('.compact-name-letter');
     const display = popupQ(card, '.card-name-display');
     if (letterEl) { letterEl.textContent = (item.name || '').charAt(0); letterEl.style.color = item.color || ''; }
-    if (display) display.textContent = item.name;
+    if (display) { display.textContent = item.name; refreshNameLinkState(display, libId); }
     const lineSpdInp = popupQ(card, '.line-speed');
     const peopleInp = popupQ(card, '.people');
     const meterInp = popupQ(card, '.meter-people');
@@ -3234,6 +3252,19 @@ function addJobCard(grid, libItem, savedData) {
     setActiveCard(null);
     if (line) openPicker(line);
   });
+  // 弹窗里的便当名 — 已链接配置表便当库时可点,跳转到该便当
+  const nameEl = node.querySelector('.card-name-display');
+  if (nameEl) {
+    refreshNameLinkState(nameEl, libItem.id);
+    nameEl.addEventListener('click', (e) => {
+      const it = findLibItem(libItem.id);
+      if (!it || !it.bentoId) return;
+      e.stopPropagation();
+      try {
+        window.parent.postMessage({ type: 'jump-to-bento', bentoId: it.bentoId, bentoName: it.name }, '*');
+      } catch (_) {}
+    });
+  }
   if (!savedData) {
     scrollCardIntoView(node);
     setActiveCard(node);
@@ -5489,6 +5520,19 @@ function broadcastBentos() {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type === 'bento-request') broadcastBentos();
+  else if (e.data.type === 'jump-to-bento') {
+    // 从计划板弹窗点便当名跳过来:切到「操作屏」并选中这条便当
+    const target = (e.data.bentoId && state.bentos.find(b => b.id === e.data.bentoId))
+      || (e.data.bentoName && state.bentos.find(b => b.name === e.data.bentoName));
+    if (target) {
+      state.current = { ...state.current, screen: 'operate', bentoId: target.id };
+    } else {
+      // 便当已被删/找不到 → 退到便当库列表,用户自己定位
+      state.current = { ...state.current, screen: 'bentos' };
+    }
+    saveState();
+    render();
+  }
 });
 
 let state = loadState();
@@ -6576,7 +6620,7 @@ function renderEdit() {
   lineSel.style.cssText = "flex:0 0 130px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
   const emptyOpt = document.createElement("option"); emptyOpt.value = ""; emptyOpt.textContent = "（未选生产线）";
   lineSel.appendChild(emptyOpt);
-  (scheduleData.lines || []).forEach(ln => {
+  (scheduleData.lines || []).filter(ln => !ln.virtual).forEach(ln => {
     const opt = document.createElement("option");
     opt.value = ln.id; opt.textContent = ln.name;
     lineSel.appendChild(opt);
@@ -6980,6 +7024,9 @@ function init() {
   if (new URLSearchParams(location.search).get("test") === "1") runSelfTests();
   // 配置表加载后立即广播一次便当库,让计划板可同步
   broadcastBentos();
+  // 通知父壳:配置表 iframe 已就绪。父壳如果攒了一个待发的 jump-to-bento,
+  // 会在这一刻把它转发过来(避免新加载的 iframe 错过消息)。
+  try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'config-ready' }, '*'); } catch (_) {}
 }
 init();
 <\/script>
@@ -7181,8 +7228,26 @@ window.addEventListener('message', (e) => {
         try { f.contentWindow.postMessage(e.data, '*'); } catch (_) {}
       }
     });
+  } else if (t === 'jump-to-bento') {
+    // 计划板的便当名被点击 → 切到配置表 tab,并把 bentoId/bentoName 转给配置表 iframe
+    const configFrame = document.querySelector('iframe[data-app="config"]');
+    const wasLoaded = loaded.has('config');
+    activate('config');
+    if (wasLoaded) {
+      try { configFrame.contentWindow.postMessage(e.data, '*'); } catch (_) {}
+    } else {
+      // 配置表还没加载完,先存起来,等它发 config-ready 再转发
+      pendingBentoJump = e.data;
+    }
+  } else if (t === 'config-ready') {
+    if (pendingBentoJump) {
+      const configFrame = document.querySelector('iframe[data-app="config"]');
+      try { configFrame.contentWindow.postMessage(pendingBentoJump, '*'); } catch (_) {}
+      pendingBentoJump = null;
+    }
   }
 });
+let pendingBentoJump = null;
 function getHtml(app){
   return document.getElementById('data-'+app).textContent.replaceAll('<\\/script', '</script');
 }
