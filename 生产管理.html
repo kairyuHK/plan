@@ -2371,7 +2371,9 @@ const Pages = (() => {
   body.mob-ls .timeline-head { position: sticky; top: 0; z-index: 7; }
   body.mob-ls .line-head { position: sticky; top: 0; z-index: 5; }
 
-  @media print { @page { size: A4 landscape; margin: 6mm; } }
+  /* 只指定边距和横向,纸张大小让用户在打印对话框里挑(A4 / A3 都行);
+     内容按 A4 横向 ≈ 748px 可用高的预算来排布,所以 A3 也稳进一页 */
+  @media print { @page { size: landscape; margin: 6mm; } }
 
   /* 打印 / PDF 导出 共用样式（body.printing 类触发） */
   body.printing .export-wrap, body.printing .head-btns, body.printing .card-del, body.printing .compact-del, body.printing .drag-handle, body.printing .pager, body.printing .modal-mask,
@@ -2386,9 +2388,11 @@ const Pages = (() => {
     position: static !important;
     top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
     width: auto !important;
+    margin: 0 !important; padding: 0 !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     background: #fff !important; color: #000 !important;
   }
+  body.printing html { margin: 0 !important; padding: 0 !important; }
   body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
   body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
   body.printing .topbar { border-bottom: 1px solid #555 !important; }
@@ -2461,12 +2465,13 @@ const Pages = (() => {
   body.printing.printing-compact .duration { font-size: 9px !important; }
   body.printing.printing-compact .tick .label { font-size: 9px !important; padding: 0 2px !important; }
 
+  /* === 手机端打印:只做「还原 mobile 屏幕特有的隐藏 / 撑高」,
+         其它一律让 body.printing.printing-compact 的 PC 打印规则接管,
+         这样手机和 PC 打印出来一模一样 === */
   @media (max-width: 900px) {
-    body.printing { font-size: 13px !important; width: auto !important; height: auto !important; overflow: visible !important; }
+    body.printing { font-size: 14px !important; width: auto !important; height: auto !important; overflow: visible !important; }
     body.printing .brand-sub { display: inline !important; }
     body.printing #totalAll { display: inline !important; }
-    body.printing .topbar { padding: 0 12px !important; }
-    body.printing .topbar-right { gap: 8px !important; font-size: 11px !important; }
     body.printing .main { overflow: visible !important; align-items: stretch !important; }
     body.printing .board {
       grid-template-columns: repeat(6, 1fr) !important;
@@ -2475,41 +2480,52 @@ const Pages = (() => {
       overflow: visible !important;
     }
     body.printing .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; min-height: 0 !important; }
-    body.printing .cards-wrap { overflow: visible; }
-    body.printing .timeline-body { overflow: visible; }
+    body.printing .cards-wrap, body.printing .timeline-body { overflow: visible !important; }
     body.printing .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
     body.printing .timeline-head, body.printing .timeline-foot,
     body.printing .line-head, body.printing .line-foot { position: static !important; }
-    body.printing .timeline-head, body.printing .line-head { height: 110px !important; padding: 8px 10px !important; }
-    body.printing .line-head-row1 { flex-direction: column !important; align-items: center !important; gap: 1px !important; }
-    body.printing .line-num { font-size: 18px !important; text-align: center !important; }
-    body.printing .line-label { display: block !important; font-size: 9px !important; letter-spacing: 2px !important; text-align: center !important; }
-    body.printing .date-month, body.printing .date-day, body.printing .date-dow { font-size: 18px !important; }
-    body.printing .date-year { position: absolute !important; font-size: 9px !important; top: 6px !important; left: 4px !important; padding-left: 0 !important; }
-    body.printing .head-btns { flex-direction: row !important; }
     body.printing .card-compact .compact-time { display: inline !important; }
-    /* 手机横屏 CSS 把底栏 / 时间轴底栏隐藏了,打印时必须恢复,否则看不到 数量/耗时/结束/实结 */
+    /* 手机横屏 CSS 把底栏 / 时间轴底栏隐藏了,打印时必须恢复 */
     body.printing .line-foot, body.printing .timeline-foot { display: flex !important; }
+    /* mobile 竖屏 .line-foot .foot-row 强行 height:18px,打印里要放开让 grid/flex 决定高度 */
+    body.printing .line-foot .foot-row { height: auto !important; }
   }
 
-  /* === 实结挪到「结束」右边,共享同一行(纯打印生效) === */
-  body.printing .line-foot {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    grid-auto-rows: auto !important;
-    height: auto !important;
-    min-height: 0 !important;
-    column-gap: 8px !important;
-    row-gap: 2px !important;
-  }
-  body.printing .line-foot .foot-row { margin-bottom: 0 !important; height: auto !important; }
-  body.printing .line-foot .foot-row:nth-child(1),
-  body.printing .line-foot .foot-row:nth-child(2) { grid-column: 1 / -1 !important; }
-  body.printing .line-foot .foot-row:nth-child(3) { grid-column: 1 !important; }
-  body.printing .line-foot .foot-row:nth-child(4) { grid-column: 2 !important; }
-  /* 把实结的 input 渲染成纯文本,去掉边框/背景/原生外观 */
+  /* === 实结 input 在打印中渲染成纯文本(去掉边框/背景/原生 datetime 外观) === */
   body.printing .actual-finish-wrap { border: none !important; background: transparent !important; padding: 0 !important; margin: 0 !important; }
   body.printing .foot-val.actual-finish { background: transparent !important; border: none !important; padding: 0 !important; }
+
+  /* === 手机/PC 打印强制使用同一套 CSS 变量,保证排版完全一致 === */
+  body.printing { --time-col-w: 56px !important; }
+
+  /* 打印底栏要塞 4 行(数量/耗时/结束/实结)。固定 60px 高、行间距压到 1px、
+     line-height 收紧,这样两边底栏高度一致 + 总高在 A4 可用 748px 之内 */
+  body.printing.printing-compact .line-foot,
+  body.printing.printing-compact .timeline-foot { height: 60px !important; min-height: 60px !important; padding: 2px 6px !important; }
+  body.printing.printing-compact .line-foot .foot-row { margin-bottom: 1px !important; line-height: 1.15 !important; }
+  body.printing.printing-compact .line-foot .foot-row:last-child { margin-bottom: 0 !important; }
+
+  /* === 打印时:右上角的「耗时 / 结束 / 时钟」都隐藏,只保留「总计」 === */
+  body.printing #totalDur,
+  body.printing #totalFinish,
+  body.printing .clock { display: none !important; }
+  body.printing #totalAll {
+    display: inline-block !important;
+    color: #000 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    margin-left: auto !important;
+    white-space: nowrap !important;
+    order: 99 !important; /* 强行排到 topbar-right 最右,clock 让位到左侧 */
+  }
+  /* 让 topbar-right 把「总计」推到最右边 */
+  body.printing .topbar-right { justify-content: flex-end !important; }
+
+  /* 日期整体收在 timeline-head 边框内:overflow:hidden 防止 absolute 子元素外溢,
+     再把 mobile 屏幕用的 absolute date-year 强行拉回 flex 流 */
+  body.printing .timeline-head { overflow: hidden !important; position: relative !important; box-sizing: border-box !important; }
+  body.printing .date-year { position: static !important; top: auto !important; left: auto !important; align-self: center !important; padding: 0 !important; margin: 0 0 1px !important; }
+  body.printing .date-month, body.printing .date-day, body.printing .date-dow { padding: 0 !important; margin: 0 !important; }
 
   /* === 打印强制黑白:覆盖品名色 / 主题色 / 行号橙、结束蓝、实结紫 等等 === */
   body.printing .card { border-left: 1px solid #999 !important; }
@@ -3842,9 +3858,15 @@ function recalc(line) {
     }
     if (cardStart != null && cardEnd != null) {
       tStart.textContent = fmtClock(cardStart); tEnd.textContent = fmtClock(cardEnd);
+      // 打印模式:卡片严格按真实时长落到 secToPx 位置,跟时间轴 1:1 对齐。
+      // MIN_CARD_PX = 0:不再人为撑高,否则卡片很多 / 很短时会累加溢出到第二页;
+      // MIN_GAP_PX  = 0:卡片相邻直接接续,不再硬留 1px 间隙累加成漂移。
+      const isPrint = document.body.classList.contains('printing-compact');
+      const MIN_CARD_PX = isPrint ? 0 : 24;
+      const MIN_GAP_PX = isPrint ? 0 : 1;
       let top = secToPx(cardStart);
-      const height = Math.max(secToPx(cardEnd) - secToPx(cardStart), 24);
-      if (top < prevVisualBottom + 1) top = prevVisualBottom + 1;
+      const height = Math.max(secToPx(cardEnd) - secToPx(cardStart), MIN_CARD_PX);
+      if (top < prevVisualBottom + MIN_GAP_PX) top = prevVisualBottom + MIN_GAP_PX;
       card.style.top = top + 'px'; card.style.height = height + 'px';
       fitCardCompact(card, height);
       prevVisualBottom = top + height;
@@ -4343,6 +4365,22 @@ function setupPrintLayout() {
   const origHourPxStr = getComputedStyle(root).getPropertyValue('--hour-px').trim();
   const origHourPx = parseFloat(origHourPxStr) || 140;
 
+  // 关键:无论手机还是 PC,打印基线统一拉到 140 px/hour。
+  // 手机原始是 100,PC 是 140;如果不统一,后面 cardRange / 压缩比例两边算不一样,
+  // 打印出来就会不一样。
+  const PRINT_BASELINE_HOUR_PX = 140;
+  root.style.setProperty('--hour-px', PRINT_BASELINE_HOUR_PX + 'px');
+
+  // 切到打印模式再测卡片范围。MIN_CARD_PX=0 / MIN_GAP_PX=0 已生效,
+  // 卡片严格落在真实 secToPx 位置,cardRange 干净,不被 24px MIN 撑大。
+  document.body.classList.add('printing-compact');
+  renderTimeline();
+  document.querySelectorAll('.cards-grid').forEach(g => {
+    g.style.height = (getTotalPx() + 16) + 'px';
+    renderGridLines(g);
+  });
+  document.querySelectorAll('.line').forEach(l => recalc(l));
+
   let minTop = Infinity, maxBottom = 0;
   document.querySelectorAll('.card').forEach(c => {
     const t = parseFloat(c.style.top) || 0;
@@ -4352,26 +4390,33 @@ function setupPrintLayout() {
   });
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
-  document.body.classList.add('printing-compact');
-
-  const PAGE_H_FOR_CARDS = 771 - 132;
-  let newHourPx = origHourPx;
+  // A4 横向 6mm 边距 ≈ 748px 可用高:
+  //   topbar 24 + line-head 56 + line-foot 60(4 行) + 边框 6 ≈ 146,
+  //   再留 30px buffer 给浏览器默认页眉页脚 / 边距偏差,卡片预算定 560。
+  // A3 横向有 1077px 可用高,同样 560 预算自然单页(右下会留白)。
+  const PAGE_H_FOR_CARDS = 560;
+  let newHourPx = PRINT_BASELINE_HOUR_PX;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
-    newHourPx = Math.max(18, origHourPx * (PAGE_H_FOR_CARDS / cardRange));
+    // 真实 cardRange > 一页预算时按比例压缩;下限 1px/hour 足够极端密集
+    newHourPx = Math.max(1, PRINT_BASELINE_HOUR_PX * (PAGE_H_FOR_CARDS / cardRange));
   }
-  const needRescale = Math.abs(newHourPx - origHourPx) > 0.5;
-  if (needRescale) root.style.setProperty('--hour-px', newHourPx + 'px');
-  renderTimeline();
-  document.querySelectorAll('.cards-grid').forEach(g => {
-    g.style.height = (getTotalPx() + 16) + 'px';
-    renderGridLines(g);
-  });
-  document.querySelectorAll('.line').forEach(l => recalc(l));
+  // 跟「基线 140」对比决定是否需要二次 rescale;但只要 cardRange ≤ 560 就保持 140 不再算
+  const needRescale = Math.abs(newHourPx - PRINT_BASELINE_HOUR_PX) > 0.5;
+  if (needRescale) {
+    root.style.setProperty('--hour-px', newHourPx + 'px');
+    renderTimeline();
+    document.querySelectorAll('.cards-grid').forEach(g => {
+      g.style.height = (getTotalPx() + 16) + 'px';
+      renderGridLines(g);
+    });
+    document.querySelectorAll('.line').forEach(l => recalc(l));
+  }
   const restore = trimGridForExport();
   return () => {
     restore();
     document.body.classList.remove('printing-compact');
-    if (needRescale) root.style.setProperty('--hour-px', origHourPxStr);
+    // 一开始就把 --hour-px 拉到了 140 基线,无论有没有二次 rescale 都得还原
+    root.style.setProperty('--hour-px', origHourPxStr);
     renderTimeline();
     document.querySelectorAll('.cards-grid').forEach(g => {
       g.style.height = (getTotalPx() + 16) + 'px';
