@@ -2406,16 +2406,83 @@ const Pages = (() => {
     background: #fff !important; color: #000 !important;
   }
   body.printing html { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  /* 手机端 html / body 默认深色底,@media print 直接拉成白底,覆盖一切残余的暗色容器。
-     这里不依赖 body.printing class —— 手机端 Safari 在 iframe 里 beforeprint 事件不靠谱,
-     class 没挂上的时候这条还能兜底。 */
+  /* === 不依赖 body.printing class 的打印兜底 ===
+     手机端 Safari 在 iframe 里 beforeprint 事件不一定触发,class 挂不上的话
+     所有 body.printing 规则都失效。这里把关键的「白底 + 黑白色 + 容器尺寸 +
+     卡片样式 + 日期排版」全部塞到 @media print 下,无论 class 在不在都生效。 */
   @media print {
+    /* --- 白底 / 黑字 --- */
     html, body, .topbar, .main, .timeline, .timeline-head, .timeline-body, .timeline-foot,
-    .line, .line-head, .line-foot, .cards-wrap, .cards-grid, .board {
+    .line, .line-head, .line-foot, .cards-wrap, .cards-grid, .board, .card, .card-expanded {
       background: #fff !important;
       color: #000 !important;
     }
     body::before { display: none !important; }
+
+    /* --- 卡片:白底 + 灰边 + 去阴影 + 字母圈黑 + 覆盖 inline border-left-color --- */
+    .card {
+      box-shadow: none !important;
+      border-top: 1px solid #ccc !important;
+      border-right: 1px solid #ccc !important;
+      border-bottom: 1px solid #ccc !important;
+      border-left: 1px solid #999 !important;
+    }
+    .card.rest { background: #f0f0f0 !important; }
+    .compact-name-letter { color: #000 !important; border-color: #999 !important; background: transparent !important; }
+    .card-name-display, .compact-people, .compact-time, .compact-name { color: #000 !important; }
+
+    /* --- timeline-head / line-head:64px 容下年/月/日/星期四行 --- */
+    .timeline-head, .line-head {
+      height: 64px !important; padding: 4px 6px !important;
+      justify-content: center !important; align-items: center !important;
+      overflow: hidden !important; box-sizing: border-box !important;
+      position: static !important;
+    }
+    .date-year {
+      position: static !important;
+      top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+      transform: none !important;
+      align-self: center !important;
+      line-height: 1.1 !important;
+      padding: 0 !important; margin: 0 0 1px !important;
+    }
+    .date-month, .date-day, .date-dow {
+      transform: none !important;
+      line-height: 1.1 !important;
+      padding: 0 !important; margin: 0 !important;
+    }
+
+    /* --- line-foot / timeline-foot:固定 68px,容下「数量/耗时/结束/实结」四行 --- */
+    .line-foot, .timeline-foot {
+      height: 68px !important; min-height: 68px !important;
+      padding: 2px 6px !important;
+      display: flex !important; flex-direction: column !important;
+      position: static !important;
+      box-sizing: border-box !important;
+    }
+    .line-foot .foot-row {
+      height: auto !important;
+      line-height: 1.1 !important;
+      margin-bottom: 1px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: baseline !important;
+    }
+    .line-foot .foot-row:last-child { margin-bottom: 0 !important; }
+    .line-foot .foot-label { color: #000 !important; font-size: 7px !important; }
+    .line-foot .foot-val { color: #000 !important; font-size: 11px !important; font-weight: 600 !important; text-align: right !important; }
+    .line-foot .foot-val.time, .line-foot .foot-val.finish { color: #000 !important; }
+
+    /* --- 顶栏 / 上下溢出修正 --- */
+    .topbar { height: 24px !important; padding: 0 8px !important; border-bottom: 1px solid #555 !important; }
+    .line { min-height: 0 !important; }
+    .cards-wrap, .timeline-body { overflow: visible !important; }
+    .board {
+      grid-template-columns: repeat(6, 1fr) !important;
+      min-width: 0 !important; overflow: visible !important;
+    }
+    .export-wrap, .head-btns, .card-del, .compact-del, .drag-handle, .pager, .modal-mask,
+    .line-config, .top-btn, .date-back-today, .cal-popover, .clock, #totalDur, #totalFinish { display: none !important; }
   }
   body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
   body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
