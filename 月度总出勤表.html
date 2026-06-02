@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>月度出勤排班表</title>
+<title>月度总出勤表</title>
 <style>
 :root{
   --bg:#0a0a0b; --card:#161618; --border:#26262a;
@@ -44,7 +44,10 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button{padding:3px 9px;font-size:13px;color:var(--muted);border-color:transparent;background:#1c1c20}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
-.schedule-wrap{margin-top:10px;overflow-x:auto}
+.schedule-wrap{margin-top:10px}
+table.schedule thead th{position:sticky;top:50px;z-index:3;background:#1c1c20}
+table.schedule thead th.dept-name{background:#161618;z-index:3}
+table.schedule thead th.name-col{z-index:4}
 table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
 table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
 table.schedule th{background:#1c1c20;font-weight:500}
@@ -142,7 +145,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 </head>
 <body>
 <nav class="nav">
-  <span class="brand" data-route="#/schedule" title="返回排班主页">月度出勤排班表</span>
+  <span class="brand" data-route="#/schedule" title="返回排班主页">月度总出勤表</span>
   <span id="dept-tabs"></span>
   <span class="spacer"></span>
   <span id="period-nav"></span>
@@ -470,7 +473,14 @@ const App = (() => {
 
   function bindNav() {
     document.querySelectorAll('[data-route]').forEach(b => {
-      b.addEventListener('click', () => { location.hash = b.dataset.route; });
+      b.addEventListener('click', () => {
+        if (b.dataset.route === '#/schedule') {
+          history.replaceState(null, '', location.pathname + location.search);
+          showRoute();
+        } else {
+          location.hash = b.dataset.route;
+        }
+      });
     });
     document.getElementById('btn-print').addEventListener('click', () => window.print());
     document.getElementById('btn-edit-toggle').addEventListener('click', () => {
@@ -489,7 +499,6 @@ const App = (() => {
 
   function init() {
     bindNav();
-    if (!location.hash) location.hash = '#/schedule';
     showRoute();
     updateDirtyIndicator();
     updateEditUI();
