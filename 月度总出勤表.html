@@ -460,10 +460,12 @@ const App = (() => {
   function updateDirtyIndicator() {
     const el = document.getElementById('dirty-indicator');
     const lastExport = Store.get().lastExportAt;
-    if (!lastExport) { el.textContent = '⚠ 尚未导出'; el.classList.add('warn'); return; }
-    const days = (Date.now() - new Date(lastExport).getTime()) / 86400000;
-    if (days >= 7) { el.textContent = `⚠ ${Math.floor(days)} 天未导出`; el.classList.add('warn'); }
-    else { el.textContent = '✓ 已暂存'; el.classList.remove('warn'); }
+    if (lastExport) {
+      const days = (Date.now() - new Date(lastExport).getTime()) / 86400000;
+      if (days >= 7) { el.textContent = `⚠ ${Math.floor(days)} 天未导出`; el.classList.add('warn'); return; }
+    }
+    el.textContent = '✓ 已暂存';
+    el.classList.remove('warn');
   }
 
   function bindNav() {
