@@ -45,8 +45,10 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
 .schedule-wrap{margin-top:10px}
-table.schedule thead th{position:sticky;top:50px;z-index:3;background:#1c1c20}
-table.schedule thead th.dept-name{background:#161618;z-index:3}
+table.schedule thead tr.month-row th{position:sticky;top:var(--sticky-r0,50px);z-index:3;background:#1c1c20}
+table.schedule thead tr.head-row th{position:sticky;top:var(--sticky-r1,76px);z-index:3;background:#1c1c20}
+table.schedule thead tr.weekday-row th{position:sticky;top:var(--sticky-r2,101px);z-index:3;background:#1c1c20}
+table.schedule thead th.dept-name{background:#161618}
 table.schedule thead th.name-col{z-index:4}
 table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
 table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
@@ -515,6 +517,23 @@ const Pages = (() => {
     renderDeptTabs();
     renderPeriodNav();
     host.appendChild(buildTable());
+    requestAnimationFrame(syncStickyOffsets);
+  }
+
+  function syncStickyOffsets() {
+    const nav = document.querySelector('.nav');
+    const tbl = document.querySelector('#page-schedule table.schedule');
+    if (!nav || !tbl) return;
+    const navH = nav.offsetHeight;
+    const monthRow = tbl.querySelector('thead tr.month-row');
+    const headRow = tbl.querySelector('thead tr.head-row');
+    const r0 = navH;
+    const r1 = r0 + (monthRow ? monthRow.offsetHeight : 25);
+    const r2 = r1 + (headRow ? headRow.offsetHeight : 25);
+    const s = document.documentElement.style;
+    s.setProperty('--sticky-r0', r0 + 'px');
+    s.setProperty('--sticky-r1', r1 + 'px');
+    s.setProperty('--sticky-r2', r2 + 'px');
   }
 
   function renderDeptTabs() {
@@ -578,7 +597,7 @@ const Pages = (() => {
     }
     thead.appendChild(r0);
 
-    const r1 = Render.el('tr');
+    const r1 = Render.el('tr.head-row');
     r1.appendChild(Render.el('th.role-col', { rowspan: 2 }, '役職'));
     r1.appendChild(Render.el('th.name-col', { rowspan: 2 }, '氏名'));
     r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '有休'));
@@ -592,7 +611,7 @@ const Pages = (() => {
       r1.appendChild(th);
     }
     thead.appendChild(r1);
-    const r2 = Render.el('tr');
+    const r2 = Render.el('tr.weekday-row');
     for (const d of days) {
       const th = Render.el('th', d.weekdayJp);
       if (d.isSat) th.classList.add('sat');
