@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>月度出勤排班表</title>
+<style>
+:root{
+  --bg:#0a0a0b; --card:#161618; --border:#26262a;
+  --text:#e8e8ea; --muted:#8a8a90;
+  --accent:#7c5cff; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  --sat:#3b82f6; --sun:#ef4444; --today:#1e293b; --retired:#52525a;
+  --r-card:12px; --r-btn:8px;
+  --font:"Noto Sans JP",-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{background:#1f1f23}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#6a4def}
+button.danger{color:var(--danger);border-color:var(--danger)}
+input,select{font:inherit;color:inherit;background:#1f1f23;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 10px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+/* hide native number spinners (Webkit + Firefox) */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;flex-wrap:wrap}
+.nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
+.nav .brand:hover{color:var(--accent)}
+.nav .spacer{flex:1}
+.nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.dirty{font-size:12px;color:var(--muted)}
+.dirty.warn{color:var(--warn)}
+.page{padding:14px 16px;max-width:100%}
+.hidden{display:none!important}
+#test-results{position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-family:var(--font-mono);font-size:12px;padding:8px;max-height:40vh;overflow:auto;z-index:9999;white-space:pre-wrap}
+/* schedule page */
+.dept-tabs button{margin-right:4px}
+.dept-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.period-nav{display:inline-flex;gap:4px;align-items:center;font-family:var(--font-mono)}
+.period-nav button{padding:3px 9px;font-size:13px;color:var(--muted);border-color:transparent;background:#1c1c20}
+.period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
+.period-nav span{color:var(--text);padding:0 6px}
+.schedule-wrap{margin-top:10px;overflow-x:auto}
+table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
+table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
+table.schedule th{background:#1c1c20;font-weight:500}
+table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:#161618}
+table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
+table.schedule th.role-col,table.schedule td.role-col{min-width:60px;text-align:left;padding-left:6px}
+table.schedule th.name-col,table.schedule td.name-col{min-width:110px;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1}
+table.schedule td.name-col{background:var(--card)}
+table.schedule th.sum-col,table.schedule td.sum-col{min-width:36px;color:var(--muted)}
+table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
+table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
+table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:27px;height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
+table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1}
+table.schedule td.day-cell:hover{background:#1f1f23}
+table.schedule td.day-cell.contractRest{color:var(--text)}
+table.schedule td.day-cell.paidLeave{color:var(--accent);font-weight:700}
+table.schedule td.day-cell.retired{color:var(--retired);cursor:not-allowed;background:#111114}
+body:not(.editing) table.schedule td.day-cell{cursor:default}
+body:not(.editing) table.schedule td.day-cell:hover{background:transparent}
+body:not(.editing) table.schedule td.required input{cursor:default;color:var(--muted)}
+body:not(.editing) table.schedule td.required input:hover{background:transparent}
+table.schedule th.sat{color:var(--sat)}
+table.schedule th.sun{color:var(--sun)}
+table.schedule th.today,table.schedule td.today{background:var(--today)}
+table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
+table.schedule tr.stat-row td.label{text-align:left;padding-left:6px;color:var(--muted)}
+table.schedule td.required{cursor:text;padding:0}
+table.schedule td.required input{width:100%;padding:2px 0;font-size:12px;font-family:var(--font-mono);text-align:center;background:transparent;border:none;border-radius:0;color:var(--accent);font-weight:600}
+table.schedule td.required input:hover{background:#1f1f23}
+table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(--accent);outline-offset:-1px}
+/* settings */
+.settings-section{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
+.settings-section h2{margin:0 0 10px;font-size:16px}
+.settings-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f1f23}
+.settings-row:last-child{border-bottom:none}
+.settings-row .grow{flex:1}
+.settings-row input{width:auto}
+.settings-row input.name-input{min-width:160px}
+.settings-row input.num{width:60px}
+.settings-row input.date{width:130px}
+.settings-row .role-input{min-width:120px}
+.settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
+/* data */
+.data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
+.data-stats{font-family:var(--font-mono);color:var(--muted);font-size:13px;line-height:1.8}
+.data-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+/* print */
+@media print {
+  @page { size: A4 landscape; margin: 5mm; }
+  html, body { background: #fff; color: #000; font-size: 11px; }
+  .nav, #page-settings, #page-data, #modal-host, #test-results { display: none !important; }
+  #page-schedule { padding: 0; }
+  .schedule-wrap { overflow: visible; margin: 0; }
+  table.schedule {
+    background: #fff; font-size: 11px;
+    width: auto; table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+  table.schedule th, table.schedule td {
+    border: 1px solid #888; padding: 3px 2px; color: #000; background: #fff !important;
+    line-height: 1.5; height: 22px;
+  }
+  table.schedule th { background: #eee !important; font-weight: 600; }
+  table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
+  table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
+  /* fixed column widths — total ≈ 1078px (A4 landscape minus 10mm margins) */
+  table.schedule th.role-col, table.schedule td.role-col { width: 56px; padding-left: 4px; }
+  table.schedule th.name-col, table.schedule td.name-col { width: 110px; padding-left: 4px; position: static; background: #fff !important; }
+  table.schedule th.sum-col, table.schedule td.sum-col { width: 32px; color: #000; }
+  table.schedule td.sum-col.over { color: #b91c1c !important; font-weight: 700; }
+  table.schedule td.sum-col.under { color: #b45309 !important; font-weight: 700; }
+  /* day TH columns (no class on them) — width via :not() selector */
+  table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) { width: 26px; }
+  table.schedule td.day-cell { width: 26px; height: var(--print-row-h, 22px); font-size: 13px; padding: 0; }
+  table.schedule tbody tr:has(td.day-cell) td { height: var(--print-row-h, 22px); }
+  table.schedule td.day-cell.contractRest { color: #000; }
+  table.schedule td.day-cell.paidLeave { color: #000; font-weight: 700; background: #ddd !important; }
+  table.schedule td.day-cell.retired { color: #888; background: #f5f5f5 !important; }
+  table.schedule th.sat { color: #1d4ed8 !important; }
+  table.schedule th.sun { color: #b91c1c !important; }
+  table.schedule td.today, table.schedule th.today { background: #ffeaa7 !important; }
+  table.schedule tr.stat-row td { background: #f5f5f5 !important; height: 22px; font-weight: 600; }
+  table.schedule td.required { padding: 0; }
+  table.schedule td.required input {
+    width: 100%; height: 100%; padding: 0;
+    border: none !important; background: transparent !important; color: #000;
+    font-size: 12px; font-weight: 600; text-align: center;
+    -webkit-appearance: none; appearance: none;
+  }
+  table.schedule td.required input::-webkit-outer-spin-button,
+  table.schedule td.required input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand" data-route="#/schedule" title="返回排班主页">月度出勤排班表</span>
+  <span id="dept-tabs"></span>
+  <span class="spacer"></span>
+  <span id="period-nav"></span>
+  <span id="dirty-indicator" class="dirty">✓ 已暂存</span>
+  <button id="btn-edit-toggle">🔒 锁定</button>
+  <button data-route="#/settings">⚙ 设置</button>
+  <button data-route="#/data">⬇⬆ 数据</button>
+  <button class="primary" id="btn-print">🖨 打印</button>
+</nav>
+<section id="page-schedule" class="page"></section>
+<section id="page-settings" class="page hidden"></section>
+<section id="page-data" class="page hidden"></section>
+<div id="modal-host"></div>
+<div id="test-results" class="hidden"></div>
+<script>
+'use strict';
+
+const Util = (() => {
+  const pad2 = n => String(n).padStart(2,'0');
+  const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const parseYmd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+  const newId = (prefix) => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const clone = obj => JSON.parse(JSON.stringify(obj));
+  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  return { pad2, ymd, parseYmd, addDays, newId, clone, debounce };
+})();
+
+const Holidays = (() => {
+  // 2024-2027 日本国民の祝日 (静的データ; 振替休日含む)
+  const list = new Set([
+    // 2024
+    '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23',
+    '2024-03-20','2024-04-29','2024-05-03','2024-05-04','2024-05-05','2024-05-06',
+    '2024-07-15','2024-08-11','2024-08-12','2024-09-16','2024-09-22','2024-09-23',
+    '2024-10-14','2024-11-03','2024-11-04','2024-11-23',
+    // 2025
+    '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+    '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06',
+    '2025-07-21','2025-08-11','2025-09-15','2025-09-23',
+    '2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+    // 2026
+    '2026-01-01','2026-01-12','2026-02-11','2026-02-23',
+    '2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
+    '2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23',
+    '2026-10-12','2026-11-03','2026-11-23',
+    // 2027
+    '2027-01-01','2027-01-11','2027-02-11','2027-02-23',
+    '2027-03-21','2027-03-22','2027-04-29','2027-05-03','2027-05-04','2027-05-05',
+    '2027-07-19','2027-08-11','2027-09-20','2027-09-23',
+    '2027-10-11','2027-11-03','2027-11-23'
+  ]);
+  const isHoliday = (ymd) => list.has(ymd);
+  return { isHoliday };
+})();
+
+const Period = (() => {
+  // periodKey: 'YYYY-MM' represents YYYY-MM-16 ~ next month 15
+  const WEEKDAY_JP = ['日','月','火','水','木','金','土']; // Date.getDay() → 0..6
+  const todayKey = () => {
+    const d = new Date();
+    if (d.getDate() < 16) {
+      const p = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+      return `${p.getFullYear()}-${Util.pad2(p.getMonth()+1)}`;
+    }
+    return `${d.getFullYear()}-${Util.pad2(d.getMonth()+1)}`;
+  };
+  const range = (key) => {
+    const [y, m] = key.split('-').map(Number);
+    const start = new Date(y, m - 1, 16);
+    const end = new Date(y, m, 15);
+    return { start, end };
+  };
+  const days = (key) => {
+    const { start, end } = range(key);
+    const out = [];
+    for (let d = new Date(start); d <= end; d = Util.addDays(d, 1)) {
+      const ymdStr = Util.ymd(d);
+      out.push({
+        ymd: ymdStr,
+        day: d.getDate(),
+        weekday: d.getDay(),
+        weekdayJp: WEEKDAY_JP[d.getDay()],
+        isSat: d.getDay() === 6,
+        isSun: d.getDay() === 0,
+        isHoliday: Holidays.isHoliday(ymdStr)
+      });
+    }
+    return out;
+  };
+  const prev = (key) => {
+    const [y, m] = key.split('-').map(Number);
+    const p = new Date(y, m - 2, 1);
+    return `${p.getFullYear()}-${Util.pad2(p.getMonth()+1)}`;
+  };
+  const next = (key) => {
+    const [y, m] = key.split('-').map(Number);
+    const n = new Date(y, m, 1);
+    return `${n.getFullYear()}-${Util.pad2(n.getMonth()+1)}`;
+  };
+  const label = (key) => {
+    const { start, end } = range(key);
+    return `${start.getFullYear()}年${start.getMonth()+1}月${start.getDate()}日 ~ ${end.getMonth()+1}月${end.getDate()}日`;
+  };
+  return { todayKey, range, days, prev, next, label };
+})();
+
+const Store = (() => {
+  const KEY = 'monthly-attendance-data-v1';
+  const VERSION = 1;
+
+  const defaults = () => ({
+    version: VERSION,
+    departments: [
+      { id: 'dept1', name: '部门 A', requiredCount: 10 },
+      { id: 'dept2', name: '部门 B', requiredCount: 10 },
+      { id: 'dept3', name: '部门 C', requiredCount: 10 }
+    ],
+    people: { dept1: [], dept2: [], dept3: [] },
+    attendance: {},
+    requiredPerDay: {},
+    ui: { currentDept: 'dept1', currentPeriod: Period.todayKey(), editMode: false },
+    lastExportAt: null
+  });
+
+  let state = load();
+  const listeners = new Set();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return defaults();
+      const parsed = JSON.parse(raw);
+      if (parsed.version !== VERSION) return defaults();
+      // backward-compat: old field name shortTermDispatch → requiredPerDay
+      if (!parsed.requiredPerDay) parsed.requiredPerDay = parsed.shortTermDispatch || {};
+      delete parsed.shortTermDispatch;
+      return parsed;
+    } catch (_) { return defaults(); }
+  }
+
+  const persist = Util.debounce(() => {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    listeners.forEach(fn => fn('persist'));
+  }, 100);
+
+  function commit(reason = 'change') {
+    listeners.forEach(fn => fn(reason));
+    persist();
+  }
+
+  // ---- selectors ----
+  const get = () => state;
+  const dept = (id = state.ui.currentDept) => state.departments.find(d => d.id === id);
+  const people = (deptId = state.ui.currentDept) => state.people[deptId] || [];
+  const cellKey = (deptId, personId, ymd) => `${deptId}|${personId}|${ymd}`;
+  const dispKey = (deptId, ymd) => `${deptId}|${ymd}`;
+
+  const cellStatus = (deptId, personId, ymd) => {
+    const person = people(deptId).find(p => p.id === personId);
+    if (person && person.retiredOn && ymd >= person.retiredOn) return 'retired';
+    return state.attendance[cellKey(deptId, personId, ymd)] || 'work';
+  };
+
+  const DEFAULT_REQUIRED = 22;
+  const requiredCount = (deptId, ymd) => {
+    const v = state.requiredPerDay[dispKey(deptId, ymd)];
+    return (v === undefined || v === null) ? DEFAULT_REQUIRED : v;
+  };
+
+  // ---- mutators ----
+  function setUi(patch) { Object.assign(state.ui, patch); commit('ui'); }
+
+  function setCell(deptId, personId, ymd, status) {
+    const k = cellKey(deptId, personId, ymd);
+    if (status === 'work') delete state.attendance[k];
+    else state.attendance[k] = status;
+    commit('cell');
+  }
+
+  function cycleCell(deptId, personId, ymd) {
+    const current = cellStatus(deptId, personId, ymd);
+    if (current === 'retired') return;
+    const next = current === 'work' ? 'contractRest'
+               : current === 'contractRest' ? 'paidLeave'
+               : 'work';
+    setCell(deptId, personId, ymd, next);
+  }
+
+  function setRequired(deptId, ymd, n) {
+    const k = dispKey(deptId, ymd);
+    const raw = String(n).trim();
+    if (raw === '') { delete state.requiredPerDay[k]; commit('required'); return; }
+    state.requiredPerDay[k] = Math.max(0, Number(n) || 0);
+    commit('required');
+  }
+
+  // departments
+  function addDepartment(name) {
+    const id = Util.newId('d');
+    state.departments.push({ id, name, requiredCount: 10 });
+    state.people[id] = [];
+    commit('dept');
+    return id;
+  }
+  function renameDepartment(id, name) {
+    const d = state.departments.find(x => x.id === id);
+    if (d) { d.name = name; commit('dept'); }
+  }
+  function removeDepartment(id) {
+    state.departments = state.departments.filter(d => d.id !== id);
+    delete state.people[id];
+    for (const k of Object.keys(state.attendance)) if (k.startsWith(id + '|')) delete state.attendance[k];
+    for (const k of Object.keys(state.requiredPerDay)) if (k.startsWith(id + '|')) delete state.requiredPerDay[k];
+    if (state.ui.currentDept === id) state.ui.currentDept = state.departments[0]?.id || null;
+    commit('dept');
+  }
+
+  // people
+  function addPerson(deptId, person) {
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeaveInit: 0, retiredOn: null, ...person };
+    (state.people[deptId] = state.people[deptId] || []).push(p);
+    commit('people');
+    return p.id;
+  }
+  function updatePerson(deptId, personId, patch) {
+    const list = state.people[deptId] || [];
+    const i = list.findIndex(p => p.id === personId);
+    if (i >= 0) { list[i] = { ...list[i], ...patch }; commit('people'); }
+  }
+  function removePerson(deptId, personId) {
+    state.people[deptId] = (state.people[deptId] || []).filter(p => p.id !== personId);
+    for (const k of Object.keys(state.attendance)) if (k.startsWith(`${deptId}|${personId}|`)) delete state.attendance[k];
+    commit('people');
+  }
+
+  // data
+  function exportJson() {
+    state.lastExportAt = new Date().toISOString();
+    commit('export');
+    return JSON.stringify(state, null, 2);
+  }
+  function importJson(json) {
+    const parsed = JSON.parse(json);
+    if (parsed.version !== VERSION) throw new Error('版本不兼容');
+    state = parsed;
+    commit('import');
+  }
+  function reset() { state = defaults(); commit('reset'); }
+
+  function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
+  return {
+    get, dept, people, cellStatus, requiredCount,
+    setUi, setCell, cycleCell, setRequired,
+    addDepartment, renameDepartment, removeDepartment,
+    addPerson, updatePerson, removePerson,
+    exportJson, importJson, reset, subscribe
+  };
+})();
+
+const Render = (() => {
+  function el(tag, attrsOrChildren, children) {
+    let attrs = {};
+    if (Array.isArray(attrsOrChildren) || typeof attrsOrChildren === 'string') {
+      children = attrsOrChildren;
+    } else if (attrsOrChildren && typeof attrsOrChildren === 'object' && attrsOrChildren.nodeType === undefined) {
+      attrs = attrsOrChildren;
+    }
+    const [name, ...rest] = tag.split(/(?=[.#])/);
+    const node = document.createElement(name);
+    for (const part of rest) {
+      if (part.startsWith('.')) node.classList.add(part.slice(1));
+      else if (part.startsWith('#')) node.id = part.slice(1);
+    }
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (k === 'class') node.className += ' ' + v;
+      else if (k === 'dataset') Object.assign(node.dataset, v);
+      else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+      else node.setAttribute(k, v);
+    }
+    if (children != null) {
+      const arr = Array.isArray(children) ? children : [children];
+      for (const c of arr) {
+        if (c == null || c === false) continue;
+        node.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+      }
+    }
+    return node;
+  }
+  const clear = (node) => { while (node.firstChild) node.removeChild(node.firstChild); };
+  const mount = (host, node) => { clear(host); host.appendChild(node); };
+  return { el, clear, mount };
+})();
+
+const App = (() => {
+  const routes = {
+    '#/schedule': 'page-schedule',
+    '#/settings': 'page-settings',
+    '#/data': 'page-data'
+  };
+
+  function showRoute() {
+    const hash = location.hash in routes ? location.hash : '#/schedule';
+    for (const [r, id] of Object.entries(routes)) {
+      document.getElementById(id).classList.toggle('hidden', r !== hash);
+    }
+    if (hash === '#/schedule') Pages.renderSchedule();
+    else if (hash === '#/settings') Pages.renderSettings();
+    else if (hash === '#/data') Pages.renderData();
+  }
+
+  function updateDirtyIndicator() {
+    const el = document.getElementById('dirty-indicator');
+    const lastExport = Store.get().lastExportAt;
+    if (!lastExport) { el.textContent = '⚠ 尚未导出'; el.classList.add('warn'); return; }
+    const days = (Date.now() - new Date(lastExport).getTime()) / 86400000;
+    if (days >= 7) { el.textContent = `⚠ ${Math.floor(days)} 天未导出`; el.classList.add('warn'); }
+    else { el.textContent = '✓ 已暂存'; el.classList.remove('warn'); }
+  }
+
+  function bindNav() {
+    document.querySelectorAll('[data-route]').forEach(b => {
+      b.addEventListener('click', () => { location.hash = b.dataset.route; });
+    });
+    document.getElementById('btn-print').addEventListener('click', () => window.print());
+    document.getElementById('btn-edit-toggle').addEventListener('click', () => {
+      Store.setUi({ editMode: !Store.get().ui.editMode });
+    });
+    window.addEventListener('hashchange', showRoute);
+  }
+
+  function updateEditUI() {
+    const editing = !!Store.get().ui.editMode;
+    document.body.classList.toggle('editing', editing);
+    const btn = document.getElementById('btn-edit-toggle');
+    btn.textContent = editing ? '✏ 编辑中' : '🔒 锁定';
+    btn.classList.toggle('primary', editing);
+  }
+
+  function init() {
+    bindNav();
+    if (!location.hash) location.hash = '#/schedule';
+    showRoute();
+    updateDirtyIndicator();
+    updateEditUI();
+    Store.subscribe(() => { showRoute(); updateDirtyIndicator(); updateEditUI(); });
+  }
+
+  return { init, showRoute };
+})();
+
+const Pages = (() => {
+  function renderSchedule() {
+    const host = document.getElementById('page-schedule');
+    Render.clear(host);
+    renderDeptTabs();
+    renderPeriodNav();
+    host.appendChild(buildTable());
+  }
+
+  function renderDeptTabs() {
+    const host = document.getElementById('dept-tabs');
+    Render.clear(host);
+    const cur = Store.get().ui.currentDept;
+    const sel = Render.el('select.dept-select', {
+      onchange: (e) => Store.setUi({ currentDept: e.target.value })
+    });
+    for (const d of Store.get().departments) {
+      sel.appendChild(Render.el('option', { value: d.id }, d.name));
+    }
+    sel.value = cur || '';
+    host.appendChild(sel);
+  }
+
+  function renderPeriodNav() {
+    const host = document.getElementById('period-nav');
+    Render.clear(host);
+    host.classList.add('period-nav');
+    const cur = Store.get().ui.currentPeriod;
+    host.appendChild(Render.el('button', { onclick: () => Store.setUi({ currentPeriod: Period.prev(cur) }) }, '◀'));
+    host.appendChild(Render.el('span', { style: { padding: '0 8px' } }, Period.label(cur)));
+    host.appendChild(Render.el('button', { onclick: () => Store.setUi({ currentPeriod: Period.next(cur) }) }, '▶'));
+    host.appendChild(Render.el('button', { onclick: () => Store.setUi({ currentPeriod: Period.todayKey() }) }, '今日'));
+  }
+
+  function buildTable() {
+    const wrap = Render.el('div.schedule-wrap');
+    const tbl = Render.el('table.schedule');
+    const days = Period.days(Store.get().ui.currentPeriod);
+    const todayYmd = Util.ymd(new Date());
+    tbl.appendChild(buildHeader(days, todayYmd));
+    tbl.appendChild(buildBody(days, todayYmd));
+    wrap.appendChild(tbl);
+    // dynamic print row-height based on people count
+    const peopleN = Store.people(Store.get().ui.currentDept).length;
+    const AVAIL = 580;   // A4 landscape body area minus header(70) + stats(66) + buffer
+    const MIN = 14, MAX = 32;
+    const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
+    wrap.style.setProperty('--print-row-h', rowH + 'px');
+    return wrap;
+  }
+
+  function buildHeader(days, todayYmd) {
+    const thead = Render.el('thead');
+
+    // Row 0: dept name (over 5 summary cols) + month-grouping cells
+    const r0 = Render.el('tr.month-row');
+    const curDept = Store.dept();
+    r0.appendChild(Render.el('th.dept-name', { colspan: 5 }, curDept ? curDept.name : ''));
+    let groupStart = 0;
+    let currentMonth = parseInt(days[0].ymd.slice(5, 7), 10);
+    for (let i = 1; i <= days.length; i++) {
+      const month = i < days.length ? parseInt(days[i].ymd.slice(5, 7), 10) : null;
+      if (i === days.length || month !== currentMonth) {
+        r0.appendChild(Render.el('th.month-label', { colspan: i - groupStart }, `${currentMonth}月`));
+        groupStart = i;
+        currentMonth = month;
+      }
+    }
+    thead.appendChild(r0);
+
+    const r1 = Render.el('tr');
+    r1.appendChild(Render.el('th.role-col', { rowspan: 2 }, '役職'));
+    r1.appendChild(Render.el('th.name-col', { rowspan: 2 }, '氏名'));
+    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '有休'));
+    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '契休'));
+    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '残'));
+    for (const d of days) {
+      const th = Render.el('th', String(d.day));
+      if (d.isSat) th.classList.add('sat');
+      if (d.isSun || d.isHoliday) th.classList.add('sun');
+      if (d.ymd === todayYmd) th.classList.add('today');
+      r1.appendChild(th);
+    }
+    thead.appendChild(r1);
+    const r2 = Render.el('tr');
+    for (const d of days) {
+      const th = Render.el('th', d.weekdayJp);
+      if (d.isSat) th.classList.add('sat');
+      if (d.isSun || d.isHoliday) th.classList.add('sun');
+      if (d.ymd === todayYmd) th.classList.add('today');
+      r2.appendChild(th);
+    }
+    thead.appendChild(r2);
+    return thead;
+  }
+
+  function buildBody(days, todayYmd) {
+    const tbody = Render.el('tbody');
+    const deptId = Store.get().ui.currentDept;
+    const people = Store.people(deptId);
+    const periodKey = Store.get().ui.currentPeriod;
+
+    if (people.length === 0) {
+      tbody.appendChild(Render.el('tr',
+        Render.el('td', { colspan: 5 + days.length, style: { padding: '12px', color: 'var(--muted)', textAlign: 'center' } },
+          '本部门暂无人员，请到「⚙ 设置」添加')));
+      return tbody;
+    }
+
+    for (const p of people) {
+      const tr = Render.el('tr');
+      tr.appendChild(Render.el('td.role-col', p.role || ''));
+      tr.appendChild(Render.el('td.name-col', p.name || ''));
+
+      const sums = computeSums(deptId, p, periodKey, days);
+      tr.appendChild(Render.el('td.sum-col', String(sums.paid)));
+      const contractTd = Render.el('td.sum-col', String(sums.contract));
+      if (sums.restCount > sums.contract) contractTd.classList.add('over');
+      else if (sums.restCount < sums.contract) contractTd.classList.add('under');
+      tr.appendChild(contractTd);
+      tr.appendChild(Render.el('td.sum-col', String(sums.remaining)));
+
+      for (const d of days) {
+        const st = Store.cellStatus(deptId, p.id, d.ymd);
+        const td = Render.el('td.day-cell',
+          { dataset: { person: p.id, ymd: d.ymd } },
+          st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'retired' ? '✲' : ''
+        );
+        td.classList.add(st);
+        if (d.ymd === todayYmd) td.classList.add('today');
+        if (st !== 'retired') {
+          td.addEventListener('click', () => {
+            if (!Store.get().ui.editMode) return;
+            Store.cycleCell(deptId, p.id, d.ymd);
+          });
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    for (const row of buildStatRows(deptId, days)) tbody.appendChild(row);
+    return tbody;
+  }
+
+  function computeSums(deptId, person, periodKey, days) {
+    let paid = 0, restCount = 0;
+    for (const d of days) {
+      const st = Store.cellStatus(deptId, person.id, d.ymd);
+      if (st === 'paidLeave') paid++;
+      else if (st === 'contractRest') restCount++;
+    }
+    const contract = days.length >= 31 ? 9 : 8;
+    return { paid, contract, restCount, remaining: (person.annualLeaveInit || 0) - paid };
+  }
+
+  function buildStatRows(deptId, days) {
+    const out = [];
+    const lineTotals = days.map(d => computeLineTotal(deptId, d.ymd));
+    const requireds = days.map(d => Store.requiredCount(deptId, d.ymd));
+
+    // Row 1: 必要人数 (editable, default 22)
+    const r1 = Render.el('tr.stat-row');
+    r1.appendChild(Render.el('td.label', { colspan: 5 }, '必要人数'));
+    const editing = Store.get().ui.editMode;
+    for (let i = 0; i < days.length; i++) {
+      const td = Render.el('td.required');
+      const input = Render.el('input', {
+        type: 'number',
+        min: '0',
+        value: String(requireds[i]),
+        readonly: editing ? null : true,
+        onchange: editing ? (e) => Store.setRequired(deptId, days[i].ymd, e.target.value) : null,
+        onfocus: (e) => e.target.select()
+      });
+      td.appendChild(input);
+      r1.appendChild(td);
+    }
+    out.push(r1);
+
+    // Row 2: ライン合計 (auto)
+    const r2 = Render.el('tr.stat-row');
+    r2.appendChild(Render.el('td.label', { colspan: 5 }, 'ライン合計'));
+    for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', String(lineTotals[i])));
+    out.push(r2);
+
+    // Row 3: 派遣短期 = 必要人数 − ライン合計
+    const r3 = Render.el('tr.stat-row');
+    r3.appendChild(Render.el('td.label', { colspan: 5 }, '派遣短期'));
+    for (let i = 0; i < days.length; i++) {
+      const gap = requireds[i] - lineTotals[i];
+      const td = Render.el('td', String(gap));
+      if (gap > 0) td.style.color = 'var(--danger)';
+      else if (gap < 0) td.style.color = 'var(--muted)';
+      r3.appendChild(td);
+    }
+    out.push(r3);
+
+    return out;
+  }
+
+  function computeLineTotal(deptId, ymd) {
+    let total = 0;
+    for (const p of Store.people(deptId)) {
+      if (Store.cellStatus(deptId, p.id, ymd) === 'work') total++;
+    }
+    return total;
+  }
+
+  // ---- settings page ----
+  function renderSettings() {
+    const host = document.getElementById('page-settings');
+    Render.clear(host);
+    host.appendChild(buildDeptSection());
+    host.appendChild(buildPeopleSection());
+  }
+
+  function buildDeptSection() {
+    const sec = Render.el('div.settings-section');
+    sec.appendChild(Render.el('h2', '部门'));
+    for (const d of Store.get().departments) {
+      const row = Render.el('div.settings-row');
+      const nameInput = Render.el('input.name-input', {
+        value: d.name,
+        onchange: (e) => Store.renameDepartment(d.id, e.target.value || '未命名')
+      });
+      row.appendChild(nameInput);
+      row.appendChild(Render.el('span.grow'));
+      row.appendChild(Render.el('button.danger', {
+        onclick: () => {
+          if (confirm(`确认删除部门「${d.name}」？其下所有人员与排班将一并删除。`)) {
+            Store.removeDepartment(d.id);
+          }
+        }
+      }, '删除'));
+      sec.appendChild(row);
+    }
+    const addRow = Render.el('div.settings-row');
+    addRow.appendChild(Render.el('button.primary', {
+      onclick: () => {
+        const name = prompt('新部门名称：');
+        if (name) Store.addDepartment(name);
+      }
+    }, '+ 新增部门'));
+    sec.appendChild(addRow);
+    return sec;
+  }
+
+  function buildPeopleSection() {
+    const sec = Render.el('div.settings-section');
+    sec.appendChild(Render.el('h2', '人员'));
+    for (const d of Store.get().departments) {
+      sec.appendChild(Render.el('div', { style: { marginTop: '10px', fontWeight: '600' } }, d.name));
+      const sub = Render.el('div.settings-sub-people');
+      for (const p of Store.people(d.id)) {
+        sub.appendChild(buildPersonRow(d.id, p));
+      }
+      sub.appendChild(buildPersonAddRow(d.id));
+      sec.appendChild(sub);
+    }
+    return sec;
+  }
+
+  function buildPersonRow(deptId, p) {
+    const row = Render.el('div.settings-row');
+    row.appendChild(Render.el('input.role-input', {
+      placeholder: '役職', value: p.role || '',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { role: e.target.value })
+    }));
+    row.appendChild(Render.el('input.name-input', {
+      placeholder: '氏名', value: p.name || '',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { name: e.target.value })
+    }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '有休残:'));
+    row.appendChild(Render.el('input.num', {
+      type: 'number', min: '0', value: String(p.annualLeaveInit || 0),
+      onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeaveInit: Number(e.target.value) || 0 })
+    }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '退职日:'));
+    row.appendChild(Render.el('input.date', {
+      type: 'date', value: p.retiredOn || '',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { retiredOn: e.target.value || null })
+    }));
+    row.appendChild(Render.el('span.grow'));
+    row.appendChild(Render.el('button.danger', {
+      onclick: () => {
+        if (confirm(`确认删除 ${p.name || '该人员'}？其排班记录也将清除。`)) {
+          Store.removePerson(deptId, p.id);
+        }
+      }
+    }, '删除'));
+    return row;
+  }
+
+  function buildPersonAddRow(deptId) {
+    const row = Render.el('div.settings-row');
+    row.appendChild(Render.el('button.primary', {
+      onclick: () => Store.addPerson(deptId, { name: '新成员', role: '', annualLeaveInit: 0 })
+    }, '+ 新增人员'));
+    return row;
+  }
+
+  // ---- data page ----
+  function renderData() {
+    const host = document.getElementById('page-data');
+    Render.clear(host);
+    const s = Store.get();
+    const card = Render.el('div.data-card');
+    card.appendChild(Render.el('h2', { style: { marginTop: 0 } }, '数据管理'));
+
+    const peopleCount = Object.values(s.people).reduce((sum, arr) => sum + arr.length, 0);
+    const stats = Render.el('div.data-stats');
+    stats.appendChild(Render.el('div', `部门数：${s.departments.length}`));
+    stats.appendChild(Render.el('div', `人员总数：${peopleCount}`));
+    stats.appendChild(Render.el('div', `排班记录条数：${Object.keys(s.attendance).length}`));
+    stats.appendChild(Render.el('div', `必要人数覆盖条数：${Object.keys(s.requiredPerDay).length}（其余按默认 22）`));
+    stats.appendChild(Render.el('div', `最近导出：${s.lastExportAt ? new Date(s.lastExportAt).toLocaleString('ja-JP') : '从未'}`));
+    card.appendChild(stats);
+
+    const actions = Render.el('div.data-actions');
+    actions.appendChild(Render.el('button.primary', { onclick: doExport }, '⬇ 导出 JSON'));
+    actions.appendChild(Render.el('button', { onclick: doImport }, '⬆ 导入 JSON'));
+    actions.appendChild(Render.el('button.danger', { onclick: doReset }, '⚠ 重置全部数据'));
+    card.appendChild(actions);
+    host.appendChild(card);
+  }
+
+  function doExport() {
+    const json = Store.exportJson();
+    const stamp = new Date();
+    const name = `月度出勤表-${stamp.getFullYear()}${Util.pad2(stamp.getMonth()+1)}${Util.pad2(stamp.getDate())}-${Util.pad2(stamp.getHours())}${Util.pad2(stamp.getMinutes())}.json`;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function doImport() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          if (!confirm('导入将覆盖当前全部数据，建议先导出备份。继续？')) return;
+          Store.importJson(reader.result);
+          alert('导入成功');
+        } catch (e) { alert('导入失败：' + e.message); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  function doReset() {
+    if (!confirm('确认清空所有数据并重置为默认（3 个部门、零人员）？此操作不可撤销。')) return;
+    if (!confirm('再次确认：所有排班记录将丢失。')) return;
+    Store.reset();
+  }
+
+  return { renderSchedule, renderSettings, renderData };
+})();
+
+const Tests = (() => {
+  const results = [];
+  const assert = (name, cond, detail = '') => results.push({ name, ok: !!cond, detail });
+  const eq = (name, actual, expected) => assert(name, JSON.stringify(actual) === JSON.stringify(expected), `actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`);
+
+  const run = () => {
+    results.length = 0;
+    // Util
+    eq('pad2(3)', Util.pad2(3), '03');
+    eq('ymd', Util.ymd(new Date(2026, 4, 16)), '2026-05-16');
+    // Period
+    eq('Period.days length 2026-05 (16..6/15 = 31 days)', Period.days('2026-05').length, 31);
+    eq('Period.days first', Period.days('2026-05')[0].ymd, '2026-05-16');
+    eq('Period.days last', Period.days('2026-05')[Period.days('2026-05').length-1].ymd, '2026-06-15');
+    eq('Period.prev', Period.prev('2026-05'), '2026-04');
+    eq('Period.next', Period.next('2026-12'), '2027-01');
+    // Holidays
+    assert('Holidays GW 2026-05-05', Holidays.isHoliday('2026-05-05'));
+    assert('Non-holiday 2026-05-20', !Holidays.isHoliday('2026-05-20'));
+    // Store
+    Store.reset();
+    eq('Store default depts', Store.get().departments.length, 3);
+    const pid = Store.addPerson('dept1', { name: '王 ギョウセイ', role: 'リーダー', annualLeaveInit: 14 });
+    eq('Store addPerson', Store.people('dept1').length, 1);
+    Store.setCell('dept1', pid, '2026-05-17', 'contractRest');
+    eq('Store cell contractRest', Store.cellStatus('dept1', pid, '2026-05-17'), 'contractRest');
+    Store.cycleCell('dept1', pid, '2026-05-17'); // → paidLeave
+    eq('Store cycle to paid', Store.cellStatus('dept1', pid, '2026-05-17'), 'paidLeave');
+    Store.cycleCell('dept1', pid, '2026-05-17'); // → work
+    eq('Store cycle to work', Store.cellStatus('dept1', pid, '2026-05-17'), 'work');
+    Store.updatePerson('dept1', pid, { retiredOn: '2026-05-20' });
+    eq('Store retired derived', Store.cellStatus('dept1', pid, '2026-05-21'), 'retired');
+    eq('Store required default', Store.requiredCount('dept1', '2026-05-16'), 22);
+    Store.setRequired('dept1', '2026-05-16', 18);
+    eq('Store required override', Store.requiredCount('dept1', '2026-05-16'), 18);
+    Store.reset();
+    return results;
+  };
+
+  const render = () => {
+    if (!location.search.includes('test=1')) return;
+    const host = document.getElementById('test-results');
+    host.classList.remove('hidden');
+    const out = run();
+    const pass = out.filter(r => r.ok).length;
+    const total = out.length;
+    host.textContent = `Tests: ${pass}/${total} passed\n` +
+      out.map(r => `${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ' — ' + r.detail}`).join('\n');
+  };
+
+  return { run, render };
+})();
+
+window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); });
+</script>
+</body>
+</html>
