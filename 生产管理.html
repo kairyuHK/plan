@@ -5534,6 +5534,11 @@ function migrate(s) {
     if (!Array.isArray(b.line) || b.line.length === 0) {
       b.line = s.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label }));
     }
+    // 新增「每条生产线一份 LINE 速度」映射;历史数据若有 b.speed 就归到当前 lineId 上
+    if (!b.lineSpeeds || typeof b.lineSpeeds !== "object") b.lineSpeeds = {};
+    if (b.lineId && b.speed && b.lineSpeeds[b.lineId] == null) {
+      b.lineSpeeds[b.lineId] = b.speed;
+    }
   }
 }
 
@@ -6994,11 +6999,22 @@ function renderEdit() {
   nameInp.onblur = () => {
     if (!renameBento(b.id, nameInp.value)) nameInp.value = b.name;
   };
+  // 每个便当在每条生产线上的 LINE 速度可能不一样 —— b.lineSpeeds 是 { lineId: 速度 }。
+  // b.speed 始终保持「当前选中那条线」的速度,这样下游(plan 板 / broadcast)代码不动。
+  if (!b.lineSpeeds || typeof b.lineSpeeds !== "object") b.lineSpeeds = {};
+  // 历史数据兜底:有 b.speed 但 lineSpeeds 里还没存 → 把当前 speed 落到当前 lineId 上
+  if (b.lineId && b.speed && b.lineSpeeds[b.lineId] == null) {
+    b.lineSpeeds[b.lineId] = b.speed;
+  }
   const speedInp = document.createElement("input");
   speedInp.placeholder = "LINE速度";
   speedInp.value = b.speed || "";
   speedInp.style.flex = "0 0 140px";
-  speedInp.oninput = () => { b.speed = speedInp.value; saveState(); };
+  speedInp.oninput = () => {
+    b.speed = speedInp.value;
+    if (b.lineId) b.lineSpeeds[b.lineId] = speedInp.value;
+    saveState();
+  };
   // 生产线下拉(来自排班表)
   const lineSel = document.createElement("select");
   lineSel.style.cssText = "flex:0 0 130px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
@@ -7013,21 +7029,38 @@ function renderEdit() {
   lineSel.onchange = () => {
     const newLineId = lineSel.value || null;
     if (newLineId === b.lineId) return;
-    // 选了一条新生产线 → 提示是否套用该线的默认布局(覆盖当前卡片 + 清材料分配)
+    // 切线之前先把当前 speed 落档到旧 lineId(覆盖前最后存一次)
+    if (b.lineId && b.speed) b.lineSpeeds[b.lineId] = b.speed;
+
+    // 「新建状态」= 之前没有 lineId(b.lineId 为 null/空);此时第一次选生产线才弹确认。
+    // 「修改状态」= 已经有 lineId,只是换到另一条线;不弹框,只切换生产线 + 同步 speed,
+    //               布局(b.line / assignments)保持不变。
+    const wasUnset = !b.lineId;
+
     if (newLineId) {
-      const lineName = (scheduleData.lines || []).find(l => l.id === newLineId)?.name || newLineId;
-      const ok = confirm(`套用「${lineName}」的默认布局?\n会覆盖当前便当的卡片和材料分配。\n取消则只切换生产线、布局保持不变。`);
       b.lineId = newLineId;
-      if (ok) {
-        applyLineTemplateToBento(b, newLineId);
-        // applyLineTemplateToBento 内部已 saveState
-        renderEdit();
-        return;
+      // 把这条线之前存过的 LINE 速度调出来当前生效;没存过就清空让用户填新值
+      const saved = b.lineSpeeds[newLineId];
+      b.speed = (saved != null && saved !== "") ? saved : "";
+
+      if (wasUnset) {
+        // 新建场景:第一次选生产线 → 弹确认,默认套用该线的卡片布局
+        const lineName = (scheduleData.lines || []).find(l => l.id === newLineId)?.name || newLineId;
+        const ok = confirm(`套用「${lineName}」的默认布局?\n会覆盖当前便当的卡片和材料分配。\n取消则只切换生产线、布局保持不变。`);
+        if (ok) {
+          applyLineTemplateToBento(b, newLineId);
+          // applyLineTemplateToBento 内部已 saveState
+          renderEdit();
+          return;
+        }
       }
+      // 修改场景(或者新建场景里点了"取消"):布局原样保留,只换 lineId + speed
     } else {
       b.lineId = null;
+      // 没选线时 speed 保留显示但不再归属任何线
     }
     saveState();
+    renderEdit(); // 刷新 speedInp 的值
   };
   const cardBtn = document.createElement("button"); cardBtn.textContent = "管理卡片";
   const addCardBtn = document.createElement("button"); addCardBtn.textContent = "+ 卡片";
