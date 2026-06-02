@@ -2434,9 +2434,12 @@ const Pages = (() => {
     /* 打印时删除按钮已隐藏,把 card-compact 右 padding 24px(为×按钮留的)收回来,
        配合 overflow:hidden 让「休息卡 1:00」之类的内容真正塞进卡片边框内 */
     .card-compact { padding-right: 4px !important; overflow: hidden !important; }
-    /* 休息卡的时间值在窄列里容易挤出来,缩小字号并允许 flex-shrink */
-    .card.rest .compact-time { font-size: 9px !important; flex-shrink: 1 !important; min-width: 0 !important; }
-    .card.rest .compact-name { min-width: 0 !important; }
+    /* 休息卡 compact 行有三件:[休息 tag] [名字 (午休等)] [1:00]。
+       手机端窄列(~60px)塞不下,即使缩字号「1:00」仍被 overflow:hidden 削掉一半。
+       打印态直接把名字 (.compact-name) 干掉 —— rest-tag「休息」徽章已经够标识,
+       名字基本是「午休」之类的重复信息,删掉后把整片宽度让给「1:00」。 */
+    .card.rest .compact-name { display: none !important; }
+    .card.rest .compact-time { font-size: 10px !important; flex-shrink: 0 !important; }
 
     /* --- timeline-head / line-head:64px 容下年/月/日/星期四行 --- */
     .timeline-head, .line-head {
