@@ -2406,9 +2406,16 @@ const Pages = (() => {
     background: #fff !important; color: #000 !important;
   }
   body.printing html { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  /* 手机端 html / body 默认深色底,@media print 直接拉成白底,覆盖一切残余的暗色容器 */
+  /* 手机端 html / body 默认深色底,@media print 直接拉成白底,覆盖一切残余的暗色容器。
+     这里不依赖 body.printing class —— 手机端 Safari 在 iframe 里 beforeprint 事件不靠谱,
+     class 没挂上的时候这条还能兜底。 */
   @media print {
-    html, body { background: #fff !important; }
+    html, body, .topbar, .main, .timeline, .timeline-head, .timeline-body, .timeline-foot,
+    .line, .line-head, .line-foot, .cards-wrap, .cards-grid, .board {
+      background: #fff !important;
+      color: #000 !important;
+    }
+    body::before { display: none !important; }
   }
   body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
   body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
@@ -4527,9 +4534,22 @@ function doPrint() {
   let cleanup;
   setTimeout(() => {
     cleanup = setupPrintLayout();
+    // 主动加上 .printing,不依赖 beforeprint 事件
+    // (手机端 Safari 在 iframe 里很可能不触发 beforeprint,
+    //  那样 body.printing 一直没挂上 → 背景仍是屏幕态的深色)
+    document.body.classList.add('printing');
     setTimeout(() => {
-      const onAfter = () => { cleanup(); window.removeEventListener('afterprint', onAfter); };
-      window.addEventListener('afterprint', onAfter);
+      let cleanedUp = false;
+      const doCleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        document.body.classList.remove('printing');
+        cleanup();
+        window.removeEventListener('afterprint', doCleanup);
+      };
+      window.addEventListener('afterprint', doCleanup);
+      // afterprint 不一定触发(手机端),给一个超时兜底
+      setTimeout(doCleanup, 8000);
       window.print();
     }, 80);
   }, 40);
