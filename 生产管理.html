@@ -5500,11 +5500,12 @@ function defaultState() {
   return {
     version: 1,
     materials: [],
-    line: [],
+    line: [],            // 保留:无生产线时的全局 fallback 模板
+    lineTemplates: {},   // 新增:每条生产线 (lineId) → 默认布局,addBento 选线时用
     bentos: [],
     meta: { people: "", speed: "" },
     mono: false,
-    current: { screen: "operate", bentoId: null, editingBentoId: null }
+    current: { screen: "operate", bentoId: null, editingBentoId: null, lineSettingsLineId: null }
   };
 }
 
@@ -5518,6 +5519,8 @@ function migrate(s) {
   s._migrations = s._migrations || {};
   if (!s.meta) s.meta = { people: "", speed: "" };
   if (typeof s.mono !== "boolean") s.mono = false;
+  if (!s.lineTemplates || typeof s.lineTemplates !== "object") s.lineTemplates = {};
+  if (s.current && s.current.lineSettingsLineId === undefined) s.current.lineSettingsLineId = null;
   if (!s._migrations.freeLabels) {
     for (const p of s.line) {
       if (p.label === "10") p.label = "フリー1";
@@ -5988,12 +5991,28 @@ function resetLineToSeed() {
   saveState();
 }
 
-// 把当前模板复制到所有便当（覆盖各便当的 line，清空 assignments）
-function applyTemplateToAll() {
-  for (const b of state.bentos) {
-    b.line = state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
-    b.assignments = {};
+// 取「某条生产线」的默认布局。没存过就用 SEED_LINE 自动初始化一份。
+// 没传 lineId(空字符串/null)就退回到全局的 state.line 兜底。
+function getLineTemplate(lineId) {
+  if (!lineId) return state.line;
+  if (!state.lineTemplates[lineId] || !state.lineTemplates[lineId].length) {
+    state.lineTemplates[lineId] = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
   }
+  return state.lineTemplates[lineId];
+}
+
+// 重置某条生产线的默认布局为 SEED_LINE。
+function resetLineTemplateToSeed(lineId) {
+  if (!lineId) { resetLineToSeed(); return; }
+  state.lineTemplates[lineId] = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+  saveState();
+}
+
+// 用某条生产线的默认布局覆盖一个便当的卡片;同时清空 assignments(布局换了,旧分配失效)。
+function applyLineTemplateToBento(bento, lineId) {
+  const tpl = getLineTemplate(lineId);
+  bento.line = tpl.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+  bento.assignments = {};
   saveState();
 }
 
@@ -6805,46 +6824,73 @@ function renderLine() {
   c.innerHTML = "";
   const wrap = document.createElement("div"); wrap.className = "line-screen";
 
+  // 选定要编辑哪条生产线的默认布局 —— 默认 = 排班表里第一条非虚拟线
+  const realLines = (scheduleData.lines || []).filter(ln => !ln.virtual);
+  if (!state.current.lineSettingsLineId && realLines.length) {
+    state.current.lineSettingsLineId = realLines[0].id;
+  }
+  const activeLineId = state.current.lineSettingsLineId;
+  const activeLineObj = realLines.find(l => l.id === activeLineId);
+  const activeLineName = activeLineObj ? activeLineObj.name : "(未选生产线)";
+  const tpl = getLineTemplate(activeLineId);
+
   const actions = document.createElement("div"); actions.className = "actions";
+
+  // 生产线选择器 —— 切换后编辑该线的模板
+  const lineSel = document.createElement("select");
+  lineSel.style.cssText = "background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
+  if (!realLines.length) {
+    const opt = document.createElement("option");
+    opt.value = ""; opt.textContent = "(排班表没有生产线)";
+    lineSel.appendChild(opt);
+    lineSel.disabled = true;
+  } else {
+    realLines.forEach(ln => {
+      const opt = document.createElement("option");
+      opt.value = ln.id; opt.textContent = ln.name;
+      lineSel.appendChild(opt);
+    });
+    lineSel.value = activeLineId || "";
+  }
+  lineSel.onchange = () => {
+    state.current = { ...state.current, lineSettingsLineId: lineSel.value || null };
+    saveState();
+    renderLine();
+  };
+
   const done = document.createElement("button"); done.className = "done"; done.textContent = "完成";
   done.onclick = () => { state.current = { ...state.current, screen: "operate" }; saveState(); render(); };
   const add = document.createElement("button"); add.textContent = "+ 添加槽位";
-  add.onclick = () => { addSlot(state.line); renderLine(); };
+  add.onclick = () => { addSlot(tpl); saveState(); renderLine(); };
   const reset = document.createElement("button"); reset.className = "danger"; reset.textContent = "恢复默认布局";
   reset.onclick = () => {
-    if (confirm("将模板重置为 14 个位置（不影响已有便当），继续?")) {
-      resetLineToSeed(); renderLine();
+    if (confirm(`将「${activeLineName}」的模板重置为 14 个位置(不影响已有便当),继续?`)) {
+      resetLineTemplateToSeed(activeLineId); renderLine();
     }
   };
-  const applyAll = document.createElement("button"); applyAll.textContent = "应用到所有便当";
-  applyAll.onclick = () => {
-    if (confirm("将清空所有便当的卡片和材料分配,并用当前模板覆盖,继续?")) {
-      applyTemplateToAll(); renderLine();
-    }
-  };
-  actions.appendChild(done); actions.appendChild(add); actions.appendChild(reset); actions.appendChild(applyAll);
+  actions.appendChild(lineSel); actions.appendChild(done); actions.appendChild(add); actions.appendChild(reset);
   wrap.appendChild(actions);
 
-  // 说明：此屏编辑的是"新便当默认布局"的模板，不影响已有便当
+  // 说明:每条生产线一份默认布局,只在新便当选这条线时套用
   const note = document.createElement("div");
   note.style.color = "var(--muted)";
   note.style.fontSize = "12px";
   note.style.marginBottom = "10px";
-  note.textContent = "这里编辑的是新便当的默认卡片模板。已有便当的卡片在便当编辑页内独立管理。";
+  note.textContent = `当前编辑「${activeLineName}」的默认布局。新便当在「便当编辑」页面里选这条生产线时会套用此布局,不影响其它已有便当。`;
   wrap.appendChild(note);
 
   const table = document.createElement("table");
   table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th></th></tr></thead>";
   const tbody = document.createElement("tbody");
-  const sorted = state.line.slice().sort((a,b) => a.slot - b.slot || (a.row === "top" ? -1 : 1));
+  const sorted = tpl.slice().sort((a,b) => a.slot - b.slot || (a.row === "top" ? -1 : 1));
   for (const p of sorted) {
     const tr = document.createElement("tr");
 
     const tdSlot = document.createElement("td");
     const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot;
     slotInp.onchange = () => {
-      if (!updateSlotPosition(state.line, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
-      else renderLine();
+      if (!updateSlotPosition(tpl, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
+      else { saveState(); renderLine(); }
     };
     tdSlot.appendChild(slotInp);
 
@@ -6853,21 +6899,27 @@ function renderLine() {
       const label = document.createElement("label");
       const rb = document.createElement("input"); rb.type = "radio"; rb.name = "row-" + p.id; rb.value = r;
       if (p.row === r) rb.checked = true;
-      rb.onchange = () => { if (rb.checked) { updateSlotPosition(state.line, p.id, { row: r }); renderLine(); } };
+      rb.onchange = () => { if (rb.checked) { updateSlotPosition(tpl, p.id, { row: r }); saveState(); renderLine(); } };
       label.appendChild(rb); label.appendChild(document.createTextNode(r === "top" ? "上" : "下"));
       tdRow.appendChild(label);
     }
 
     const tdLabel = document.createElement("td");
     const labelInp = document.createElement("input"); labelInp.className = "label"; labelInp.value = p.label;
-    labelInp.onblur = () => { updateSlotPosition(state.line, p.id, { label: labelInp.value }); };
+    labelInp.onblur = () => { updateSlotPosition(tpl, p.id, { label: labelInp.value }); saveState(); };
     tdLabel.appendChild(labelInp);
 
     const tdDel = document.createElement("td");
     const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
     del.onclick = () => {
-      if (confirm(`删除位置 "${p.label}"?将从所有便当中移除该位的材料。`)) {
-        deleteSlotPosition(p.id); renderLine();
+      if (confirm(`删除位置 "${p.label}"?将从此生产线的模板里移除(不影响已有便当)。`)) {
+        const idx = tpl.findIndex(x => x.id === p.id);
+        if (idx >= 0) {
+          tpl.splice(idx, 1);
+          compactSlots(tpl);
+          saveState();
+          renderLine();
+        }
       }
     };
     tdDel.appendChild(del);
@@ -6929,9 +6981,11 @@ function renderEdit() {
     return;
   }
 
-  // 确保便当有自己的 line（兼容老数据）
+  // 确保便当有自己的 line(兼容老数据)。
+  // 优先用 b.lineId 对应那条生产线的默认布局,没 lineId 才退回 state.line 全局兜底。
   if (!Array.isArray(b.line) || b.line.length === 0) {
-    b.line = state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+    const tpl = getLineTemplate(b.lineId);
+    b.line = tpl.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
     saveState();
   }
 
@@ -6956,7 +7010,25 @@ function renderEdit() {
     lineSel.appendChild(opt);
   });
   lineSel.value = b.lineId || "";
-  lineSel.onchange = () => { b.lineId = lineSel.value || null; saveState(); };
+  lineSel.onchange = () => {
+    const newLineId = lineSel.value || null;
+    if (newLineId === b.lineId) return;
+    // 选了一条新生产线 → 提示是否套用该线的默认布局(覆盖当前卡片 + 清材料分配)
+    if (newLineId) {
+      const lineName = (scheduleData.lines || []).find(l => l.id === newLineId)?.name || newLineId;
+      const ok = confirm(`套用「${lineName}」的默认布局?\n会覆盖当前便当的卡片和材料分配。\n取消则只切换生产线、布局保持不变。`);
+      b.lineId = newLineId;
+      if (ok) {
+        applyLineTemplateToBento(b, newLineId);
+        // applyLineTemplateToBento 内部已 saveState
+        renderEdit();
+        return;
+      }
+    } else {
+      b.lineId = null;
+    }
+    saveState();
+  };
   const cardBtn = document.createElement("button"); cardBtn.textContent = "管理卡片";
   const addCardBtn = document.createElement("button"); addCardBtn.textContent = "+ 卡片";
   addCardBtn.onclick = () => { addSlot(b.line); renderEdit(); };
