@@ -26,6 +26,19 @@ iframe.active{pointer-events:auto}
 #export-reminder button:hover{background:#000;color:#fff}
 #export-reminder .close{background:transparent;color:#14181f;padding:0 4px;font-size:18px;line-height:1}
 #export-reminder .close:hover{background:transparent;color:#000}
+
+/* === 打印时父壳必须白底 ===
+   plan/config/schedule 在 iframe 里,window.print() 实际渲染的是父壳。
+   父壳本身是深色主题(html / body / .tabs / .frame-wrap / iframe 都是 #0f1115),
+   不强制成白底的话手机端打印整张深色,iframe 内部的白色排版反而像被框在黑卡里。
+   同时把顶部 tab 栏隐藏,只让 iframe 的内容铺满整页。 */
+@media print {
+  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  .tabs { display: none !important; }
+  .frame-wrap { position: static !important; top: auto !important; background: #fff !important; height: auto !important; overflow: visible !important; }
+  iframe { position: static !important; background: #fff !important; transform: none !important; width: 100% !important; height: 100vh !important; }
+  #export-reminder { display: none !important; }
+}
 </style>
 </head>
 <body>
