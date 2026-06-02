@@ -2445,11 +2445,15 @@ const Pages = (() => {
       align-self: center !important;
       line-height: 1.1 !important;
       padding: 0 !important; margin: 0 0 1px !important;
+      color: #000 !important;
     }
     .date-month, .date-day, .date-dow {
       transform: none !important;
       line-height: 1.1 !important;
       padding: 0 !important; margin: 0 !important;
+      /* 手机屏幕态 .date-day 颜色是 var(--text)(亮灰),白底白字直接隐身。强制黑色 */
+      color: #000 !important;
+      -webkit-text-fill-color: #000 !important;
     }
 
     /* --- line-foot / timeline-foot:固定 68px,容下「数量/耗时/结束/实结」四行 --- */
@@ -2476,7 +2480,9 @@ const Pages = (() => {
     /* --- 顶栏 / 上下溢出修正 --- */
     .topbar { height: 24px !important; padding: 0 8px !important; border-bottom: 1px solid #555 !important; }
     .line { min-height: 0 !important; }
-    .cards-wrap, .timeline-body { overflow: visible !important; }
+    /* 注意:cards-wrap / timeline-body 这里不能用 overflow: visible !important !
+       trimGridForExport 用 inline overflow: hidden 把 22:00 之后的时间轴刻度裁掉,
+       一旦 CSS 用 !important 把它顶成 visible,就会从 timeline 列底部漏出来。 */
     .board {
       grid-template-columns: repeat(6, 1fr) !important;
       min-width: 0 !important; overflow: visible !important;
@@ -2577,7 +2583,8 @@ const Pages = (() => {
       overflow: visible !important;
     }
     body.printing .line { flex: 1 1 0 !important; width: auto !important; overflow: visible !important; min-height: 0 !important; }
-    body.printing .cards-wrap, body.printing .timeline-body { overflow: visible !important; }
+    /* 注意:cards-wrap / timeline-body 不能 overflow: visible —— 会让 trimGridForExport
+       inline 设的 overflow: hidden 失效,timeline 列底部 22:00 之类的时间刻度就会漏出来 */
     body.printing .timeline { position: static !important; align-self: stretch !important; overflow: visible !important; }
     body.printing .timeline-head, body.printing .timeline-foot,
     body.printing .line-head, body.printing .line-foot { position: static !important; }
