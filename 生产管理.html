@@ -2392,7 +2392,11 @@ const Pages = (() => {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     background: #fff !important; color: #000 !important;
   }
-  body.printing html { margin: 0 !important; padding: 0 !important; }
+  body.printing html { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  /* 手机端 html / body 默认深色底,@media print 直接拉成白底,覆盖一切残余的暗色容器 */
+  @media print {
+    html, body { background: #fff !important; }
+  }
   body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
   body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
   body.printing .topbar { border-bottom: 1px solid #555 !important; }
@@ -2441,7 +2445,13 @@ const Pages = (() => {
   body.printing.printing-compact .brand-sub { font-size: 9px !important; padding-left: 6px !important; }
   body.printing.printing-compact .clock { font-size: 10px !important; }
   body.printing.printing-compact .timeline-head,
-  body.printing.printing-compact .line-head { height: 56px !important; padding: 4px 6px !important; justify-content: center !important; align-items: center !important; }
+  body.printing.printing-compact .line-head { height: 64px !important; padding: 4px 6px !important; justify-content: center !important; align-items: center !important; }
+  /* 日期四行(年/月/日/星期)用 line-height: 1.1 收紧,保证全部塞进 timeline-head 不溢出
+     ——之前 56px 高 + 默认 line-height 1.2 把「2026 年」顶部削掉了 1-2px */
+  body.printing.printing-compact .date-year,
+  body.printing.printing-compact .date-month,
+  body.printing.printing-compact .date-day,
+  body.printing.printing-compact .date-dow { line-height: 1.1 !important; }
   body.printing.printing-compact .date-year { position: static !important; align-self: center !important; padding-left: 0 !important; margin-bottom: 1px !important; line-height: 1 !important; font-size: 7px !important; }
   body.printing.printing-compact .line-num { font-size: 14px !important; line-height: 14px !important; height: 14px !important; }
   body.printing.printing-compact .line-num.xiusheng { font-size: 11px !important; }
@@ -2491,18 +2501,54 @@ const Pages = (() => {
     body.printing .line-foot .foot-row { height: auto !important; }
   }
 
-  /* === 实结 input 在打印中渲染成纯文本(去掉边框/背景/原生 datetime 外观) === */
-  body.printing .actual-finish-wrap { border: none !important; background: transparent !important; padding: 0 !important; margin: 0 !important; }
-  body.printing .foot-val.actual-finish { background: transparent !important; border: none !important; padding: 0 !important; }
+  /* === 实结 input 在打印中渲染成纯文本,并且和「结束」那一行的数值左右严格对齐 ===
+     原本 .actual-finish-wrap 有 padding/margin 偏移,.foot-val.actual-finish 有 margin:0 -3px 0 0,
+     导致打印里 实结的时间数字比 结束 数字水平错位 ~3px。这里把所有 padding/margin/border 拉平。 */
+  body.printing .actual-finish-wrap {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    border: none !important; background: transparent !important;
+    padding: 0 !important; margin: 0 !important;
+    height: auto !important; line-height: inherit !important;
+  }
+  body.printing .foot-val.actual-finish {
+    background: transparent !important; border: none !important;
+    padding: 0 !important; margin: 0 !important;
+    width: auto !important; min-width: 0 !important;
+    height: auto !important;
+    vertical-align: baseline !important;
+    text-align: right !important;
+    /* 字号显式跟「结束」对齐,不再用 inherit,避免接到 body 的 14px */
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+  }
+  /* webkit datetime 内部 shadow DOM 也要显式 11px,html2canvas / jsPDF 才能拿到对的字号 */
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit,
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper,
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit-hour-field,
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit-minute-field,
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit-text,
+  body.printing .foot-val.actual-finish::-webkit-datetime-edit-ampm-field {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+  }
+  /* 两行的 .foot-val 都右对齐 + 行用 baseline 让 input 跟 span 的文字基线齐高,
+     这样「结束」「实结」的时间数字垂直方向一致、最后一位数字也在同一垂直线上。 */
+  body.printing .line-foot .foot-row { align-items: baseline !important; }
+  body.printing .line-foot .foot-val { text-align: right !important; }
 
   /* === 手机/PC 打印强制使用同一套 CSS 变量,保证排版完全一致 === */
   body.printing { --time-col-w: 56px !important; }
 
-  /* 打印底栏要塞 4 行(数量/耗时/结束/实结)。固定 60px 高、行间距压到 1px、
-     line-height 收紧,这样两边底栏高度一致 + 总高在 A4 可用 748px 之内 */
+  /* 打印底栏要塞 4 行(数量/耗时/结束/实结)。
+     之前固定 60px,baseline 对齐 + webkit datetime input 实际渲染比预计高 1-2px,
+     最后一行「实结」被截。改成固定 68px,行 line-height 1.1 收紧,留出余量。
+     两边底栏(timeline-foot / line-foot)同高,视觉对齐。 */
   body.printing.printing-compact .line-foot,
-  body.printing.printing-compact .timeline-foot { height: 60px !important; min-height: 60px !important; padding: 2px 6px !important; }
-  body.printing.printing-compact .line-foot .foot-row { margin-bottom: 1px !important; line-height: 1.15 !important; }
+  body.printing.printing-compact .timeline-foot { height: 68px !important; min-height: 68px !important; padding: 2px 6px !important; }
+  body.printing.printing-compact .line-foot .foot-row { margin-bottom: 1px !important; line-height: 1.1 !important; }
   body.printing.printing-compact .line-foot .foot-row:last-child { margin-bottom: 0 !important; }
 
   /* === 打印时:右上角的「耗时 / 结束 / 时钟」都隐藏,只保留「总计」 === */
@@ -2524,8 +2570,20 @@ const Pages = (() => {
   /* 日期整体收在 timeline-head 边框内:overflow:hidden 防止 absolute 子元素外溢,
      再把 mobile 屏幕用的 absolute date-year 强行拉回 flex 流 */
   body.printing .timeline-head { overflow: hidden !important; position: relative !important; box-sizing: border-box !important; }
-  body.printing .date-year { position: static !important; top: auto !important; left: auto !important; align-self: center !important; padding: 0 !important; margin: 0 0 1px !important; }
-  body.printing .date-month, body.printing .date-day, body.printing .date-dow { padding: 0 !important; margin: 0 !important; }
+  body.printing .date-year {
+    position: static !important;
+    top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+    /* 基础样式里 .date-year 有 transform: translateX(-50%) 用于绝对定位居中,
+       打印态改成 static 后这条 transform 仍然生效,会把 year 整体往左推自己一半宽度,
+       配合 timeline-head 的 overflow:hidden 就把 "2026" 的 "2" 削掉了 */
+    transform: none !important;
+    align-self: center !important;
+    padding: 0 !important; margin: 0 0 1px !important;
+  }
+  body.printing .date-month, body.printing .date-day, body.printing .date-dow {
+    padding: 0 !important; margin: 0 !important;
+    transform: none !important;
+  }
 
   /* === 打印强制黑白:覆盖品名色 / 主题色 / 行号橙、结束蓝、实结紫 等等 === */
   body.printing .card { border-left: 1px solid #999 !important; }
@@ -4359,6 +4417,26 @@ function trimGridForExport() {
   return () => restoreFns.forEach(fn => fn());
 }
 
+// 打印前把每条线的「实结」<input type="time"> 替换成 <span>,值用 input 的 value。
+// 这样实结跟「结束」的纯 span 用完全相同的渲染路径,不再受 input/datetime shadow DOM
+// 的字号、baseline、padding 怪癖影响。打印结束在 cleanup 里换回 input。
+function replaceActualFinishWithSpan() {
+  const undo = [];
+  document.querySelectorAll('.actual-finish-wrap').forEach(wrap => {
+    const input = wrap.querySelector('.actual-finish');
+    if (!input) return;
+    const val = (input.value || '').trim() || '—';
+    const span = document.createElement('span');
+    span.className = 'foot-val actual-finish actual-finish-print';
+    span.textContent = val;
+    wrap.replaceChild(span, input);
+    undo.push(() => {
+      if (span.parentElement === wrap) wrap.replaceChild(input, span);
+    });
+  });
+  return () => undo.forEach(fn => fn());
+}
+
 function setupPrintLayout() {
   setActiveCard(null);
   const root = document.documentElement;
@@ -4391,10 +4469,10 @@ function setupPrintLayout() {
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
   // A4 横向 6mm 边距 ≈ 748px 可用高:
-  //   topbar 24 + line-head 56 + line-foot 60(4 行) + 边框 6 ≈ 146,
-  //   再留 30px buffer 给浏览器默认页眉页脚 / 边距偏差,卡片预算定 560。
-  // A3 横向有 1077px 可用高,同样 560 预算自然单页(右下会留白)。
-  const PAGE_H_FOR_CARDS = 560;
+  //   topbar 24 + line-head 64(4 行日期不截) + line-foot 68(4 行) + 边框 6 ≈ 162,
+  //   再留 ~42px buffer 给浏览器默认页眉页脚 / 边距偏差,卡片预算定 544。
+  // A3 横向有 1077px 可用高,同样 544 预算自然单页(右下会留白)。
+  const PAGE_H_FOR_CARDS = 544;
   let newHourPx = PRINT_BASELINE_HOUR_PX;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
     // 真实 cardRange > 一页预算时按比例压缩;下限 1px/hour 足够极端密集
@@ -4412,7 +4490,9 @@ function setupPrintLayout() {
     document.querySelectorAll('.line').forEach(l => recalc(l));
   }
   const restore = trimGridForExport();
+  const restoreInputs = replaceActualFinishWithSpan();
   return () => {
+    restoreInputs();
     restore();
     document.body.classList.remove('printing-compact');
     // 一开始就把 --hour-px 拉到了 140 基线,无论有没有二次 rescale 都得还原
