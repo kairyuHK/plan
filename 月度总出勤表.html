@@ -27,7 +27,7 @@ input:focus,select:focus{border-color:var(--accent)}
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
-.nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;flex-wrap:wrap}
+.nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
 .nav .spacer{flex:1}
@@ -45,15 +45,13 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
 .schedule-wrap{margin-top:10px}
-table.schedule thead tr.month-row th{position:sticky;top:var(--sticky-r0,50px);z-index:3;background:#1c1c20}
-table.schedule thead tr.head-row th{position:sticky;top:var(--sticky-r1,76px);z-index:3;background:#1c1c20}
-table.schedule thead tr.weekday-row th{position:sticky;top:var(--sticky-r2,101px);z-index:3;background:#1c1c20}
+table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:3;background:#1c1c20}
+table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
-table.schedule thead th.name-col{z-index:4}
 table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
 table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
 table.schedule th{background:#1c1c20;font-weight:500}
-table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:#161618}
+table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
 table.schedule th.role-col,table.schedule td.role-col{min-width:60px;text-align:left;padding-left:6px}
 table.schedule th.name-col,table.schedule td.name-col{min-width:110px;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1}
@@ -522,19 +520,15 @@ const Pages = (() => {
 
   function syncStickyOffsets() {
     const nav = document.querySelector('.nav');
-    const tbl = document.querySelector('#page-schedule table.schedule');
-    if (!nav || !tbl) return;
-    const navH = nav.offsetHeight;
-    const monthRow = tbl.querySelector('thead tr.month-row');
-    const headRow = tbl.querySelector('thead tr.head-row');
-    const r0 = navH;
-    const r1 = r0 + (monthRow ? monthRow.offsetHeight : 25);
-    const r2 = r1 + (headRow ? headRow.offsetHeight : 25);
-    const s = document.documentElement.style;
-    s.setProperty('--sticky-r0', r0 + 'px');
-    s.setProperty('--sticky-r1', r1 + 'px');
-    s.setProperty('--sticky-r2', r2 + 'px');
+    if (!nav) return;
+    document.documentElement.style.setProperty('--sticky-nav', nav.offsetHeight + 'px');
   }
+
+  let resizeT;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(syncStickyOffsets, 60);
+  });
 
   function renderDeptTabs() {
     const host = document.getElementById('dept-tabs');
