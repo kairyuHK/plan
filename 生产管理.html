@@ -36,7 +36,19 @@ iframe.active{pointer-events:auto}
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
   .tabs { display: none !important; }
   .frame-wrap { position: static !important; top: auto !important; background: #fff !important; height: auto !important; overflow: visible !important; }
-  iframe { position: static !important; background: #fff !important; transform: none !important; width: 100% !important; height: 100vh !important; }
+  /* 只把当前 .active 的那张 iframe 打印出来。
+     另外两张(plan/config/schedule 三件套)如果不隐藏会各占一页,A4 打印就变 2-3 页,
+     而且各自的 100vh 高度还会把 iframe 内部超出的部分截掉,看上去就是"没打印全部卡片"。 */
+  iframe { display: none !important; }
+  iframe.active {
+    display: block !important;
+    position: static !important;
+    background: #fff !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh !important;
+  }
   #export-reminder { display: none !important; }
 }
 </style>
@@ -2406,11 +2418,15 @@ const Pages = (() => {
     background: #fff !important; color: #000 !important;
   }
   body.printing html { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-  /* === 不依赖 body.printing class 的打印兜底 ===
+  /* === 不依赖 body.printing class 的打印兜底(仅手机端) ===
      手机端 Safari 在 iframe 里 beforeprint 事件不一定触发,class 挂不上的话
      所有 body.printing 规则都失效。这里把关键的「白底 + 黑白色 + 容器尺寸 +
-     卡片样式 + 日期排版」全部塞到 @media print 下,无论 class 在不在都生效。 */
-  @media print {
+     卡片样式 + 日期排版」全部塞到 @media print 下兜底。
+     ⚠️ 限定 (max-width: 900px) —— 只在 mobile viewport 生效,PC 打印仍走原来
+     那套 body.printing 规则(class 在 PC 上可靠地被挂上),避免这套兜底
+     `.card { overflow: hidden }` / `.compact-name { display: none }` 之类
+     的强力规则误伤 PC 打印。 */
+  @media print and (max-width: 900px) {
     /* --- 白底 / 黑字 --- */
     html, body, .topbar, .main, .timeline, .timeline-head, .timeline-body, .timeline-foot,
     .line, .line-head, .line-foot, .cards-wrap, .cards-grid, .board, .card, .card-expanded {
@@ -2696,6 +2712,23 @@ const Pages = (() => {
   body.printing .date-month, body.printing .date-day, body.printing .date-dow {
     padding: 0 !important; margin: 0 !important;
     transform: none !important;
+  }
+  /* === PC 端打印:日期所有元素强制黑色 ===
+     默认 .date-year 是 var(--accent) 橙色、.date-day 是 var(--text) 亮灰,
+     打印里要么花、要么白底白字看不见。统一压黑 + 关掉渐变文字技巧。 */
+  body.printing .date-year,
+  body.printing .date-month,
+  body.printing .date-day,
+  body.printing .date-dow {
+    color: #000 !important;
+    -webkit-text-fill-color: #000 !important;
+    background: transparent !important;
+    background-image: none !important;
+    -webkit-background-clip: border-box !important;
+    background-clip: border-box !important;
+    opacity: 1 !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 
   /* === 打印强制黑白:覆盖品名色 / 主题色 / 行号橙、结束蓝、实结紫 等等 === */
@@ -3519,7 +3552,7 @@ function addRestCard(grid, savedData) {
   const node = document.createElement('div');
   node.className = 'card rest';
   node.dataset.type = 'rest';
-  const nameVal = savedData?.name != null ? savedData.name : '午休';
+  const nameVal = savedData?.name != null ? savedData.name : '';
   const minVal = savedData?.min != null ? savedData.min : 60;
   const fixedVal = savedData?.fixed || '';
   node.innerHTML = `
@@ -4581,11 +4614,14 @@ function setupPrintLayout() {
   });
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
-  // A4 横向 6mm 边距 ≈ 748px 可用高:
-  //   topbar 24 + line-head 64(4 行日期不截) + line-foot 68(4 行) + 边框 6 ≈ 162,
-  //   再留 ~42px buffer 给浏览器默认页眉页脚 / 边距偏差,卡片预算定 544。
-  // A3 横向有 1077px 可用高,同样 544 预算自然单页(右下会留白)。
-  const PAGE_H_FOR_CARDS = 544;
+  // 卡片区可用高度按 viewport 方向自适应:
+  //   - PC 端 / 桌面横屏:窗口宽 > 高 → 走 A4 横向预算 544(topbar/head/foot/buffer 占 162,
+  //     总高 ≤ 714 < A4 横向可用 748)。
+  //   - 手机端竖屏:窗口高 > 宽 → 纸张也是竖向(iOS Safari 经常这么打),
+  //     可用纵高接近 1077px(A4 纵向 6mm 边距),给卡片 880,让短时长卡片在打印里看得清楚。
+  // 这样手机端竖屏不再下半页大片留白,PC 横向也不会因为卡片过高被推到第二页。
+  const isPortraitViewport = window.innerHeight > window.innerWidth;
+  const PAGE_H_FOR_CARDS = isPortraitViewport ? 880 : 544;
   let newHourPx = PRINT_BASELINE_HOUR_PX;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
     // 真实 cardRange > 一页预算时按比例压缩;下限 1px/hour 足够极端密集
