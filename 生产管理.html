@@ -2426,10 +2426,17 @@ const Pages = (() => {
       border-right: 1px solid #ccc !important;
       border-bottom: 1px solid #ccc !important;
       border-left: 1px solid #999 !important;
+      overflow: hidden !important; /* 防止 compact-time 之类的子元素戳出右边框 */
     }
     .card.rest { background: #f0f0f0 !important; }
     .compact-name-letter { color: #000 !important; border-color: #999 !important; background: transparent !important; }
     .card-name-display, .compact-people, .compact-time, .compact-name { color: #000 !important; }
+    /* 打印时删除按钮已隐藏,把 card-compact 右 padding 24px(为×按钮留的)收回来,
+       配合 overflow:hidden 让「休息卡 1:00」之类的内容真正塞进卡片边框内 */
+    .card-compact { padding-right: 4px !important; overflow: hidden !important; }
+    /* 休息卡的时间值在窄列里容易挤出来,缩小字号并允许 flex-shrink */
+    .card.rest .compact-time { font-size: 9px !important; flex-shrink: 1 !important; min-width: 0 !important; }
+    .card.rest .compact-name { min-width: 0 !important; }
 
     /* --- timeline-head / line-head:64px 容下年/月/日/星期四行 --- */
     .timeline-head, .line-head {
@@ -2437,23 +2444,32 @@ const Pages = (() => {
       justify-content: center !important; align-items: center !important;
       overflow: hidden !important; box-sizing: border-box !important;
       position: static !important;
+      background: #fff !important; background-image: none !important;
+    }
+    /* date-* 四个元素全部强制:黑字 / 透明底 / 无渐变 / 无 opacity / 无 box-shadow,
+       彻底消除手机屏幕态在打印里残留的橙色文字、淡粉色背景渐变等。 */
+    .date-year, .date-month, .date-day, .date-dow {
+      color: #000 !important;
+      -webkit-text-fill-color: #000 !important;
+      background: transparent !important;
+      background-image: none !important;
+      -webkit-background-clip: border-box !important;
+      background-clip: border-box !important;
+      opacity: 1 !important;
+      box-shadow: none !important;
+      border: none !important;
+      transform: none !important;
+      line-height: 1.1 !important;
+      padding: 0 !important;
     }
     .date-year {
       position: static !important;
       top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
-      transform: none !important;
       align-self: center !important;
-      line-height: 1.1 !important;
-      padding: 0 !important; margin: 0 0 1px !important;
-      color: #000 !important;
+      margin: 0 0 1px !important;
     }
     .date-month, .date-day, .date-dow {
-      transform: none !important;
-      line-height: 1.1 !important;
-      padding: 0 !important; margin: 0 !important;
-      /* 手机屏幕态 .date-day 颜色是 var(--text)(亮灰),白底白字直接隐身。强制黑色 */
-      color: #000 !important;
-      -webkit-text-fill-color: #000 !important;
+      margin: 0 !important;
     }
 
     /* --- line-foot / timeline-foot:固定 68px,容下「数量/耗时/结束/实结」四行 --- */
