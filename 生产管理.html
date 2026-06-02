@@ -4614,14 +4614,12 @@ function setupPrintLayout() {
   });
   const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
 
-  // 卡片区可用高度按 viewport 方向自适应:
-  //   - PC 端 / 桌面横屏:窗口宽 > 高 → 走 A4 横向预算 544(topbar/head/foot/buffer 占 162,
-  //     总高 ≤ 714 < A4 横向可用 748)。
-  //   - 手机端竖屏:窗口高 > 宽 → 纸张也是竖向(iOS Safari 经常这么打),
-  //     可用纵高接近 1077px(A4 纵向 6mm 边距),给卡片 880,让短时长卡片在打印里看得清楚。
-  // 这样手机端竖屏不再下半页大片留白,PC 横向也不会因为卡片过高被推到第二页。
-  const isPortraitViewport = window.innerHeight > window.innerWidth;
-  const PAGE_H_FOR_CARDS = isPortraitViewport ? 880 : 544;
+  // A4 横向 6mm 边距 ≈ 748px 可用高:
+  //   topbar 24 + line-head 64 + line-foot 68 + 边框/buffer 6 ≈ 162,
+  //   卡片预算 544 → 总高 714 ≤ 748,稳进单页。
+  // (iOS Safari 即使屏幕是竖屏,实际打印仍然按 @page landscape 渲染,所以不按 viewport
+  //  自适应——之前试过 portrait viewport 给 880,反而把内容顶到第 2 页。)
+  const PAGE_H_FOR_CARDS = 544;
   let newHourPx = PRINT_BASELINE_HOUR_PX;
   if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
     // 真实 cardRange > 一页预算时按比例压缩;下限 1px/hour 足够极端密集
