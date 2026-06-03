@@ -2305,6 +2305,8 @@ const Pages = (() => {
   .lib-item-btn { background: transparent; border: 1px solid var(--border); color: var(--text-mute); width: 28px; height: 28px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 6px; transition: background 0.15s, color 0.15s, border-color 0.15s; }
   .lib-item-btn.edit:hover { color: var(--blue); border-color: rgba(96,165,250,0.4); background: rgba(96,165,250,0.06); }
   .lib-item-btn.del:hover { color: var(--red); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.06); }
+  .lib-item-btn.apply:hover { color: var(--warn); border-color: rgba(251,146,60,0.45); background: rgba(251,146,60,0.08); }
+  .ns-day-mark { font-size: 10px; opacity: 0.7; margin-left: 2px; vertical-align: middle; }
   .lib-empty { text-align: center; color: var(--text-mute); padding: 32px 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 12px; }
 
   .pick-list { display: flex; flex-direction: column; gap: 8px; }
@@ -3148,6 +3150,21 @@ function renderColorPicker() {
   custom.addEventListener('change', () => { selectedColor = custom.value; renderColorPicker(); });
   libColorPicker.appendChild(custom);
 }
+// 扫描当前显示日期(currentDate)板子上所有 libId 卡片的快照,返回 {speed, mp, divergent, count}。
+// speed=null 表示当天没有该品名的卡片(信息列显示库默认值)。
+function getDaySnapshotForLib(libId) {
+  let speed = null, mp = null, divergent = false, count = 0;
+  document.querySelectorAll('.card[data-type="job"]').forEach(card => {
+    if (card.dataset.libId !== libId) return;
+    const s = parseFloat(card.dataset.speed) || 0;
+    const meterInp = popupQ(card, '.meter-people');
+    const m = Math.max(1, parseInt(meterInp && meterInp.value) || 1);
+    if (count === 0) { speed = s; mp = m; }
+    else if (s !== speed || m !== mp) divergent = true;
+    count++;
+  });
+  return { speed, mp, divergent, count };
+}
 function renderLibList() {
   if (library.length === 0) {
     libList.innerHTML = '<div class="lib-empty">还没有品名，添加你的第一个品名</div>';
@@ -3165,7 +3182,28 @@ function renderLibList() {
     row.style.setProperty('--lib-color', item.color);
     const peopleText = fmtPeople(item.people);
     const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
-    const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
+    // 信息列:优先显示「当天卡片快照」的速度/计量人数,没有卡片时回落到库默认值。
+    // count>0 + 跟库不同 → 加 (库 X) 提示;divergent → 加「≠」表示同日多张卡数值不一致。
+    const snap = getDaySnapshotForLib(item.id);
+    const libSpeed = item.speed;
+    const libMeter = item.meterPeople > 0 ? item.meterPeople : 1;
+    let dispSpeed, dispMeter, daySuffix = '';
+    if (snap.count > 0) {
+      dispSpeed = snap.speed > 0 ? snap.speed : libSpeed;
+      dispMeter = snap.mp > 0 ? snap.mp : libMeter;
+      const diffSpeed = (snap.speed > 0 && snap.speed !== libSpeed);
+      const diffMeter = (snap.mp !== libMeter);
+      if (diffSpeed || diffMeter) {
+        daySuffix = ` <span class="ns-day-mark" title="${currentDate} 卡片快照与品名库默认值不同(库:速度 ${libSpeed} · 计量 ${libMeter})">·当日</span>`;
+      }
+      if (snap.divergent) {
+        daySuffix += ` <span class="ns-day-mark" style="color:var(--warn)" title="${currentDate} 同品名多张卡数值不一致,显示的是第一张">≠</span>`;
+      }
+    } else {
+      dispSpeed = libSpeed;
+      dispMeter = libMeter;
+    }
+    const meterText = dispMeter > 0 ? `${dispMeter}` : '1';
     // 同一便当被多于 1 项链接时,这些重复项允许手动删除,直至只剩 1 项
     const isDup = item._bentoLinked && (linkCount.get(item.bentoId) || 0) > 1;
     const lockedByBento = item._bentoLinked && !isDup;
@@ -3179,12 +3217,14 @@ function renderLibList() {
       : `<button class="lib-item-btn del" title="${isDup ? '删除重复的共享项' : '删除'}">×</button>`;
     row.innerHTML = `
       <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
-      <div class="lib-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>
+      <div class="lib-item-info">品名 <span class="ns">${dispSpeed}</span> · 计量 <span class="ns">${meterText}</span>${daySuffix}<br>流水线 ${lineSpdText}<br>${peopleText}</div>
       <div class="lib-item-btns">
+        <button class="lib-item-btn apply" title="把当前的品名速度 / 计量人数 应用到 ${currentDate} 该品名的所有卡片(其它日期不变)">⤓</button>
         <button class="lib-item-btn edit" title="编辑">✎</button>
         ${delBtnHtml}
       </div>
     `;
+    row.querySelector('.lib-item-btn.apply').addEventListener('click', () => applyLibToCurrentDate(item.id));
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
     if (!lockedByBento) {
       row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
@@ -3311,6 +3351,27 @@ function propagateLibChange(libId) {
   });
   affectedLines.forEach(l => l && recalc(l));
   if (affectedLines.size) scheduleSaveBoard();
+}
+// 把品名库当前的「品名速度 / 计量人数」推送到当前显示日期(currentDate)所有该品名的卡片上。
+// 只影响打开的这一天的 DOM 与存储,其它日期的快照不动。
+function applyLibToCurrentDate(libId) {
+  const item = findLibItem(libId);
+  if (!item) return;
+  const affectedLines = new Set();
+  let count = 0;
+  document.querySelectorAll('.card[data-type="job"]').forEach(card => {
+    if (card.dataset.libId !== libId) return;
+    card.dataset.speed = item.speed > 0 ? String(item.speed) : '';
+    const meterInp = popupQ(card, '.meter-people');
+    if (meterInp) meterInp.value = item.meterPeople > 0 ? item.meterPeople : 1;
+    affectedLines.add(card.closest('.line'));
+    count++;
+  });
+  affectedLines.forEach(l => l && recalc(l));
+  if (affectedLines.size) scheduleSaveBoard();
+  showToast(count > 0
+    ? `已应用到 ${currentDate} 的 ${count} 张「${item.name}」卡片`
+    : `${currentDate} 没有「${item.name}」的卡片`);
 }
 libNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') libSpeedInput.focus(); });
 libSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libLineSpeedInput.focus(); });
