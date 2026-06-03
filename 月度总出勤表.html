@@ -28,6 +28,10 @@ input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 .nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
+@media (max-width:768px){
+  .nav{position:fixed;top:0;left:0;right:0;width:100%}
+  body{padding-top:var(--sticky-nav,50px)}
+}
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
 .nav .spacer{flex:1}
@@ -260,9 +264,9 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     departments: [
-      { id: 'dept1', name: '部门 A', requiredCount: 10 },
-      { id: 'dept2', name: '部门 B', requiredCount: 10 },
-      { id: 'dept3', name: '部门 C', requiredCount: 10 }
+      { id: 'dept1', name: '部门 A', requiredCount: 22 },
+      { id: 'dept2', name: '部门 B', requiredCount: 22 },
+      { id: 'dept3', name: '部门 C', requiredCount: 22 }
     ],
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
@@ -313,7 +317,9 @@ const Store = (() => {
   const DEFAULT_REQUIRED = 22;
   const requiredCount = (deptId, ymd) => {
     const v = state.requiredPerDay[dispKey(deptId, ymd)];
-    return (v === undefined || v === null) ? DEFAULT_REQUIRED : v;
+    if (v !== undefined && v !== null) return v;
+    const d = dept(deptId);
+    return (d && d.requiredCount != null) ? d.requiredCount : DEFAULT_REQUIRED;
   };
 
   // ---- mutators ----
@@ -354,6 +360,10 @@ const Store = (() => {
   function renameDepartment(id, name) {
     const d = state.departments.find(x => x.id === id);
     if (d) { d.name = name; commit('dept'); }
+  }
+  function setDeptRequired(id, n) {
+    const d = state.departments.find(x => x.id === id);
+    if (d) { d.requiredCount = Math.max(0, Number(n) || 0); commit('dept'); }
   }
   function removeDepartment(id) {
     state.departments = state.departments.filter(d => d.id !== id);
@@ -401,7 +411,7 @@ const Store = (() => {
   return {
     get, dept, people, cellStatus, requiredCount,
     setUi, setCell, cycleCell, setRequired,
-    addDepartment, renameDepartment, removeDepartment,
+    addDepartment, renameDepartment, setDeptRequired, removeDepartment,
     addPerson, updatePerson, removePerson,
     exportJson, importJson, reset, subscribe
   };
@@ -748,6 +758,12 @@ const Pages = (() => {
         onchange: (e) => Store.renameDepartment(d.id, e.target.value || '未命名')
       });
       row.appendChild(nameInput);
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '必要人数默认:'));
+      row.appendChild(Render.el('input.num', {
+        type: 'number', min: '0',
+        value: String(d.requiredCount != null ? d.requiredCount : 22),
+        onchange: (e) => Store.setDeptRequired(d.id, e.target.value)
+      }));
       row.appendChild(Render.el('span.grow'));
       row.appendChild(Render.el('button.danger', {
         onclick: () => {
