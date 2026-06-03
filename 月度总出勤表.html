@@ -75,7 +75,13 @@ body:not(.editing) table.schedule td.required input{cursor:default;color:var(--m
 body:not(.editing) table.schedule td.required input:hover{background:transparent}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
-table.schedule th.today,table.schedule td.today{background:var(--today)}
+.today-badge{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#f97316;color:#fff;border-radius:50%;font-weight:700;font-size:11px;line-height:1;font-family:var(--font-mono)}
+/* row / column highlight (click name-col / date-th to toggle) */
+table.schedule td.name-col{cursor:pointer}
+table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-row th[data-ymd]{cursor:pointer}
+table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
+table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
+table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
 table.schedule tr.stat-row td.label{text-align:left;padding-left:6px;color:var(--muted)}
 table.schedule td.required{cursor:text;padding:0}
@@ -112,10 +118,20 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
     margin: 0 auto;
   }
   table.schedule th, table.schedule td {
-    border: 1px solid #888; padding: 3px 2px; color: #000; background: #fff !important;
+    border: 1px solid #999; padding: 3px 2px; color: #000; background: #fff !important;
     line-height: 1.5; height: 22px;
   }
-  table.schedule th { background: #eee !important; font-weight: 600; }
+  table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
+  /* clear interactive highlights in print */
+  table.schedule tr.hl-row td, table.schedule tr.hl-row th,
+  table.schedule td.hl-col, table.schedule th.hl-col,
+  table.schedule tr.hl-row td.hl-col, table.schedule tr.hl-row th.hl-col {
+    background: #fff !important;
+  }
+  /* row striping for body rows */
+  table.schedule tbody tr:not(.stat-row):nth-child(even) td { background: #fafafa !important; }
+  /* stat row bg (overrides striping) */
+  table.schedule tr.stat-row td { background: #f5f5f5 !important; }
   table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
   table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
   /* fixed column widths — total ≈ 1078px (A4 landscape minus 10mm margins) */
@@ -133,7 +149,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   table.schedule td.day-cell.retired { color: #888; background: #f5f5f5 !important; }
   table.schedule th.sat { color: #1d4ed8 !important; }
   table.schedule th.sun { color: #b91c1c !important; }
-  table.schedule td.today, table.schedule th.today { background: #ffeaa7 !important; }
+  .today-badge { background: #f97316 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   table.schedule tr.stat-row td { background: #f5f5f5 !important; height: 22px; font-weight: 600; }
   table.schedule td.required { padding: 0; }
   table.schedule td.required input {
@@ -507,25 +523,70 @@ const App = (() => {
     btn.classList.toggle('primary', editing);
   }
 
+  let originalTitle = '';
+  function buildPrintTitle() {
+    const d = Store.dept();
+    const period = Store.get().ui.currentPeriod;
+    const { start, end } = Period.range(period);
+    const y = start.getFullYear();
+    const m1 = Util.pad2(start.getMonth() + 1);
+    const m2 = Util.pad2(end.getMonth() + 1);
+    return `${d ? d.name : ''}月度出勤表${y}${m1}16-${m2}15`;
+  }
+
   function init() {
     bindNav();
     showRoute();
     updateDirtyIndicator();
     updateEditUI();
     Store.subscribe(() => { showRoute(); updateDirtyIndicator(); updateEditUI(); });
+    window.addEventListener('beforeprint', () => {
+      originalTitle = document.title;
+      document.title = buildPrintTitle();
+    });
+    window.addEventListener('afterprint', () => {
+      if (originalTitle) document.title = originalTitle;
+    });
   }
 
   return { init, showRoute };
 })();
 
 const Pages = (() => {
+  const highlightedRows = new Set();   // personId
+  const highlightedCols = new Set();   // ymd
+
+  function toggleRow(personId) {
+    if (highlightedRows.has(personId)) highlightedRows.delete(personId);
+    else highlightedRows.add(personId);
+    applyHighlight();
+  }
+  function toggleCol(ymd) {
+    if (highlightedCols.has(ymd)) highlightedCols.delete(ymd);
+    else highlightedCols.add(ymd);
+    applyHighlight();
+  }
+
+  function applyHighlight() {
+    document.querySelectorAll('.hl-row, .hl-col').forEach(el => {
+      el.classList.remove('hl-row');
+      el.classList.remove('hl-col');
+    });
+    highlightedRows.forEach(pid => {
+      document.querySelectorAll(`tr[data-person-id="${pid}"]`).forEach(tr => tr.classList.add('hl-row'));
+    });
+    highlightedCols.forEach(ymd => {
+      document.querySelectorAll(`[data-ymd="${ymd}"]`).forEach(el => el.classList.add('hl-col'));
+    });
+  }
+
   function renderSchedule() {
     const host = document.getElementById('page-schedule');
     Render.clear(host);
     renderDeptTabs();
     renderPeriodNav();
     host.appendChild(buildTable());
-    requestAnimationFrame(syncStickyOffsets);
+    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); });
   }
 
   function syncStickyOffsets() {
@@ -608,19 +669,20 @@ const Pages = (() => {
     r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '契休'));
     r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '残'));
     for (const d of days) {
-      const th = Render.el('th', String(d.day));
+      const content = d.ymd === todayYmd
+        ? Render.el('span.today-badge', String(d.day))
+        : String(d.day);
+      const th = Render.el('th', { dataset: { ymd: d.ymd }, onclick: () => toggleCol(d.ymd) }, content);
       if (d.isSat) th.classList.add('sat');
       if (d.isSun || d.isHoliday) th.classList.add('sun');
-      if (d.ymd === todayYmd) th.classList.add('today');
       r1.appendChild(th);
     }
     thead.appendChild(r1);
     const r2 = Render.el('tr.weekday-row');
     for (const d of days) {
-      const th = Render.el('th', d.weekdayJp);
+      const th = Render.el('th', { dataset: { ymd: d.ymd }, onclick: () => toggleCol(d.ymd) }, d.weekdayJp);
       if (d.isSat) th.classList.add('sat');
       if (d.isSun || d.isHoliday) th.classList.add('sun');
-      if (d.ymd === todayYmd) th.classList.add('today');
       r2.appendChild(th);
     }
     thead.appendChild(r2);
@@ -641,9 +703,9 @@ const Pages = (() => {
     }
 
     for (const p of people) {
-      const tr = Render.el('tr');
+      const tr = Render.el('tr', { dataset: { personId: p.id } });
       tr.appendChild(Render.el('td.role-col', p.role || ''));
-      tr.appendChild(Render.el('td.name-col', p.name || ''));
+      tr.appendChild(Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || ''));
 
       const sums = computeSums(deptId, p, periodKey, days);
       tr.appendChild(Render.el('td.sum-col', String(sums.paid)));
@@ -660,7 +722,6 @@ const Pages = (() => {
           st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'retired' ? '✲' : ''
         );
         td.classList.add(st);
-        if (d.ymd === todayYmd) td.classList.add('today');
         if (st !== 'retired') {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
@@ -697,7 +758,7 @@ const Pages = (() => {
     r1.appendChild(Render.el('td.label', { colspan: 5 }, '必要人数'));
     const editing = Store.get().ui.editMode;
     for (let i = 0; i < days.length; i++) {
-      const td = Render.el('td.required');
+      const td = Render.el('td.required', { dataset: { ymd: days[i].ymd } });
       const input = Render.el('input', {
         type: 'number',
         min: '0',
@@ -714,7 +775,7 @@ const Pages = (() => {
     // Row 2: ライン合計 (auto)
     const r2 = Render.el('tr.stat-row');
     r2.appendChild(Render.el('td.label', { colspan: 5 }, 'ライン合計'));
-    for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', String(lineTotals[i])));
+    for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
     // Row 3: 派遣短期 = 必要人数 − ライン合計
@@ -722,7 +783,7 @@ const Pages = (() => {
     r3.appendChild(Render.el('td.label', { colspan: 5 }, '派遣短期'));
     for (let i = 0; i < days.length; i++) {
       const gap = requireds[i] - lineTotals[i];
-      const td = Render.el('td', String(gap));
+      const td = Render.el('td', { dataset: { ymd: days[i].ymd } }, String(gap));
       if (gap > 0) td.style.color = 'var(--danger)';
       else if (gap < 0) td.style.color = 'var(--muted)';
       r3.appendChild(td);
@@ -866,8 +927,13 @@ const Pages = (() => {
 
   function doExport() {
     const json = Store.exportJson();
-    const stamp = new Date();
-    const name = `月度出勤表-${stamp.getFullYear()}${Util.pad2(stamp.getMonth()+1)}${Util.pad2(stamp.getDate())}-${Util.pad2(stamp.getHours())}${Util.pad2(stamp.getMinutes())}.json`;
+    const d = Store.dept();
+    const period = Store.get().ui.currentPeriod;
+    const { start, end } = Period.range(period);
+    const y = start.getFullYear();
+    const m1 = Util.pad2(start.getMonth() + 1);
+    const m2 = Util.pad2(end.getMonth() + 1);
+    const name = `月度出勤表${y}${m1}16-${m2}15.json`;
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
