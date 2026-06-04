@@ -142,7 +142,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   }
   table.schedule th, table.schedule td {
     border: 1px solid #999; padding: 2px 2px; color: #000; background: #fff !important;
-    line-height: 1.35; height: auto;
+    line-height: 1.4; height: auto;
   }
   table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
   /* clear interactive highlights in print */
@@ -611,8 +611,8 @@ const App = (() => {
       if (!tbl) return;
       const naturalH = tbl.offsetHeight;
       const naturalW = tbl.offsetWidth;
-      const TARGET_H = 620;   // px — A4 landscape printable height minus iOS Safari URL header/footer
-      const TARGET_W = 1050;  // px — A4 landscape printable width
+      const TARGET_H = 770;   // px — fill A4 landscape page; zoom-fit only triggers if natural overflows
+      const TARGET_W = 1100;  // px — A4 landscape printable width (with 4mm margins)
       const scale = Math.min(1, TARGET_H / naturalH, TARGET_W / naturalW);
       if (scale < 0.999) tbl.style.zoom = scale.toFixed(3);
     });
@@ -834,8 +834,8 @@ const Pages = (() => {
     // dynamic print row-height based on people count
     // AVAIL is conservative to also fit Letter landscape (iOS AirPrint default)
     const peopleN = Store.peopleInPeriod(Store.get().ui.currentDept).length;
-    const AVAIL = 480;   // A4/Letter landscape body area minus header + stats + browser chrome buffer
-    const MIN = 13, MAX = 30;
+    const AVAIL = 640;   // A4 landscape body area minus header + stats — aim for "fill the page"
+    const MIN = 14, MAX = 34;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
     return wrap;
