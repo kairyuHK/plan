@@ -122,13 +122,15 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
   :root {
-    /* Default: each row = 100vh / totalRows (works on Chrome/Edge desktop).
-       iOS Safari: --row-h-fixed (set by JS) overrides because 100vh is unreliable. */
-    --row-h: var(--row-h-fixed, calc(100vh / (var(--total-rows, 30))));
+    /* A4 landscape content area ≈ 198mm tall (210mm − 4mm × 2 page margins − ~4mm
+       browser footer). Use mm — absolute in print. Previously this was `100vh`,
+       which iOS Safari resolves to the device viewport (≈104mm in landscape),
+       not the page height, causing the table to be clipped after ~17 rows. */
+    --row-h: var(--row-h-fixed, calc(198mm / (var(--total-rows, 30))));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 100vh; overflow: hidden; }
-  #page-schedule.page { padding: 0 !important; height: 100vh; }
-  .schedule-wrap { margin: 0 !important; height: 100vh; }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 198mm; overflow: hidden; }
+  #page-schedule.page { padding: 0 !important; height: 198mm; }
+  .schedule-wrap { margin: 0 !important; height: 198mm; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
   .color-palette { display: none !important; }
@@ -641,13 +643,22 @@ const App = (() => {
         (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
       if (!isMobile) return;
       // Brute force: apply inline !important styles to every cell. Bypasses @media print
-      // evaluation which iOS Safari sometimes skips when device orientation ≠ print orientation.
-      // A4 landscape @ 4mm margin ≈ 763px usable height; 740 keeps a small safety buffer.
-      const MOBILE_PAGE_H = 740;
-      const rH = MOBILE_PAGE_H / totalRows;
+      // evaluation which iOS Safari sometimes skips. Use mm so iOS doesn't mis-resolve
+      // `100vh` to the device viewport (≈104mm in landscape) instead of A4 page height.
+      const BODY_H_MM = 198;
+      const TABLE_H_MM = 195;
+      const rH = TABLE_H_MM / totalRows; // mm per row
+      // Pin body / page / wrap to A4 content height in mm — overrides screen `100vh`.
+      document.documentElement.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
+      document.body.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
+      document.body.style.setProperty('overflow', 'hidden', 'important');
+      const pageEl = document.getElementById('page-schedule');
+      const wrapEl = document.querySelector('#page-schedule .schedule-wrap');
+      if (pageEl) pageEl.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
+      if (wrapEl) wrapEl.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
       const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
       cells.forEach(c => {
-        c.style.setProperty('height', `${rH.toFixed(2)}px`, 'important');
+        c.style.setProperty('height', `${rH.toFixed(3)}mm`, 'important');
         c.style.setProperty('line-height', '1', 'important');
         c.style.setProperty('padding-top', '0', 'important');
         c.style.setProperty('padding-bottom', '0', 'important');
@@ -656,16 +667,23 @@ const App = (() => {
         else if (c.classList.contains('dept-name')) fontMul = 0.65;
         else if (c.classList.contains('month-label')) fontMul = 0.6;
         else if (c.classList.contains('name-col') || c.classList.contains('role-col')) fontMul = 0.55;
-        c.style.setProperty('font-size', `${(rH * fontMul).toFixed(2)}px`, 'important');
+        c.style.setProperty('font-size', `${(rH * fontMul).toFixed(3)}mm`, 'important');
       });
       const inputs = document.querySelectorAll('#page-schedule table.schedule td.required input');
-      inputs.forEach(i => i.style.setProperty('font-size', `${(rH * 0.65).toFixed(2)}px`, 'important'));
+      inputs.forEach(i => i.style.setProperty('font-size', `${(rH * 0.65).toFixed(3)}mm`, 'important'));
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
       document.documentElement.style.removeProperty('--total-rows');
       document.documentElement.style.removeProperty('--row-h-fixed');
       // Clean up brute-force inline styles
+      document.documentElement.style.removeProperty('height');
+      document.body.style.removeProperty('height');
+      document.body.style.removeProperty('overflow');
+      const pageEl = document.getElementById('page-schedule');
+      const wrapEl = document.querySelector('#page-schedule .schedule-wrap');
+      if (pageEl) pageEl.style.removeProperty('height');
+      if (wrapEl) wrapEl.style.removeProperty('height');
       const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
       cells.forEach(c => {
         c.style.removeProperty('height');
@@ -904,9 +922,13 @@ const Pages = (() => {
     let mobileStyle = document.getElementById('mobile-print-style');
     if (isMobile) {
       const totalRows = 3 + peopleN + 3;
-      // A4 landscape @ 4mm margin ≈ 763px usable height; 740 keeps a small safety buffer.
-      const MOBILE_PAGE_H = 740;
-      const rH = MOBILE_PAGE_H / totalRows;
+      // iOS Safari evaluates `100vh` as the device viewport (≈104mm in landscape),
+      // not the A4 page height. `body { height:100vh; overflow:hidden }` then clips
+      // the table after only ~17 rows. Use mm — absolute in print, immune to that bug.
+      // A4 landscape content area ≈ 198mm (210mm − 8mm margins − ~4mm Safari footer).
+      const BODY_H_MM = 198;
+      const TABLE_H_MM = 195;
+      const rH = TABLE_H_MM / totalRows; // mm per row
       if (!mobileStyle) {
         mobileStyle = document.createElement('style');
         mobileStyle.id = 'mobile-print-style';
@@ -914,18 +936,21 @@ const Pages = (() => {
       }
       mobileStyle.textContent = `
         @media print {
+          html, body { height: ${BODY_H_MM}mm !important; overflow: hidden !important; }
+          #page-schedule.page { height: ${BODY_H_MM}mm !important; }
+          .schedule-wrap { height: ${BODY_H_MM}mm !important; }
           table.schedule th, table.schedule td {
-            height: ${rH.toFixed(2)}px !important;
-            font-size: ${(rH * 0.55).toFixed(2)}px !important;
+            height: ${rH.toFixed(3)}mm !important;
+            font-size: ${(rH * 0.55).toFixed(3)}mm !important;
             line-height: 1 !important;
             padding-top: 0 !important; padding-bottom: 0 !important;
           }
-          table.schedule td.day-cell { font-size: ${(rH * 0.7).toFixed(2)}px !important; }
-          table.schedule th.dept-name { font-size: ${(rH * 0.65).toFixed(2)}px !important; }
-          table.schedule th.month-label { font-size: ${(rH * 0.6).toFixed(2)}px !important; }
-          table.schedule td.required input { font-size: ${(rH * 0.65).toFixed(2)}px !important; }
-          table.schedule th.name-col, table.schedule td.name-col { font-size: ${Math.min(11, rH * 0.6).toFixed(2)}px !important; }
-          table.schedule th.role-col, table.schedule td.role-col { font-size: ${Math.min(11, rH * 0.6).toFixed(2)}px !important; }
+          table.schedule td.day-cell { font-size: ${(rH * 0.7).toFixed(3)}mm !important; }
+          table.schedule th.dept-name { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
+          table.schedule th.month-label { font-size: ${(rH * 0.6).toFixed(3)}mm !important; }
+          table.schedule td.required input { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
+          table.schedule th.name-col, table.schedule td.name-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
+          table.schedule th.role-col, table.schedule td.role-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
         }
       `;
     } else if (mobileStyle) {
