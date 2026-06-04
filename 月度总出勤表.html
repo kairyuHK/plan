@@ -630,8 +630,8 @@ const App = (() => {
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if (isIOS) {
-        // A4 landscape (~720px) minus iOS Safari URL footer (~50px) + safety
-        const IOS_PAGE_H = 620;
+        // A4 landscape (~720px) minus iOS Safari URL footer + chrome + safety
+        const IOS_PAGE_H = 560;
         document.documentElement.style.setProperty('--row-h-fixed', `${IOS_PAGE_H / totalRows}px`);
       }
     });
@@ -852,12 +852,24 @@ const Pages = (() => {
     tbl.appendChild(buildBody(days, todayYmd));
     wrap.appendChild(tbl);
     // dynamic print row-height based on people count
-    // AVAIL is conservative to also fit Letter landscape (iOS AirPrint default)
     const peopleN = Store.peopleInPeriod(Store.get().ui.currentDept).length;
-    const AVAIL = 560;   // scaled up ~12% from 500 — matches "112% zoom looks good" target
+    const AVAIL = 560;
     const MIN = 14, MAX = 31;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
+    // For mobile/touch devices, pre-set --row-h-fixed (px-based) so print doesn't rely on 100vh
+    // (iOS Safari treats 100vh as device viewport in print, not page area).
+    const isMobile =
+      /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1) ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    if (isMobile) {
+      const totalRows = 3 + peopleN + 3;
+      const MOBILE_PAGE_H = 560;  // conservative A4 landscape minus iOS chrome
+      document.documentElement.style.setProperty('--row-h-fixed', `${MOBILE_PAGE_H / totalRows}px`);
+    } else {
+      document.documentElement.style.removeProperty('--row-h-fixed');
+    }
     return wrap;
   }
 
