@@ -632,23 +632,50 @@ const App = (() => {
     window.addEventListener('beforeprint', () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
-      // set total row count for print CSS to auto-distribute via vh
       const peopleN = Store.peopleInPeriod().length;
-      const totalRows = 3 /* header rows */ + peopleN + 3 /* stat rows */;
+      const totalRows = 3 + peopleN + 3;
       document.documentElement.style.setProperty('--total-rows', String(totalRows));
-      // iOS Safari's 100vh in print = device viewport, not page area. Override with px.
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if (isIOS) {
-        // A4 landscape (~720px) minus iOS Safari URL footer + chrome + safety
-        const IOS_PAGE_H = 560;
-        document.documentElement.style.setProperty('--row-h-fixed', `${IOS_PAGE_H / totalRows}px`);
-      }
+      const isMobile =
+        /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1) ||
+        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      if (!isMobile) return;
+      // Brute force: apply inline !important styles to every cell. Bypasses @media print
+      // evaluation which iOS Safari sometimes skips when device orientation ≠ print orientation.
+      const MOBILE_PAGE_H = 560;
+      const rH = MOBILE_PAGE_H / totalRows;
+      const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
+      cells.forEach(c => {
+        c.style.setProperty('height', `${rH.toFixed(2)}px`, 'important');
+        c.style.setProperty('line-height', '1', 'important');
+        c.style.setProperty('padding-top', '0', 'important');
+        c.style.setProperty('padding-bottom', '0', 'important');
+        let fontMul = 0.55;
+        if (c.classList.contains('day-cell')) fontMul = 0.7;
+        else if (c.classList.contains('dept-name')) fontMul = 0.65;
+        else if (c.classList.contains('month-label')) fontMul = 0.6;
+        else if (c.classList.contains('name-col') || c.classList.contains('role-col')) fontMul = 0.55;
+        c.style.setProperty('font-size', `${(rH * fontMul).toFixed(2)}px`, 'important');
+      });
+      const inputs = document.querySelectorAll('#page-schedule table.schedule td.required input');
+      inputs.forEach(i => i.style.setProperty('font-size', `${(rH * 0.65).toFixed(2)}px`, 'important'));
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
       document.documentElement.style.removeProperty('--total-rows');
       document.documentElement.style.removeProperty('--row-h-fixed');
+      // Clean up brute-force inline styles
+      const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
+      cells.forEach(c => {
+        c.style.removeProperty('height');
+        c.style.removeProperty('font-size');
+        c.style.removeProperty('line-height');
+        c.style.removeProperty('padding-top');
+        c.style.removeProperty('padding-bottom');
+      });
+      document.querySelectorAll('#page-schedule table.schedule td.required input').forEach(i => {
+        i.style.removeProperty('font-size');
+      });
     });
   }
 
