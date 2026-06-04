@@ -84,6 +84,8 @@ table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
 /* keyboard focus indicator */
 table.schedule td.day-cell.cell-focus{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:2}
+/* recently-edited: tint the 〇/●/✲ glyph with warn color (cleared when leaving edit mode) */
+table.schedule td.day-cell.cell-edited{color:var(--warn) !important;font-weight:700}
 .entry-hint{margin:8px 0 0;padding:6px 12px;background:rgba(124,92,255,0.08);border:1px solid rgba(124,92,255,0.25);border-radius:6px;font-size:12px;color:var(--text);font-family:var(--font-mono)}
 .entry-hint kbd{display:inline-block;background:#1f1f23;border:1px solid var(--border);border-radius:3px;padding:0 5px;margin:0 2px;font-size:11px;color:var(--accent)}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
@@ -114,6 +116,8 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   html, body { background: #fff; color: #000; font-size: 11px; padding-top: 0 !important; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
+  table.schedule td.cell-edited { background: #fff !important; }
+  table.schedule td.cell-edited::after { display: none !important; }
   /* kill sticky positions in print — iOS Safari / WebKit duplicates / shifts them otherwise */
   table.schedule thead { position: static !important; top: auto !important; box-shadow: none !important; }
   table.schedule th.name-col, table.schedule td.name-col { position: static !important; left: auto !important; }
@@ -594,6 +598,19 @@ const Pages = (() => {
   const highlightedRows = new Set();   // personId
   const highlightedCols = new Set();   // ymd
   let focusedCell = null;              // { personId, ymd } or null
+  const editedCells = new Set();       // `${personId}|${ymd}` — cells touched in current edit session
+
+  function markEdited(personId, ymd) { editedCells.add(`${personId}|${ymd}`); }
+  function clearEdited() { editedCells.clear(); applyEditedMarks(); }
+  function applyEditedMarks() {
+    document.querySelectorAll('.cell-edited').forEach(el => el.classList.remove('cell-edited'));
+    for (const key of editedCells) {
+      const [pid, ymd] = key.split('|');
+      const sel = `td.day-cell[data-person="${pid}"][data-ymd="${ymd}"]`;
+      const cell = document.querySelector(sel);
+      if (cell) cell.classList.add('cell-edited');
+    }
+  }
 
   function setFocus(personId, ymd) {
     const days = Period.days(Store.get().ui.currentPeriod);
@@ -635,8 +652,12 @@ const Pages = (() => {
       focusedCell = { personId: cur.personId, ymd: days[di + 1].ymd };
     }
     const st = Store.cellStatus(deptId, cur.personId, cur.ymd);
-    if (st !== 'retired') Store.setCell(deptId, cur.personId, cur.ymd, status);
-    else applyFocus();
+    if (st !== 'retired') {
+      markEdited(cur.personId, cur.ymd);
+      Store.setCell(deptId, cur.personId, cur.ymd, status);
+    } else {
+      applyFocus();
+    }
   }
 
   function toggleRow(personId) {
@@ -670,7 +691,7 @@ const Pages = (() => {
     renderPeriodNav();
     if (Store.get().ui.editMode) host.appendChild(buildEntryHint());
     host.appendChild(buildTable());
-    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
+    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); applyEditedMarks(); });
   }
 
   function buildEntryHint() {
@@ -689,6 +710,14 @@ const Pages = (() => {
   window.addEventListener('resize', () => {
     clearTimeout(resizeT);
     resizeT = setTimeout(syncStickyOffsets, 60);
+  });
+
+  // when switching from edit → lock, clear the "recently edited" marks
+  let prevEditMode = Store.get().ui.editMode;
+  Store.subscribe(() => {
+    const cur = Store.get().ui.editMode;
+    if (prevEditMode && !cur) clearEdited();
+    prevEditMode = cur;
   });
 
   // global keyboard speed entry
@@ -754,9 +783,10 @@ const Pages = (() => {
     tbl.appendChild(buildBody(days, todayYmd));
     wrap.appendChild(tbl);
     // dynamic print row-height based on people count
+    // AVAIL is conservative to also fit Letter landscape (iOS AirPrint default)
     const peopleN = Store.peopleInPeriod(Store.get().ui.currentDept).length;
-    const AVAIL = 580;   // A4 landscape body area minus header(70) + stats(66) + buffer
-    const MIN = 14, MAX = 32;
+    const AVAIL = 480;   // A4/Letter landscape body area minus header + stats + browser chrome buffer
+    const MIN = 13, MAX = 30;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
     return wrap;
@@ -845,6 +875,7 @@ const Pages = (() => {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
             focusedCell = { personId: p.id, ymd: d.ymd };
+            markEdited(p.id, d.ymd);
             Store.cycleCell(deptId, p.id, d.ymd);
           });
         }
