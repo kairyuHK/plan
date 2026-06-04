@@ -604,23 +604,35 @@ const App = (() => {
     window.addEventListener('beforeprint', () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
-      // dynamic fit-to-page: predict print height analytically (not via screen offsetHeight
-      // which uses screen styles, not print styles).
-      const tbl = document.querySelector('#page-schedule table.schedule');
-      if (!tbl) return;
+      // dynamic fit-to-page via transform: scale on the wrapper.
+      // transform reliably scales ALL descendants (including <input>) on iOS Safari,
+      // whereas `zoom` skips inputs and leaves stat rows oversized.
       const wrap = document.querySelector('.schedule-wrap');
+      if (!wrap) return;
       const rowH = parseInt(getComputedStyle(wrap).getPropertyValue('--print-row-h'), 10) || 22;
       const peopleN = Store.peopleInPeriod().length;
       const PRINT_FONT = 12, PRINT_LH = 1.4, PRINT_PAD = 2;
-      const baseRowH = Math.ceil(PRINT_FONT * PRINT_LH + PRINT_PAD);  // header/stat row height
+      const baseRowH = Math.ceil(PRINT_FONT * PRINT_LH + PRINT_PAD);
       const predictedH = 3 * baseRowH + peopleN * rowH + 3 * baseRowH;
-      const TARGET_H = 620;   // iOS A4 landscape with URL footer + safety
+      const TARGET_H = 620;
       if (predictedH > TARGET_H) {
-        tbl.style.zoom = (TARGET_H / predictedH).toFixed(3);
+        const scale = TARGET_H / predictedH;
+        wrap.style.transformOrigin = 'top left';
+        wrap.style.transform = `scale(${scale.toFixed(3)})`;
+        // shrink wrapper layout height to scaled value so it doesn't reserve unscaled space
+        wrap.style.height = `${predictedH * scale}px`;
+        wrap.style.width = `${(100 / scale).toFixed(2)}%`;
       }
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
+      const wrap = document.querySelector('.schedule-wrap');
+      if (wrap) {
+        wrap.style.transform = '';
+        wrap.style.transformOrigin = '';
+        wrap.style.height = '';
+        wrap.style.width = '';
+      }
       const tbl = document.querySelector('#page-schedule table.schedule');
       if (tbl) tbl.style.zoom = '';
     });
