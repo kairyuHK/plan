@@ -604,17 +604,20 @@ const App = (() => {
     window.addEventListener('beforeprint', () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
-      // dynamic fit-to-page: scale the table so it fits within one A4 landscape page
-      // necessary on mobile (iOS Safari) where browser chrome eats vertical space and
-      // dynamic row-height alone can't guarantee single-page output
+      // dynamic fit-to-page: predict print height analytically (not via screen offsetHeight
+      // which uses screen styles, not print styles).
       const tbl = document.querySelector('#page-schedule table.schedule');
       if (!tbl) return;
-      const naturalH = tbl.offsetHeight;
-      const naturalW = tbl.offsetWidth;
-      const TARGET_H = 670;   // px — scaled up to match new natural target (~12% from prior 600)
-      const TARGET_W = 1100;  // px — A4 landscape printable width
-      const scale = Math.min(1, TARGET_H / naturalH, TARGET_W / naturalW);
-      if (scale < 0.999) tbl.style.zoom = scale.toFixed(3);
+      const wrap = document.querySelector('.schedule-wrap');
+      const rowH = parseInt(getComputedStyle(wrap).getPropertyValue('--print-row-h'), 10) || 22;
+      const peopleN = Store.peopleInPeriod().length;
+      const PRINT_FONT = 12, PRINT_LH = 1.4, PRINT_PAD = 2;
+      const baseRowH = Math.ceil(PRINT_FONT * PRINT_LH + PRINT_PAD);  // header/stat row height
+      const predictedH = 3 * baseRowH + peopleN * rowH + 3 * baseRowH;
+      const TARGET_H = 620;   // iOS A4 landscape with URL footer + safety
+      if (predictedH > TARGET_H) {
+        tbl.style.zoom = (TARGET_H / predictedH).toFixed(3);
+      }
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
