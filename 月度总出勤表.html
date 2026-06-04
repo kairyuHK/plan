@@ -151,12 +151,22 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   }
   table.schedule th, table.schedule td {
     border: 1px solid #999; padding: 0 2px; color: #000; background: #fff !important;
-    line-height: 1; height: var(--row-h); font-size: calc(var(--row-h) * 0.55);
+    line-height: 1 !important;
+    height: var(--row-h) !important;
+    font-size: calc(var(--row-h) * 0.55) !important;
     box-sizing: border-box;
   }
-  table.schedule td.day-cell { font-size: calc(var(--row-h) * 0.7); }
-  table.schedule th.dept-name { font-size: calc(var(--row-h) * 0.65); height: var(--row-h); }
-  table.schedule th.month-label { font-size: calc(var(--row-h) * 0.6); height: var(--row-h); }
+  table.schedule td.day-cell {
+    height: var(--row-h) !important;
+    font-size: calc(var(--row-h) * 0.7) !important;
+    width: auto !important;
+  }
+  table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) {
+    height: var(--row-h) !important;
+    width: auto !important;
+  }
+  table.schedule th.dept-name { font-size: calc(var(--row-h) * 0.65) !important; height: var(--row-h) !important; }
+  table.schedule th.month-label { font-size: calc(var(--row-h) * 0.6) !important; height: var(--row-h) !important; }
   table.schedule td.required input { font-size: calc(var(--row-h) * 0.65) !important; }
   table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
   /* clear interactive highlights in print */
