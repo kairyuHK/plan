@@ -82,10 +82,14 @@ table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-ro
 table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
 table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
-/* keyboard focus indicator */
-table.schedule td.day-cell.cell-focus{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:2}
-/* recently-edited: tint the 〇/●/✲ glyph with warn color (cleared when leaving edit mode) */
-table.schedule td.day-cell.cell-edited{color:var(--warn) !important;font-weight:700}
+/* keyboard focus indicator (kept silent — no visible outline; logic still tracks focused cell) */
+table.schedule td.day-cell.cell-focus{position:relative}
+/* color palette toolbar */
+.color-palette{display:inline-flex;gap:6px;align-items:center;margin-left:12px}
+.color-palette .swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.color-palette .swatch:hover{outline:1px solid var(--muted);outline-offset:1px}
+.color-palette .swatch.active{border-color:var(--text);box-shadow:0 0 0 1px var(--bg) inset}
+.color-palette .swatch-clear{background:transparent;border:2px dashed var(--muted);color:var(--muted)}
 .entry-hint{margin:8px 0 0;padding:6px 12px;background:rgba(124,92,255,0.08);border:1px solid rgba(124,92,255,0.25);border-radius:6px;font-size:12px;color:var(--text);font-family:var(--font-mono)}
 .entry-hint kbd{display:inline-block;background:#1f1f23;border:1px solid var(--border);border-radius:3px;padding:0 5px;margin:0 2px;font-size:11px;color:var(--accent)}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
@@ -116,8 +120,9 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   html, body { background: #fff; color: #000; font-size: 11px; padding-top: 0 !important; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
-  table.schedule td.cell-edited { background: #fff !important; }
-  table.schedule td.cell-edited::after { display: none !important; }
+  .color-palette { display: none !important; }
+  /* preserve inline cell colors in print */
+  table.schedule td.day-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* kill sticky positions in print — iOS Safari / WebKit duplicates / shifts them otherwise */
   table.schedule thead { position: static !important; top: auto !important; box-shadow: none !important; }
   table.schedule th.name-col, table.schedule td.name-col { position: static !important; left: auto !important; }
@@ -302,6 +307,7 @@ const Store = (() => {
     ],
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
+    cellColors: {},
     requiredPerDay: {},
     ui: { currentDept: 'dept1', currentPeriod: Period.todayKey(), editMode: false },
     lastExportAt: null
@@ -319,6 +325,7 @@ const Store = (() => {
       // backward-compat: old field name shortTermDispatch → requiredPerDay
       if (!parsed.requiredPerDay) parsed.requiredPerDay = parsed.shortTermDispatch || {};
       delete parsed.shortTermDispatch;
+      if (!parsed.cellColors) parsed.cellColors = {};
       return parsed;
     } catch (_) { return defaults(); }
   }
@@ -369,21 +376,31 @@ const Store = (() => {
   // ---- mutators ----
   function setUi(patch) { Object.assign(state.ui, patch); commit('ui'); }
 
-  function setCell(deptId, personId, ymd, status) {
+  function setCell(deptId, personId, ymd, status, color) {
     const k = cellKey(deptId, personId, ymd);
-    if (status === 'work') delete state.attendance[k];
-    else state.attendance[k] = status;
+    if (status === 'work') {
+      delete state.attendance[k];
+      delete state.cellColors[k];
+    } else {
+      state.attendance[k] = status;
+      if (color !== undefined) {
+        if (color === null) delete state.cellColors[k];
+        else state.cellColors[k] = color;
+      }
+    }
     commit('cell');
   }
 
-  function cycleCell(deptId, personId, ymd) {
+  function cycleCell(deptId, personId, ymd, color) {
     const current = cellStatus(deptId, personId, ymd);
     if (current === 'retired') return;
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
                : 'work';
-    setCell(deptId, personId, ymd, next);
+    setCell(deptId, personId, ymd, next, color);
   }
+
+  const cellColor = (deptId, personId, ymd) => state.cellColors[cellKey(deptId, personId, ymd)] || null;
 
   function setRequired(deptId, ymd, n) {
     const k = dispKey(deptId, ymd);
@@ -467,7 +484,7 @@ const Store = (() => {
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   return {
-    get, dept, people, peopleInPeriod, cellStatus, requiredCount,
+    get, dept, people, peopleInPeriod, cellStatus, cellColor, requiredCount,
     setUi, setCell, cycleCell, setRequired,
     addDepartment, renameDepartment, setDeptRequired, removeDepartment,
     addPerson, updatePerson, removePerson, purgePerson,
@@ -598,19 +615,12 @@ const Pages = (() => {
   const highlightedRows = new Set();   // personId
   const highlightedCols = new Set();   // ymd
   let focusedCell = null;              // { personId, ymd } or null
-  const editedCells = new Set();       // `${personId}|${ymd}` — cells touched in current edit session
-
-  function markEdited(personId, ymd) { editedCells.add(`${personId}|${ymd}`); }
-  function clearEdited() { editedCells.clear(); applyEditedMarks(); }
-  function applyEditedMarks() {
-    document.querySelectorAll('.cell-edited').forEach(el => el.classList.remove('cell-edited'));
-    for (const key of editedCells) {
-      const [pid, ymd] = key.split('|');
-      const sel = `td.day-cell[data-person="${pid}"][data-ymd="${ymd}"]`;
-      const cell = document.querySelector(sel);
-      if (cell) cell.classList.add('cell-edited');
-    }
-  }
+  let activeColor = null;              // 'red'|'orange'|'yellow'|'green'|'blue'|'purple' or null
+  const COLOR_MAP = {
+    red: '#dc2626', orange: '#ea580c', yellow: '#ca8a04',
+    green: '#16a34a', blue: '#2563eb', purple: '#9333ea'
+  };
+  function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; renderPalette(); }
 
   function setFocus(personId, ymd) {
     const days = Period.days(Store.get().ui.currentPeriod);
@@ -653,8 +663,7 @@ const Pages = (() => {
     }
     const st = Store.cellStatus(deptId, cur.personId, cur.ymd);
     if (st !== 'retired') {
-      markEdited(cur.personId, cur.ymd);
-      Store.setCell(deptId, cur.personId, cur.ymd, status);
+      Store.setCell(deptId, cur.personId, cur.ymd, status, activeColor);
     } else {
       applyFocus();
     }
@@ -691,13 +700,45 @@ const Pages = (() => {
     renderPeriodNav();
     if (Store.get().ui.editMode) host.appendChild(buildEntryHint());
     host.appendChild(buildTable());
-    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); applyEditedMarks(); });
+    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
   }
 
   function buildEntryHint() {
     const div = Render.el('div.entry-hint');
-    div.innerHTML = '键盘速录: 先点任一格定位 → <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>/<kbd>空格</kbd>=空(自动跳下一列)　<kbd>→</kbd> <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> 移焦点　<kbd>Enter</kbd>=下一人首日　<kbd>Esc</kbd>=取消';
+    const left = Render.el('span');
+    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
+    div.appendChild(left);
+    div.appendChild(buildColorPalette());
     return div;
+  }
+
+  function buildColorPalette() {
+    const wrap = Render.el('div.color-palette');
+    wrap.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '颜色:'));
+    const swatches = [
+      { c: null, tag: 'button.swatch.swatch-clear', label: '×', title: '无色(默认)' },
+      { c: 'red',    tag: 'button.swatch', hex: COLOR_MAP.red,    title: '红' },
+      { c: 'orange', tag: 'button.swatch', hex: COLOR_MAP.orange, title: '橙' },
+      { c: 'yellow', tag: 'button.swatch', hex: COLOR_MAP.yellow, title: '黄' },
+      { c: 'green',  tag: 'button.swatch', hex: COLOR_MAP.green,  title: '绿' },
+      { c: 'blue',   tag: 'button.swatch', hex: COLOR_MAP.blue,   title: '蓝' },
+      { c: 'purple', tag: 'button.swatch', hex: COLOR_MAP.purple, title: '紫' }
+    ];
+    for (const s of swatches) {
+      const attrs = { onclick: () => setActiveColor(s.c), title: s.title };
+      if (s.hex) attrs.style = { background: s.hex };
+      const btn = Render.el(s.tag, attrs, s.label || '');
+      btn.dataset.colorKey = s.c || '';
+      if ((activeColor || '') === (s.c || '')) btn.classList.add('active');
+      wrap.appendChild(btn);
+    }
+    return wrap;
+  }
+
+  function renderPalette() {
+    document.querySelectorAll('.color-palette .swatch').forEach(b => {
+      b.classList.toggle('active', (b.dataset.colorKey || '') === (activeColor || ''));
+    });
   }
 
   function syncStickyOffsets() {
@@ -712,13 +753,6 @@ const Pages = (() => {
     resizeT = setTimeout(syncStickyOffsets, 60);
   });
 
-  // when switching from edit → lock, clear the "recently edited" marks
-  let prevEditMode = Store.get().ui.editMode;
-  Store.subscribe(() => {
-    const cur = Store.get().ui.editMode;
-    if (prevEditMode && !cur) clearEdited();
-    prevEditMode = cur;
-  });
 
   // global keyboard speed entry
   document.addEventListener('keydown', (e) => {
@@ -871,12 +905,13 @@ const Pages = (() => {
           st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'retired' ? '✲' : ''
         );
         td.classList.add(st);
+        const c = Store.cellColor(deptId, p.id, d.ymd);
+        if (c && COLOR_MAP[c]) td.style.color = COLOR_MAP[c];
         if (st !== 'retired') {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
             focusedCell = { personId: p.id, ymd: d.ymd };
-            markEdited(p.id, d.ymd);
-            Store.cycleCell(deptId, p.id, d.ymd);
+            Store.cycleCell(deptId, p.id, d.ymd, activeColor);
           });
         }
         tr.appendChild(td);
