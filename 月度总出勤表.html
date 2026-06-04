@@ -82,6 +82,10 @@ table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-ro
 table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
 table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
+/* keyboard focus indicator */
+table.schedule td.day-cell.cell-focus{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:2}
+.entry-hint{margin:8px 0 0;padding:6px 12px;background:rgba(124,92,255,0.08);border:1px solid rgba(124,92,255,0.25);border-radius:6px;font-size:12px;color:var(--text);font-family:var(--font-mono)}
+.entry-hint kbd{display:inline-block;background:#1f1f23;border:1px solid var(--border);border-radius:3px;padding:0 5px;margin:0 2px;font-size:11px;color:var(--accent)}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
 table.schedule tr.stat-row td.label{text-align:left;padding-left:6px;color:var(--muted)}
 table.schedule td.required{cursor:text;padding:0}
@@ -107,7 +111,15 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 /* print */
 @media print {
   @page { size: A4 landscape; margin: 5mm; }
-  html, body { background: #fff; color: #000; font-size: 11px; }
+  html, body { background: #fff; color: #000; font-size: 11px; padding-top: 0 !important; }
+  .entry-hint { display: none !important; }
+  table.schedule td.cell-focus { outline: none !important; }
+  /* kill sticky positions in print — iOS Safari / WebKit duplicates / shifts them otherwise */
+  table.schedule thead { position: static !important; top: auto !important; box-shadow: none !important; }
+  table.schedule th.name-col, table.schedule td.name-col { position: static !important; left: auto !important; }
+  /* keep entire table on one page */
+  table.schedule { page-break-inside: avoid; break-inside: avoid; }
+  table.schedule tr { page-break-inside: avoid; break-inside: avoid; }
   .nav, #page-settings, #page-data, #modal-host, #test-results { display: none !important; }
   #page-schedule { padding: 0; }
   .schedule-wrap { overflow: visible; margin: 0; }
@@ -321,6 +333,18 @@ const Store = (() => {
   const get = () => state;
   const dept = (id = state.ui.currentDept) => state.departments.find(d => d.id === id);
   const people = (deptId = state.ui.currentDept) => state.people[deptId] || [];
+  const peopleInPeriod = (deptId = state.ui.currentDept, periodKey = state.ui.currentPeriod) => {
+    const all = state.people[deptId] || [];
+    const { start, end } = Period.range(periodKey);
+    const startYmd = Util.ymd(start);
+    const endYmd = Util.ymd(end);
+    return all.filter(p => {
+      const addedOk = !p.addedOn || p.addedOn <= endYmd;
+      const retiredOk = !p.retiredOn || p.retiredOn >= startYmd;
+      const removedOk = !p.removedOn || p.removedOn > endYmd;
+      return addedOk && retiredOk && removedOk;
+    });
+  };
   const cellKey = (deptId, personId, ymd) => `${deptId}|${personId}|${ymd}`;
   const dispKey = (deptId, ymd) => `${deptId}|${ymd}`;
 
@@ -392,7 +416,9 @@ const Store = (() => {
 
   // people
   function addPerson(deptId, person) {
-    const p = { id: Util.newId('p'), name: '', role: '', annualLeaveInit: 0, retiredOn: null, ...person };
+    const { start } = Period.range(state.ui.currentPeriod);
+    const defaultAddedOn = Util.ymd(start);
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeaveInit: 0, retiredOn: null, addedOn: defaultAddedOn, ...person };
     (state.people[deptId] = state.people[deptId] || []).push(p);
     commit('people');
     return p.id;
@@ -402,7 +428,19 @@ const Store = (() => {
     const i = list.findIndex(p => p.id === personId);
     if (i >= 0) { list[i] = { ...list[i], ...patch }; commit('people'); }
   }
+  // soft-remove: keeps the person record + all historical attendance.
+  // The person disappears from periods after `removedOn`, past periods still show them.
   function removePerson(deptId, personId) {
+    const list = state.people[deptId] || [];
+    const i = list.findIndex(p => p.id === personId);
+    if (i >= 0) {
+      const { start } = Period.range(state.ui.currentPeriod);
+      list[i] = { ...list[i], removedOn: Util.ymd(start) };
+      commit('people');
+    }
+  }
+  // hard delete: nukes the person + all their attendance records. Use with care.
+  function purgePerson(deptId, personId) {
     state.people[deptId] = (state.people[deptId] || []).filter(p => p.id !== personId);
     for (const k of Object.keys(state.attendance)) if (k.startsWith(`${deptId}|${personId}|`)) delete state.attendance[k];
     commit('people');
@@ -425,10 +463,10 @@ const Store = (() => {
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   return {
-    get, dept, people, cellStatus, requiredCount,
+    get, dept, people, peopleInPeriod, cellStatus, requiredCount,
     setUi, setCell, cycleCell, setRequired,
     addDepartment, renameDepartment, setDeptRequired, removeDepartment,
-    addPerson, updatePerson, removePerson,
+    addPerson, updatePerson, removePerson, purgePerson,
     exportJson, importJson, reset, subscribe
   };
 })();
@@ -555,6 +593,51 @@ const App = (() => {
 const Pages = (() => {
   const highlightedRows = new Set();   // personId
   const highlightedCols = new Set();   // ymd
+  let focusedCell = null;              // { personId, ymd } or null
+
+  function setFocus(personId, ymd) {
+    const days = Period.days(Store.get().ui.currentPeriod);
+    if (!days.find(d => d.ymd === ymd)) return;
+    const ppl = Store.peopleInPeriod();
+    if (!ppl.find(p => p.id === personId)) return;
+    focusedCell = { personId, ymd };
+    applyFocus();
+  }
+
+  function applyFocus() {
+    document.querySelectorAll('.cell-focus').forEach(el => el.classList.remove('cell-focus'));
+    if (!focusedCell) return;
+    const sel = `td.day-cell[data-person="${focusedCell.personId}"][data-ymd="${focusedCell.ymd}"]`;
+    const cell = document.querySelector(sel);
+    if (cell) cell.classList.add('cell-focus');
+  }
+
+  function moveFocus(dx, dy) {
+    if (!focusedCell) return;
+    const days = Period.days(Store.get().ui.currentPeriod);
+    const ppl = Store.peopleInPeriod();
+    const di = days.findIndex(d => d.ymd === focusedCell.ymd);
+    const pi = ppl.findIndex(p => p.id === focusedCell.personId);
+    const newDi = Math.max(0, Math.min(days.length - 1, di + dx));
+    const newPi = Math.max(0, Math.min(ppl.length - 1, pi + dy));
+    focusedCell = { personId: ppl[newPi].id, ymd: days[newDi].ymd };
+    applyFocus();
+  }
+
+  function setFocusedState(status) {
+    if (!focusedCell) return;
+    const deptId = Store.get().ui.currentDept;
+    const days = Period.days(Store.get().ui.currentPeriod);
+    const di = days.findIndex(d => d.ymd === focusedCell.ymd);
+    const cur = { ...focusedCell };
+    // advance focus first so re-render picks it up
+    if (di < days.length - 1) {
+      focusedCell = { personId: cur.personId, ymd: days[di + 1].ymd };
+    }
+    const st = Store.cellStatus(deptId, cur.personId, cur.ymd);
+    if (st !== 'retired') Store.setCell(deptId, cur.personId, cur.ymd, status);
+    else applyFocus();
+  }
 
   function toggleRow(personId) {
     if (highlightedRows.has(personId)) highlightedRows.delete(personId);
@@ -585,8 +668,15 @@ const Pages = (() => {
     Render.clear(host);
     renderDeptTabs();
     renderPeriodNav();
+    if (Store.get().ui.editMode) host.appendChild(buildEntryHint());
     host.appendChild(buildTable());
-    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); });
+    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
+  }
+
+  function buildEntryHint() {
+    const div = Render.el('div.entry-hint');
+    div.innerHTML = '键盘速录: 先点任一格定位 → <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>/<kbd>空格</kbd>=空(自动跳下一列)　<kbd>→</kbd> <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> 移焦点　<kbd>Enter</kbd>=下一人首日　<kbd>Esc</kbd>=取消';
+    return div;
   }
 
   function syncStickyOffsets() {
@@ -599,6 +689,35 @@ const Pages = (() => {
   window.addEventListener('resize', () => {
     clearTimeout(resizeT);
     resizeT = setTimeout(syncStickyOffsets, 60);
+  });
+
+  // global keyboard speed entry
+  document.addEventListener('keydown', (e) => {
+    if (!Store.get().ui.editMode || !focusedCell) return;
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const k = e.key;
+    if (k === '1') { setFocusedState('contractRest'); e.preventDefault(); }
+    else if (k === '2') { setFocusedState('paidLeave'); e.preventDefault(); }
+    else if (k === '3' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
+    else if (k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) { moveFocus(1, 0); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) { moveFocus(-1, 0); e.preventDefault(); }
+    else if (k === 'ArrowDown') { moveFocus(0, 1); e.preventDefault(); }
+    else if (k === 'ArrowUp') { moveFocus(0, -1); e.preventDefault(); }
+    else if (k === 'Enter') {
+      const ppl = Store.peopleInPeriod();
+      const days = Period.days(Store.get().ui.currentPeriod);
+      const pi = ppl.findIndex(p => p.id === focusedCell.personId);
+      if (pi >= 0 && pi < ppl.length - 1) {
+        focusedCell = { personId: ppl[pi + 1].id, ymd: days[0].ymd };
+        applyFocus();
+      }
+      e.preventDefault();
+    } else if (k === 'Escape') {
+      focusedCell = null;
+      applyFocus();
+      e.preventDefault();
+    }
   });
 
   function renderDeptTabs() {
@@ -635,7 +754,7 @@ const Pages = (() => {
     tbl.appendChild(buildBody(days, todayYmd));
     wrap.appendChild(tbl);
     // dynamic print row-height based on people count
-    const peopleN = Store.people(Store.get().ui.currentDept).length;
+    const peopleN = Store.peopleInPeriod(Store.get().ui.currentDept).length;
     const AVAIL = 580;   // A4 landscape body area minus header(70) + stats(66) + buffer
     const MIN = 14, MAX = 32;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
@@ -692,8 +811,8 @@ const Pages = (() => {
   function buildBody(days, todayYmd) {
     const tbody = Render.el('tbody');
     const deptId = Store.get().ui.currentDept;
-    const people = Store.people(deptId);
     const periodKey = Store.get().ui.currentPeriod;
+    const people = Store.peopleInPeriod(deptId, periodKey);
 
     if (people.length === 0) {
       tbody.appendChild(Render.el('tr',
@@ -725,6 +844,7 @@ const Pages = (() => {
         if (st !== 'retired') {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
+            focusedCell = { personId: p.id, ymd: d.ymd };
             Store.cycleCell(deptId, p.id, d.ymd);
           });
         }
@@ -795,7 +915,8 @@ const Pages = (() => {
 
   function computeLineTotal(deptId, ymd) {
     let total = 0;
-    for (const p of Store.people(deptId)) {
+    const periodKey = Store.get().ui.currentPeriod;
+    for (const p of Store.peopleInPeriod(deptId, periodKey)) {
       if (Store.cellStatus(deptId, p.id, ymd) === 'work') total++;
     }
     return total;
@@ -876,19 +997,38 @@ const Pages = (() => {
       type: 'number', min: '0', value: String(p.annualLeaveInit || 0),
       onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeaveInit: Number(e.target.value) || 0 })
     }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '入职日:'));
+    row.appendChild(Render.el('input.date', {
+      type: 'date', value: p.addedOn || '',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { addedOn: e.target.value || null })
+    }));
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '退职日:'));
     row.appendChild(Render.el('input.date', {
       type: 'date', value: p.retiredOn || '',
       onchange: (e) => Store.updatePerson(deptId, p.id, { retiredOn: e.target.value || null })
     }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '调离日:'));
+    row.appendChild(Render.el('input.date', {
+      type: 'date', value: p.removedOn || '',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { removedOn: e.target.value || null })
+    }));
     row.appendChild(Render.el('span.grow'));
-    row.appendChild(Render.el('button.danger', {
+    row.appendChild(Render.el('button', {
+      title: '把今天起设为调离日(过去周期保留)',
       onclick: () => {
-        if (confirm(`确认删除 ${p.name || '该人员'}？其排班记录也将清除。`)) {
+        if (confirm(`确认从今天起把 ${p.name || '该人员'} 从本部门调离？\n之前的排班记录会保留。`)) {
           Store.removePerson(deptId, p.id);
         }
       }
-    }, '删除'));
+    }, '调离'));
+    row.appendChild(Render.el('button.danger', {
+      title: '完全删除该人员及全部历史排班(不可恢复)',
+      onclick: () => {
+        if (!confirm(`⚠ 完全删除 ${p.name || '该人员'}?\n所有历史排班(含过去周期)将一并删除,不可恢复。`)) return;
+        if (!confirm('再次确认: 此操作不可撤销。')) return;
+        Store.purgePerson(deptId, p.id);
+      }
+    }, '彻底删除'));
     return row;
   }
 
