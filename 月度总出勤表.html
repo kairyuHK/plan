@@ -642,7 +642,8 @@ const App = (() => {
       if (!isMobile) return;
       // Brute force: apply inline !important styles to every cell. Bypasses @media print
       // evaluation which iOS Safari sometimes skips when device orientation ≠ print orientation.
-      const MOBILE_PAGE_H = 560;
+      // A4 landscape @ 4mm margin ≈ 763px usable height; 740 keeps a small safety buffer.
+      const MOBILE_PAGE_H = 740;
       const rH = MOBILE_PAGE_H / totalRows;
       const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
       cells.forEach(c => {
@@ -903,7 +904,8 @@ const Pages = (() => {
     let mobileStyle = document.getElementById('mobile-print-style');
     if (isMobile) {
       const totalRows = 3 + peopleN + 3;
-      const MOBILE_PAGE_H = 560;
+      // A4 landscape @ 4mm margin ≈ 763px usable height; 740 keeps a small safety buffer.
+      const MOBILE_PAGE_H = 740;
       const rH = MOBILE_PAGE_H / totalRows;
       if (!mobileStyle) {
         mobileStyle = document.createElement('style');
