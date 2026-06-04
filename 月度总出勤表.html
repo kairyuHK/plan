@@ -112,6 +112,8 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .settings-row input.name-input{min-width:160px}
 .settings-row input.num{width:60px}
 .settings-row input.date{width:130px}
+.settings-row button.date-clear{padding:4px 8px;margin-left:-4px;color:var(--muted);border-color:var(--border);font-size:13px;line-height:1}
+.settings-row button.date-clear:hover{color:var(--danger);border-color:var(--danger);background:rgba(239,68,68,0.08)}
 .settings-row .role-input{min-width:120px}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
 /* data */
@@ -1209,21 +1211,29 @@ const Pages = (() => {
       type: 'number', min: '0', value: String(p.annualLeaveInit || 0),
       onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeaveInit: Number(e.target.value) || 0 })
     }));
-    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '入职日:'));
-    row.appendChild(Render.el('input.date', {
-      type: 'date', value: p.addedOn || '',
-      onchange: (e) => Store.updatePerson(deptId, p.id, { addedOn: e.target.value || null })
-    }));
-    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '退职日:'));
-    row.appendChild(Render.el('input.date', {
-      type: 'date', value: p.retiredOn || '',
-      onchange: (e) => Store.updatePerson(deptId, p.id, { retiredOn: e.target.value || null })
-    }));
-    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '调离日:'));
-    row.appendChild(Render.el('input.date', {
-      type: 'date', value: p.removedOn || '',
-      onchange: (e) => Store.updatePerson(deptId, p.id, { removedOn: e.target.value || null })
-    }));
+    // iOS Safari 原生 date picker 的「还原」按钮在 input 初始 value 为空时
+    // 不触发 change 事件,导致清空操作无效。给每个日期 input 额外加一个明确的
+    // ×清空按钮,并同时监听 change + input,确保任何来源的值变化都被捕获。
+    const addDateField = (field, val, labelText) => {
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, labelText));
+      const input = Render.el('input.date', { type: 'date', value: val || '' });
+      const sync = () => Store.updatePerson(deptId, p.id, { [field]: input.value || null });
+      input.addEventListener('change', sync);
+      input.addEventListener('input', sync);
+      row.appendChild(input);
+      row.appendChild(Render.el('button.date-clear', {
+        type: 'button',
+        title: '清空' + labelText.replace(':',''),
+        onclick: () => {
+          if (!input.value) return;
+          input.value = '';
+          Store.updatePerson(deptId, p.id, { [field]: null });
+        }
+      }, '×'));
+    };
+    addDateField('addedOn',   p.addedOn,   '入职日:');
+    addDateField('retiredOn', p.retiredOn, '退职日:');
+    addDateField('removedOn', p.removedOn, '调离日:');
     row.appendChild(Render.el('span.grow'));
     row.appendChild(Render.el('button', {
       title: '把今天起设为调离日(过去周期保留)',
