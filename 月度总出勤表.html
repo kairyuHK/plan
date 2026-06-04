@@ -122,8 +122,9 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
   :root {
-    /* Each row gets 100vh / totalRows. JS sets --total-rows at print time. */
-    --row-h: calc(100vh / (var(--total-rows, 30)));
+    /* Default: each row = 100vh / totalRows (works on Chrome/Edge desktop).
+       iOS Safari: --row-h-fixed (set by JS) overrides because 100vh is unreliable. */
+    --row-h: var(--row-h-fixed, calc(100vh / (var(--total-rows, 30))));
   }
   html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 100vh; overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: 100vh; }
@@ -625,10 +626,19 @@ const App = (() => {
       const peopleN = Store.peopleInPeriod().length;
       const totalRows = 3 /* header rows */ + peopleN + 3 /* stat rows */;
       document.documentElement.style.setProperty('--total-rows', String(totalRows));
+      // iOS Safari's 100vh in print = device viewport, not page area. Override with px.
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        // A4 landscape (~720px) minus iOS Safari URL footer (~50px) + safety
+        const IOS_PAGE_H = 620;
+        document.documentElement.style.setProperty('--row-h-fixed', `${IOS_PAGE_H / totalRows}px`);
+      }
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
       document.documentElement.style.removeProperty('--total-rows');
+      document.documentElement.style.removeProperty('--row-h-fixed');
     });
   }
 
