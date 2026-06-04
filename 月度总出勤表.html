@@ -122,15 +122,16 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
   :root {
-    /* A4 landscape content area ≈ 198mm tall (210mm − 4mm × 2 page margins − ~4mm
-       browser footer). Use mm — absolute in print. Previously this was `100vh`,
-       which iOS Safari resolves to the device viewport (≈104mm in landscape),
-       not the page height, causing the table to be clipped after ~17 rows. */
-    --row-h: var(--row-h-fixed, calc(198mm / (var(--total-rows, 30))));
+    /* iOS Safari forces a URL header + date/page footer into the print area on A4
+       landscape, leaving only ~158mm of usable height (not the 198mm of @page margin
+       math). Use 155mm to guarantee one page. Use mm — absolute in print. Previously
+       `100vh` resolved to the device viewport (≈104mm in landscape) on iOS, clipping
+       the table after ~17 rows. */
+    --row-h: var(--row-h-fixed, calc(155mm / (var(--total-rows, 30))));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 198mm; overflow: hidden; }
-  #page-schedule.page { padding: 0 !important; height: 198mm; }
-  .schedule-wrap { margin: 0 !important; height: 198mm; }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 155mm; overflow: hidden; }
+  #page-schedule.page { padding: 0 !important; height: 155mm; }
+  .schedule-wrap { margin: 0 !important; height: 155mm; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
   .color-palette { display: none !important; }
@@ -644,9 +645,10 @@ const App = (() => {
       if (!isMobile) return;
       // Brute force: apply inline !important styles to every cell. Bypasses @media print
       // evaluation which iOS Safari sometimes skips. Use mm so iOS doesn't mis-resolve
-      // `100vh` to the device viewport (≈104mm in landscape) instead of A4 page height.
-      const BODY_H_MM = 198;
-      const TABLE_H_MM = 195;
+      // `100vh` to the device viewport. 155mm caps content under Safari's URL header +
+      // date/page footer (which eat ~40mm on A4 landscape).
+      const BODY_H_MM = 155;
+      const TABLE_H_MM = 153;
       const rH = TABLE_H_MM / totalRows; // mm per row
       // Pin body / page / wrap to A4 content height in mm — overrides screen `100vh`.
       document.documentElement.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
@@ -923,11 +925,11 @@ const Pages = (() => {
     if (isMobile) {
       const totalRows = 3 + peopleN + 3;
       // iOS Safari evaluates `100vh` as the device viewport (≈104mm in landscape),
-      // not the A4 page height. `body { height:100vh; overflow:hidden }` then clips
-      // the table after only ~17 rows. Use mm — absolute in print, immune to that bug.
-      // A4 landscape content area ≈ 198mm (210mm − 8mm margins − ~4mm Safari footer).
-      const BODY_H_MM = 198;
-      const TABLE_H_MM = 195;
+      // not the A4 page height. Use mm — absolute in print, immune to that bug.
+      // 155mm caps content under iOS Safari's URL header + date/page footer (which
+      // together eat ~40mm out of the 202mm @page content area on A4 landscape).
+      const BODY_H_MM = 155;
+      const TABLE_H_MM = 153;
       const rH = TABLE_H_MM / totalRows; // mm per row
       if (!mobileStyle) {
         mobileStyle = document.createElement('style');
