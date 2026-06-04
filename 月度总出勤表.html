@@ -867,18 +867,40 @@ const Pages = (() => {
     const MIN = 14, MAX = 31;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
-    // For mobile/touch devices, pre-set --row-h-fixed (px-based) so print doesn't rely on 100vh
-    // (iOS Safari treats 100vh as device viewport in print, not page area).
+    // For mobile/touch devices, generate a print-specific <style> tag with hardcoded pixel
+    // heights. Bypass CSS variables — iOS Safari may not resolve them correctly in print.
     const isMobile =
       /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
       (navigator.maxTouchPoints > 1) ||
       (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    let mobileStyle = document.getElementById('mobile-print-style');
     if (isMobile) {
       const totalRows = 3 + peopleN + 3;
-      const MOBILE_PAGE_H = 560;  // conservative A4 landscape minus iOS chrome
-      document.documentElement.style.setProperty('--row-h-fixed', `${MOBILE_PAGE_H / totalRows}px`);
-    } else {
-      document.documentElement.style.removeProperty('--row-h-fixed');
+      const MOBILE_PAGE_H = 560;
+      const rH = MOBILE_PAGE_H / totalRows;
+      if (!mobileStyle) {
+        mobileStyle = document.createElement('style');
+        mobileStyle.id = 'mobile-print-style';
+        document.head.appendChild(mobileStyle);
+      }
+      mobileStyle.textContent = `
+        @media print {
+          table.schedule th, table.schedule td {
+            height: ${rH.toFixed(2)}px !important;
+            font-size: ${(rH * 0.55).toFixed(2)}px !important;
+            line-height: 1 !important;
+            padding-top: 0 !important; padding-bottom: 0 !important;
+          }
+          table.schedule td.day-cell { font-size: ${(rH * 0.7).toFixed(2)}px !important; }
+          table.schedule th.dept-name { font-size: ${(rH * 0.65).toFixed(2)}px !important; }
+          table.schedule th.month-label { font-size: ${(rH * 0.6).toFixed(2)}px !important; }
+          table.schedule td.required input { font-size: ${(rH * 0.65).toFixed(2)}px !important; }
+          table.schedule th.name-col, table.schedule td.name-col { font-size: ${Math.min(11, rH * 0.6).toFixed(2)}px !important; }
+          table.schedule th.role-col, table.schedule td.role-col { font-size: ${Math.min(11, rH * 0.6).toFixed(2)}px !important; }
+        }
+      `;
+    } else if (mobileStyle) {
+      mobileStyle.textContent = '';
     }
     return wrap;
   }
