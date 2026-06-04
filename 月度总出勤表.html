@@ -111,9 +111,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .settings-row input{width:auto}
 .settings-row input.name-input{min-width:160px}
 .settings-row input.num{width:60px}
-.settings-row input.date{width:130px}
-.settings-row button.date-clear{padding:4px 8px;margin-left:-4px;color:var(--muted);border-color:var(--border);font-size:13px;line-height:1}
-.settings-row button.date-clear:hover{color:var(--danger);border-color:var(--danger);background:rgba(239,68,68,0.08)}
+.settings-row select.person-dept{min-width:96px;padding:6px 10px}
 .settings-row .role-input{min-width:120px}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
 /* data */
@@ -501,6 +499,26 @@ const Store = (() => {
     for (const k of Object.keys(state.attendance)) if (k.startsWith(`${deptId}|${personId}|`)) delete state.attendance[k];
     commit('people');
   }
+  // transfer: 把人员从原部门调到新部门。原部门设 removedOn=今天(过去周期保留),
+  // 新部门添加一份(新 id,addedOn=今天,清空 retiredOn)。
+  // 不修改 attendance,原部门历史排班按原 personId 保留。
+  function transferPerson(fromDeptId, personId, toDeptId) {
+    if (fromDeptId === toDeptId) return;
+    const fromList = state.people[fromDeptId] || [];
+    const i = fromList.findIndex(p => p.id === personId);
+    if (i < 0) return;
+    const orig = fromList[i];
+    const today = Util.ymd(new Date());
+    fromList[i] = { ...orig, removedOn: today };
+    (state.people[toDeptId] = state.people[toDeptId] || []).push({
+      ...orig,
+      id: Util.newId('p'),
+      addedOn: today,
+      removedOn: null,
+      retiredOn: null
+    });
+    commit('people');
+  }
 
   // data
   function exportJson() {
@@ -522,7 +540,7 @@ const Store = (() => {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, requiredCount,
     setUi, setCell, cycleCell, setRequired,
     addDepartment, renameDepartment, setDeptRequired, removeDepartment,
-    addPerson, updatePerson, removePerson, purgePerson,
+    addPerson, updatePerson, removePerson, purgePerson, transferPerson,
     exportJson, importJson, reset, subscribe
   };
 })();
@@ -1211,46 +1229,50 @@ const Pages = (() => {
       type: 'number', min: '0', value: String(p.annualLeaveInit || 0),
       onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeaveInit: Number(e.target.value) || 0 })
     }));
-    // iOS Safari 原生 date picker 的「还原」按钮在 input 初始 value 为空时
-    // 不触发 change 事件,导致清空操作无效。给每个日期 input 额外加一个明确的
-    // ×清空按钮,并同时监听 change + input,确保任何来源的值变化都被捕获。
-    const addDateField = (field, val, labelText) => {
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, labelText));
-      const input = Render.el('input.date', { type: 'date', value: val || '' });
-      const sync = () => Store.updatePerson(deptId, p.id, { [field]: input.value || null });
-      input.addEventListener('change', sync);
-      input.addEventListener('input', sync);
-      row.appendChild(input);
-      row.appendChild(Render.el('button.date-clear', {
-        type: 'button',
-        title: '清空' + labelText.replace(':',''),
-        onclick: () => {
-          if (!input.value) return;
-          input.value = '';
-          Store.updatePerson(deptId, p.id, { [field]: null });
-        }
-      }, '×'));
-    };
-    addDateField('addedOn',   p.addedOn,   '入职日:');
-    addDateField('retiredOn', p.retiredOn, '退职日:');
-    addDateField('removedOn', p.removedOn, '调离日:');
+    // 部门下拉:选其他部门即调部门(原部门保留历史,新部门从今天起入职)
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '部门:'));
+    const deptSelect = Render.el('select.person-dept');
+    for (const d of Store.get().departments) {
+      deptSelect.appendChild(Render.el('option', { value: d.id }, d.name));
+    }
+    deptSelect.value = deptId;
+    deptSelect.addEventListener('change', (e) => {
+      const newDeptId = e.target.value;
+      if (newDeptId === deptId) return;
+      const newDept = Store.get().departments.find(d => d.id === newDeptId);
+      if (!confirm(`确认从今天起把 ${p.name || '该人员'} 调到「${newDept.name}」?\n原部门之前的排班记录保留。`)) {
+        e.target.value = deptId;
+        return;
+      }
+      Store.transferPerson(deptId, p.id, newDeptId);
+    });
+    row.appendChild(deptSelect);
+
     row.appendChild(Render.el('span.grow'));
+
+    // 辞职按钮:设置 retiredOn,从该日起单元格显示 ✲
+    const retireLabel = p.retiredOn ? `✲ ${p.retiredOn}` : '辞职';
     row.appendChild(Render.el('button', {
-      title: '把今天起设为调离日(过去周期保留)',
+      title: p.retiredOn ? `已辞职 ${p.retiredOn} (点击修改/取消)` : '设置中途辞职日期',
       onclick: () => {
-        if (confirm(`确认从今天起把 ${p.name || '该人员'} 从本部门调离？\n之前的排班记录会保留。`)) {
-          Store.removePerson(deptId, p.id);
-        }
+        const today = Util.ymd(new Date());
+        const cur = p.retiredOn || today;
+        const ans = prompt(`${p.name || '该人员'} 辞职日期 (YYYY-MM-DD,留空=取消辞职):`, cur);
+        if (ans === null) return;
+        const v = ans.trim();
+        if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) { alert('日期格式应为 YYYY-MM-DD'); return; }
+        Store.updatePerson(deptId, p.id, { retiredOn: v || null });
       }
-    }, '调离'));
+    }, retireLabel));
+
+    // 删除按钮:软删除(从当前周期起隐藏,之前周期保留)
     row.appendChild(Render.el('button.danger', {
-      title: '完全删除该人员及全部历史排班(不可恢复)',
+      title: '从名单中删除(之前周期的出勤记录保留)',
       onclick: () => {
-        if (!confirm(`⚠ 完全删除 ${p.name || '该人员'}?\n所有历史排班(含过去周期)将一并删除,不可恢复。`)) return;
-        if (!confirm('再次确认: 此操作不可撤销。')) return;
-        Store.purgePerson(deptId, p.id);
+        if (!confirm(`确认删除 ${p.name || '该人员'}?\n之前周期的出勤记录会保留。`)) return;
+        Store.removePerson(deptId, p.id);
       }
-    }, '彻底删除'));
+    }, '删除'));
     return row;
   }
 
