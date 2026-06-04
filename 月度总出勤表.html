@@ -116,8 +116,10 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .data-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 /* print */
 @media print {
-  @page { size: A4 landscape; margin: 5mm; }
-  html, body { background: #fff; color: #000; font-size: 11px; padding-top: 0 !important; }
+  @page { size: A4 landscape; margin: 4mm; }
+  html, body { background: #fff; color: #000; font-size: 11px; padding-top: 0 !important; margin: 0 !important; }
+  #page-schedule.page { padding: 0 !important; }
+  .schedule-wrap { margin: 0 !important; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
   .color-palette { display: none !important; }
@@ -602,9 +604,22 @@ const App = (() => {
     window.addEventListener('beforeprint', () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
+      // dynamic fit-to-page: scale the table so it fits within one A4 landscape page
+      // necessary on mobile (iOS Safari) where browser chrome eats vertical space and
+      // dynamic row-height alone can't guarantee single-page output
+      const tbl = document.querySelector('#page-schedule table.schedule');
+      if (!tbl) return;
+      const naturalH = tbl.offsetHeight;
+      const naturalW = tbl.offsetWidth;
+      const TARGET_H = 680;   // px — A4 landscape printable height minus chrome buffer
+      const TARGET_W = 1040;  // px — A4 landscape printable width
+      const scale = Math.min(1, TARGET_H / naturalH, TARGET_W / naturalW);
+      if (scale < 0.999) tbl.style.zoom = scale.toFixed(3);
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
+      const tbl = document.querySelector('#page-schedule table.schedule');
+      if (tbl) tbl.style.zoom = '';
     });
   }
 
