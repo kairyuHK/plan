@@ -54,6 +54,10 @@ table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
 table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
 table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
+table.schedule col.col-role{width:60px}
+table.schedule col.col-name{width:130px}
+table.schedule col.col-sum{width:36px}
+table.schedule col.col-day{width:27px}
 table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
@@ -117,9 +121,13 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 /* print */
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
-  html, body { background: #fff; color: #000; font-size: 12px; padding-top: 0 !important; margin: 0 !important; }
-  #page-schedule.page { padding: 0 !important; }
-  .schedule-wrap { margin: 0 !important; }
+  :root {
+    /* Each row gets 100vh / totalRows. JS sets --total-rows at print time. */
+    --row-h: calc(100vh / (var(--total-rows, 30)));
+  }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 100vh; overflow: hidden; }
+  #page-schedule.page { padding: 0 !important; height: 100vh; }
+  .schedule-wrap { margin: 0 !important; height: 100vh; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
   .color-palette { display: none !important; }
@@ -135,15 +143,20 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   #page-schedule { padding: 0; }
   .schedule-wrap { overflow: visible; margin: 0; }
   table.schedule {
-    background: #fff; font-size: 11px;
-    width: auto; table-layout: fixed;
+    background: #fff;
+    width: 100%; height: 100%; table-layout: fixed;
     border-collapse: collapse;
-    margin: 0 auto;
+    margin: 0;
   }
   table.schedule th, table.schedule td {
-    border: 1px solid #999; padding: 1px 2px; color: #000; background: #fff !important;
-    line-height: 1.4; height: auto;
+    border: 1px solid #999; padding: 0 2px; color: #000; background: #fff !important;
+    line-height: 1; height: var(--row-h); font-size: calc(var(--row-h) * 0.55);
+    box-sizing: border-box;
   }
+  table.schedule td.day-cell { font-size: calc(var(--row-h) * 0.7); }
+  table.schedule th.dept-name { font-size: calc(var(--row-h) * 0.65); height: var(--row-h); }
+  table.schedule th.month-label { font-size: calc(var(--row-h) * 0.6); height: var(--row-h); }
+  table.schedule td.required input { font-size: calc(var(--row-h) * 0.65) !important; }
   table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
   /* clear interactive highlights in print */
   table.schedule tr.hl-row td, table.schedule tr.hl-row th,
@@ -158,8 +171,12 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
   table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
   /* fixed column widths — total ≈ 1078px (A4 landscape minus 10mm margins) */
-  table.schedule th.role-col, table.schedule td.role-col { width: 56px; padding-left: 4px; }
-  table.schedule th.name-col, table.schedule td.name-col { width: 110px; padding-left: 4px; position: static; background: #fff !important; }
+  table.schedule col.col-role { width: 70px; }
+  table.schedule col.col-name { width: 150px; }
+  table.schedule col.col-sum { width: 30px; }
+  table.schedule col.col-day { width: auto; }
+  table.schedule th.role-col, table.schedule td.role-col { padding-left: 4px; font-size: 12px; }
+  table.schedule th.name-col, table.schedule td.name-col { padding-left: 4px; position: static; background: #fff !important; font-size: 12px; }
   table.schedule th.sum-col, table.schedule td.sum-col { width: 32px; color: #000; }
   table.schedule td.sum-col.over { color: #b91c1c !important; font-weight: 700; }
   table.schedule td.sum-col.under { color: #b45309 !important; font-weight: 700; }
@@ -604,37 +621,14 @@ const App = (() => {
     window.addEventListener('beforeprint', () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
-      // dynamic fit-to-page via transform: scale on the wrapper.
-      // transform reliably scales ALL descendants (including <input>) on iOS Safari,
-      // whereas `zoom` skips inputs and leaves stat rows oversized.
-      const wrap = document.querySelector('.schedule-wrap');
-      if (!wrap) return;
-      const rowH = parseInt(getComputedStyle(wrap).getPropertyValue('--print-row-h'), 10) || 22;
+      // set total row count for print CSS to auto-distribute via vh
       const peopleN = Store.peopleInPeriod().length;
-      const PRINT_FONT = 12, PRINT_LH = 1.4, PRINT_PAD = 2;
-      const baseRowH = Math.ceil(PRINT_FONT * PRINT_LH + PRINT_PAD);
-      const predictedH = 3 * baseRowH + peopleN * rowH + 3 * baseRowH;
-      const TARGET_H = 620;
-      if (predictedH > TARGET_H) {
-        const scale = TARGET_H / predictedH;
-        wrap.style.transformOrigin = 'top left';
-        wrap.style.transform = `scale(${scale.toFixed(3)})`;
-        // shrink wrapper layout height to scaled value so it doesn't reserve unscaled space
-        wrap.style.height = `${predictedH * scale}px`;
-        wrap.style.width = `${(100 / scale).toFixed(2)}%`;
-      }
+      const totalRows = 3 /* header rows */ + peopleN + 3 /* stat rows */;
+      document.documentElement.style.setProperty('--total-rows', String(totalRows));
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
-      const wrap = document.querySelector('.schedule-wrap');
-      if (wrap) {
-        wrap.style.transform = '';
-        wrap.style.transformOrigin = '';
-        wrap.style.height = '';
-        wrap.style.width = '';
-      }
-      const tbl = document.querySelector('#page-schedule table.schedule');
-      if (tbl) tbl.style.zoom = '';
+      document.documentElement.style.removeProperty('--total-rows');
     });
   }
 
@@ -843,6 +837,7 @@ const Pages = (() => {
     const tbl = Render.el('table.schedule');
     const days = Period.days(Store.get().ui.currentPeriod);
     const todayYmd = Util.ymd(new Date());
+    tbl.appendChild(buildColgroup(days));
     tbl.appendChild(buildHeader(days, todayYmd));
     tbl.appendChild(buildBody(days, todayYmd));
     wrap.appendChild(tbl);
@@ -854,6 +849,17 @@ const Pages = (() => {
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
     return wrap;
+  }
+
+  function buildColgroup(days) {
+    const cg = Render.el('colgroup');
+    cg.appendChild(Render.el('col.col-role'));
+    cg.appendChild(Render.el('col.col-name'));
+    cg.appendChild(Render.el('col.col-sum'));
+    cg.appendChild(Render.el('col.col-sum'));
+    cg.appendChild(Render.el('col.col-sum'));
+    for (let i = 0; i < days.length; i++) cg.appendChild(Render.el('col.col-day'));
+    return cg;
   }
 
   function buildHeader(days, todayYmd) {
