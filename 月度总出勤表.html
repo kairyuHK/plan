@@ -105,7 +105,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 /* settings */
 .settings-section{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
 .settings-section h2{margin:0 0 10px;font-size:16px}
-.settings-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f1f23}
+.settings-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f1f23;flex-wrap:wrap}
 .settings-row:last-child{border-bottom:none}
 .settings-row .grow{flex:1}
 .settings-row input{width:auto}
@@ -113,7 +113,33 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .settings-row input.num{width:60px}
 .settings-row select.person-dept{min-width:96px;padding:6px 10px}
 .settings-row .role-input{min-width:120px}
+.settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
+/* 手机竖屏:人员行改成 2 行 grid,避免控件被挤压成单字竖排 */
+@media (max-width:640px){
+  .settings-sub-people .settings-row{
+    display:grid;
+    grid-template-columns:1fr 1fr auto auto;
+    grid-template-areas:
+      "role  name  name  name"
+      "leave dept  retire del";
+    gap:6px 8px;
+    align-items:center;
+    padding:10px 0
+  }
+  .settings-sub-people .settings-row>.role-input{grid-area:role;min-width:0;width:100%}
+  .settings-sub-people .settings-row>.name-input{grid-area:name;min-width:0;width:100%}
+  .settings-sub-people .settings-row>span.grow{display:none}
+  /* 「有休残:」label + 数字输入框 同占 leave 区(label 左,input 右) */
+  .settings-sub-people .settings-row>span:nth-of-type(1){grid-area:leave;justify-self:start;font-size:12px}
+  .settings-sub-people .settings-row>input.num{grid-area:leave;justify-self:end;width:54px}
+  /* 「部门:」label + select 同占 dept 区 */
+  .settings-sub-people .settings-row>span:nth-of-type(2){grid-area:dept;justify-self:start;font-size:12px}
+  .settings-sub-people .settings-row>select.person-dept{grid-area:dept;justify-self:end;min-width:80px;padding:4px 6px}
+  /* 辞职 / 删除 按钮 */
+  .settings-sub-people .settings-row>button:nth-of-type(1){grid-area:retire;padding:6px 10px}
+  .settings-sub-people .settings-row>button.danger{grid-area:del;padding:6px 10px}
+}
 /* data */
 .data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
 .data-stats{font-family:var(--font-mono);color:var(--muted);font-size:13px;line-height:1.8}
