@@ -107,7 +107,7 @@ iframe.active{pointer-events:auto}
   --font-mono: ui-monospace,Consolas,monospace;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(94,234,212,.18),transparent 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:auto,22px 22px;background-attachment:fixed}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -303,7 +303,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 *::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
-.nav{background:linear-gradient(180deg,rgba(20,22,28,.88) 0%,rgba(15,17,21,.78) 100%);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+.nav{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 .nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .nav button{transition:all .2s cubic-bezier(.4,0,.2,1)}
 .nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
@@ -5666,7 +5666,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 <style>
   :root { --bg:#0a0b0e; --fg:#ececf1; --line:#262936; --accent:#fb923c; --accent-glow:rgba(251,146,60,.18); --soft:#14161d; --muted:#8a8d99; }
   *{box-sizing:border-box}
-  body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(94,234,212,.18),transparent 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:auto,22px 22px;background-attachment:fixed}
+  body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
   #banner.show{display:block}
   #banner.ok{background:#14532d;color:#bbf7d0}
@@ -5949,8 +5949,8 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 *::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
-/* 顶部 header — 玻璃 + 微光 */
-header{background:linear-gradient(180deg,rgba(14,16,21,.85) 0%,rgba(10,12,16,.78) 100%)!important;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid rgba(255,255,255,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+/* 顶部 header —— 跟计划板顶栏/统计栏同款蓝色梯度,三端统一 */
+header{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 header input,header button,header select{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);transition:all .18s cubic-bezier(.4,0,.2,1)}
 header input:hover{border-color:rgba(255,255,255,.12)}
 header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(251,146,60,.18);background:rgba(0,0,0,.36)}
