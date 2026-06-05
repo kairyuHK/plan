@@ -90,6 +90,7 @@ table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--accent);font-weight:700}
+table.schedule td.day-cell.absent{color:var(--danger)}
 table.schedule td.day-cell.retired{color:var(--retired);cursor:not-allowed;background:#111114}
 body:not(.editing) table.schedule td.day-cell{cursor:default}
 body:not(.editing) table.schedule td.day-cell:hover{background:transparent}
@@ -267,6 +268,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   table.schedule tbody tr:has(td.day-cell) td { height: var(--print-row-h, 22px); }
   table.schedule td.day-cell.contractRest { color: #000; }
   table.schedule td.day-cell.paidLeave { color: #000; font-weight: 700; background: #ddd !important; }
+  table.schedule td.day-cell.absent { color: #b91c1c !important; }
   table.schedule td.day-cell.retired { color: #888; background: #f5f5f5 !important; }
   table.schedule th.sat { color: #1d4ed8 !important; }
   table.schedule th.sun { color: #b91c1c !important; }
@@ -478,15 +480,14 @@ const Store = (() => {
 
   function setCell(deptId, personId, ymd, status, color) {
     const k = cellKey(deptId, personId, ymd);
-    if (status === 'work') {
-      delete state.attendance[k];
+    if (status === 'work') delete state.attendance[k];
+    else state.attendance[k] = status;
+    // 非 work(休息)状态强制清色 — 颜色只属于出勤日
+    if (status !== 'work') {
       delete state.cellColors[k];
-    } else {
-      state.attendance[k] = status;
-      if (color !== undefined) {
-        if (color === null) delete state.cellColors[k];
-        else state.cellColors[k] = color;
-      }
+    } else if (color !== undefined) {
+      if (color === null) delete state.cellColors[k];
+      else state.cellColors[k] = color;
     }
     commit('cell');
   }
@@ -494,10 +495,16 @@ const Store = (() => {
   function cycleCell(deptId, personId, ymd, color) {
     const current = cellStatus(deptId, personId, ymd);
     if (current === 'retired') return;
+    // 选了颜色 → 当作"涂色刷",强制设为 work + 填色;不再切换状态
+    // 选了「clear」(✕)→ 强制设为 work + 清色
+    if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null); return; }
+    if (color) { setCell(deptId, personId, ymd, 'work', color); return; }
+    // 没选颜色 → 原状态循环;切到休息态会被 setCell 自动清色
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
+               : current === 'paidLeave' ? 'absent'
                : 'work';
-    setCell(deptId, personId, ymd, next, color);
+    setCell(deptId, personId, ymd, next);
   }
 
   const cellColor = (deptId, personId, ymd) => state.cellColors[cellKey(deptId, personId, ymd)] || null;
@@ -892,7 +899,7 @@ const Pages = (() => {
   function buildEntryHint() {
     const div = Render.el('div.entry-hint');
     const left = Render.el('span');
-    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
+    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=欠 <kbd>4</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
     div.appendChild(left);
     div.appendChild(buildColorPalette());
     return div;
@@ -902,7 +909,7 @@ const Pages = (() => {
     const wrap = Render.el('div.color-palette');
     wrap.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '颜色:'));
     const swatches = [
-      { c: null, tag: 'button.swatch.swatch-clear', label: '×', title: '无色(默认)' },
+      { c: 'clear', tag: 'button.swatch.swatch-clear', label: '×', title: '出勤+清色(擦除已涂的颜色,保持出勤)' },
       { c: 'red',    tag: 'button.swatch', hex: COLOR_MAP.red,    title: '红' },
       { c: 'orange', tag: 'button.swatch', hex: COLOR_MAP.orange, title: '橙' },
       { c: 'yellow', tag: 'button.swatch', hex: COLOR_MAP.yellow, title: '黄' },
@@ -948,7 +955,8 @@ const Pages = (() => {
     const k = e.key;
     if (k === '1') { setFocusedState('contractRest'); e.preventDefault(); }
     else if (k === '2') { setFocusedState('paidLeave'); e.preventDefault(); }
-    else if (k === '3' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
+    else if (k === '3') { setFocusedState('absent'); e.preventDefault(); }
+    else if (k === '4' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
     else if (k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) { moveFocus(1, 0); e.preventDefault(); }
     else if (k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) { moveFocus(-1, 0); e.preventDefault(); }
     else if (k === 'ArrowDown') { moveFocus(0, 1); e.preventDefault(); }
@@ -1142,11 +1150,15 @@ const Pages = (() => {
         const st = Store.cellStatus(deptId, p.id, d.ymd);
         const td = Render.el('td.day-cell',
           { dataset: { person: p.id, ymd: d.ymd } },
-          st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'retired' ? '✲' : ''
+          st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : ''
         );
         td.classList.add(st);
         const c = Store.cellColor(deptId, p.id, d.ymd);
-        if (c && COLOR_MAP[c]) td.style.color = COLOR_MAP[c];
+        if (c && COLOR_MAP[c]) {
+          // 填满整格背景 + 白字保证可读性。!important 是为了压过打印 CSS 的强制白底。
+          td.style.setProperty('background-color', COLOR_MAP[c], 'important');
+          td.style.setProperty('color', '#fff', 'important');
+        }
         if (st !== 'retired') {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
@@ -1177,6 +1189,7 @@ const Pages = (() => {
   function buildStatRows(deptId, days) {
     const out = [];
     const lineTotals = days.map(d => computeLineTotal(deptId, d.ymd));
+    const absentTotals = days.map(d => computeAbsentTotal(deptId, d.ymd));
     const requireds = days.map(d => Store.requiredCount(deptId, d.ymd));
 
     // Row 1: 必要人数 (editable, default 22)
@@ -1204,11 +1217,13 @@ const Pages = (() => {
     for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
-    // Row 3: 派遣短期 = 必要人数 − ライン合計
+    // Row 3: 派遣短期 = 必要人数 − ライン合計 − 缺勤数
+    // 派遣是排班时提前预约的;缺勤是临时事件,不能临时调整派遣数。
+    // 所以缺勤的人按"原本预定上班"计算,派遣短期数字不受临时缺勤影响。
     const r3 = Render.el('tr.stat-row');
     r3.appendChild(Render.el('td.label', { colspan: 5 }, '派遣短期'));
     for (let i = 0; i < days.length; i++) {
-      const gap = requireds[i] - lineTotals[i];
+      const gap = requireds[i] - lineTotals[i] - absentTotals[i];
       const td = Render.el('td', { dataset: { ymd: days[i].ymd } }, String(gap));
       if (gap > 0) td.style.color = 'var(--danger)';
       else if (gap < 0) td.style.color = 'var(--muted)';
@@ -1224,6 +1239,15 @@ const Pages = (() => {
     const periodKey = Store.get().ui.currentPeriod;
     for (const p of Store.peopleInPeriod(deptId, periodKey)) {
       if (Store.cellStatus(deptId, p.id, ymd) === 'work') total++;
+    }
+    return total;
+  }
+
+  function computeAbsentTotal(deptId, ymd) {
+    let total = 0;
+    const periodKey = Store.get().ui.currentPeriod;
+    for (const p of Store.peopleInPeriod(deptId, periodKey)) {
+      if (Store.cellStatus(deptId, p.id, ymd) === 'absent') total++;
     }
     return total;
   }
