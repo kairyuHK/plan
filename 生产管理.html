@@ -3009,12 +3009,9 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 .top-btn:active{transform:scale(.97)}
 /* 时间轴日期头(顶部大日期)— 微高光。注意:不要设 position,否则会覆盖手机端的 sticky */
 #timelineHead .date-year,#timelineHead .date-month,#timelineHead .date-day,#timelineHead .date-dow{transition:color .2s}
-/* 流水线列容器 — 立体感(只在 PC 横屏长度短时合适) */
-.line{background:linear-gradient(180deg,rgba(255,255,255,.012) 0%,rgba(0,0,0,.04) 100%);box-shadow:1px 0 0 rgba(255,255,255,.03) inset,-1px 0 0 rgba(0,0,0,.18) inset}
-/* 手机竖屏:.line 高度被拉到一整屏,这层梯度会在底部明显发暗,跟 PC 不一致;关掉。 */
-@media (max-width: 900px) and (orientation: portrait){
-  .line{background:var(--line-bg);box-shadow:none}
-}
+/* 流水线列容器:上白下黑微梯度,但限定在一屏内完成过渡(background-size: 100% 100vh + no-repeat),
+   这样手机竖屏 .line 被拉到 2-3 屏高时,底部不会被压得比 PC 更黑;低于一屏的部分回到纯 --line-bg */
+.line{background:linear-gradient(180deg,rgba(255,255,255,.012) 0%,rgba(0,0,0,.04) 100%) top/100% 100vh no-repeat var(--line-bg);box-shadow:1px 0 0 rgba(255,255,255,.03) inset,-1px 0 0 rgba(0,0,0,.18) inset}
 .line-head{border-bottom-color:rgba(255,255,255,.06)!important}
 .line-head .line-name{letter-spacing:.4px}
 /* 工时统计行(底部)— 微梯度,数字醒目 */
