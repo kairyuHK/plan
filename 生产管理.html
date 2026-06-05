@@ -5976,8 +5976,9 @@ header .btn-tab.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%
 .chip{box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 0 rgba(255,255,255,.04) inset}
 .belt{box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
 /* 大标题 */
-.bento-title{background:linear-gradient(180deg,#fff 0%,#a8adb5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 1px 2px rgba(0,0,0,.4)}
-.bento-title .muted{-webkit-text-fill-color:#5a5f68;background:none}
+/* 大字便当名:去掉金属梯度,改成柔暖白 + 极轻青绿光晕,克制又有氛围 */
+.bento-title{background:none;color:#ede6d3;-webkit-text-fill-color:#ede6d3;text-shadow:0 1px 2px rgba(0,0,0,.5),0 0 28px rgba(94,234,212,.10);letter-spacing:4px;font-weight:600}
+.bento-title .muted{color:#6a6e78;-webkit-text-fill-color:#6a6e78;text-shadow:none}
 </style>
 </head>
 <body>
@@ -7378,6 +7379,11 @@ function renderOperate() {
   if (bento) title.textContent = bento.name;
   else { title.innerHTML = '<span class="muted">(输入便当名或从便当库选)</span>'; }
   c.appendChild(title);
+  // 顶部搜索框同步当前便当名,避免「搜索框 vs 大字标题」不一致(从便当库切换 / 其它入口进来时也对得上)
+  const _searchInp = document.getElementById("bento-search");
+  if (_searchInp && document.activeElement !== _searchInp) {
+    _searchInp.value = bento ? bento.name : "";
+  }
 
   const vertical = isVerticalLayout();
   // 当前操作便当的 line（未选便当时用模板）
