@@ -112,6 +112,16 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .settings-row input.name-input{min-width:160px}
 .settings-row input.num{width:60px}
 .settings-row select.person-dept{min-width:96px;padding:6px 10px}
+/* 行内确认弹层(贴近触发按钮,替代浏览器原生 confirm) */
+.confirm-popover{position:fixed;z-index:1000;background:#1f1f23;border:1px solid var(--border);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);min-width:180px;max-width:260px;font-size:13px;animation:confirmIn .12s ease-out}
+.confirm-popover .confirm-text{color:var(--text);font-weight:600;margin-bottom:2px;line-height:1.3}
+.confirm-popover .confirm-sub{color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.3}
+.confirm-popover .confirm-actions{display:flex;gap:6px;justify-content:flex-end}
+.confirm-popover button{padding:5px 12px;font-size:12px;line-height:1}
+.confirm-popover input.confirm-input{width:100%;margin-bottom:8px;padding:6px 8px;background:#161618;border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box}
+.confirm-popover input.confirm-input:focus{border-color:var(--accent);outline:none}
+.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:8px;padding:6px;font-size:12px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-4px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .settings-row .role-input{min-width:120px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
@@ -556,6 +566,13 @@ const Store = (() => {
     const parsed = JSON.parse(json);
     if (parsed.version !== VERSION) throw new Error('版本不兼容');
     state = parsed;
+    // 校正 UI 状态:导入数据的 currentDept / currentPeriod 可能在新数据集里不存在,
+    // 不修正会让排班页拿不到部门数据而显示空白。
+    if (!state.ui) state.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
+    if (!state.departments.find(d => d.id === state.ui.currentDept)) {
+      state.ui.currentDept = state.departments[0]?.id || null;
+    }
+    if (!state.ui.currentPeriod) state.ui.currentPeriod = Period.todayKey();
     commit('import');
   }
   function reset() { state = defaults(); commit('reset'); }
@@ -1231,7 +1248,9 @@ const Pages = (() => {
     for (const d of Store.get().departments) {
       sec.appendChild(Render.el('div', { style: { marginTop: '10px', fontWeight: '600' } }, d.name));
       const sub = Render.el('div.settings-sub-people');
-      for (const p of Store.people(d.id)) {
+      // 过滤掉已软删除的人员(removedOn 已设置)。他们的历史排班仍保留在过去周期中,
+      // 但不在设置名单里出现。这与「删除」按钮的语义一致。
+      for (const p of Store.people(d.id).filter(p => !p.removedOn)) {
         sub.appendChild(buildPersonRow(d.id, p));
       }
       sub.appendChild(buildPersonAddRow(d.id));
@@ -1241,7 +1260,7 @@ const Pages = (() => {
   }
 
   function buildPersonRow(deptId, p) {
-    const row = Render.el('div.settings-row');
+    const row = Render.el('div.settings-row', { dataset: { pid: p.id } });
     row.appendChild(Render.el('input.role-input', {
       placeholder: '役職', value: p.role || '',
       onchange: (e) => Store.updatePerson(deptId, p.id, { role: e.target.value })
@@ -1276,37 +1295,171 @@ const Pages = (() => {
 
     row.appendChild(Render.el('span.grow'));
 
-    // 辞职按钮:设置 retiredOn,从该日起单元格显示 ✲
+    // 辞职按钮:设置 retiredOn,从该日起单元格显示 ✲。用 popover 统一确认/输入风格。
     const retireLabel = p.retiredOn ? `✲ ${p.retiredOn}` : '辞职';
-    row.appendChild(Render.el('button', {
-      title: p.retiredOn ? `已辞职 ${p.retiredOn} (点击修改/取消)` : '设置中途辞职日期',
-      onclick: () => {
-        const today = Util.ymd(new Date());
-        const cur = p.retiredOn || today;
-        const ans = prompt(`${p.name || '该人员'} 辞职日期 (YYYY-MM-DD,留空=取消辞职):`, cur);
-        if (ans === null) return;
-        const v = ans.trim();
-        if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) { alert('日期格式应为 YYYY-MM-DD'); return; }
-        Store.updatePerson(deptId, p.id, { retiredOn: v || null });
-      }
-    }, retireLabel));
+    const retireBtn = Render.el('button', {
+      title: p.retiredOn ? `已辞职 ${p.retiredOn} (点击修改/取消)` : '设置中途辞职日期'
+    }, retireLabel);
+    retireBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const today = Util.ymd(new Date());
+      const cur = p.retiredOn || today;
+      showConfirmPopover(retireBtn, {
+        text: p.retiredOn ? '修改辞职日期' : '设置辞职日期',
+        sub: p.name || '该人员',
+        input: { type: 'date', value: cur },
+        // 已辞职时提供「取消辞职」快捷按钮,等同于清空 retiredOn
+        extra: p.retiredOn ? {
+          text: '✕ 取消辞职',
+          danger: true,
+          onClick: () => Store.updatePerson(deptId, p.id, { retiredOn: null })
+        } : null,
+        confirmText: '保存',
+        onConfirm: (v) => {
+          if (!v) return; // date input 留空(理论上 iOS 不允许)
+          Store.updatePerson(deptId, p.id, { retiredOn: v });
+        }
+      });
+    });
+    row.appendChild(retireBtn);
 
     // 删除按钮:软删除(从当前周期起隐藏,之前周期保留)
-    row.appendChild(Render.el('button.danger', {
-      title: '从名单中删除(之前周期的出勤记录保留)',
-      onclick: () => {
-        if (!confirm(`确认删除 ${p.name || '该人员'}?\n之前周期的出勤记录会保留。`)) return;
-        Store.removePerson(deptId, p.id);
-      }
-    }, '删除'));
+    const delBtn = Render.el('button.danger', {
+      title: '从名单中删除(之前周期的出勤记录保留)'
+    }, '删除');
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showConfirmPopover(delBtn, {
+        text: `删除 ${p.name || '该人员'}?`,
+        sub: '之前周期的出勤记录保留',
+        confirmText: '删除',
+        danger: true,
+        onConfirm: () => Store.removePerson(deptId, p.id)
+      });
+    });
+    row.appendChild(delBtn);
     return row;
+  }
+
+  // 通用行内确认弹层。anchor 是触发按钮,popover 定位在它上方(空间不足时翻到下方)。
+  // opts: { text, sub, confirmText, cancelText, danger, onConfirm,
+  //         input?: { type, value, placeholder },  // 有则显示输入框,onConfirm 收到值
+  //         extra?: { text, danger, onClick }       // 可选的额外操作按钮(如「取消辞职」)
+  //       }
+  function showConfirmPopover(anchor, opts) {
+    document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
+    const pop = Render.el('div.confirm-popover');
+    pop.appendChild(Render.el('div.confirm-text', opts.text || '确认?'));
+    if (opts.sub) pop.appendChild(Render.el('div.confirm-sub', opts.sub));
+
+    // 可选输入框
+    let inputEl = null;
+    if (opts.input) {
+      inputEl = Render.el('input.confirm-input', {
+        type: opts.input.type || 'text',
+        value: opts.input.value || '',
+        placeholder: opts.input.placeholder || ''
+      });
+      pop.appendChild(inputEl);
+    }
+
+    // 可选额外按钮(整行宽度,放在 input 和操作按钮之间)
+    if (opts.extra) {
+      const extraBtn = Render.el(opts.extra.danger ? 'button.confirm-extra.danger' : 'button.confirm-extra', {
+        onclick: (e) => { e.stopPropagation(); close(); opts.extra.onClick && opts.extra.onClick(); }
+      }, opts.extra.text);
+      pop.appendChild(extraBtn);
+    }
+
+    const actions = Render.el('div.confirm-actions');
+    const doConfirm = () => {
+      const v = inputEl ? inputEl.value : null;
+      close();
+      opts.onConfirm && opts.onConfirm(v);
+    };
+    const yesBtn = Render.el(opts.danger ? 'button.danger' : 'button.primary', {
+      onclick: (e) => { e.stopPropagation(); doConfirm(); }
+    }, opts.confirmText || '确认');
+    const noBtn = Render.el('button', {
+      onclick: (e) => { e.stopPropagation(); close(); }
+    }, opts.cancelText || '取消');
+    actions.appendChild(noBtn);
+    actions.appendChild(yesBtn);
+    pop.appendChild(actions);
+
+    if (inputEl) {
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); doConfirm(); }
+      });
+    }
+
+    document.body.appendChild(pop);
+    // 定位:默认 anchor 左侧,左侧空间不足翻到右侧;垂直对齐 anchor 中线且不溢出视口
+    const r = anchor.getBoundingClientRect();
+    const pr = pop.getBoundingClientRect();
+    const margin = 8;
+    let left = r.left - pr.width - margin;
+    if (left < margin) left = r.right + margin;
+    if (left + pr.width > window.innerWidth - margin) left = Math.max(margin, window.innerWidth - pr.width - margin);
+    let top = r.top + r.height / 2 - pr.height / 2;
+    if (top < margin) top = margin;
+    if (top + pr.height > window.innerHeight - margin) top = window.innerHeight - pr.height - margin;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+
+    const close = () => {
+      pop.remove();
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', close, true);
+    };
+    const onDocClick = (e) => { if (!pop.contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    setTimeout(() => {
+      document.addEventListener('click', onDocClick, true);
+      document.addEventListener('keydown', onKey, true);
+      window.addEventListener('scroll', close, true);
+      if (inputEl) inputEl.focus();
+    }, 0);
   }
 
   function buildPersonAddRow(deptId) {
     const row = Render.el('div.settings-row');
-    row.appendChild(Render.el('button.primary', {
-      onclick: () => Store.addPerson(deptId, { name: '新成员', role: '', annualLeaveInit: 0 })
-    }, '+ 新增人员'));
+
+    const showButton = () => {
+      Render.clear(row);
+      row.appendChild(Render.el('button.primary', {
+        onclick: showInput
+      }, '+ 新增人员'));
+    };
+
+    const showInput = () => {
+      Render.clear(row);
+      const input = Render.el('input.name-input', {
+        type: 'text',
+        placeholder: '新人员姓名',
+        style: { flex: '1', minWidth: '0' }
+      });
+      const submit = () => {
+        const name = input.value.trim();
+        if (!name) { input.focus(); return; }
+        // 保存滚动位置:整页重建后立即恢复,避免视觉跳动。
+        const sy = window.scrollY;
+        Store.addPerson(deptId, { name, role: '', annualLeaveInit: 0 });
+        requestAnimationFrame(() => window.scrollTo(0, sy));
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); showButton(); }
+      });
+      row.appendChild(input);
+      row.appendChild(Render.el('button.primary', { onclick: submit }, '确认'));
+      row.appendChild(Render.el('button', { onclick: showButton }, '取消'));
+      // 等 DOM 挂载后 focus(setTimeout 0 让浏览器先完成布局,避免 iOS 键盘弹起时位置错乱)
+      setTimeout(() => input.focus(), 0);
+    };
+
+    showButton();
     return row;
   }
 
@@ -1364,6 +1517,10 @@ const Pages = (() => {
           if (!confirm('导入将覆盖当前全部数据，建议先导出备份。继续？')) return;
           Store.importJson(reader.result);
           alert('导入成功');
+          // 切回排班页并强制重渲染。用 replaceState 清掉 hash 保持 URL 干净,
+          // 与 brand「月度总出勤表」按钮的行为一致,不写入 #/schedule。
+          history.replaceState(null, '', location.pathname + location.search);
+          App.showRoute();
         } catch (e) { alert('导入失败：' + e.message); }
       };
       reader.readAsText(file);
