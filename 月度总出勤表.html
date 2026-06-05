@@ -560,9 +560,13 @@ const Store = (() => {
     } else {
       state.dispatchPerDay[k] = Math.max(0, Number(n) || 0);
     }
-    // silent: 只持久化,不触发 listeners(避免整页重渲染破坏焦点)
-    if (silent) persist();
-    else commit('dispatch');
+    if (silent) {
+      // silent: 直接 setItem,绕开 debounce persist
+      // (persist 100ms 后会触发 listeners → 整页重渲染破坏焦点,这是之前一直跳不过去的真凶)
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
+    } else {
+      commit('dispatch');
+    }
   }
 
   // departments
@@ -1299,29 +1303,26 @@ const Pages = (() => {
       }
     };
     const jumpDispatch = (idx, currentInput, currentYmd) => {
-      // 1. 先 focus 邻居(立即同步)— 不被后续操作干扰
+      // 1. 先 silent 写入数据 + 同步更新 excess td (DOM 不重建,Store 与 input.value 同步)
+      const cur = currentInput.value;
+      if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
+        Store.setDispatch(deptId, currentYmd, cur, true); // silent: 仅 persist,不 commit
+        updateExcessTd(currentYmd, Number(cur) || 0);
+      }
+      // 2. 现在 focus 邻居 — 旧 input blur 时 onchange 触发,
+      //    但 dedup 检测 input.value === Store 值,所以不再触发 commit → DOM 不动 → focus 保留
       if (idx >= 0 && idx < days.length) {
         focusWithoutScroll(document.querySelector(`tr.stat-row td.dispatch[data-ymd="${days[idx].ymd}"] input`));
       }
-      // 2. 异步写入数据 + 更新 excess(用 setTimeout 0 让 focus 优先完成)
-      const cur = currentInput.value;
-      const currentInputRef = currentInput;
-      setTimeout(() => {
-        if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
-          Store.setDispatch(deptId, currentYmd, cur, true); // silent
-          updateExcessTd(currentYmd, Number(cur) || 0);
-        }
-      }, 0);
     };
     const jumpRequiredSameCol = (currentInput, currentYmd) => {
-      focusWithoutScroll(document.querySelector(`tr.stat-row td.required[data-ymd="${currentYmd}"] input`));
+      // 同上:先 silent 写入,后 focus
       const cur = currentInput.value;
-      setTimeout(() => {
-        if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
-          Store.setDispatch(deptId, currentYmd, cur, true);
-          updateExcessTd(currentYmd, Number(cur) || 0);
-        }
-      }, 0);
+      if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
+        Store.setDispatch(deptId, currentYmd, cur, true);
+        updateExcessTd(currentYmd, Number(cur) || 0);
+      }
+      focusWithoutScroll(document.querySelector(`tr.stat-row td.required[data-ymd="${currentYmd}"] input`));
     };
     for (let i = 0; i < days.length; i++) {
       const td = Render.el('td.dispatch', { dataset: { ymd: days[i].ymd } });
@@ -1332,7 +1333,13 @@ const Pages = (() => {
         min: '0',
         value: String(dispatches[i]),
         readonly: editing ? null : true,
-        onchange: editing ? (e) => Store.setDispatch(deptId, ymdCur, e.target.value) : null,
+        // dedup:input 失焦时,如果 Store 值与 input.value 已经一致(silent 写过),不再触发 commit
+        onchange: editing ? (e) => {
+          const v = e.target.value;
+          if (v !== String(Store.dispatchCount(deptId, ymdCur))) {
+            Store.setDispatch(deptId, ymdCur, v);
+          }
+        } : null,
         onfocus: (e) => e.target.select(),
         onkeydown: editing ? (e) => {
           const k = e.key;
