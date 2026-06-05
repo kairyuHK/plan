@@ -32,10 +32,23 @@ input[type=number]{-moz-appearance:textfield}
   .nav{position:fixed;top:0;left:0;right:0;width:100%}
   body{padding-top:var(--sticky-nav,50px)}
 }
-/* 手机竖屏:让「⚙ 设置 / ⬇⬆ 数据 / 🖨 打印」三个按钮换行后靠右对齐
-   (flex-wrap 在新行重新分布 free space,给第一个按钮 margin-left:auto 即可) */
+/* 手机竖屏三行布局(用 flex order + 伪元素强制换行):
+   行1:月度总出勤表 [部门▼]
+   行2:◀ 日期 ▶ 今日 ✓已暂存 .......... ⬇⬆数据
+   行3:                              🔒锁定 ⚙设置 🖨打印
+   「数据」的右边框与「打印」的右边框竖直对齐(都贴 nav 右内边距)。 */
 @media (max-width:640px){
-  .nav button[data-route="#/settings"]{margin-left:auto}
+  .nav .spacer{display:none}
+  .nav .brand{order:0}
+  .nav #dept-tabs{order:1}
+  .nav::before{content:'';flex-basis:100%;height:0;order:2}
+  .nav #period-nav{order:3}
+  .nav #dirty-indicator{order:4}
+  .nav button[data-route="#/data"]{order:5;margin-left:auto}
+  .nav::after{content:'';flex-basis:100%;height:0;order:6}
+  .nav button#btn-edit-toggle{order:7;margin-left:auto}
+  .nav button[data-route="#/settings"]{order:8}
+  .nav button#btn-print{order:9}
 }
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
