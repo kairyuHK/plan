@@ -167,30 +167,23 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 .settings-row .role-input{min-width:120px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
-/* 手机竖屏:人员行改成 2 行 grid,避免控件被挤压成单字竖排 */
+/* 手机竖屏:人员行强制单行,隐藏 label,缩小尺寸保证所有控件能挤一行 */
 @media (max-width:640px){
   .settings-sub-people .settings-row{
-    display:grid;
-    grid-template-columns:1fr 1fr auto auto;
-    grid-template-areas:
-      "role  name  name  name"
-      "leave dept  retire del";
-    gap:6px 8px;
+    display:flex;
+    flex-wrap:nowrap;
+    gap:4px;
     align-items:center;
-    padding:10px 0
+    padding:6px 0
   }
-  .settings-sub-people .settings-row>.role-input{grid-area:role;min-width:0;width:100%}
-  .settings-sub-people .settings-row>.name-input{grid-area:name;min-width:0;width:100%}
+  .settings-sub-people .settings-row>.role-input{min-width:0;width:60px;flex:0 0 60px;font-size:12px;padding:6px 4px}
+  .settings-sub-people .settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 4px}
+  /* 隐藏 label「有休残:」「部门:」(短缺空间,留下数字/下拉自身已经够明确) */
+  .settings-sub-people .settings-row>span:not(.grow){display:none}
   .settings-sub-people .settings-row>span.grow{display:none}
-  /* 「有休残:」label + 数字输入框 同占 leave 区(label 左,input 右) */
-  .settings-sub-people .settings-row>span:nth-of-type(1){grid-area:leave;justify-self:start;font-size:12px}
-  .settings-sub-people .settings-row>input.num{grid-area:leave;justify-self:end;width:54px}
-  /* 「部门:」label + select 同占 dept 区 */
-  .settings-sub-people .settings-row>span:nth-of-type(2){grid-area:dept;justify-self:start;font-size:12px}
-  .settings-sub-people .settings-row>select.person-dept{grid-area:dept;justify-self:end;min-width:80px;padding:4px 6px}
-  /* 辞职 / 删除 按钮 */
-  .settings-sub-people .settings-row>button:nth-of-type(1){grid-area:retire;padding:6px 10px}
-  .settings-sub-people .settings-row>button.danger{grid-area:del;padding:6px 10px}
+  .settings-sub-people .settings-row>input.num{width:36px;flex:0 0 36px;padding:6px 2px;font-size:12px;text-align:center}
+  .settings-sub-people .settings-row>select.person-dept{min-width:60px;flex:0 0 auto;padding:6px 4px;font-size:11px}
+  .settings-sub-people .settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
 }
 /* data */
 .data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
