@@ -51,6 +51,26 @@ iframe.active{pointer-events:auto}
   }
   #export-reminder { display: none !important; }
 }
+/* === 现代化弹层 / Toast(父壳) === */
+.confirm-popover{position:fixed;z-index:10000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1);font-family:inherit;color:#e8e8e8}
+.confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
+.confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
+.confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
+.confirm-popover button:hover{background:#1f1f23}
+.confirm-popover button:active{transform:scale(0.97)}
+.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
+.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
+.confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast.success{border-left:3px solid #10b981}
+.toast.error{border-left:3px solid #ef4444}
+.toast.info{border-left:3px solid #fb923c}
+.toast.hide{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 </style>
 </head>
 <body>
@@ -252,6 +272,60 @@ input:focus,select:focus{border-color:var(--accent)}
 .btn-like{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-btn);cursor:pointer}
 .btn-like:hover{background:#1f1f23}
 .danger-btn{border-color:var(--danger);color:var(--danger)}
+/* === 现代化弹层 / Toast(替代浏览器原生 confirm/alert/prompt) === */
+.confirm-popover{position:fixed;z-index:10000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1);font-family:inherit;color:var(--text)}
+.confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
+.confirm-popover .confirm-sub{color:var(--muted);font-size:12px;margin-bottom:12px;line-height:1.4}
+.confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
+.confirm-popover button:hover{background:#1f1f23}
+.confirm-popover button:active{transform:scale(0.97)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
+.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
+.confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
+.confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast.success{border-left:3px solid var(--ok)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--accent)}
+.toast.hide{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
+
+/* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
+::selection{background:rgba(251,146,60,.28);color:#fff}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+.nav{background:linear-gradient(180deg,rgba(20,22,28,.88) 0%,rgba(15,17,21,.78) 100%);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+.nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nav button{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
+.nav button.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.35),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
+.card{background:linear-gradient(180deg,#1d2027 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 2px 6px rgba(0,0,0,.25),0 12px 28px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
+.card-head{border-top-color:rgba(255,255,255,.05);letter-spacing:.2px}
+.pos-list li,.people-list li,.assign-list li{border-bottom-color:rgba(255,255,255,.05)}
+input,select{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.06);transition:border-color .15s,box-shadow .15s,background .15s}
+input:hover,select:hover{border-color:rgba(255,255,255,.1)}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(251,146,60,.18);background:rgba(0,0,0,.36)}
+button{transition:transform .12s,background .15s,border-color .15s,box-shadow .15s}
+button:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+button:active{transform:scale(.97)}
+button.primary{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 2px 8px rgba(251,146,60,.32),0 1px 0 rgba(255,255,255,.18) inset}
+button.primary:hover{background:linear-gradient(180deg,#fda562 0%,#fb923c 100%);box-shadow:0 6px 16px rgba(251,146,60,.4),0 1px 0 rgba(255,255,255,.22) inset}
+.assign-btn{transition:all .2s cubic-bezier(.4,0,.2,1);background:rgba(255,255,255,.02)}
+.assign-btn:hover{border-color:rgba(251,146,60,.35);background:rgba(251,146,60,.06);transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.3)}
+.assign-btn.empty{border-color:rgba(255,255,255,.08)}
+.assign-btn.empty:hover{border-color:rgba(251,146,60,.3);color:var(--accent)}
+.stat-big{font-feature-settings:"tnum";background:linear-gradient(180deg,#fff 0%,#cbd0d8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.danger-btn,button.danger{background:rgba(239,68,68,.06)}
+.danger-btn:hover,button.danger:hover{background:rgba(239,68,68,.14);border-color:rgba(248,113,113,.55)}
 </style>
 </head>
 <body>
@@ -285,6 +359,82 @@ const Util = (() => {
   const clone = obj => JSON.parse(JSON.stringify(obj));
   return { todayISO, prevDay, uid, clone };
 })();
+<\/script>
+<script>
+// === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
+function showConfirmPopover(anchor, opts) {
+  document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'confirm-popover';
+  const textEl = document.createElement('div'); textEl.className = 'confirm-text'; textEl.textContent = opts.text || '确认?'; pop.appendChild(textEl);
+  if (opts.sub) { const s = document.createElement('div'); s.className = 'confirm-sub'; s.textContent = opts.sub; pop.appendChild(s); }
+  let inputEl = null;
+  if (opts.input) {
+    if (opts.input.options) {
+      inputEl = document.createElement('select'); inputEl.className = 'confirm-input';
+      for (const o of opts.input.options) {
+        const op = document.createElement('option'); op.value = o.value; op.textContent = o.label; inputEl.appendChild(op);
+      }
+      if (opts.input.value != null) inputEl.value = opts.input.value;
+    } else {
+      inputEl = document.createElement('input'); inputEl.className = 'confirm-input';
+      inputEl.type = opts.input.type || 'text';
+      inputEl.value = opts.input.value || '';
+      inputEl.placeholder = opts.input.placeholder || '';
+    }
+    pop.appendChild(inputEl);
+  }
+  if (opts.extra) {
+    const eb = document.createElement('button'); eb.className = 'confirm-extra' + (opts.extra.danger ? ' danger' : '');
+    eb.textContent = opts.extra.text;
+    eb.onclick = (e) => { e.stopPropagation(); close(); opts.extra.onClick && opts.extra.onClick(); };
+    pop.appendChild(eb);
+  }
+  const actions = document.createElement('div'); actions.className = 'confirm-actions';
+  let confirmed = false;
+  const doConfirm = () => { const v = inputEl ? inputEl.value : null; confirmed = true; close(); opts.onConfirm && opts.onConfirm(v); };
+  const noBtn = document.createElement('button'); noBtn.textContent = opts.cancelText || '取消';
+  noBtn.onclick = (e) => { e.stopPropagation(); close(); };
+  const yesBtn = document.createElement('button'); yesBtn.className = opts.danger ? 'danger' : 'primary'; yesBtn.textContent = opts.confirmText || '确认';
+  yesBtn.onclick = (e) => { e.stopPropagation(); doConfirm(); };
+  actions.appendChild(noBtn); actions.appendChild(yesBtn); pop.appendChild(actions);
+  if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doConfirm(); } });
+  document.body.appendChild(pop);
+  const pr = pop.getBoundingClientRect(); const m = 8;
+  // 没传 anchor 或 anchor 不在视口里 → 居中显示
+  const r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+  if (!r || (r.width === 0 && r.height === 0)) {
+    pop.style.left = ((window.innerWidth - pr.width) / 2) + 'px';
+    pop.style.top  = ((window.innerHeight - pr.height) / 2) + 'px';
+  } else {
+    let left = r.left - pr.width - m; if (left < m) left = r.right + m;
+    if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
+    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  const close = () => {
+    pop.remove();
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('scroll', close, true);
+    if (!confirmed && opts.onCancel) opts.onCancel();
+  };
+  const onDoc = (e) => { if (!pop.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => {
+    document.addEventListener('click', onDoc, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', close, true);
+    if (inputEl) inputEl.focus();
+  }, 0);
+}
+function showToast(msg, type) {
+  document.querySelectorAll('.toast').forEach(el => el.remove());
+  const t = document.createElement('div'); t.className = 'toast ' + (type || 'info'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 250); }, 2500);
+}
 <\/script>
 <script>
 const JpHolidays = (() => {
@@ -591,12 +741,26 @@ const Pages = (() => {
         btn.addEventListener('click', () => {
           const i = +btn.dataset.i;
           const act = btn.dataset.act;
+          const posName = Store.get().positions[lineId][i];
           if(act==='rename'){
-            const cur = Store.get().positions[lineId][i];
-            const v = prompt('新岗位名:', cur);
-            if(v && v.trim() && v.trim()!==cur) Store.renamePosition(lineId, i, v.trim());
+            showConfirmPopover(btn, {
+              text: '修改岗位名',
+              sub: posName,
+              input: { type: 'text', value: posName, placeholder: '岗位名' },
+              confirmText: '保存',
+              onConfirm: (v) => {
+                const t = (v || '').trim();
+                if (t && t !== posName) Store.renamePosition(lineId, i, t);
+              }
+            });
           } else if(act==='del'){
-            if(confirm(`删除岗位「${Store.get().positions[lineId][i]}」?历史排班保留原数据。`)) Store.deletePosition(lineId, i);
+            showConfirmPopover(btn, {
+              text: `删除岗位「${posName}」?`,
+              sub: '历史排班保留原数据',
+              confirmText: '删除',
+              danger: true,
+              onConfirm: () => Store.deletePosition(lineId, i)
+            });
           }
         });
       });
@@ -653,28 +817,61 @@ const Pages = (() => {
     const searchEl = root.querySelector('#people-search');
     if(query){ searchEl.focus(); searchEl.setSelectionRange(query.length, query.length); }
     searchEl.addEventListener('input', renderPeople);
-    root.querySelector('#people-add').addEventListener('click', () => {
-      const name = prompt('姓名:'); if(!name || !name.trim()) return;
-      const lineOpts = s.lines.map((l,i)=>`${i+1}. ${l.name}`).join('\n');
-      const pick = prompt(`主属线 (输入数字 1-6):\n${lineOpts}`, '1');
-      const idx = parseInt(pick,10) - 1;
-      if(idx<0 || idx>=s.lines.length) return;
-      Store.addPerson(name.trim(), s.lines[idx].id);
+    const addBtn = root.querySelector('#people-add');
+    addBtn.addEventListener('click', () => {
+      // 两步弹窗:先输姓名,再选主属线
+      showConfirmPopover(addBtn, {
+        text: '新增人员',
+        sub: '输入姓名',
+        input: { type: 'text', placeholder: '姓名' },
+        confirmText: '下一步',
+        onConfirm: (nameVal) => {
+          const name = (nameVal || '').trim();
+          if (!name) return;
+          setTimeout(() => showConfirmPopover(addBtn, {
+            text: '选择主属线',
+            sub: name,
+            input: {
+              options: s.lines.map(l => ({ value: l.id, label: l.name })),
+              value: s.lines[0]?.id
+            },
+            confirmText: '添加',
+            onConfirm: (lineId) => {
+              if (lineId) Store.addPerson(name, lineId);
+            }
+          }), 50);
+        }
+      });
     });
     root.querySelectorAll('li[data-pid]').forEach(li => {
       const pid = li.dataset.pid;
-      li.querySelector('[data-act="rename"]').addEventListener('click', () => {
+      const renameBtn = li.querySelector('[data-act="rename"]');
+      renameBtn.addEventListener('click', () => {
         const cur = Store.get().people.find(p=>p.id===pid).name;
-        const v = prompt('新姓名:', cur);
-        if(v && v.trim() && v.trim()!==cur) Store.updatePerson(pid, {name: v.trim()});
+        showConfirmPopover(renameBtn, {
+          text: '修改姓名',
+          sub: cur,
+          input: { type: 'text', value: cur, placeholder: '姓名' },
+          confirmText: '保存',
+          onConfirm: (v) => {
+            const t = (v || '').trim();
+            if (t && t !== cur) Store.updatePerson(pid, { name: t });
+          }
+        });
       });
-      li.querySelector('[data-act="del"]').addEventListener('click', () => {
+      const delBtn = li.querySelector('[data-act="del"]');
+      delBtn.addEventListener('click', () => {
         const usage = Store.findPersonUsage(pid);
         const cur = Store.get().people.find(p=>p.id===pid).name;
-        const msg = usage>0
-          ? `「${cur}」被 ${usage} 条排班使用,删除后将从人员库移除,但历史排班卡片里的名字会保留。确认删除?`
-          : `确认删除「${cur}」?`;
-        if(confirm(msg)) Store.deletePerson(pid);
+        showConfirmPopover(delBtn, {
+          text: `删除「${cur}」?`,
+          sub: usage > 0
+            ? `被 ${usage} 条排班使用,历史卡片里的名字会保留`
+            : '该人员将从人员库移除',
+          confirmText: '删除',
+          danger: true,
+          onConfirm: () => Store.deletePerson(pid)
+        });
       });
       li.querySelector('[data-act="move"]').addEventListener('change', e => {
         Store.updatePerson(pid, {homeLine: e.target.value});
@@ -937,21 +1134,28 @@ const Pages = (() => {
     host.querySelector('[data-close]').onclick = () => host.classList.add('hidden');
     host.onclick = (e) => { if (e.target === host) host.classList.add('hidden'); };
     host.querySelector('.copy-modal').onclick = (e) => e.stopPropagation();
-    host.querySelector('#copy-day-do').onclick = () => {
+    host.querySelector('#copy-day-do').onclick = (e) => {
       const v = (host.querySelector('#copy-day-input').value || '').trim();
       if (!v) return;
-      doCopyFromSchedDate(v);
+      doCopyFromSchedDate(v, e.currentTarget);
     };
     host.querySelectorAll('.item').forEach(it => {
-      it.onclick = () => doCopyFromSchedDate(it.dataset.date);
+      it.onclick = (e) => doCopyFromSchedDate(it.dataset.date, e.currentTarget);
     });
   }
-  function doCopyFromSchedDate(srcDate){
-    if (srcDate === currentDate) { alert('源日期不能是当前日期'); return; }
-    if (!Store.get().schedules[srcDate]) { alert(`${srcDate} 暂无排班数据`); return; }
-    if (!confirm(`将 ${srcDate} 的排班复制到 ${currentDate},覆盖当前数据?`)) return;
-    Store.copyDay(srcDate, currentDate);
-    document.getElementById('copy-day-host').classList.add('hidden');
+  function doCopyFromSchedDate(srcDate, anchor){
+    if (srcDate === currentDate) { showToast('源日期不能是当前日期', 'error'); return; }
+    if (!Store.get().schedules[srcDate]) { showToast(`${srcDate} 暂无排班数据`, 'error'); return; }
+    showConfirmPopover(anchor, {
+      text: `复制 ${srcDate} 的排班?`,
+      sub: `将覆盖当前 ${currentDate} 的数据`,
+      confirmText: '复制',
+      danger: true,
+      onConfirm: () => {
+        Store.copyDay(srcDate, currentDate);
+        document.getElementById('copy-day-host').classList.add('hidden');
+      }
+    });
   }
 
   function openPicker(lineId, posName){
@@ -1052,7 +1256,7 @@ const Pages = (() => {
     Store.markExported();
   }
 
-  function doImport(){
+  function doImport(anchor){
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json,.json';
@@ -1060,18 +1264,16 @@ const Pages = (() => {
       const file = input.files[0]; if(!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        try{
-          const incoming = JSON.parse(reader.result);
+        let incoming;
+        try {
+          incoming = JSON.parse(reader.result);
           if(!incoming || typeof incoming !== 'object' || !Array.isArray(incoming.lines)){
-            alert('文件格式不正确'); return;
+            showToast('文件格式不正确', 'error'); return;
           }
-          const cur = Store.get();
-          const hasExisting = cur.people.length || Object.keys(cur.schedules).length;
-          let mode = 'replace';
-          if(hasExisting){
-            const ans = confirm('确定用此文件覆盖当前全部数据?\n\n确定 = 覆盖(建议先导出备份)\n取消 = 合并模式(保留现有内容并合并新数据)');
-            mode = ans ? 'replace' : 'merge';
-          }
+        } catch(err) {
+          showToast('解析失败: ' + err.message, 'error'); return;
+        }
+        const apply = (mode) => {
           if(mode === 'replace'){
             Store.replace(incoming);
           } else {
@@ -1089,8 +1291,19 @@ const Pages = (() => {
             Object.assign(merged.schedules, incoming.schedules||{});
             Store.replace(merged);
           }
-          alert('导入完成');
-        }catch(err){ alert('解析失败: ' + err.message); }
+          showToast('导入完成', 'success');
+        };
+        const cur = Store.get();
+        const hasExisting = cur.people.length || Object.keys(cur.schedules).length;
+        if (!hasExisting) { apply('replace'); return; }
+        showConfirmPopover(anchor, {
+          text: '导入数据',
+          sub: '当前已有数据,选择导入模式',
+          confirmText: '覆盖全部',
+          danger: true,
+          extra: { text: '合并保留现有', onClick: () => apply('merge') },
+          onConfirm: () => apply('replace')
+        });
       };
       reader.readAsText(file);
     });
@@ -1201,7 +1414,7 @@ const Pages = (() => {
   }
   document.querySelectorAll('.nav button[data-route]').forEach(b => b.addEventListener('click', () => route(b.dataset.route)));
   document.querySelectorAll('.nav button[data-action]').forEach(b => b.addEventListener('click', () => {
-    if(b.dataset.action === 'import') Pages.doImport();
+    if(b.dataset.action === 'import') Pages.doImport(b);
     else if(b.dataset.action === 'export') Pages.doExport();
   }));
   window.addEventListener('hashchange', () => route((location.hash.match(/^#\/(\w+)/)||[])[1]));
@@ -2756,6 +2969,70 @@ const Pages = (() => {
   body.printing .foot-val.actual-finish::-webkit-datetime-edit-minute-field,
   body.printing .foot-val.actual-finish::-webkit-datetime-edit-text,
   body.printing .foot-val.actual-finish::-webkit-datetime-edit-ampm-field { color: #000 !important; }
+/* === 现代化弹层 / Toast === */
+.confirm-popover{position:fixed;z-index:10000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1);font-family:inherit;color:#e8e8e8}
+.confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
+.confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
+.confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
+.confirm-popover button:hover{background:#1f1f23}
+.confirm-popover button:active{transform:scale(0.97)}
+.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
+.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
+.confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
+.confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:#fb923c;background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast.success{border-left:3px solid #10b981}
+.toast.error{border-left:3px solid #ef4444}
+.toast.info{border-left:3px solid #fb923c}
+.toast.hide{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
+
+/* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
+::selection{background:rgba(251,146,60,.28);color:#fff}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+/* 顶栏 — 玻璃质感 */
+.topbar{background:linear-gradient(180deg,rgba(20,22,28,.88) 0%,rgba(15,17,21,.78) 100%)!important;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:rgba(255,255,255,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+.brand{letter-spacing:.3px}
+.brand .dot{box-shadow:0 0 12px rgba(251,146,60,.55)}
+.top-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
+.top-btn:hover{background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important;color:var(--text)!important}
+.top-btn:active{transform:scale(.97)}
+/* 时间轴日期头(顶部大日期)— 微高光 */
+#timelineHead{position:relative}
+#timelineHead .date-year,#timelineHead .date-month,#timelineHead .date-day,#timelineHead .date-dow{transition:color .2s}
+/* 流水线列容器 — 立体感 */
+.line{background:linear-gradient(180deg,rgba(255,255,255,.012) 0%,rgba(0,0,0,.04) 100%);box-shadow:1px 0 0 rgba(255,255,255,.03) inset,-1px 0 0 rgba(0,0,0,.18) inset}
+.line-head{border-bottom-color:rgba(255,255,255,.06)!important}
+.line-head .line-name{letter-spacing:.4px}
+/* 工时统计行(底部)— 微梯度,数字醒目 */
+.line-foot{background:linear-gradient(180deg,rgba(15,18,23,.85) 0%,rgba(10,12,16,.92) 100%)!important;border-top-color:rgba(255,255,255,.06)!important;box-shadow:0 -1px 0 rgba(255,255,255,.03) inset,0 -4px 12px rgba(0,0,0,.18)}
+.qty-total,.time-total,.finish-total,#totalAll,#totalDur,#totalFinish{font-feature-settings:"tnum"}
+/* 卡片 — 微梯度 + 顶部 1px 亮线 + 柔阴影,hover 抬升 */
+.card{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 2px 6px rgba(0,0,0,.32),0 1px 2px rgba(0,0,0,.2)!important;transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
+.card:not(.expanded):hover{transform:translateX(1px);box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 4px 14px rgba(0,0,0,.42),0 1px 2px rgba(0,0,0,.25)!important}
+.card.expanded,.card.active,.card-expanded{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(251,146,60,.22)!important}
+/* 输入框(卡片字段)— 聚焦光晕 */
+.field-input,.gap,.start-time,.actual-finish{transition:border-color .15s,box-shadow .15s,background .15s}
+.field-input:focus,.gap:focus,.start-time:focus,.actual-finish:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(251,146,60,.18)!important}
+/* 按钮 — 通用微动效 */
+button{transition:transform .12s,background .15s,border-color .15s,box-shadow .15s}
+button:active{transform:scale(.97)}
+.head-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
+.head-btn:hover{background:rgba(251,146,60,.08)!important;border-color:rgba(251,146,60,.35)!important;color:var(--accent)!important}
+/* picker / modal 弹层 — 更深的玻璃 + 更柔阴影 */
+.picker-modal,#libModal .modal-card{background:linear-gradient(180deg,#1d2027 0%,#13161b 100%)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+/* 数字大屏(总计 / 耗时)— 微金属感 */
+#totalAll,#totalDur,#totalFinish{background:linear-gradient(180deg,#fff 0%,#cbd0d8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 </style>
 </head>
 <body>
@@ -2864,6 +3141,77 @@ const Pages = (() => {
 </div>
 
 <script>
+// === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
+function showConfirmPopover(anchor, opts) {
+  document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'confirm-popover';
+  const textEl = document.createElement('div'); textEl.className = 'confirm-text'; textEl.textContent = opts.text || '确认?'; pop.appendChild(textEl);
+  if (opts.sub) { const s = document.createElement('div'); s.className = 'confirm-sub'; s.textContent = opts.sub; pop.appendChild(s); }
+  let inputEl = null;
+  if (opts.input) {
+    if (opts.input.options) {
+      inputEl = document.createElement('select'); inputEl.className = 'confirm-input';
+      for (const o of opts.input.options) { const op = document.createElement('option'); op.value = o.value; op.textContent = o.label; inputEl.appendChild(op); }
+      if (opts.input.value != null) inputEl.value = opts.input.value;
+    } else {
+      inputEl = document.createElement('input'); inputEl.className = 'confirm-input';
+      inputEl.type = opts.input.type || 'text';
+      inputEl.value = opts.input.value || '';
+      inputEl.placeholder = opts.input.placeholder || '';
+    }
+    pop.appendChild(inputEl);
+  }
+  if (opts.extra) {
+    const eb = document.createElement('button'); eb.className = 'confirm-extra' + (opts.extra.danger ? ' danger' : '');
+    eb.textContent = opts.extra.text;
+    eb.onclick = (e) => { e.stopPropagation(); close(); opts.extra.onClick && opts.extra.onClick(); };
+    pop.appendChild(eb);
+  }
+  const actions = document.createElement('div'); actions.className = 'confirm-actions';
+  let confirmed = false;
+  const doConfirm = () => { const v = inputEl ? inputEl.value : null; confirmed = true; close(); opts.onConfirm && opts.onConfirm(v); };
+  const noBtn = document.createElement('button'); noBtn.textContent = opts.cancelText || '取消';
+  noBtn.onclick = (e) => { e.stopPropagation(); close(); };
+  const yesBtn = document.createElement('button'); yesBtn.className = opts.danger ? 'danger' : 'primary'; yesBtn.textContent = opts.confirmText || '确认';
+  yesBtn.onclick = (e) => { e.stopPropagation(); doConfirm(); };
+  actions.appendChild(noBtn); actions.appendChild(yesBtn); pop.appendChild(actions);
+  if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doConfirm(); } });
+  document.body.appendChild(pop);
+  const pr = pop.getBoundingClientRect(); const m = 8;
+  const r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+  if (!r || (r.width === 0 && r.height === 0)) {
+    pop.style.left = ((window.innerWidth - pr.width) / 2) + 'px';
+    pop.style.top  = ((window.innerHeight - pr.height) / 2) + 'px';
+  } else {
+    let left = r.left - pr.width - m; if (left < m) left = r.right + m;
+    if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
+    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  const close = () => {
+    pop.remove();
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('scroll', close, true);
+    if (!confirmed && opts.onCancel) opts.onCancel();
+  };
+  const onDoc = (e) => { if (!pop.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => {
+    document.addEventListener('click', onDoc, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', close, true);
+    if (inputEl) inputEl.focus();
+  }, 0);
+}
+function showToast(msg, type) {
+  document.querySelectorAll('.toast').forEach(el => el.remove());
+  const t = document.createElement('div'); t.className = 'toast ' + (type || 'info'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 250); }, 2500);
+}
 const LINE_COUNT = 6;
 const STORAGE_LIB = 'productLibrary_v3';
 const STORAGE_BOARD_PREFIX = 'productionBoard_v1_';
@@ -3227,15 +3575,20 @@ function renderLibList() {
     row.querySelector('.lib-item-btn.apply').addEventListener('click', () => applyLibToCurrentDate(item.id));
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
     if (!lockedByBento) {
-      row.querySelector('.lib-item-btn.del').addEventListener('click', () => {
-        const msg = isDup
-          ? `删除重复的共享项 "${item.name}"?(库中还会保留另一条同名条目)`
-          : `确定删除品名 "${item.name}"?`;
-        if (!confirm(msg)) return;
-        library = library.filter(x => x.id !== item.id);
-        saveLibrary();
-        if (editingLibId === item.id) cancelEditLib();
-        renderLibList();
+      const delBtn = row.querySelector('.lib-item-btn.del');
+      delBtn.addEventListener('click', () => {
+        showConfirmPopover(delBtn, {
+          text: `删除品名「${item.name}」?`,
+          sub: isDup ? '库中还会保留另一条同名条目' : '该品名将从库中移除',
+          confirmText: '删除',
+          danger: true,
+          onConfirm: () => {
+            library = library.filter(x => x.id !== item.id);
+            saveLibrary();
+            if (editingLibId === item.id) cancelEditLib();
+            renderLibList();
+          }
+        });
       });
     }
     libList.appendChild(row);
@@ -4305,22 +4658,31 @@ function saveJSON() {
   const d = new Date();
   const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   const defaultName = `生产计划板${ds}.json`;
-  const name = prompt('文件名', defaultName);
-  if (!name) return;
-  const filename = /\.json$/i.test(name) ? name : name + '.json';
-  let library = [];
-  try { library = JSON.parse(localStorage.getItem(STORAGE_LIB) || '[]'); } catch (e) {}
-  const boards = collectAllBoards();
-  // version 2: 包含 boards(全部历史日期); board 字段保留当天数据作旧版兼容
-  const payload = { version: 2, type: 'production-board', library, boards, board: boards[currentDate] || {} };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.download = filename;
-  a.href = URL.createObjectURL(blob);
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  const dayCount = Object.keys(boards).length;
-  showToast(`📤 已保存 ${filename}(${dayCount} 天数据)`);
+  // 用 popover 替代原生 prompt
+  const anchor = document.getElementById('exportBtn') || document.body;
+  showConfirmPopover(anchor, {
+    text: '导出 JSON',
+    sub: '保存为本地文件',
+    input: { type: 'text', value: defaultName, placeholder: '文件名' },
+    confirmText: '保存',
+    onConfirm: (v) => {
+      const name = (v || '').trim();
+      if (!name) return;
+      const filename = /\.json$/i.test(name) ? name : name + '.json';
+      let library = [];
+      try { library = JSON.parse(localStorage.getItem(STORAGE_LIB) || '[]'); } catch (e) {}
+      const boards = collectAllBoards();
+      const payload = { version: 2, type: 'production-board', library, boards, board: boards[currentDate] || {} };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      const dayCount = Object.keys(boards).length;
+      showToast(`已保存 ${filename}(${dayCount} 天数据)`, 'success');
+    }
+  });
 }
 
 function importJSON() {
@@ -4331,54 +4693,47 @@ function importJSON() {
     const f = inp.files[0]; if (!f) return;
     const r = new FileReader();
     r.onload = () => {
+      let data;
       try {
-        const data = JSON.parse(r.result);
+        data = JSON.parse(r.result);
         if (data.type !== 'production-board') throw new Error('文件类型不匹配');
         if (!Array.isArray(data.library)) throw new Error('品名库数据结构错误');
         const hasBoards = data.boards && typeof data.boards === 'object' && Object.keys(data.boards).length > 0;
         const hasBoard = data.board && typeof data.board === 'object';
         if (!hasBoards && !hasBoard) throw new Error('计划板数据结构错误');
         const dayCount = hasBoards ? Object.keys(data.boards).length : 1;
-        if (!confirm(`将覆盖当前所有数据(导入 ${dayCount} 天),继续?`)) return;
-        localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
-        // 清除旧的每日数据
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(STORAGE_BOARD_PREFIX)) keysToRemove.push(k);
-        }
-        keysToRemove.forEach(k => localStorage.removeItem(k));
-        // 写入新数据(新格式优先,否则按旧格式写入当天)
-        if (hasBoards) {
-          for (const date in data.boards) {
-            localStorage.setItem(STORAGE_BOARD_PREFIX + date, JSON.stringify(data.boards[date]));
+        const anchor = document.getElementById('exportBtn') || document.body;
+        showConfirmPopover(anchor, {
+          text: `导入 ${dayCount} 天数据?`,
+          sub: '将覆盖当前所有数据,建议先备份',
+          confirmText: '继续导入',
+          danger: true,
+          onConfirm: () => {
+            localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith(STORAGE_BOARD_PREFIX)) keysToRemove.push(k);
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            if (data.boards && Object.keys(data.boards).length > 0) {
+              for (const date in data.boards) {
+                localStorage.setItem(STORAGE_BOARD_PREFIX + date, JSON.stringify(data.boards[date]));
+              }
+            } else {
+              localStorage.setItem(boardKey(), JSON.stringify(data.board));
+            }
+            window.skipAutoSave = true;
+            location.reload();
           }
-        } else {
-          localStorage.setItem(boardKey(), JSON.stringify(data.board));
-        }
-        window.skipAutoSave = true;
-        location.reload();
+        });
       } catch (e) {
-        alert('导入失败: ' + e.message);
+        showToast('导入失败: ' + e.message, 'error');
       }
     };
     r.readAsText(f);
   };
   inp.click();
-}
-
-function showToast(msg) {
-  let toast = document.getElementById('toastEl');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toastEl';
-    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity 0.2s;pointer-events:none;letter-spacing:0.3px';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.style.opacity = '1';
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2200);
 }
 
 function doSaveOverwrite() {
@@ -4494,13 +4849,21 @@ linesBtn.addEventListener('click', (e) => {
 document.addEventListener('click', () => linesMenu.classList.remove('show'));
 linesMenu.addEventListener('click', (e) => e.stopPropagation());
 
-document.getElementById('clearAll').addEventListener('click', () => {
-  if (!confirm('确定清空所有牌子吗？(品名库不会被清空)')) return;
-  document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
-  activeCard = null;
-  document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; l.querySelector('.actual-finish').value = ''; recalc(l); });
-  saveBoard();
-  clearUnsaved();
+document.getElementById('clearAll').addEventListener('click', (e) => {
+  showConfirmPopover(e.currentTarget, {
+    text: '清空所有牌子?',
+    sub: '品名库不会被清空',
+    confirmText: '清空',
+    danger: true,
+    onConfirm: () => {
+      document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
+      activeCard = null;
+      document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; l.querySelector('.actual-finish').value = ''; recalc(l); });
+      saveBoard();
+      clearUnsaved();
+      showToast('已清空', 'success');
+    }
+  });
 });
 
 function prevDayISO(iso) {
@@ -4513,29 +4876,37 @@ function prevDayISO(iso) {
 // 执行从指定日期复制到当前日期
 function doCopyFromDate(srcDate) {
   if (!srcDate) return;
-  if (srcDate === currentDate) { alert('源日期不能是当前日期'); return; }
+  if (srcDate === currentDate) { showToast('源日期不能是当前日期', 'error'); return; }
   const raw = localStorage.getItem(STORAGE_BOARD_PREFIX + srcDate);
-  if (!raw) { alert(`${srcDate} 暂无数据`); return; }
-  if (!confirm(`将 ${srcDate} 的生产计划复制到 ${currentDate},覆盖当前数据?`)) return;
-  let state;
-  try { state = JSON.parse(raw); } catch (e) { alert('复制失败: 数据解析错误'); return; }
-  setActiveCard(null);
-  document.querySelectorAll('.line').forEach(line => {
-    line.querySelectorAll('.card').forEach(c => c.remove());
-    const st = line.querySelector('.start-time'); if (st) st.value = '08:00';
-    const gp = line.querySelector('.gap'); if (gp) gp.value = '0';
+  if (!raw) { showToast(`${srcDate} 暂无数据`, 'error'); return; }
+  const anchor = document.getElementById('copyDayBtn') || document.body;
+  showConfirmPopover(anchor, {
+    text: `复制 ${srcDate}?`,
+    sub: `将覆盖当前 ${currentDate} 的数据`,
+    confirmText: '复制',
+    danger: true,
+    onConfirm: () => {
+      let state;
+      try { state = JSON.parse(raw); } catch (e) { showToast('复制失败: 数据解析错误', 'error'); return; }
+      setActiveCard(null);
+      document.querySelectorAll('.line').forEach(line => {
+        line.querySelectorAll('.card').forEach(c => c.remove());
+        const st = line.querySelector('.start-time'); if (st) st.value = '08:00';
+        const gp = line.querySelector('.gap'); if (gp) gp.value = '0';
+      });
+      hiddenLines = new Set();
+      applyState(state);
+      document.querySelectorAll('.line').forEach(l => recalc(l));
+      updateBoardLayout();
+      saveBoard();
+      undoStack.length = 0; redoStack.length = 0;
+      lastSnapshot = snapshotStr();
+      updateUndoButtons();
+      markUnsaved();
+      document.getElementById('copyDayModal').classList.remove('show');
+      showToast(`已复制 ${srcDate} 的数据到 ${currentDate}`, 'success');
+    }
   });
-  hiddenLines = new Set();
-  applyState(state);
-  document.querySelectorAll('.line').forEach(l => recalc(l));
-  updateBoardLayout();
-  saveBoard();
-  undoStack.length = 0; redoStack.length = 0;
-  lastSnapshot = snapshotStr();
-  updateUndoButtons();
-  markUnsaved();
-  document.getElementById('copyDayModal').classList.remove('show');
-  showToast(`📋 已复制 ${srcDate} 的数据到 ${currentDate}`);
 }
 
 // 渲染已保存日期列表
@@ -4755,7 +5126,7 @@ function doPrint() {
 async function doExportPdf() {
   exportMenu.classList.remove('show');
   if (typeof html2canvas === 'undefined' || !window.jspdf) {
-    alert('PDF 导出需要网络连接（加载 html2canvas / jsPDF），请确认网络后重试。');
+    showToast('PDF 导出需要网络连接(html2canvas / jsPDF)', 'error');
     return;
   }
   const orig = exportBtn.textContent;
@@ -4785,7 +5156,7 @@ async function doExportPdf() {
     const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
     pdf.save(`生产计划板_${date}.pdf`);
   } catch (err) {
-    alert('PDF 导出失败: ' + err.message);
+    showToast('PDF 导出失败: ' + err.message, 'error');
   } finally {
     document.body.classList.remove('printing');
     if (cleanup) cleanup();
@@ -4799,7 +5170,7 @@ async function doExportPdf() {
 async function doExportPng() {
   exportMenu.classList.remove('show');
   if (typeof html2canvas === 'undefined') {
-    alert('截图功能需要网络连接（加载 html2canvas），请确认网络后重试。');
+    showToast('截图功能需要网络连接(html2canvas)', 'error');
     return;
   }
   const orig = exportBtn.textContent;
@@ -4839,7 +5210,7 @@ async function doExportPng() {
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (err) {
-    alert('截图失败：' + err.message);
+    showToast('截图失败: ' + err.message, 'error');
   } finally {
     restoreFns.forEach(fn => fn());
     exportBtn.textContent = orig;
@@ -5506,6 +5877,66 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell .mats{font-size:11px}
     .belt{height:5px;margin:3px 0}
   }
+/* === 现代化弹层 / Toast === */
+.confirm-popover{position:fixed;z-index:10000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1);font-family:inherit;color:#e8e8e8}
+.confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
+.confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
+.confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
+.confirm-popover button:hover{background:#1f1f23}
+.confirm-popover button:active{transform:scale(0.97)}
+.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
+.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
+.confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
+.confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:#fb923c;background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast.success{border-left:3px solid #10b981}
+.toast.error{border-left:3px solid #ef4444}
+.toast.info{border-left:3px solid #fb923c}
+.toast.hide{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
+
+/* ========== 视觉精修:深色基础上加深度/层次/微高光 ========== */
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
+::selection{background:rgba(251,146,60,.28);color:#fff}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+/* 顶部 header — 玻璃 + 微光 */
+header{background:linear-gradient(180deg,rgba(14,16,21,.85) 0%,rgba(10,12,16,.78) 100%)!important;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid rgba(255,255,255,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+header input,header button,header select{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);transition:all .18s cubic-bezier(.4,0,.2,1)}
+header input:hover{border-color:rgba(255,255,255,.12)}
+header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(251,146,60,.18);background:rgba(0,0,0,.36)}
+header button:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:var(--fg)}
+header button:active{transform:scale(.97)}
+header .btn-tab.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.35),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
+/* 操作屏单元格 — 微梯度 + 内高光 + hover 抬升 */
+.line-grid .cell{background:linear-gradient(180deg,#1f2329 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 1px 3px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
+.line-grid .cell:not(.empty):hover{border-color:rgba(255,255,255,.1);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 4px 12px rgba(0,0,0,.42)}
+.line-grid .cell.empty{background:rgba(255,255,255,.015);border-color:rgba(255,255,255,.06)}
+.line-grid .cell .lbl{letter-spacing:.4px;font-weight:600;text-transform:uppercase;font-size:10px;opacity:.6}
+/* drawer 抽屉 — 边缘渐变,更柔和 */
+.drawer{background:linear-gradient(180deg,#13161b 0%,#0c0e12 100%)!important;border-left-color:rgba(255,255,255,.06)!important;box-shadow:-12px 0 32px rgba(0,0,0,.5)}
+.drawer header{background:transparent!important;border-bottom-color:rgba(255,255,255,.05)!important;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+.drawer .row{background:transparent!important;border-bottom-color:rgba(255,255,255,.04)}
+.drawer .row .swatch{transition:transform .15s,box-shadow .15s}
+.drawer .row .swatch:hover{transform:scale(1.1);box-shadow:0 0 0 2px rgba(255,255,255,.1)}
+/* autocomplete 下拉 */
+.autocomplete{background:linear-gradient(180deg,#15181d 0%,#0e1014 100%);border-color:rgba(255,255,255,.08);box-shadow:0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.02) inset;border-radius:8px}
+.autocomplete .opt{transition:background .12s,color .12s;border-radius:4px;margin:1px 4px;padding:7px 10px}
+.autocomplete .opt:hover,.autocomplete .opt.sel{background:rgba(251,146,60,.1);color:var(--accent)}
+/* chip 与传送带元素的整体节奏(保留原渐变,只改阴影) */
+.chip{box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 0 rgba(255,255,255,.04) inset}
+.belt{box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
+/* 大标题 */
+.bento-title{background:linear-gradient(180deg,#fff 0%,#a8adb5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.bento-title .muted{-webkit-text-fill-color:#5a5f68;background:none}
 </style>
 </head>
 <body>
@@ -5545,6 +5976,77 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   </div>
 </aside>
 <script>
+// === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
+function showConfirmPopover(anchor, opts) {
+  document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'confirm-popover';
+  const textEl = document.createElement('div'); textEl.className = 'confirm-text'; textEl.textContent = opts.text || '确认?'; pop.appendChild(textEl);
+  if (opts.sub) { const s = document.createElement('div'); s.className = 'confirm-sub'; s.textContent = opts.sub; pop.appendChild(s); }
+  let inputEl = null;
+  if (opts.input) {
+    if (opts.input.options) {
+      inputEl = document.createElement('select'); inputEl.className = 'confirm-input';
+      for (const o of opts.input.options) { const op = document.createElement('option'); op.value = o.value; op.textContent = o.label; inputEl.appendChild(op); }
+      if (opts.input.value != null) inputEl.value = opts.input.value;
+    } else {
+      inputEl = document.createElement('input'); inputEl.className = 'confirm-input';
+      inputEl.type = opts.input.type || 'text';
+      inputEl.value = opts.input.value || '';
+      inputEl.placeholder = opts.input.placeholder || '';
+    }
+    pop.appendChild(inputEl);
+  }
+  if (opts.extra) {
+    const eb = document.createElement('button'); eb.className = 'confirm-extra' + (opts.extra.danger ? ' danger' : '');
+    eb.textContent = opts.extra.text;
+    eb.onclick = (e) => { e.stopPropagation(); close(); opts.extra.onClick && opts.extra.onClick(); };
+    pop.appendChild(eb);
+  }
+  const actions = document.createElement('div'); actions.className = 'confirm-actions';
+  let confirmed = false;
+  const doConfirm = () => { const v = inputEl ? inputEl.value : null; confirmed = true; close(); opts.onConfirm && opts.onConfirm(v); };
+  const noBtn = document.createElement('button'); noBtn.textContent = opts.cancelText || '取消';
+  noBtn.onclick = (e) => { e.stopPropagation(); close(); };
+  const yesBtn = document.createElement('button'); yesBtn.className = opts.danger ? 'danger' : 'primary'; yesBtn.textContent = opts.confirmText || '确认';
+  yesBtn.onclick = (e) => { e.stopPropagation(); doConfirm(); };
+  actions.appendChild(noBtn); actions.appendChild(yesBtn); pop.appendChild(actions);
+  if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doConfirm(); } });
+  document.body.appendChild(pop);
+  const pr = pop.getBoundingClientRect(); const m = 8;
+  const r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+  if (!r || (r.width === 0 && r.height === 0)) {
+    pop.style.left = ((window.innerWidth - pr.width) / 2) + 'px';
+    pop.style.top  = ((window.innerHeight - pr.height) / 2) + 'px';
+  } else {
+    let left = r.left - pr.width - m; if (left < m) left = r.right + m;
+    if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
+    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  const close = () => {
+    pop.remove();
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('scroll', close, true);
+    if (!confirmed && opts.onCancel) opts.onCancel();
+  };
+  const onDoc = (e) => { if (!pop.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => {
+    document.addEventListener('click', onDoc, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', close, true);
+    if (inputEl) inputEl.focus();
+  }, 0);
+}
+function showToast(msg, type) {
+  document.querySelectorAll('.toast').forEach(el => el.remove());
+  const t = document.createElement('div'); t.className = 'toast ' + (type || 'info'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 250); }, 2500);
+}
 const STORAGE_KEY = "bento-conveyor-v1";
 
 const SEED_LINE = [
@@ -6299,10 +6801,13 @@ function renderMaterialsDrawer() {
     del.className = "del"; del.textContent = "×";
     del.onclick = () => {
       const usage = countMaterialUsage(m.id);
-      const msg = usage > 0
-        ? `将从 ${usage} 个便当中移除材料 "${m.name}",继续?`
-        : `删除材料 "${m.name}"?`;
-      if (confirm(msg)) { deleteMaterialCascade(m.id); renderMaterialsDrawer(); render(); }
+      showConfirmPopover(del, {
+        text: `删除材料「${m.name}」?`,
+        sub: usage > 0 ? `将从 ${usage} 个便当中移除` : '该材料将从库中移除',
+        confirmText: '删除',
+        danger: true,
+        onConfirm: () => { deleteMaterialCascade(m.id); renderMaterialsDrawer(); render(); }
+      });
     };
 
     // 点击材料名展开/收起"使用此材料的便当"列表
@@ -6939,9 +7444,13 @@ function renderLine() {
   add.onclick = () => { addSlot(tpl); saveState(); renderLine(); };
   const reset = document.createElement("button"); reset.className = "danger"; reset.textContent = "恢复默认布局";
   reset.onclick = () => {
-    if (confirm(`将「${activeLineName}」的模板重置为 14 个位置(不影响已有便当),继续?`)) {
-      resetLineTemplateToSeed(activeLineId); renderLine();
-    }
+    showConfirmPopover(reset, {
+      text: `重置「${activeLineName}」模板?`,
+      sub: '将重置为 14 个位置,已有便当不受影响',
+      confirmText: '重置',
+      danger: true,
+      onConfirm: () => { resetLineTemplateToSeed(activeLineId); renderLine(); }
+    });
   };
   actions.appendChild(lineSel); actions.appendChild(done); actions.appendChild(add); actions.appendChild(reset);
   wrap.appendChild(actions);
@@ -6987,15 +7496,21 @@ function renderLine() {
     const tdDel = document.createElement("td");
     const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
     del.onclick = () => {
-      if (confirm(`删除位置 "${p.label}"?将从此生产线的模板里移除(不影响已有便当)。`)) {
-        const idx = tpl.findIndex(x => x.id === p.id);
-        if (idx >= 0) {
-          tpl.splice(idx, 1);
-          compactSlots(tpl);
-          saveState();
-          renderLine();
+      showConfirmPopover(del, {
+        text: `删除位置「${p.label}」?`,
+        sub: '从生产线模板移除(不影响已有便当)',
+        confirmText: '删除',
+        danger: true,
+        onConfirm: () => {
+          const idx = tpl.findIndex(x => x.id === p.id);
+          if (idx >= 0) {
+            tpl.splice(idx, 1);
+            compactSlots(tpl);
+            saveState();
+            renderLine();
+          }
         }
-      }
+      });
     };
     tdDel.appendChild(del);
 
@@ -7114,17 +7629,26 @@ function renderEdit() {
       b.speed = (saved != null && saved !== "") ? saved : "";
 
       if (wasUnset) {
-        // 新建场景:第一次选生产线 → 弹确认,默认套用该线的卡片布局
+        // 新建场景:第一次选生产线 → 弹 popover,默认套用该线的卡片布局
         const lineName = (scheduleData.lines || []).find(l => l.id === newLineId)?.name || newLineId;
-        const ok = confirm(`套用「${lineName}」的默认布局?\n会覆盖当前便当的卡片和材料分配。\n取消则只切换生产线、布局保持不变。`);
-        if (ok) {
-          applyLineTemplateToBento(b, newLineId);
-          // applyLineTemplateToBento 内部已 saveState
-          renderEdit();
-          return;
-        }
+        showConfirmPopover(lineSel, {
+          text: `套用「${lineName}」默认布局?`,
+          sub: '会覆盖当前便当的卡片和材料分配',
+          confirmText: '套用',
+          cancelText: '保持不变',
+          onConfirm: () => {
+            applyLineTemplateToBento(b, newLineId);
+            renderEdit();
+          },
+          onCancel: () => {
+            // 不套用布局,只切换生产线 + 同步 speed
+            saveState();
+            renderEdit();
+          }
+        });
+        return;
       }
-      // 修改场景(或者新建场景里点了"取消"):布局原样保留,只换 lineId + speed
+      // 修改场景:布局原样保留,只换 lineId + speed
     } else {
       b.lineId = null;
       // 没选线时 speed 保留显示但不再归属任何线
@@ -7196,10 +7720,15 @@ function renderEdit() {
       const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
       del.onclick = (e) => {
         e.stopPropagation();
-        if (confirm(`删除位置 "${p.label}"?`)) {
-          deleteSlotPositionFrom(b, p.id);
-          renderCardPanel(); renderEditGrid();
-        }
+        showConfirmPopover(del, {
+          text: `删除位置「${p.label}」?`,
+          confirmText: '删除',
+          danger: true,
+          onConfirm: () => {
+            deleteSlotPositionFrom(b, p.id);
+            renderCardPanel(); renderEditGrid();
+          }
+        });
       };
       tdDel.appendChild(del);
 
@@ -7292,7 +7821,7 @@ function renderBentos() {
       state.current = { ...state.current, screen: "edit", editingBentoId: b.id };
       saveState(); render();
     } else if (inp.value.trim()) {
-      alert("名字为空或已存在");
+      showToast('名字为空或已存在', 'error');
     }
   };
   inp.addEventListener("keydown", e => { if (e.key === "Enter") add.click(); });
@@ -7311,7 +7840,13 @@ function renderBentos() {
       ed.onclick = () => nm.click();
       const dl = document.createElement("button"); dl.className = "del"; dl.textContent = "删";
       dl.onclick = () => {
-        if (confirm(`删除便当 "${b.name}"?`)) { deleteBento(b.id); render(); }
+        showConfirmPopover(dl, {
+          text: `删除便当「${b.name}」?`,
+          sub: '该便当将从库中移除',
+          confirmText: '删除',
+          danger: true,
+          onConfirm: () => { deleteBento(b.id); render(); }
+        });
       };
       it.appendChild(nm); it.appendChild(ed); it.appendChild(dl);
       wrap.appendChild(it);
@@ -7476,7 +8011,7 @@ async function exportImage() {
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
   } catch (e) {
-    alert("导出图片失败: " + e.message);
+    showToast('导出图片失败: ' + e.message, 'error');
   }
 }
 
@@ -7486,18 +8021,31 @@ function importJSON() {
     const f = inp.files[0]; if (!f) return;
     const r = new FileReader();
     r.onload = () => {
+      let data;
       try {
-        const data = JSON.parse(r.result);
+        data = JSON.parse(r.result);
         if (data.version !== 1) throw new Error("版本不匹配");
         if (!Array.isArray(data.materials) || !Array.isArray(data.line) || !Array.isArray(data.bentos)) throw new Error("数据结构错误");
-        if (!confirm("将覆盖当前所有数据,继续?")) return;
-        state = data;
-        if (!state.current) state.current = { screen:"operate", bentoId:null, editingBentoId:null };
-        seedLineIfEmpty(state);
-        migrate(state);
-        saveState();
-        render();
-      } catch (e) { alert("导入失败: " + e.message); }
+      } catch (e) {
+        showToast('导入失败: ' + e.message, 'error');
+        return;
+      }
+      const anchor = document.getElementById('btn-import') || document.body;
+      showConfirmPopover(anchor, {
+        text: '导入数据?',
+        sub: '将覆盖当前所有数据,建议先备份',
+        confirmText: '继续导入',
+        danger: true,
+        onConfirm: () => {
+          state = data;
+          if (!state.current) state.current = { screen:"operate", bentoId:null, editingBentoId:null };
+          seedLineIfEmpty(state);
+          migrate(state);
+          saveState();
+          render();
+          showToast('导入完成', 'success');
+        }
+      });
     };
     r.readAsText(f);
   };
@@ -7539,6 +8087,55 @@ init();
 </html>
 </script>
 <script>
+// === 现代化 popover/toast(替代原生 confirm/alert) ===
+function showConfirmPopover(anchor, opts) {
+  document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
+  const pop = document.createElement('div');
+  pop.className = 'confirm-popover';
+  const textEl = document.createElement('div'); textEl.className = 'confirm-text'; textEl.textContent = opts.text || '确认?'; pop.appendChild(textEl);
+  if (opts.sub) { const s = document.createElement('div'); s.className = 'confirm-sub'; s.textContent = opts.sub; pop.appendChild(s); }
+  const actions = document.createElement('div'); actions.className = 'confirm-actions';
+  let confirmed = false;
+  const doConfirm = () => { confirmed = true; close(); opts.onConfirm && opts.onConfirm(); };
+  const noBtn = document.createElement('button'); noBtn.textContent = opts.cancelText || '取消';
+  noBtn.onclick = (e) => { e.stopPropagation(); close(); };
+  const yesBtn = document.createElement('button'); yesBtn.className = opts.danger ? 'danger' : 'primary'; yesBtn.textContent = opts.confirmText || '确认';
+  yesBtn.onclick = (e) => { e.stopPropagation(); doConfirm(); };
+  actions.appendChild(noBtn); actions.appendChild(yesBtn); pop.appendChild(actions);
+  document.body.appendChild(pop);
+  const pr = pop.getBoundingClientRect(); const m = 8;
+  const r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+  if (!r || (r.width === 0 && r.height === 0)) {
+    pop.style.left = ((window.innerWidth - pr.width) / 2) + 'px';
+    pop.style.top  = ((window.innerHeight - pr.height) / 2) + 'px';
+  } else {
+    let left = r.left - pr.width - m; if (left < m) left = r.right + m;
+    if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
+    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  const close = () => {
+    pop.remove();
+    document.removeEventListener('click', onDoc, true);
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('scroll', close, true);
+    if (!confirmed && opts.onCancel) opts.onCancel();
+  };
+  const onDoc = (e) => { if (!pop.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => {
+    document.addEventListener('click', onDoc, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', close, true);
+  }, 0);
+}
+function showToast(msg, type) {
+  document.querySelectorAll('.toast').forEach(el => el.remove());
+  const t = document.createElement('div'); t.className = 'toast ' + (type || 'info'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 250); }, 2500);
+}
 const btns = document.querySelectorAll('.tabs button[data-app]');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
@@ -7628,7 +8225,7 @@ function exportAll() {
 function exportAllNow() {
   const entries = collectBundleEntries();
   if (Object.keys(entries).length === 0) {
-    alert('当前没有可导出的数据');
+    showToast('当前没有可导出的数据', 'error');
     return;
   }
   const bundle = {
@@ -7664,13 +8261,26 @@ function importAll() {
     r.onload = () => {
       let bundle;
       try { bundle = JSON.parse(r.result); }
-      catch (e) { alert('文件不是有效 JSON: ' + e.message); return; }
+      catch (e) { showToast('文件不是有效 JSON: ' + e.message, 'error'); return; }
       if (!bundle || bundle.type !== 'production-management-bundle' || !bundle.entries) {
-        alert('不是「生产管理」统一导出文件(type 或 entries 字段不符)');
+        showToast('不是「生产管理」统一导出文件', 'error');
         return;
       }
       const keyCount = Object.keys(bundle.entries).length;
-      if (!confirm(`将覆盖当前所有数据(${keyCount} 项),继续?\n建议先点「导出」备份当前数据。`)) return;
+      const anchor = document.querySelector('.tabs .io-btn[onclick*="importAll"]') || document.body;
+      showConfirmPopover(anchor, {
+        text: `导入 ${keyCount} 项数据?`,
+        sub: '将覆盖当前所有数据,建议先点「导出」备份',
+        confirmText: '继续导入',
+        danger: true,
+        onConfirm: () => doImportBundle(bundle, keyCount)
+      });
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+function doImportBundle(bundle, keyCount) {
       // 1) 先关掉各 iframe 的自动保存 + storage 事件回写,防止它们在导入写盘期间用旧内存数据覆盖刚写入的 key
       frames.forEach(f => {
         try { if (f.contentWindow) f.contentWindow.skipAutoSave = true; } catch (_) {}
@@ -7700,11 +8310,7 @@ function importAll() {
         if (app) f.srcdoc = getHtml(app);
         loaded.add(app);
       });
-      alert(`✓ 已导入 ${keyCount} 项数据,所有 app 已重新加载。`);
-    };
-    r.readAsText(f);
-  };
-  inp.click();
+      showToast(`已导入 ${keyCount} 项数据,所有 app 已重新加载`, 'success');
 }
 // === 跨 iframe 数据桥:中转便当/排班/日期变更与请求,缓存最新快照 ===
 const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
