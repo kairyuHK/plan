@@ -6,8 +6,8 @@
 <title>生产管理</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#0f1115;color:#e8e8e8;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
-.tabs{display:flex;height:48px;background:linear-gradient(180deg,#12161b 0%,#0a0c10 100%);border-bottom:1px solid #1a1f27;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
+html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
+.tabs{display:flex;height:48px;background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
 .tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8e8}
 .tabs button.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.4),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
@@ -95,10 +95,10 @@ iframe.active{pointer-events:auto}
 <title>岗位排班表</title>
 <style>
 :root{
-  /* 与配置表共用色板,保证三个 app 视觉一致 */
-  --bg:#0f1115; --card:#1a1d22; --border:#2a2d33;
-  --text:#e8e8e8; --muted:#888;
-  --accent:#fb923c; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  /* 调和「月度工时统计」色板:更深底 + 微蓝紫表面 + 柔边框 */
+  --bg:#0a0b0e; --card:#14161d; --border:#262936;
+  --text:#ececf1; --muted:#8a8d99;
+  --accent:#fb923c; --accent-glow:rgba(251,146,60,.18); --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
   --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
   --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
   --line-tsk:#8b5cf6; --line-short:#64748b;
@@ -107,7 +107,7 @@ iframe.active{pointer-events:auto}
   --font-mono: ui-monospace,Consolas,monospace;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(94,234,212,.18),transparent 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:auto,22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -1441,17 +1441,17 @@ const Pages = (() => {
   input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
   :root {
-    /* 与配置表共用色板,保证三个 app 视觉一致 */
-    --bg: #0f1115;
-    --bg-2: #0a0c10;
-    --line-bg: #0d0e11;
-    --panel: #1a1d22;
-    --panel-solid: #1a1d22;
-    --panel-2: #15181d;
-    --panel-elevated: #1f2229;
-    --border: #2a2d33;
-    --border-strong: #3a3f47;
-    --border-line: #2a2d33;
+    /* === 调和「月度工时统计」的色板:更深更纯的底 + 微蓝紫的中性表面 + 柔边框 === */
+    --bg: #0a0b0e;
+    --bg-2: #07080a;
+    --line-bg: #0c0d11;
+    --panel: #14161d;
+    --panel-solid: #14161d;
+    --panel-2: #10121a;
+    --panel-elevated: #1a1d26;
+    --border: #262936;
+    --border-strong: #2f323e;
+    --border-line: #1d2029;
     --text: #f1f1f3;
     --text-dim: #9ca0a8;
     --text-mute: #707783;
@@ -1485,6 +1485,12 @@ const Pages = (() => {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* 微星点底纹(22px 网格)+ 顶部青绿辐射光晕,致敬「月度工时统计」 */
+    background-image:
+      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(94,234,212,.18), transparent 70%),
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.022) 1px, transparent 0);
+    background-size: auto, 22px 22px;
+    background-attachment: fixed;
   }
   body {
     position: fixed;
@@ -3001,7 +3007,9 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 *::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
 /* 顶栏 — 玻璃质感 */
-.topbar{background:linear-gradient(180deg,rgba(20,22,28,.88) 0%,rgba(15,17,21,.78) 100%)!important;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:rgba(255,255,255,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 6px 20px rgba(0,0,0,.32)}
+/* 顶栏跟 line-head/timeline-head 用同一组梯度,从 tab 栏一路衔接到内容区,层级清晰不再颠倒。
+   保留 backdrop blur 让身后的 body 辐射光晕能淡淡透上来,质感不死。 */
+.topbar{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)!important}
 .brand{letter-spacing:.3px}
 .brand .dot{box-shadow:0 0 12px rgba(251,146,60,.55)}
 .top-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
@@ -3018,7 +3026,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
    把蓝灰偏向调成「近中性深灰 + 一丝暖」的色,跟主题色橙形成冷暖对比,整体更克制。
    RGB 比值接近 1:1:1.1(几乎平,少量蓝),不再像之前 18:21:26 那样发冷。 */
 .line-foot,.timeline-foot,.timeline-head,.timeline-body,.line-head{
-  background:linear-gradient(180deg,rgba(22,22,25,.94) 0%,rgba(12,12,14,.97) 100%)!important;
+  background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;
 }
 /* 柔化 LINE 列之间的竖向分隔线 —— 把原本 #3a3f47 偏亮的分隔色改成低透明白,更克制不抢眼 */
 .board{background:rgba(255,255,255,.045)!important}
@@ -5656,9 +5664,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>配置表</title>
 <style>
-  :root { --bg:#0f1115; --fg:#e8e8e8; --line:#2a2d33; --accent:#fb923c; --soft:#1a1d22; --muted:#888; }
+  :root { --bg:#0a0b0e; --fg:#ececf1; --line:#262936; --accent:#fb923c; --accent-glow:rgba(251,146,60,.18); --soft:#14161d; --muted:#8a8d99; }
   *{box-sizing:border-box}
-  body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh}
+  body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(94,234,212,.18),transparent 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:auto,22px 22px;background-attachment:fixed}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
   #banner.show{display:block}
   #banner.ok{background:#14532d;color:#bbf7d0}
