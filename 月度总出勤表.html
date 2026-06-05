@@ -94,8 +94,10 @@ table.schedule td.day-cell.absent{color:var(--danger)}
 table.schedule td.day-cell.retired{color:var(--retired);cursor:not-allowed;background:#111114}
 body:not(.editing) table.schedule td.day-cell{cursor:default}
 body:not(.editing) table.schedule td.day-cell:hover{background:transparent}
-body:not(.editing) table.schedule td.required input{cursor:default;color:var(--muted)}
+body:not(.editing) table.schedule td.required input{cursor:default}
 body:not(.editing) table.schedule td.required input:hover{background:transparent}
+body:not(.editing) table.schedule td.dispatch input{cursor:default}
+body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
 .today-badge{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#f97316;color:#fff;border-radius:50%;font-weight:700;font-size:11px;line-height:1;font-family:var(--font-mono)}
@@ -105,8 +107,8 @@ table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-ro
 table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
 table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
-/* keyboard focus indicator (kept silent — no visible outline; logic still tracks focused cell) */
-table.schedule td.day-cell.cell-focus{position:relative}
+/* keyboard focus indicator(仅在编辑模式下显示,锁定时即使焦点逻辑保留也不画边框) */
+body.editing table.schedule td.day-cell.cell-focus{position:relative;box-shadow:inset 0 0 0 2px var(--accent),0 0 0 1px var(--accent);z-index:2}
 /* color palette toolbar */
 .color-palette{display:inline-flex;gap:6px;align-items:center;margin-left:12px}
 .color-palette .swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
@@ -121,6 +123,14 @@ table.schedule td.required{cursor:text;padding:0}
 table.schedule td.required input{width:100%;padding:2px 0;font-size:12px;font-family:var(--font-mono);text-align:center;background:transparent;border:none;border-radius:0;color:var(--accent);font-weight:600}
 table.schedule td.required input:hover{background:#1f1f23}
 table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(--accent);outline-offset:-1px}
+/* 派遣短期 input — 蓝色显示(锁定时也保持蓝色) */
+table.schedule td.dispatch{cursor:text;padding:0}
+table.schedule td.dispatch input{width:100%;padding:2px 0;font-size:12px;font-family:var(--font-mono);text-align:center;background:transparent;border:none;border-radius:0;color:var(--sat);font-weight:600}
+table.schedule td.dispatch input:hover{background:#1f1f23}
+table.schedule td.dispatch input:focus{background:#1f1f23;outline:1px solid var(--sat);outline-offset:-1px}
+table.schedule td.dispatch input::-webkit-outer-spin-button,
+table.schedule td.dispatch input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+table.schedule td.dispatch input{-moz-appearance:textfield}
 /* settings */
 .settings-section{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
 .settings-section h2{margin:0 0 10px;font-size:16px}
@@ -203,7 +213,7 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   /* table 实际高度 ~190mm,容器 192mm,用 flex 让 table 在 A4 上垂直居中(上下各 ~1mm 留白) */
   .schedule-wrap { margin: 0 !important; height: 192mm; display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
-  table.schedule td.cell-focus { outline: none !important; }
+  table.schedule td.cell-focus { outline: none !important; box-shadow: none !important; }
   .color-palette { display: none !important; }
   /* preserve inline cell colors in print */
   table.schedule td.day-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -247,7 +257,8 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   }
   table.schedule th.dept-name { font-size: calc(var(--row-h) * 0.65) !important; height: var(--row-h) !important; }
   table.schedule th.month-label { font-size: calc(var(--row-h) * 0.6) !important; height: var(--row-h) !important; }
-  table.schedule td.required input { font-size: calc(var(--row-h) * 0.65) !important; }
+  table.schedule td.required input,
+  table.schedule td.dispatch input { font-size: calc(var(--row-h) * 0.65) !important; }
   table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
   /* clear interactive highlights in print */
   table.schedule tr.hl-row td, table.schedule tr.hl-row th,
@@ -283,15 +294,20 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   table.schedule th.sun { color: #b91c1c !important; }
   .today-badge { background: #f97316 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   table.schedule tr.stat-row td { background: #f5f5f5 !important; height: 22px; font-weight: 600; }
-  table.schedule td.required { padding: 0; }
-  table.schedule td.required input {
+  table.schedule td.required, table.schedule td.dispatch { padding: 0; }
+  table.schedule td.required input, table.schedule td.dispatch input {
     width: 100%; height: 100%; padding: 0;
-    border: none !important; background: transparent !important; color: #000;
+    border: none !important; background: transparent !important;
     font-size: 12px; font-weight: 600; text-align: center;
     -webkit-appearance: none; appearance: none;
   }
+  table.schedule td.required input { color: #000; }
+  /* 派遣短期打印蓝色 — 与屏幕一致 */
+  table.schedule td.dispatch input { color: #1d4ed8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   table.schedule td.required input::-webkit-outer-spin-button,
-  table.schedule td.required input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
+  table.schedule td.required input::-webkit-inner-spin-button,
+  table.schedule td.dispatch input::-webkit-outer-spin-button,
+  table.schedule td.dispatch input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
 }
 </style>
 </head>
@@ -420,6 +436,7 @@ const Store = (() => {
     attendance: {},
     cellColors: {},
     requiredPerDay: {},
+    dispatchPerDay: {},
     ui: { currentDept: 'dept1', currentPeriod: Period.todayKey(), editMode: false },
     lastExportAt: null
   });
@@ -436,6 +453,7 @@ const Store = (() => {
       // backward-compat: old field name shortTermDispatch → requiredPerDay
       if (!parsed.requiredPerDay) parsed.requiredPerDay = parsed.shortTermDispatch || {};
       delete parsed.shortTermDispatch;
+      if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
       if (!parsed.cellColors) parsed.cellColors = {};
       return parsed;
     } catch (_) { return defaults(); }
@@ -483,6 +501,10 @@ const Store = (() => {
     const d = dept(deptId);
     return (d && d.requiredCount != null) ? d.requiredCount : DEFAULT_REQUIRED;
   };
+  const dispatchCount = (deptId, ymd) => {
+    const v = state.dispatchPerDay[dispKey(deptId, ymd)];
+    return (v !== undefined && v !== null) ? v : 0;
+  };
 
   // ---- mutators ----
   function setUi(patch) { Object.assign(state.ui, patch); commit('ui'); }
@@ -503,15 +525,19 @@ const Store = (() => {
 
   function cycleCell(deptId, personId, ymd, color) {
     const current = cellStatus(deptId, personId, ymd);
-    if (current === 'retired') return;
+    // 派生 retired(来自 retiredOn 字段,旧数据兼容)仍不可编辑
+    const person = (state.people[deptId] || []).find(pp => pp.id === personId);
+    const isDerivedRetired = current === 'retired' && person && person.retiredOn && ymd >= person.retiredOn;
+    if (isDerivedRetired) return;
     // 选了颜色 → 当作"涂色刷",强制设为 work + 填色;不再切换状态
     // 选了「clear」(✕)→ 强制设为 work + 清色
     if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null); return; }
     if (color) { setCell(deptId, personId, ymd, 'work', color); return; }
-    // 没选颜色 → 原状态循环;切到休息态会被 setCell 自动清色
+    // 没选颜色 → 状态循环 空→〇→●→欠→✲→空;切到休息态会被 setCell 自动清色
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
                : current === 'paidLeave' ? 'absent'
+               : current === 'absent' ? 'retired'
                : 'work';
     setCell(deptId, personId, ymd, next);
   }
@@ -524,6 +550,19 @@ const Store = (() => {
     if (raw === '') { delete state.requiredPerDay[k]; commit('required'); return; }
     state.requiredPerDay[k] = Math.max(0, Number(n) || 0);
     commit('required');
+  }
+
+  function setDispatch(deptId, ymd, n, silent) {
+    const k = dispKey(deptId, ymd);
+    const raw = String(n).trim();
+    if (raw === '' || Number(raw) === 0) {
+      delete state.dispatchPerDay[k];
+    } else {
+      state.dispatchPerDay[k] = Math.max(0, Number(n) || 0);
+    }
+    // silent: 只持久化,不触发 listeners(避免整页重渲染破坏焦点)
+    if (silent) persist();
+    else commit('dispatch');
   }
 
   // departments
@@ -627,8 +666,8 @@ const Store = (() => {
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   return {
-    get, dept, people, peopleInPeriod, cellStatus, cellColor, requiredCount,
-    setUi, setCell, cycleCell, setRequired,
+    get, dept, people, peopleInPeriod, cellStatus, cellColor, requiredCount, dispatchCount,
+    setUi, setCell, cycleCell, setRequired, setDispatch,
     addDepartment, renameDepartment, setDeptRequired, removeDepartment,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson,
     exportJson, importJson, reset, subscribe
@@ -746,7 +785,8 @@ const App = (() => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
       const peopleN = Store.peopleInPeriod().length;
-      const totalRows = 3 + peopleN + 3;
+      // thead 3 行(月份/日期/星期) + N 人员行 + stat 4 行(必要/合計/派遣/不足)
+      const totalRows = 3 + peopleN + 4;
       document.documentElement.style.setProperty('--total-rows', String(totalRows));
       const isMobile =
         /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
@@ -781,7 +821,7 @@ const App = (() => {
         else if (c.classList.contains('name-col') || c.classList.contains('role-col')) fontMul = 0.55;
         c.style.setProperty('font-size', `${(rH * fontMul).toFixed(3)}mm`, 'important');
       });
-      const inputs = document.querySelectorAll('#page-schedule table.schedule td.required input');
+      const inputs = document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input');
       inputs.forEach(i => i.style.setProperty('font-size', `${(rH * 0.65).toFixed(3)}mm`, 'important'));
     });
     window.addEventListener('afterprint', () => {
@@ -804,7 +844,7 @@ const App = (() => {
         c.style.removeProperty('padding-top');
         c.style.removeProperty('padding-bottom');
       });
-      document.querySelectorAll('#page-schedule table.schedule td.required input').forEach(i => {
+      document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input').forEach(i => {
         i.style.removeProperty('font-size');
       });
     });
@@ -864,7 +904,10 @@ const Pages = (() => {
       focusedCell = { personId: cur.personId, ymd: days[di + 1].ymd };
     }
     const st = Store.cellStatus(deptId, cur.personId, cur.ymd);
-    if (st !== 'retired') {
+    // 派生 retired(来自人员的 retiredOn 字段)不可编辑;手动设的 ✲ 可以覆盖
+    const person = (Store.people(deptId) || []).find(pp => pp.id === cur.personId);
+    const isDerivedRetired = st === 'retired' && person && person.retiredOn && cur.ymd >= person.retiredOn;
+    if (!isDerivedRetired) {
       Store.setCell(deptId, cur.personId, cur.ymd, status, activeColor);
     } else {
       applyFocus();
@@ -908,7 +951,7 @@ const Pages = (() => {
   function buildEntryHint() {
     const div = Render.el('div.entry-hint');
     const left = Render.el('span');
-    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=欠 <kbd>4</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
+    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=欠 <kbd>4</kbd>=✲ <kbd>5</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
     div.appendChild(left);
     div.appendChild(buildColorPalette());
     return div;
@@ -965,7 +1008,8 @@ const Pages = (() => {
     if (k === '1') { setFocusedState('contractRest'); e.preventDefault(); }
     else if (k === '2') { setFocusedState('paidLeave'); e.preventDefault(); }
     else if (k === '3') { setFocusedState('absent'); e.preventDefault(); }
-    else if (k === '4' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
+    else if (k === '4') { setFocusedState('retired'); e.preventDefault(); }
+    else if (k === '5' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
     else if (k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) { moveFocus(1, 0); e.preventDefault(); }
     else if (k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) { moveFocus(-1, 0); e.preventDefault(); }
     else if (k === 'ArrowDown') { moveFocus(0, 1); e.preventDefault(); }
@@ -1034,7 +1078,8 @@ const Pages = (() => {
       (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     let mobileStyle = document.getElementById('mobile-print-style');
     if (isMobile) {
-      const totalRows = 3 + peopleN + 3;
+      // thead 3 行 + N 人员行 + stat 4 行(必要/合計/派遣/不足)
+      const totalRows = 3 + peopleN + 4;
       // iOS Safari evaluates `100vh` as the device viewport (≈104mm in landscape),
       // not the A4 page height. Use mm — absolute in print, immune to that bug.
       // 155mm caps content under iOS Safari's URL header + date/page footer (which
@@ -1061,7 +1106,8 @@ const Pages = (() => {
           table.schedule td.day-cell { font-size: ${(rH * 0.7).toFixed(3)}mm !important; }
           table.schedule th.dept-name { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
           table.schedule th.month-label { font-size: ${(rH * 0.6).toFixed(3)}mm !important; }
-          table.schedule td.required input { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
+          table.schedule td.required input,
+          table.schedule td.dispatch input { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
           table.schedule th.name-col, table.schedule td.name-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
           table.schedule th.role-col, table.schedule td.role-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
         }
@@ -1168,7 +1214,9 @@ const Pages = (() => {
           td.style.setProperty('background-color', COLOR_MAP[c], 'important');
           td.style.setProperty('color', '#fff', 'important');
         }
-        if (st !== 'retired') {
+        // 派生 retired(来自 retiredOn 字段)不可点击;手动设的 ✲ 可被循环切换
+        const isDerivedRetired = st === 'retired' && p.retiredOn && d.ymd >= p.retiredOn;
+        if (!isDerivedRetired) {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
             focusedCell = { personId: p.id, ymd: d.ymd };
@@ -1200,6 +1248,7 @@ const Pages = (() => {
     const lineTotals = days.map(d => computeLineTotal(deptId, d.ymd));
     const absentTotals = days.map(d => computeAbsentTotal(deptId, d.ymd));
     const requireds = days.map(d => Store.requiredCount(deptId, d.ymd));
+    const dispatches = days.map(d => Store.dispatchCount(deptId, d.ymd));
 
     // Row 1: 必要人数 (editable, default 22)
     const r1 = Render.el('tr.stat-row');
@@ -1226,19 +1275,98 @@ const Pages = (() => {
     for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
-    // Row 3: 派遣短期 = 必要人数 − ライン合計 − 缺勤数
-    // 派遣是排班时提前预约的;缺勤是临时事件,不能临时调整派遣数。
-    // 所以缺勤的人按"原本预定上班"计算,派遣短期数字不受临时缺勤影响。
+    // Row 3: 派遣短期 (手动输入,蓝色)
+    // 派遣是排班时提前预约的,数字由人工填写。
     const r3 = Render.el('tr.stat-row');
     r3.appendChild(Render.el('td.label', { colspan: 5 }, '派遣短期'));
+    // 跳焦工具(放在 buildStatRows 函数内,闭包捕获 days 引用)
+    // preventScroll: true 关键 — 阻止 focus 触发 scrollIntoView,
+    // 否则浏览器会把新 input 滚到视野中导致整个表格跳动,用户以为"没跳"。
+    const focusWithoutScroll = (el) => {
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      try { el.select(); } catch (_) {}
+    };
+    // 静默更新 excess td(数据由 input 内 value 直接读,不依赖 Store 同步状态)
+    const updateExcessTd = (ymd, dispatchVal) => {
+      const lineTotal = computeLineTotal(deptId, ymd);
+      const required = Store.requiredCount(deptId, ymd);
+      const excess = lineTotal + dispatchVal - required;
+      const excessTd = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
+      if (excessTd) {
+        excessTd.textContent = String(excess);
+        excessTd.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
+      }
+    };
+    const jumpDispatch = (idx, currentInput, currentYmd) => {
+      // 1. 先 focus 邻居(立即同步)— 不被后续操作干扰
+      if (idx >= 0 && idx < days.length) {
+        focusWithoutScroll(document.querySelector(`tr.stat-row td.dispatch[data-ymd="${days[idx].ymd}"] input`));
+      }
+      // 2. 异步写入数据 + 更新 excess(用 setTimeout 0 让 focus 优先完成)
+      const cur = currentInput.value;
+      const currentInputRef = currentInput;
+      setTimeout(() => {
+        if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
+          Store.setDispatch(deptId, currentYmd, cur, true); // silent
+          updateExcessTd(currentYmd, Number(cur) || 0);
+        }
+      }, 0);
+    };
+    const jumpRequiredSameCol = (currentInput, currentYmd) => {
+      focusWithoutScroll(document.querySelector(`tr.stat-row td.required[data-ymd="${currentYmd}"] input`));
+      const cur = currentInput.value;
+      setTimeout(() => {
+        if (cur !== String(Store.dispatchCount(deptId, currentYmd))) {
+          Store.setDispatch(deptId, currentYmd, cur, true);
+          updateExcessTd(currentYmd, Number(cur) || 0);
+        }
+      }, 0);
+    };
     for (let i = 0; i < days.length; i++) {
-      const gap = requireds[i] - lineTotals[i] - absentTotals[i];
-      const td = Render.el('td', { dataset: { ymd: days[i].ymd } }, String(gap));
-      if (gap > 0) td.style.color = 'var(--danger)';
-      else if (gap < 0) td.style.color = 'var(--muted)';
+      const td = Render.el('td.dispatch', { dataset: { ymd: days[i].ymd } });
+      const idx = i;
+      const ymdCur = days[i].ymd;
+      const input = Render.el('input', {
+        type: 'number',
+        min: '0',
+        value: String(dispatches[i]),
+        readonly: editing ? null : true,
+        onchange: editing ? (e) => Store.setDispatch(deptId, ymdCur, e.target.value) : null,
+        onfocus: (e) => e.target.select(),
+        onkeydown: editing ? (e) => {
+          const k = e.key;
+          if (k === 'Enter' || k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) {
+            e.preventDefault();
+            jumpDispatch(idx + 1, e.target, ymdCur);
+          } else if (k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) {
+            e.preventDefault();
+            jumpDispatch(idx - 1, e.target, ymdCur);
+          } else if (k === 'ArrowUp') {
+            e.preventDefault();
+            jumpRequiredSameCol(e.target, ymdCur);
+          } else if (k === 'ArrowDown') {
+            e.preventDefault();
+          }
+        } : null
+      });
+      td.appendChild(input);
       r3.appendChild(td);
     }
     out.push(r3);
+
+    // Row 4: 過不足 = ライン合計 + 派遣短期 − 必要人数
+    // 正数 = 人手多余 / 0 = 刚好 / 负数 = 人手不足(临时缺勤导致)
+    const r4 = Render.el('tr.stat-row');
+    r4.appendChild(Render.el('td.label', { colspan: 5 }, '過不足'));
+    for (let i = 0; i < days.length; i++) {
+      const excess = lineTotals[i] + dispatches[i] - requireds[i];
+      const td = Render.el('td.excess', { dataset: { ymd: days[i].ymd } }, String(excess));
+      if (excess < 0) td.style.color = 'var(--danger)';
+      else if (excess > 0) td.style.color = 'var(--muted)';
+      r4.appendChild(td);
+    }
+    out.push(r4);
 
     return out;
   }
@@ -1374,34 +1502,6 @@ const Pages = (() => {
     row.appendChild(deptSelect);
 
     row.appendChild(Render.el('span.grow'));
-
-    // 辞职按钮:设置 retiredOn,从该日起单元格显示 ✲。用 popover 统一确认/输入风格。
-    const retireLabel = p.retiredOn ? `✲ ${p.retiredOn}` : '辞职';
-    const retireBtn = Render.el('button', {
-      title: p.retiredOn ? `已辞职 ${p.retiredOn} (点击修改/取消)` : '设置中途辞职日期'
-    }, retireLabel);
-    retireBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const today = Util.ymd(new Date());
-      const cur = p.retiredOn || today;
-      showConfirmPopover(retireBtn, {
-        text: p.retiredOn ? '修改辞职日期' : '设置辞职日期',
-        sub: p.name || '该人员',
-        input: { type: 'date', value: cur },
-        // 已辞职时提供「取消辞职」快捷按钮,等同于清空 retiredOn
-        extra: p.retiredOn ? {
-          text: '✕ 取消辞职',
-          danger: true,
-          onClick: () => Store.updatePerson(deptId, p.id, { retiredOn: null })
-        } : null,
-        confirmText: '保存',
-        onConfirm: (v) => {
-          if (!v) return; // date input 留空(理论上 iOS 不允许)
-          Store.updatePerson(deptId, p.id, { retiredOn: v });
-        }
-      });
-    });
-    row.appendChild(retireBtn);
 
     // 删除按钮:软删除(从当前周期起隐藏,之前周期保留)
     const delBtn = Render.el('button.danger', {
