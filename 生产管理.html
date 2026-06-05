@@ -1444,7 +1444,7 @@ const Pages = (() => {
     /* 与配置表共用色板,保证三个 app 视觉一致 */
     --bg: #0f1115;
     --bg-2: #0a0c10;
-    --line-bg: #12151a;
+    --line-bg: #0d0e11;
     --panel: #1a1d22;
     --panel-solid: #1a1d22;
     --panel-2: #15181d;
@@ -1775,7 +1775,7 @@ const Pages = (() => {
   }
   .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 500; }
   .tick.hour-20 { border-top: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600; }
-  .tick .label { background: var(--panel-solid); padding: 1px 4px; border-radius: 3px; }
+  .tick .label { background: transparent; padding: 1px 4px; border-radius: 0; }
 
   .board {
     flex: 1; display: grid;
@@ -3014,8 +3014,34 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 .line{background:linear-gradient(180deg,rgba(255,255,255,.012) 0%,rgba(0,0,0,.04) 100%) top/100% 100vh no-repeat var(--line-bg);box-shadow:1px 0 0 rgba(255,255,255,.03) inset,-1px 0 0 rgba(0,0,0,.18) inset}
 .line-head{border-bottom-color:rgba(255,255,255,.06)!important}
 .line-head .line-name{letter-spacing:.4px}
-/* 工时统计行(底部)— 微梯度,数字醒目 */
-.line-foot{background:linear-gradient(180deg,rgba(15,18,23,.85) 0%,rgba(10,12,16,.92) 100%)!important;border-top-color:rgba(255,255,255,.06)!important;box-shadow:0 -1px 0 rgba(255,255,255,.03) inset,0 -4px 12px rgba(0,0,0,.18)}
+/* === 高级感统一色板 ===
+   把蓝灰偏向调成「近中性深灰 + 一丝暖」的色,跟主题色橙形成冷暖对比,整体更克制。
+   RGB 比值接近 1:1:1.1(几乎平,少量蓝),不再像之前 18:21:26 那样发冷。 */
+.line-foot,.timeline-foot,.timeline-head,.timeline-body,.line-head{
+  background:linear-gradient(180deg,rgba(22,22,25,.94) 0%,rgba(12,12,14,.97) 100%)!important;
+}
+/* 柔化 LINE 列之间的竖向分隔线 —— 把原本 #3a3f47 偏亮的分隔色改成低透明白,更克制不抢眼 */
+.board{background:rgba(255,255,255,.045)!important}
+.line-foot,.timeline-foot{
+  border-top-color:rgba(255,255,255,.05)!important;
+  box-shadow:0 -1px 0 rgba(255,255,255,.04) inset,0 -8px 18px rgba(0,0,0,.22);
+}
+.timeline-head,.line-head{
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 18px rgba(0,0,0,.22);
+}
+.timeline-head:hover{
+  background:linear-gradient(180deg,rgba(28,28,32,.95) 0%,rgba(16,16,18,.98) 100%)!important;
+}
+/* 线头数字「夕盛/01-05」— 微金属感渐变文字 + 字距,质感更高级 */
+.line-name,.line-num{
+  background:linear-gradient(180deg,#f5f6f8 0%,#a6abb3 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:.5px;font-feature-settings:"tnum";
+}
+/* 日期栏的「日」字加一道极细橙色底光,作为焦点 */
+.date-day{
+  text-shadow:0 0 18px rgba(251,146,60,.18);
+}
 .qty-total,.time-total,.finish-total,#totalAll,#totalDur,#totalFinish{font-feature-settings:"tnum"}
 /* 卡片 — 微梯度 + 顶部 1px 亮线 + 柔阴影,hover 抬升 */
 .card{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 2px 6px rgba(0,0,0,.32),0 1px 2px rgba(0,0,0,.2)!important;transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
