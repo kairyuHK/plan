@@ -190,16 +190,18 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
   :root {
-    /* iOS Safari forces a URL header + date/page footer into the print area on A4
-       landscape, leaving only ~158mm of usable height (not the 198mm of @page margin
-       math). Use 155mm to guarantee one page. Use mm — absolute in print. Previously
-       `100vh` resolved to the device viewport (≈104mm in landscape) on iOS, clipping
-       the table after ~17 rows. */
-    --row-h: var(--row-h-fixed, calc(155mm / (var(--total-rows, 30))));
+    /* PC 端 (Chrome/Edge) 默认不加页眉页脚,A4 横向 @ 4mm margin 数学可用区 ≈ 202mm,
+       但 Chrome 内部还有约 3-6mm 的 paint 边距,实测 192mm 是 100% 缩放上限。
+       容器用 192mm,但 row 高度用 190mm 算 — 留 2mm 给最后一行的下边框,
+       否则 30 行累加恰好等于 192mm,sub-pixel 误差会让最后一行底边被 overflow 裁掉。
+       iOS Safari 强制塞 URL 页眉 + 日期/页码页脚,可用区只有 ~158mm,
+       手机端由 mobile-print-style(JS 注入)覆盖成 155mm。 */
+    --row-h: var(--row-h-fixed, calc(190mm / (var(--total-rows, 30))));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 155mm; overflow: hidden; }
-  #page-schedule.page { padding: 0 !important; height: 155mm; }
-  .schedule-wrap { margin: 0 !important; height: 155mm; }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 192mm; overflow: hidden; }
+  #page-schedule.page { padding: 0 !important; height: 192mm; }
+  /* table 实际高度 ~190mm,容器 192mm,用 flex 让 table 在 A4 上垂直居中(上下各 ~1mm 留白) */
+  .schedule-wrap { margin: 0 !important; height: 192mm; display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; }
   .color-palette { display: none !important; }
@@ -216,7 +218,9 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
   .schedule-wrap { overflow: visible; margin: 0; }
   table.schedule {
     background: #fff;
-    width: 100%; height: 100%; table-layout: fixed;
+    /* height: auto 让 table 按 row heights 自然累加(190mm),
+       不强制拉到容器 100%(192mm),否则最后一行下边框会贴 body 底沿被 overflow 裁掉。 */
+    width: 100%; height: auto; table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
   }
@@ -231,6 +235,11 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
     height: var(--row-h) !important;
     font-size: calc(var(--row-h) * 0.7) !important;
     width: auto !important;
+  }
+  /* 〇(契休) 和 欠(缺勤) 笔画/外形比 ●(实心)看起来大,字号单独调小一档 */
+  table.schedule td.day-cell.contractRest,
+  table.schedule td.day-cell.absent {
+    font-size: calc(var(--row-h) * 0.58) !important;
   }
   table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) {
     height: var(--row-h) !important;
