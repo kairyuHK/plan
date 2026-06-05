@@ -32,6 +32,11 @@ input[type=number]{-moz-appearance:textfield}
   .nav{position:fixed;top:0;left:0;right:0;width:100%}
   body{padding-top:var(--sticky-nav,50px)}
 }
+/* 手机竖屏:让「⚙ 设置 / ⬇⬆ 数据 / 🖨 打印」三个按钮换行后靠右对齐
+   (flex-wrap 在新行重新分布 free space,给第一个按钮 margin-left:auto 即可) */
+@media (max-width:640px){
+  .nav button[data-route="#/settings"]{margin-left:auto}
+}
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
 .nav .spacer{flex:1}
@@ -112,16 +117,29 @@ table.schedule td.required input:focus{background:#1f1f23;outline:1px solid var(
 .settings-row input.name-input{min-width:160px}
 .settings-row input.num{width:60px}
 .settings-row select.person-dept{min-width:96px;padding:6px 10px}
-/* 行内确认弹层(贴近触发按钮,替代浏览器原生 confirm) */
-.confirm-popover{position:fixed;z-index:1000;background:#1f1f23;border:1px solid var(--border);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);min-width:180px;max-width:260px;font-size:13px;animation:confirmIn .12s ease-out}
-.confirm-popover .confirm-text{color:var(--text);font-weight:600;margin-bottom:2px;line-height:1.3}
-.confirm-popover .confirm-sub{color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.3}
-.confirm-popover .confirm-actions{display:flex;gap:6px;justify-content:flex-end}
-.confirm-popover button{padding:5px 12px;font-size:12px;line-height:1}
-.confirm-popover input.confirm-input{width:100%;margin-bottom:8px;padding:6px 8px;background:#161618;border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box}
-.confirm-popover input.confirm-input:focus{border-color:var(--accent);outline:none}
-.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:8px;padding:6px;font-size:12px}
-@keyframes confirmIn{from{opacity:0;transform:translateY(-4px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* 行内确认弹层(贴近触发按钮,替代浏览器原生 confirm/prompt) */
+.confirm-popover{position:fixed;z-index:1000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1)}
+.confirm-popover .confirm-text{color:var(--text);font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
+.confirm-popover .confirm-sub{color:var(--muted);font-size:12px;margin-bottom:12px;line-height:1.4}
+.confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.confirm-popover button{padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;transition:transform .12s ease,background .15s,box-shadow .15s;letter-spacing:.01em}
+.confirm-popover button:active{transform:scale(0.97)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(124,92,255,0.35)}
+.confirm-popover button.primary:hover{background:#6a4def;box-shadow:0 4px 12px rgba(124,92,255,0.45)}
+.confirm-popover button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
+.confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
+.confirm-popover input.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
+.confirm-popover input.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(124,92,255,0.15)}
+.confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* Toast 通知(临时显示,自动消失) */
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast.success{border-left:3px solid var(--ok)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--accent)}
+.toast.hide{animation:toastOut .2s ease-in forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 .settings-row .role-input{min-width:120px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
@@ -1222,22 +1240,36 @@ const Pages = (() => {
         onchange: (e) => Store.setDeptRequired(d.id, e.target.value)
       }));
       row.appendChild(Render.el('span.grow'));
-      row.appendChild(Render.el('button.danger', {
-        onclick: () => {
-          if (confirm(`确认删除部门「${d.name}」？其下所有人员与排班将一并删除。`)) {
-            Store.removeDepartment(d.id);
-          }
-        }
-      }, '删除'));
+      const delDeptBtn = Render.el('button.danger', {}, '删除');
+      delDeptBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showConfirmPopover(delDeptBtn, {
+          text: `删除部门「${d.name}」?`,
+          sub: '该部门下所有人员与排班将一并删除',
+          confirmText: '删除',
+          danger: true,
+          onConfirm: () => Store.removeDepartment(d.id)
+        });
+      });
+      row.appendChild(delDeptBtn);
       sec.appendChild(row);
     }
     const addRow = Render.el('div.settings-row');
-    addRow.appendChild(Render.el('button.primary', {
-      onclick: () => {
-        const name = prompt('新部门名称：');
-        if (name) Store.addDepartment(name);
-      }
-    }, '+ 新增部门'));
+    const addDeptBtn = Render.el('button.primary', {}, '+ 新增部门');
+    addDeptBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showConfirmPopover(addDeptBtn, {
+        text: '新增部门',
+        sub: '输入部门名称',
+        input: { type: 'text', placeholder: '部门名称' },
+        confirmText: '添加',
+        onConfirm: (v) => {
+          const name = (v || '').trim();
+          if (name) Store.addDepartment(name);
+        }
+      });
+    });
+    addRow.appendChild(addDeptBtn);
     sec.appendChild(addRow);
     return sec;
   }
@@ -1285,11 +1317,13 @@ const Pages = (() => {
       const newDeptId = e.target.value;
       if (newDeptId === deptId) return;
       const newDept = Store.get().departments.find(d => d.id === newDeptId);
-      if (!confirm(`确认从今天起把 ${p.name || '该人员'} 调到「${newDept.name}」?\n原部门之前的排班记录保留。`)) {
-        e.target.value = deptId;
-        return;
-      }
-      Store.transferPerson(deptId, p.id, newDeptId);
+      showConfirmPopover(deptSelect, {
+        text: `调到「${newDept.name}」?`,
+        sub: `${p.name || '该人员'} · 原部门历史保留`,
+        confirmText: '调动',
+        onConfirm: () => Store.transferPerson(deptId, p.id, newDeptId),
+        onCancel: () => { deptSelect.value = deptId; }  // 取消时还原 select 显示
+      });
     });
     row.appendChild(deptSelect);
 
@@ -1372,8 +1406,10 @@ const Pages = (() => {
     }
 
     const actions = Render.el('div.confirm-actions');
+    let confirmed = false;
     const doConfirm = () => {
       const v = inputEl ? inputEl.value : null;
+      confirmed = true;
       close();
       opts.onConfirm && opts.onConfirm(v);
     };
@@ -1412,6 +1448,8 @@ const Pages = (() => {
       document.removeEventListener('click', onDocClick, true);
       document.removeEventListener('keydown', onKey, true);
       window.removeEventListener('scroll', close, true);
+      // 只有「未确认」(即取消 / 外部点击 / Esc / 滚动)才触发 onCancel
+      if (!confirmed && opts.onCancel) opts.onCancel();
     };
     const onDocClick = (e) => { if (!pop.contains(e.target)) close(); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -1421,6 +1459,17 @@ const Pages = (() => {
       window.addEventListener('scroll', close, true);
       if (inputEl) inputEl.focus();
     }, 0);
+  }
+
+  // Toast 通知:从顶部滑入,2.5 秒自动消失。替代 alert 用于非阻塞反馈。
+  function showToast(msg, type) {
+    document.querySelectorAll('.toast').forEach(el => el.remove());
+    const toast = Render.el(`div.toast.${type || 'info'}`, msg);
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('hide');
+      setTimeout(() => toast.remove(), 250);
+    }, 2500);
   }
 
   function buildPersonAddRow(deptId) {
@@ -1482,8 +1531,12 @@ const Pages = (() => {
 
     const actions = Render.el('div.data-actions');
     actions.appendChild(Render.el('button.primary', { onclick: doExport }, '⬇ 导出 JSON'));
-    actions.appendChild(Render.el('button', { onclick: doImport }, '⬆ 导入 JSON'));
-    actions.appendChild(Render.el('button.danger', { onclick: doReset }, '⚠ 重置全部数据'));
+    const importBtn = Render.el('button', {}, '⬆ 导入 JSON');
+    importBtn.addEventListener('click', () => doImport(importBtn));
+    actions.appendChild(importBtn);
+    const resetBtn = Render.el('button.danger', {}, '⚠ 重置全部数据');
+    resetBtn.addEventListener('click', () => doReset(resetBtn));
+    actions.appendChild(resetBtn);
     card.appendChild(actions);
     host.appendChild(card);
   }
@@ -1504,34 +1557,56 @@ const Pages = (() => {
     URL.revokeObjectURL(url);
   }
 
-  function doImport() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json,.json';
-    input.onchange = () => {
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          if (!confirm('导入将覆盖当前全部数据，建议先导出备份。继续？')) return;
-          Store.importJson(reader.result);
-          alert('导入成功');
-          // 切回排班页并强制重渲染。用 replaceState 清掉 hash 保持 URL 干净,
-          // 与 brand「月度总出勤表」按钮的行为一致,不写入 #/schedule。
-          history.replaceState(null, '', location.pathname + location.search);
-          App.showRoute();
-        } catch (e) { alert('导入失败：' + e.message); }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+  function doImport(anchor) {
+    showConfirmPopover(anchor, {
+      text: '导入 JSON?',
+      sub: '将覆盖当前全部数据,建议先导出备份',
+      confirmText: '选择文件',
+      danger: true,
+      onConfirm: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json,.json';
+        input.onchange = () => {
+          const file = input.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              Store.importJson(reader.result);
+              showToast('导入成功', 'success');
+              // 切回排班页(URL 保持干净)并强制重渲染
+              history.replaceState(null, '', location.pathname + location.search);
+              App.showRoute();
+            } catch (e) { showToast('导入失败:' + e.message, 'error'); }
+          };
+          reader.readAsText(file);
+        };
+        input.click();
+      }
+    });
   }
 
-  function doReset() {
-    if (!confirm('确认清空所有数据并重置为默认（3 个部门、零人员）？此操作不可撤销。')) return;
-    if (!confirm('再次确认：所有排班记录将丢失。')) return;
-    Store.reset();
+  function doReset(anchor) {
+    showConfirmPopover(anchor, {
+      text: '重置全部数据?',
+      sub: '部门、人员和排班记录将全部清空,此操作不可撤销',
+      confirmText: '继续',
+      danger: true,
+      onConfirm: () => {
+        // 二次确认,防止误触
+        setTimeout(() => showConfirmPopover(anchor, {
+          text: '最后确认',
+          sub: '所有数据将丢失,无法恢复',
+          confirmText: '清空',
+          danger: true,
+          onConfirm: () => {
+            Store.reset();
+            showToast('已重置为默认', 'success');
+          }
+        }), 50);
+      }
+    });
   }
 
   return { renderSchedule, renderSettings, renderData };
