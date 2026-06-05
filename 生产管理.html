@@ -5297,11 +5297,18 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// 手机竖屏宽度太挤,只显示 HH:MM(不带秒);PC / 横屏 仍显示 HH:MM:SS
+const _clockMq = window.matchMedia('(max-width: 900px) and (orientation: portrait)');
 function tick() {
   const d = new Date();
-  document.getElementById('clock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = _clockMq.matches ? `${hh}:${mm}` : `${hh}:${mm}:${ss}`;
 }
 setInterval(tick, 1000); tick();
+// 旋转屏幕时立即刷新(否则要等下一次 setInterval 才换格式)
+_clockMq.addEventListener ? _clockMq.addEventListener('change', tick) : _clockMq.addListener(tick);
 
 const DOW_JP = ['日','月','火','水','木','金','土'];
 const JP_FIXED_HOLIDAYS = new Set([
