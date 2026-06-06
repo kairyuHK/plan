@@ -279,10 +279,10 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
   table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
   /* fixed column widths(mm) — A4 横向可用 ≈ 289mm
-     col-sum 12mm 防止「有休/契休/残」表头叠加;day 列均分剩余 */
-  table.schedule col.col-role { width: 22mm !important; }
-  table.schedule col.col-name { width: 48mm !important; }
-  table.schedule col.col-sum { width: 12mm !important; }
+     左侧信息区 100mm (1/3) + 日期区 189mm (2/3) 的黄金比例 */
+  table.schedule col.col-role { width: 20mm !important; }
+  table.schedule col.col-name { width: 40mm !important; }
+  table.schedule col.col-sum { width: 10mm !important; }
   table.schedule col.col-day { width: auto !important; }
   /* 各列字号 — 比例 0.5 保持夕盛(人多)原大小,mm 上限保护人少部门 */
   table.schedule th.role-col, table.schedule td.role-col {
@@ -1139,14 +1139,14 @@ const Pages = (() => {
 
   function buildColgroup(days) {
     const cg = Render.el('colgroup');
-    // inline style 优先级最高,绕过所有 CSS 冲突问题(@media print 在 table-layout:fixed
-    // 下 mm 单位有时被浏览器异常处理)
-    cg.appendChild(Render.el('col.col-role', { style: { width: '22mm' } }));
-    cg.appendChild(Render.el('col.col-name', { style: { width: '48mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    // col-day 不设固定宽度,让 table-layout:fixed 把剩余宽度均分给 31 列
+    // inline style 优先级最高,绕过所有 CSS 冲突。
+    // 左侧信息区 100mm (役職 20 + 氏名 50 + sum 10×3) = 1/3 A4,日期区 189mm = 2/3。
+    cg.appendChild(Render.el('col.col-role', { style: { width: '20mm' } }));
+    cg.appendChild(Render.el('col.col-name', { style: { width: '40mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '10mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '10mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '10mm' } }));
+    // col-day 不设固定宽度,让 table-layout:fixed 把剩余宽度均分给 N 列
     for (let i = 0; i < days.length; i++) cg.appendChild(Render.el('col.col-day'));
     return cg;
   }
@@ -1213,7 +1213,18 @@ const Pages = (() => {
     for (const p of people) {
       const tr = Render.el('tr', { dataset: { personId: p.id } });
       tr.appendChild(Render.el('td.role-col', p.role || ''));
-      tr.appendChild(Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || ''));
+      // 名字过长时自动缩字体:40mm 列宽 默认装 ~9 个全角字符(字号上限 4mm)
+      // 半角字符宽度 ≈ 字号 × 0.5,空格也按半角算 → 估算视觉字符数
+      const nameTd = Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || '');
+      const nameStr = p.name || '';
+      let widthUnits = 0; // 1 全角 = 1, 半角/空格 = 0.5
+      for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
+      const MAX_UNITS = 9; // 40mm / 4mm × 0.9 安全系数
+      if (widthUnits > MAX_UNITS) {
+        const capMm = (4 * MAX_UNITS / widthUnits).toFixed(2);
+        nameTd.style.setProperty('font-size', `min(calc(var(--row-h) * 0.5), ${capMm}mm)`, 'important');
+      }
+      tr.appendChild(nameTd);
 
       const sums = computeSums(deptId, p, periodKey, days);
       tr.appendChild(Render.el('td.sum-col', String(sums.paid)));
