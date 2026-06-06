@@ -115,6 +115,7 @@ body.editing table.schedule td.day-cell.cell-focus{position:relative;box-shadow:
 .color-palette .swatch:hover{outline:1px solid var(--muted);outline-offset:1px}
 .color-palette .swatch.active{border-color:var(--text);box-shadow:0 0 0 1px var(--bg) inset}
 .color-palette .swatch-clear{background:transparent;border:2px dashed var(--muted);color:var(--muted)}
+.color-palette .swatch-text{background:transparent;border:2px solid var(--accent);color:var(--accent);font-weight:700;font-family:var(--font-mono)}
 .entry-hint{margin:8px 0 0;padding:6px 12px;background:rgba(124,92,255,0.08);border:1px solid rgba(124,92,255,0.25);border-radius:6px;font-size:12px;color:var(--text);font-family:var(--font-mono)}
 .entry-hint kbd{display:inline-block;background:#1f1f23;border:1px solid var(--border);border-radius:3px;padding:0 5px;margin:0 2px;font-size:11px;color:var(--accent)}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
@@ -155,6 +156,13 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 .confirm-popover input.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
 .confirm-popover input.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(124,92,255,0.15)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
+/* 颜色 swatches 行(用于文字配色) */
+.confirm-popover .confirm-swatches{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.confirm-popover .confirm-swatches button{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;flex:0 0 auto;transition:transform .1s}
+.confirm-popover .confirm-swatches button:hover{transform:scale(1.1)}
+.confirm-popover .confirm-swatches button.active{border-color:var(--text);box-shadow:0 0 0 2px rgba(255,255,255,0.15) inset}
+.confirm-popover .confirm-swatches button.confirm-sw-clear{background:transparent;border:2px dashed rgba(255,255,255,0.3);color:rgba(255,255,255,0.5);font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.confirm-popover .confirm-swatches button.confirm-sw-clear.active{border-color:var(--text);border-style:solid;color:var(--text)}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 /* Toast 通知(临时显示,自动消失) */
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
@@ -428,6 +436,7 @@ const Store = (() => {
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
     cellColors: {},
+    cellTexts: {},
     requiredPerDay: {},
     dispatchPerDay: {},
     ui: { currentDept: 'dept1', currentPeriod: Period.todayKey(), editMode: false },
@@ -448,6 +457,7 @@ const Store = (() => {
       delete parsed.shortTermDispatch;
       if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
       if (!parsed.cellColors) parsed.cellColors = {};
+      if (!parsed.cellTexts) parsed.cellTexts = {};
       return parsed;
     } catch (_) { return defaults(); }
   }
@@ -506,9 +516,10 @@ const Store = (() => {
     const k = cellKey(deptId, personId, ymd);
     if (status === 'work') delete state.attendance[k];
     else state.attendance[k] = status;
-    // 非 work(休息)状态强制清色 — 颜色只属于出勤日
+    // 非 work(休息)状态强制清色 + 清文字 — 颜色/文字只属于出勤日
     if (status !== 'work') {
       delete state.cellColors[k];
+      delete state.cellTexts[k];
     } else if (color !== undefined) {
       if (color === null) delete state.cellColors[k];
       else state.cellColors[k] = color;
@@ -526,16 +537,36 @@ const Store = (() => {
     // 选了「clear」(✕)→ 强制设为 work + 清色
     if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null); return; }
     if (color) { setCell(deptId, personId, ymd, 'work', color); return; }
-    // 没选颜色 → 状态循环 空→〇→●→欠→✲→空;切到休息态会被 setCell 自动清色
+    // 没选颜色 → 状态循环 空→〇→●→✲→空(欠跳过,只能键盘 3 设置);
+    // 已经是欠的格子点击会直接回到空
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
-               : current === 'paidLeave' ? 'absent'
-               : current === 'absent' ? 'retired'
+               : current === 'paidLeave' ? 'retired'
                : 'work';
     setCell(deptId, personId, ymd, next);
   }
 
   const cellColor = (deptId, personId, ymd) => state.cellColors[cellKey(deptId, personId, ymd)] || null;
+  // 返回 { text, color } 或 null。兼容旧版字符串格式。
+  const cellText = (deptId, personId, ymd) => {
+    const v = state.cellTexts[cellKey(deptId, personId, ymd)];
+    if (!v) return null;
+    if (typeof v === 'string') return { text: v, color: null }; // 旧版兼容
+    return v;
+  };
+
+  // 设置单元格自定义文字+颜色。空字符串 = 清除。文字属于出勤日,会清空状态。
+  function setCellText(deptId, personId, ymd, text, color) {
+    const k = cellKey(deptId, personId, ymd);
+    const t = (text || '').trim();
+    if (!t) {
+      delete state.cellTexts[k];
+    } else {
+      state.cellTexts[k] = { text: t, color: color || null };
+      delete state.attendance[k]; // 出勤日
+    }
+    commit('cellText');
+  }
 
   function setRequired(deptId, ymd, n) {
     const k = dispKey(deptId, ymd);
@@ -648,14 +679,23 @@ const Store = (() => {
   function importJson(json) {
     const parsed = JSON.parse(json);
     if (parsed.version !== VERSION) throw new Error('版本不兼容');
-    state = parsed;
-    // 校正 UI 状态:导入数据的 currentDept / currentPeriod 可能在新数据集里不存在,
-    // 不修正会让排班页拿不到部门数据而显示空白。
-    if (!state.ui) state.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
-    if (!state.departments.find(d => d.id === state.ui.currentDept)) {
-      state.ui.currentDept = state.departments[0]?.id || null;
+    // 原子校验:所有字段都补齐 + 校正,验证全部通过后才赋值 state。
+    // 之前的 bug:state = parsed 在校验之前,如果 parsed 缺 departments/people 等字段,
+    // 后续校验代码抛 TypeError,但 state 已被破坏 → 整页崩溃,所有功能失效。
+    if (!Array.isArray(parsed.departments)) throw new Error('数据缺失或损坏:departments');
+    if (!parsed.people || typeof parsed.people !== 'object') throw new Error('数据缺失或损坏:people');
+    if (!parsed.attendance) parsed.attendance = {};
+    if (!parsed.cellColors) parsed.cellColors = {};
+    if (!parsed.cellTexts) parsed.cellTexts = {};
+    if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
+    if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
+    if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
+    if (!parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
+      parsed.ui.currentDept = parsed.departments[0]?.id || null;
     }
-    if (!state.ui.currentPeriod) state.ui.currentPeriod = Period.todayKey();
+    if (!parsed.ui.currentPeriod) parsed.ui.currentPeriod = Period.todayKey();
+    // 所有验证 + 补全完成,才原子替换 state
+    state = parsed;
     commit('import');
   }
   function reset() { state = defaults(); commit('reset'); }
@@ -663,8 +703,8 @@ const Store = (() => {
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   return {
-    get, dept, people, peopleInPeriod, cellStatus, cellColor, requiredCount, dispatchCount,
-    setUi, setCell, cycleCell, setRequired, setDispatch,
+    get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
+    setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, removeDepartment,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson,
     exportJson, importJson, reset, subscribe
@@ -859,7 +899,9 @@ const Pages = (() => {
     red: '#dc2626', orange: '#ea580c', yellow: '#ca8a04',
     green: '#16a34a', blue: '#2563eb', purple: '#9333ea'
   };
-  function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; renderPalette(); }
+  function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; activeTool = null; renderPalette(); }
+  let activeTool = null; // 'text' = 文字工具激活;点击单元格弹 popover 输入一个字符
+  function setActiveTool(tool) { activeTool = (activeTool === tool) ? null : tool; activeColor = null; renderPalette(); }
 
   function setFocus(personId, ymd) {
     const days = Period.days(Store.get().ui.currentPeriod);
@@ -948,7 +990,7 @@ const Pages = (() => {
   function buildEntryHint() {
     const div = Render.el('div.entry-hint');
     const left = Render.el('span');
-    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=欠 <kbd>4</kbd>=✲ <kbd>5</kbd>=空　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
+    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=空 <kbd>4</kbd>=✲　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
     div.appendChild(left);
     div.appendChild(buildColorPalette());
     return div;
@@ -974,12 +1016,22 @@ const Pages = (() => {
       if ((activeColor || '') === (s.c || '')) btn.classList.add('active');
       wrap.appendChild(btn);
     }
+    // 文字工具按钮:激活后点击单元格弹 popover 输入一个字符
+    const textBtn = Render.el('button.swatch.swatch-text', {
+      onclick: () => setActiveTool('text'),
+      title: '文字工具(点击单元格输入一个字符)'
+    }, 'T');
+    textBtn.dataset.toolKey = 'text';
+    if (activeTool === 'text') textBtn.classList.add('active');
+    wrap.appendChild(textBtn);
     return wrap;
   }
 
   function renderPalette() {
     document.querySelectorAll('.color-palette .swatch').forEach(b => {
-      b.classList.toggle('active', (b.dataset.colorKey || '') === (activeColor || ''));
+      const isText = b.classList.contains('swatch-text');
+      if (isText) b.classList.toggle('active', activeTool === 'text');
+      else b.classList.toggle('active', (b.dataset.colorKey || '') === (activeColor || ''));
     });
   }
 
@@ -1004,9 +1056,8 @@ const Pages = (() => {
     const k = e.key;
     if (k === '1') { setFocusedState('contractRest'); e.preventDefault(); }
     else if (k === '2') { setFocusedState('paidLeave'); e.preventDefault(); }
-    else if (k === '3') { setFocusedState('absent'); e.preventDefault(); }
+    else if (k === '3' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
     else if (k === '4') { setFocusedState('retired'); e.preventDefault(); }
-    else if (k === '5' || k === '0' || k === ' ') { setFocusedState('work'); e.preventDefault(); }
     else if (k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) { moveFocus(1, 0); e.preventDefault(); }
     else if (k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) { moveFocus(-1, 0); e.preventDefault(); }
     else if (k === 'ArrowDown') { moveFocus(0, 1); e.preventDefault(); }
@@ -1200,24 +1251,51 @@ const Pages = (() => {
 
       for (const d of days) {
         const st = Store.cellStatus(deptId, p.id, d.ymd);
+        const ct = Store.cellText(deptId, p.id, d.ymd); // { text, color } 或 null
+        // 优先级:自定义文字 > 状态字符
+        const displayChar = (ct && ct.text)
+          || (st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : '');
         const td = Render.el('td.day-cell',
           { dataset: { person: p.id, ymd: d.ymd } },
-          st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : ''
+          displayChar
         );
         td.classList.add(st);
+        if (ct && ct.text) td.classList.add('has-text');
         const c = Store.cellColor(deptId, p.id, d.ymd);
         if (c && COLOR_MAP[c]) {
-          // 填满整格背景 + 白字保证可读性。!important 是为了压过打印 CSS 的强制白底。
+          // 背景色填满 + 字色变白(默认 cellColor 优先于文字色)
           td.style.setProperty('background-color', COLOR_MAP[c], 'important');
           td.style.setProperty('color', '#fff', 'important');
+        } else if (ct && ct.color && COLOR_MAP[ct.color]) {
+          // 没填背景色 → 应用自定义文字色
+          td.style.setProperty('color', COLOR_MAP[ct.color], 'important');
+          td.style.setProperty('font-weight', '700', 'important');
         }
-        // 派生 retired(来自 retiredOn 字段)不可点击;手动设的 ✲ 可被循环切换
         const isDerivedRetired = st === 'retired' && p.retiredOn && d.ymd >= p.retiredOn;
         if (!isDerivedRetired) {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
             focusedCell = { personId: p.id, ymd: d.ymd };
-            Store.cycleCell(deptId, p.id, d.ymd, activeColor);
+            // 文字工具激活 → 弹 popover 输入字符 + 选颜色;否则正常状态循环
+            if (activeTool === 'text') {
+              const ct = Store.cellText(deptId, p.id, d.ymd);
+              showConfirmPopover(td, {
+                text: '单元格文字',
+                sub: '输入字符 + 选颜色(留空=清除)',
+                input: { type: 'text', value: ct ? ct.text : '', placeholder: '一个字符' },
+                swatches: {
+                  initial: ct ? ct.color : null,
+                  options: Object.keys(COLOR_MAP).map(k => ({ value: k, hex: COLOR_MAP[k] }))
+                },
+                confirmText: '保存',
+                onConfirm: (v, color) => {
+                  const ch = (v || '').trim().slice(0, 2);
+                  Store.setCellText(deptId, p.id, d.ymd, ch, color);
+                }
+              });
+            } else {
+              Store.cycleCell(deptId, p.id, d.ymd, activeColor);
+            }
           });
         }
         tr.appendChild(td);
@@ -1543,6 +1621,44 @@ const Pages = (() => {
       pop.appendChild(inputEl);
     }
 
+    // 可选颜色 swatches 行(用于文字配色等场景)
+    // opts.swatches: { options: [{value,hex}], initial: 'red' | null, onChange: (val)=>{} }
+    let pickedSwatch = opts.swatches ? (opts.swatches.initial || null) : null;
+    if (opts.swatches) {
+      const swRow = Render.el('div.confirm-swatches');
+      const clearSw = Render.el('button.confirm-sw-clear', { type: 'button', title: '无色' }, '×');
+      if (pickedSwatch === null) clearSw.classList.add('active');
+      clearSw.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pickedSwatch = null;
+        swRow.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        clearSw.classList.add('active');
+        if (inputEl) updateInputColor();
+      });
+      swRow.appendChild(clearSw);
+      for (const o of opts.swatches.options) {
+        const sb = Render.el('button.confirm-sw', { type: 'button', style: { background: o.hex }, title: o.value });
+        if (pickedSwatch === o.value) sb.classList.add('active');
+        sb.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pickedSwatch = o.value;
+          swRow.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          sb.classList.add('active');
+          if (inputEl) updateInputColor();
+        });
+        swRow.appendChild(sb);
+      }
+      pop.appendChild(swRow);
+      // input 预览颜色:输入框文字色跟随选中色
+      const updateInputColor = () => {
+        if (!inputEl) return;
+        const hex = pickedSwatch ? (opts.swatches.options.find(o => o.value === pickedSwatch) || {}).hex : '';
+        inputEl.style.color = hex || '';
+        inputEl.style.fontWeight = pickedSwatch ? '700' : '';
+      };
+      updateInputColor();
+    }
+
     // 可选额外按钮(整行宽度,放在 input 和操作按钮之间)
     if (opts.extra) {
       const extraBtn = Render.el(opts.extra.danger ? 'button.confirm-extra.danger' : 'button.confirm-extra', {
@@ -1557,7 +1673,8 @@ const Pages = (() => {
       const v = inputEl ? inputEl.value : null;
       confirmed = true;
       close();
-      opts.onConfirm && opts.onConfirm(v);
+      // onConfirm 接收 (inputValue, swatchValue) 两个参数
+      opts.onConfirm && opts.onConfirm(v, pickedSwatch);
     };
     const yesBtn = Render.el(opts.danger ? 'button.danger' : 'button.primary', {
       onclick: (e) => { e.stopPropagation(); doConfirm(); }
