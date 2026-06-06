@@ -201,18 +201,15 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 @media print {
   @page { size: A4 landscape; margin: 4mm; }
   :root {
-    /* PC 端 (Chrome/Edge) 默认不加页眉页脚,A4 横向 @ 4mm margin 数学可用区 ≈ 202mm,
-       但 Chrome 内部还有约 3-6mm 的 paint 边距,实测 192mm 是 100% 缩放上限。
-       容器用 192mm,但 row 高度用 190mm 算 — 留 2mm 给最后一行的下边框,
-       否则 30 行累加恰好等于 192mm,sub-pixel 误差会让最后一行底边被 overflow 裁掉。
-       iOS Safari 强制塞 URL 页眉 + 日期/页码页脚,可用区只有 ~158mm,
-       手机端由 mobile-print-style(JS 注入)覆盖成 155mm。 */
-    --row-h: var(--row-h-fixed, calc(190mm / (var(--total-rows, 30))));
+    /* 每个部门可独立设置打印高度(state.departments[].printHeightMm,默认 192mm)。
+       beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
+       row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
+       表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 192mm; overflow: hidden; }
-  #page-schedule.page { padding: 0 !important; height: 192mm; }
-  /* table 实际高度 ~190mm,容器 192mm,用 flex 让 table 在 A4 上垂直居中(上下各 ~1mm 留白) */
-  .schedule-wrap { margin: 0 !important; height: 192mm; display: flex; flex-direction: column; justify-content: center; }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
+  #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
+  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; box-shadow: none !important; }
   .color-palette { display: none !important; }
@@ -239,27 +236,35 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
     border: 1px solid #999; padding: 0 2px; color: #000; background: #fff !important;
     line-height: 1 !important;
     height: var(--row-h) !important;
-    font-size: calc(var(--row-h) * 0.55) !important;
+    font-size: min(calc(var(--row-h) * 0.55), 3.8mm) !important;
     box-sizing: border-box;
   }
+  /* day-cell 字号封顶 4.5mm,防止 〇/● 溢出 col-day (约 6mm 宽) */
   table.schedule td.day-cell {
     height: var(--row-h) !important;
-    font-size: calc(var(--row-h) * 0.7) !important;
+    font-size: min(calc(var(--row-h) * 0.65), 4.5mm) !important;
     width: auto !important;
   }
-  /* 〇(契休) 和 欠(缺勤) 笔画/外形比 ●(实心)看起来大,字号单独调小一档 */
+  /* 〇(契休) 比 ●(实心)看起来大,字号再小一档 */
   table.schedule td.day-cell.contractRest,
   table.schedule td.day-cell.absent {
-    font-size: calc(var(--row-h) * 0.58) !important;
+    font-size: min(calc(var(--row-h) * 0.55), 3.8mm) !important;
+  }
+  /* 自定义文字(包/早/晚/研 等汉字)笔画密,字号单独压更小 */
+  table.schedule td.day-cell.has-text {
+    font-size: min(calc(var(--row-h) * 0.5), 3.2mm) !important;
   }
   table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) {
     height: var(--row-h) !important;
     width: auto !important;
+    font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important;
   }
-  table.schedule th.dept-name { font-size: calc(var(--row-h) * 0.65) !important; height: var(--row-h) !important; }
-  table.schedule th.month-label { font-size: calc(var(--row-h) * 0.6) !important; height: var(--row-h) !important; }
+  table.schedule th.dept-name { font-size: min(calc(var(--row-h) * 0.65), 5mm) !important; height: var(--row-h) !important; }
+  table.schedule th.month-label { font-size: min(calc(var(--row-h) * 0.55), 4mm) !important; height: var(--row-h) !important; }
+  /* 必要人数/ライン合計/派遣短期/過不足 四行字号统一(input 和 td 同一个 cap) */
+  table.schedule tr.stat-row td,
   table.schedule td.required input,
-  table.schedule td.dispatch input { font-size: calc(var(--row-h) * 0.65) !important; }
+  table.schedule td.dispatch input { font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important; }
   table.schedule th { background: #f5f5f5 !important; font-weight: 600; }
   /* clear interactive highlights in print */
   table.schedule tr.hl-row td, table.schedule tr.hl-row th,
@@ -273,19 +278,32 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   table.schedule tr.stat-row td { background: #f5f5f5 !important; }
   table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
   table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
-  /* fixed column widths — total ≈ 1078px (A4 landscape minus 10mm margins) */
-  table.schedule col.col-role { width: 70px; }
-  table.schedule col.col-name { width: 150px; }
-  table.schedule col.col-sum { width: 30px; }
-  table.schedule col.col-day { width: auto; }
-  table.schedule th.role-col, table.schedule td.role-col { padding-left: 4px; font-size: 12px; }
-  table.schedule th.name-col, table.schedule td.name-col { padding-left: 4px; position: static; background: #fff !important; font-size: 12px; }
-  table.schedule th.sum-col, table.schedule td.sum-col { width: 32px; color: #000; }
+  /* fixed column widths(mm) — A4 横向可用 ≈ 289mm
+     col-sum 12mm 防止「有休/契休/残」表头叠加;day 列均分剩余 */
+  table.schedule col.col-role { width: 22mm !important; }
+  table.schedule col.col-name { width: 48mm !important; }
+  table.schedule col.col-sum { width: 12mm !important; }
+  table.schedule col.col-day { width: auto !important; }
+  /* 各列字号 — 比例 0.5 保持夕盛(人多)原大小,mm 上限保护人少部门 */
+  table.schedule th.role-col, table.schedule td.role-col {
+    padding-left: 1mm;
+    font-size: min(calc(var(--row-h) * 0.5), 4mm) !important;
+  }
+  table.schedule th.name-col, table.schedule td.name-col {
+    padding-left: 1mm; position: static; background: #fff !important;
+    font-size: min(calc(var(--row-h) * 0.5), 4mm) !important;
+    white-space: nowrap; overflow: hidden;
+  }
+  table.schedule th.sum-col, table.schedule td.sum-col {
+    color: #000;
+    font-size: min(calc(var(--row-h) * 0.4), 3mm) !important;
+  }
   table.schedule td.sum-col.over { color: #b91c1c !important; font-weight: 700; }
   table.schedule td.sum-col.under { color: #b45309 !important; font-weight: 700; }
-  /* day TH columns (no class on them) — width via :not() selector */
-  table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) { width: 26px; }
-  table.schedule td.day-cell { width: 26px; height: var(--print-row-h, 22px); font-size: 13px; padding: 0; }
+  /* day TH 列宽不再硬编码 26px 否则与 mm 单位的 role/name/sum 累加溢出 A4 宽度,
+     被浏览器按比例缩小,col-name 48mm 实际只显示 ~40mm。改成 auto 让 col-day:auto 分配剩余 */
+  table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) { width: auto; }
+  table.schedule td.day-cell { width: auto; height: var(--print-row-h, 22px); padding: 0; }
   table.schedule tbody tr:has(td.day-cell) td { height: var(--print-row-h, 22px); }
   table.schedule td.day-cell.contractRest { color: #000; }
   table.schedule td.day-cell.paidLeave { color: #000; font-weight: 700; background: #ddd !important; }
@@ -429,9 +447,9 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     departments: [
-      { id: 'dept1', name: '部门 A', requiredCount: 22 },
-      { id: 'dept2', name: '部门 B', requiredCount: 22 },
-      { id: 'dept3', name: '部门 C', requiredCount: 22 }
+      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192 },
+      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192 },
+      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192 }
     ],
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
@@ -458,6 +476,10 @@ const Store = (() => {
       if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
       if (!parsed.cellColors) parsed.cellColors = {};
       if (!parsed.cellTexts) parsed.cellTexts = {};
+      // 旧数据兼容:部门没有 printHeightMm 时补 192
+      if (Array.isArray(parsed.departments)) {
+        parsed.departments.forEach(d => { if (d.printHeightMm == null) d.printHeightMm = 192; });
+      }
       return parsed;
     } catch (_) { return defaults(); }
   }
@@ -596,7 +618,8 @@ const Store = (() => {
   // departments
   function addDepartment(name) {
     const id = Util.newId('d');
-    state.departments.push({ id, name, requiredCount: 10 });
+    // 新部门自动带打印高度默认值 192mm,与现有部门保持一致
+    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192 });
     state.people[id] = [];
     commit('dept');
     return id;
@@ -608,6 +631,14 @@ const Store = (() => {
   function setDeptRequired(id, n) {
     const d = state.departments.find(x => x.id === id);
     if (d) { d.requiredCount = Math.max(0, Number(n) || 0); commit('dept'); }
+  }
+  function setDeptPrintHeight(id, mm) {
+    const d = state.departments.find(x => x.id === id);
+    if (d) {
+      // 限制在合理范围 100-210mm 之间(A4 横向高度 210mm)
+      d.printHeightMm = Math.max(100, Math.min(210, Number(mm) || 192));
+      commit('dept');
+    }
   }
   function removeDepartment(id) {
     state.departments = state.departments.filter(d => d.id !== id);
@@ -687,6 +718,7 @@ const Store = (() => {
     if (!parsed.attendance) parsed.attendance = {};
     if (!parsed.cellColors) parsed.cellColors = {};
     if (!parsed.cellTexts) parsed.cellTexts = {};
+    parsed.departments.forEach(d => { if (d.printHeightMm == null) d.printHeightMm = 192; });
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
@@ -705,7 +737,7 @@ const Store = (() => {
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
-    addDepartment, renameDepartment, setDeptRequired, removeDepartment,
+    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson,
     exportJson, importJson, reset, subscribe
   };
@@ -825,46 +857,28 @@ const App = (() => {
       // thead 3 行(月份/日期/星期) + N 人员行 + stat 4 行(必要/合計/派遣/不足)
       const totalRows = 3 + peopleN + 4;
       document.documentElement.style.setProperty('--total-rows', String(totalRows));
-      const isMobile =
-        /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 1) ||
-        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-      if (!isMobile) return;
-      // Brute force: apply inline !important styles to every cell. Bypasses @media print
-      // evaluation which iOS Safari sometimes skips. Use mm so iOS doesn't mis-resolve
-      // `100vh` to the device viewport. 155mm caps content under Safari's URL header +
-      // date/page footer (which eat ~40mm on A4 landscape).
-      const BODY_H_MM = 155;
-      const TABLE_H_MM = 153;
-      const rH = TABLE_H_MM / totalRows; // mm per row
-      // Pin body / page / wrap to A4 content height in mm — overrides screen `100vh`.
-      document.documentElement.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
-      document.body.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
-      document.body.style.setProperty('overflow', 'hidden', 'important');
-      const pageEl = document.getElementById('page-schedule');
-      const wrapEl = document.querySelector('#page-schedule .schedule-wrap');
-      if (pageEl) pageEl.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
-      if (wrapEl) wrapEl.style.setProperty('height', `${BODY_H_MM}mm`, 'important');
-      const cells = document.querySelectorAll('#page-schedule table.schedule th, #page-schedule table.schedule td');
-      cells.forEach(c => {
-        c.style.setProperty('height', `${rH.toFixed(3)}mm`, 'important');
-        c.style.setProperty('line-height', '1', 'important');
-        c.style.setProperty('padding-top', '0', 'important');
-        c.style.setProperty('padding-bottom', '0', 'important');
-        let fontMul = 0.55;
-        if (c.classList.contains('day-cell')) fontMul = 0.7;
-        else if (c.classList.contains('dept-name')) fontMul = 0.65;
-        else if (c.classList.contains('month-label')) fontMul = 0.6;
-        else if (c.classList.contains('name-col') || c.classList.contains('role-col')) fontMul = 0.55;
-        c.style.setProperty('font-size', `${(rH * fontMul).toFixed(3)}mm`, 'important');
-      });
-      const inputs = document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input');
-      inputs.forEach(i => i.style.setProperty('font-size', `${(rH * 0.65).toFixed(3)}mm`, 'important'));
+      // 应用当前部门的打印高度(每个部门可独立设置,默认 192mm)
+      const curDept = Store.dept();
+      const bodyH = (curDept && curDept.printHeightMm) || 192;
+      document.documentElement.style.setProperty('--print-body-h', bodyH + 'mm');
+      document.documentElement.style.setProperty('--print-row-h-base', (bodyH - 2) + 'mm');
+      // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
+      // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
+      // col 宽度直接 inline 设置 — table-layout:fixed 下浏览器对 @media print 里的 mm 单位
+      // 处理可能异常,inline style 优先级最高,100% 生效。
+      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.width = '22mm');
+      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.width = '48mm');
+      document.querySelectorAll('table.schedule col.col-sum').forEach(c => c.style.width = '8mm');
+      document.querySelectorAll('table.schedule col.col-day').forEach(c => c.style.width = 'auto');
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
       document.documentElement.style.removeProperty('--total-rows');
       document.documentElement.style.removeProperty('--row-h-fixed');
+      document.documentElement.style.removeProperty('--print-body-h');
+      document.documentElement.style.removeProperty('--print-row-h-base');
+      // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
+      document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
       // Clean up brute-force inline styles
       document.documentElement.style.removeProperty('height');
       document.body.style.removeProperty('height');
@@ -1118,61 +1132,21 @@ const Pages = (() => {
     const MIN = 14, MAX = 31;
     const rowH = Math.max(MIN, Math.min(MAX, Math.round(AVAIL / Math.max(1, peopleN))));
     wrap.style.setProperty('--print-row-h', rowH + 'px');
-    // For mobile/touch devices, generate a print-specific <style> tag with hardcoded pixel
-    // heights. Bypass CSS variables — iOS Safari may not resolve them correctly in print.
-    const isMobile =
-      /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
-      (navigator.maxTouchPoints > 1) ||
-      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    let mobileStyle = document.getElementById('mobile-print-style');
-    if (isMobile) {
-      // thead 3 行 + N 人员行 + stat 4 行(必要/合計/派遣/不足)
-      const totalRows = 3 + peopleN + 4;
-      // iOS Safari evaluates `100vh` as the device viewport (≈104mm in landscape),
-      // not the A4 page height. Use mm — absolute in print, immune to that bug.
-      // 155mm caps content under iOS Safari's URL header + date/page footer (which
-      // together eat ~40mm out of the 202mm @page content area on A4 landscape).
-      const BODY_H_MM = 155;
-      const TABLE_H_MM = 153;
-      const rH = TABLE_H_MM / totalRows; // mm per row
-      if (!mobileStyle) {
-        mobileStyle = document.createElement('style');
-        mobileStyle.id = 'mobile-print-style';
-        document.head.appendChild(mobileStyle);
-      }
-      mobileStyle.textContent = `
-        @media print {
-          html, body { height: ${BODY_H_MM}mm !important; overflow: hidden !important; }
-          #page-schedule.page { height: ${BODY_H_MM}mm !important; }
-          .schedule-wrap { height: ${BODY_H_MM}mm !important; }
-          table.schedule th, table.schedule td {
-            height: ${rH.toFixed(3)}mm !important;
-            font-size: ${(rH * 0.55).toFixed(3)}mm !important;
-            line-height: 1 !important;
-            padding-top: 0 !important; padding-bottom: 0 !important;
-          }
-          table.schedule td.day-cell { font-size: ${(rH * 0.7).toFixed(3)}mm !important; }
-          table.schedule th.dept-name { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
-          table.schedule th.month-label { font-size: ${(rH * 0.6).toFixed(3)}mm !important; }
-          table.schedule td.required input,
-          table.schedule td.dispatch input { font-size: ${(rH * 0.65).toFixed(3)}mm !important; }
-          table.schedule th.name-col, table.schedule td.name-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
-          table.schedule th.role-col, table.schedule td.role-col { font-size: ${Math.min(2.9, rH * 0.6).toFixed(3)}mm !important; }
-        }
-      `;
-    } else if (mobileStyle) {
-      mobileStyle.textContent = '';
-    }
+    // 彻底禁用 mobile-print-style — 直接从 DOM 移除残留元素(任何 textContent 都不留)
+    document.querySelectorAll('#mobile-print-style, style[id="mobile-print-style"]').forEach(el => el.remove());
     return wrap;
   }
 
   function buildColgroup(days) {
     const cg = Render.el('colgroup');
-    cg.appendChild(Render.el('col.col-role'));
-    cg.appendChild(Render.el('col.col-name'));
-    cg.appendChild(Render.el('col.col-sum'));
-    cg.appendChild(Render.el('col.col-sum'));
-    cg.appendChild(Render.el('col.col-sum'));
+    // inline style 优先级最高,绕过所有 CSS 冲突问题(@media print 在 table-layout:fixed
+    // 下 mm 单位有时被浏览器异常处理)
+    cg.appendChild(Render.el('col.col-role', { style: { width: '22mm' } }));
+    cg.appendChild(Render.el('col.col-name', { style: { width: '48mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
+    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
+    // col-day 不设固定宽度,让 table-layout:fixed 把剩余宽度均分给 31 列
     for (let i = 0; i < days.length; i++) cg.appendChild(Render.el('col.col-day'));
     return cg;
   }
@@ -1449,11 +1423,17 @@ const Pages = (() => {
     return out;
   }
 
+  // 算作出勤的特殊文字(例如班次标记):「早」「晚」算上班,其他文字算休息
+  const WORK_TEXTS = new Set(['早', '晚']);
   function computeLineTotal(deptId, ymd) {
     let total = 0;
     const periodKey = Store.get().ui.currentPeriod;
     for (const p of Store.peopleInPeriod(deptId, periodKey)) {
-      if (Store.cellStatus(deptId, p.id, ymd) === 'work') total++;
+      if (Store.cellStatus(deptId, p.id, ymd) !== 'work') continue;
+      const ct = Store.cellText(deptId, p.id, ymd);
+      // 带自定义文字 + 非班次标记 → 视为休息,不算上班
+      if (ct && ct.text && !WORK_TEXTS.has(ct.text)) continue;
+      total++;
     }
     return total;
   }
@@ -1490,6 +1470,13 @@ const Pages = (() => {
         type: 'number', min: '0',
         value: String(d.requiredCount != null ? d.requiredCount : 22),
         onchange: (e) => Store.setDeptRequired(d.id, e.target.value)
+      }));
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '打印高度(mm):'));
+      row.appendChild(Render.el('input.num', {
+        type: 'number', min: '100', max: '210',
+        value: String(d.printHeightMm != null ? d.printHeightMm : 192),
+        title: 'PC 打印时表格容器高度,范围 100-210mm(默认 192)',
+        onchange: (e) => Store.setDeptPrintHeight(d.id, e.target.value)
       }));
       row.appendChild(Render.el('span.grow'));
       const delDeptBtn = Render.el('button.danger', {}, '删除');
