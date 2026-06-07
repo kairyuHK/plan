@@ -192,6 +192,13 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .settings-sub-people .settings-row>input.num{width:36px;flex:0 0 36px;padding:6px 2px;font-size:12px;text-align:center}
   .settings-sub-people .settings-row>select.person-dept{min-width:60px;flex:0 0 auto;padding:6px 4px;font-size:11px}
   .settings-sub-people .settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
+  /* 手机竖屏:部门行强制单行(名称 + 必要 + 高度 + 删除 全挤一行) */
+  .settings-section>.settings-row{flex-wrap:nowrap;gap:4px}
+  .settings-section>.settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 6px}
+  .settings-section>.settings-row>span:not(.grow){font-size:11px;flex-shrink:0}
+  .settings-section>.settings-row>input.num{width:44px;flex:0 0 44px;padding:6px 2px;font-size:12px;text-align:center}
+  .settings-section>.settings-row>.grow{display:none}
+  .settings-section>.settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
 }
 /* data */
 .data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
@@ -244,6 +251,8 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
     height: var(--row-h) !important;
     font-size: min(calc(var(--row-h) * 0.65), 4.5mm) !important;
     width: auto !important;
+    /* CJK 字体 ascent > descent,line-height:1 下字形视觉偏上,padding-top 下推到视觉中心 */
+    padding-top: calc(var(--row-h) * 0.12) !important;
   }
   /* 〇(契休) 比 ●(实心)看起来大,字号再小一档 */
   table.schedule td.day-cell.contractRest,
@@ -874,8 +883,8 @@ const App = (() => {
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
       // col 宽度直接 inline 设置 — table-layout:fixed 下浏览器对 @media print 里的 mm 单位
       // 处理可能异常,inline style 优先级最高,100% 生效。
-      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.width = '22mm');
-      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.width = '48mm');
+      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.width = '18mm');
+      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.width = '54mm');
       document.querySelectorAll('table.schedule col.col-sum').forEach(c => c.style.width = '8mm');
       document.querySelectorAll('table.schedule col.col-day').forEach(c => c.style.width = 'auto');
     });
@@ -1492,17 +1501,18 @@ const Pages = (() => {
         onchange: (e) => Store.renameDepartment(d.id, e.target.value || '未命名')
       });
       row.appendChild(nameInput);
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '必要人数默认:'));
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '必要:'));
       row.appendChild(Render.el('input.num', {
         type: 'number', min: '0',
         value: String(d.requiredCount != null ? d.requiredCount : 22),
+        title: '必要人数默认值',
         onchange: (e) => Store.setDeptRequired(d.id, e.target.value)
       }));
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '打印高度(mm):'));
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '高度:'));
       row.appendChild(Render.el('input.num', {
         type: 'number', min: '100', max: '210',
         value: String(d.printHeightMm != null ? d.printHeightMm : 192),
-        title: 'PC 打印时表格容器高度,范围 100-210mm(默认 192)',
+        title: '打印高度(mm),范围 100-210(默认 192)',
         onchange: (e) => Store.setDeptPrintHeight(d.id, e.target.value)
       }));
       row.appendChild(Render.el('span.grow'));
