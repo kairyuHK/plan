@@ -86,10 +86,10 @@ table.schedule th.sum-col,table.schedule td.sum-col{min-width:36px;color:var(--m
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
 table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:27px;height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
-table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1}
+table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
-table.schedule td.day-cell.paidLeave{color:var(--accent);font-weight:700}
+table.schedule td.day-cell.paidLeave{color:var(--danger)}
 table.schedule td.day-cell.absent{color:var(--danger)}
 table.schedule td.day-cell.retired{color:var(--retired);cursor:not-allowed;background:#111114}
 body:not(.editing) table.schedule td.day-cell{cursor:default}
@@ -256,13 +256,20 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        beforeprint 时 JS 按视口宽度切换 --day-cell-pad-ratio。 */
     padding-top: calc(var(--row-h) * var(--day-cell-pad-ratio, 0.09)) !important;
   }
-  /* 〇(契休) 比 ●(实心)看起来大,字号再小一档 */
+  /* 〇(契休) 大且笔画密,欠/有 是汉字笔画也密,统一压小一档 */
   table.schedule td.day-cell.contractRest,
-  table.schedule td.day-cell.absent {
+  table.schedule td.day-cell.absent,
+  table.schedule td.day-cell.paidLeave {
     font-size: min(calc(var(--row-h) * 0.55), 3.8mm) !important;
   }
   /* 自定义文字(包/早/晚/研 等汉字)笔画密,字号单独压更小 */
   table.schedule td.day-cell.has-text {
+    font-size: min(calc(var(--row-h) * 0.5), 3.2mm) !important;
+  }
+  /* 払出 部门特例:有/〇/欠 缩到和 has-text 一样小,避免和并排自定义文字大小不一致 */
+  body.print-dept-haraidashi table.schedule td.day-cell.paidLeave,
+  body.print-dept-haraidashi table.schedule td.day-cell.contractRest,
+  body.print-dept-haraidashi table.schedule td.day-cell.absent {
     font-size: min(calc(var(--row-h) * 0.5), 3.2mm) !important;
   }
   table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) {
@@ -302,7 +309,9 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   }
   table.schedule th.name-col, table.schedule td.name-col {
     padding-left: 1mm; position: static; background: #fff !important;
-    font-size: min(calc(var(--row-h) * 0.5), 4mm) !important;
+    /* var(--name-cap) 由 JS 按名字长度逐个 td 设置(纯 mm 值),min() 取它和 row-h 的较小者。
+       变量未设时回退 4mm 默认上限。短名字不受影响,长名字按比例缩小到能塞进 30mm 列宽。 */
+    font-size: min(calc(var(--row-h) * 0.5), var(--name-cap, 4mm)) !important;
     white-space: nowrap; overflow: hidden;
   }
   table.schedule th.sum-col, table.schedule td.sum-col {
@@ -317,7 +326,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   table.schedule td.day-cell { width: auto; height: var(--print-row-h, 22px); padding: 0; }
   table.schedule tbody tr:has(td.day-cell) td { height: var(--print-row-h, 22px); }
   table.schedule td.day-cell.contractRest { color: #000; }
-  table.schedule td.day-cell.paidLeave { color: #000; font-weight: 700; background: #ddd !important; }
+  table.schedule td.day-cell.paidLeave { color: #b91c1c !important; font-weight: 400 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   table.schedule td.day-cell.absent { color: #b91c1c !important; }
   table.schedule td.day-cell.retired { color: #888; background: #f5f5f5 !important; }
   table.schedule th.sat { color: #1d4ed8 !important; }
@@ -578,7 +587,7 @@ const Store = (() => {
     // 选了「clear」(✕)→ 强制设为 work + 清色
     if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null); return; }
     if (color) { setCell(deptId, personId, ymd, 'work', color); return; }
-    // 没选颜色 → 状态循环 空→〇→●→✲→空(欠跳过,只能键盘 3 设置);
+    // 没选颜色 → 状态循环 空→〇→有→✲→空(欠跳过,只能键盘 3 设置);
     // 已经是欠的格子点击会直接回到空
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
@@ -883,15 +892,18 @@ const App = (() => {
       document.documentElement.style.setProperty('--print-row-h-base', (bodyH - 2) + 'mm');
       // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
-      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0.09');
+      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0');
+      // 払出 部门特例:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
+      document.body.classList.toggle('print-dept-haraidashi', !!(curDept && curDept.name === '払出'));
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
-      // col 宽度直接 inline 设置 — table-layout:fixed 下浏览器对 @media print 里的 mm 单位
-      // 处理可能异常,inline style 优先级最高,100% 生效。
-      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.width = '18mm');
-      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.width = '54mm');
-      document.querySelectorAll('table.schedule col.col-sum').forEach(c => c.style.width = '8mm');
-      document.querySelectorAll('table.schedule col.col-day').forEach(c => c.style.width = 'auto');
+      // col 宽度直接 inline 设置。注意:CSS 里的 @media print 有 !important,
+      // inline style 必须用 setProperty + 'important' 才能压过它(手机 Safari 严格按规范处理,
+      // 普通 .style.width 不带 important 会输给 CSS !important,导致 col-name 退回 30mm 截断长名字)。
+      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.setProperty('width', '20mm', 'important'));
+      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.setProperty('width', '30mm', 'important'));
+      document.querySelectorAll('table.schedule col.col-sum').forEach(c => c.style.setProperty('width', '8mm', 'important'));
+      document.querySelectorAll('table.schedule col.col-day').forEach(c => c.style.setProperty('width', 'auto', 'important'));
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
@@ -900,6 +912,7 @@ const App = (() => {
       document.documentElement.style.removeProperty('--print-body-h');
       document.documentElement.style.removeProperty('--print-row-h-base');
       document.documentElement.style.removeProperty('--day-cell-pad-ratio');
+      document.body.classList.remove('print-dept-haraidashi');
       // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
       document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
       // Clean up brute-force inline styles
@@ -1027,7 +1040,7 @@ const Pages = (() => {
   function buildEntryHint() {
     const div = Render.el('div.entry-hint');
     const left = Render.el('span');
-    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=● <kbd>3</kbd>=空 <kbd>4</kbd>=✲　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
+    left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=有 <kbd>3</kbd>=空 <kbd>4</kbd>=✲　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
     div.appendChild(left);
     div.appendChild(buildColorPalette());
     return div;
@@ -1244,16 +1257,20 @@ const Pages = (() => {
       const tr = Render.el('tr', { dataset: { personId: p.id } });
       tr.appendChild(Render.el('td.role-col', p.role || ''));
       // 名字过长时自动缩字体:30mm 列宽 - padding 2mm - border ≈ 27.5mm 实际可用
-      // 字号上限 4mm,实际容纳 ≈ 6 个全角字符(考虑片假名/浊点字符渲染略宽于字号)
-      // overflow:hidden 已在 CSS 兜底,即使估算误差也不会撑爆列宽
+      // 长名字打印自动缩字号 — col-name 30mm,留 2mm padding+safety,目标名字宽度 ≤ 26mm。
+      // 仅设 --name-cap 这个 CSS 变量,由 @media print 的 name-col 规则在 min() 里读取。
+      // 不直接设 inline font-size:
+      //   - 手机 Safari 对内联 min/calc/var 解析不稳;
+      //   - 纯 mm 内联会同时影响屏幕显示(mm→px 转换让屏幕字号反而更大);
+      //   - 用 CSS 变量后,屏幕不应用 @media print,完全不受影响。
       const nameTd = Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || '');
       const nameStr = p.name || '';
       let widthUnits = 0; // 1 全角 = 1, 半角/空格 = 0.5
       for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
-      const MAX_UNITS = 6;
-      if (widthUnits > MAX_UNITS) {
-        const capMm = (4 * MAX_UNITS / widthUnits).toFixed(2);
-        nameTd.style.setProperty('font-size', `min(calc(var(--row-h) * 0.5), ${capMm}mm)`, 'important');
+      const TARGET_MM = 26; // 30mm 列宽 - 2mm padding/safety
+      if (widthUnits * 4 > TARGET_MM) {
+        const capMm = (TARGET_MM / widthUnits).toFixed(2);
+        nameTd.style.setProperty('--name-cap', capMm + 'mm');
       }
       tr.appendChild(nameTd);
 
@@ -1270,7 +1287,7 @@ const Pages = (() => {
         const ct = Store.cellText(deptId, p.id, d.ymd); // { text, color } 或 null
         // 优先级:自定义文字 > 状态字符
         const displayChar = (ct && ct.text)
-          || (st === 'contractRest' ? '〇' : st === 'paidLeave' ? '●' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : '');
+          || (st === 'contractRest' ? '〇' : st === 'paidLeave' ? '有' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : '');
         const td = Render.el('td.day-cell',
           { dataset: { person: p.id, ymd: d.ymd } },
           displayChar
@@ -1283,9 +1300,8 @@ const Pages = (() => {
           td.style.setProperty('background-color', COLOR_MAP[c], 'important');
           td.style.setProperty('color', '#fff', 'important');
         } else if (ct && ct.color && COLOR_MAP[ct.color]) {
-          // 没填背景色 → 应用自定义文字色
+          // 没填背景色 → 应用自定义文字色(不再强制 bold,保持细字)
           td.style.setProperty('color', COLOR_MAP[ct.color], 'important');
-          td.style.setProperty('font-weight', '700', 'important');
         }
         const isDerivedRetired = st === 'retired' && p.retiredOn && d.ymd >= p.retiredOn;
         if (!isDerivedRetired) {
