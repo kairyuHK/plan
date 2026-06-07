@@ -5777,6 +5777,26 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .bentos-screen .item .name:hover{color:var(--accent)}
   .bentos-screen .item button{background:transparent;border:1px solid var(--line);color:var(--fg);padding:4px 10px;border-radius:4px;cursor:pointer}
   .bentos-screen .item button.del:hover{border-color:#ef4444;color:#ef4444}
+  /* 便当名颜色 swatch:小圆点,显示当前便当大字色;点 = 弹出颜色 popover,双击 = 重置默认 */
+  .bento-color-sw{position:relative;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.15);cursor:pointer;flex-shrink:0;transition:transform .12s,box-shadow .15s;display:inline-block}
+  .bento-color-sw:hover{transform:scale(1.12);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+  .bento-color-sw.default{background:repeating-linear-gradient(45deg,#2a2d33 0 4px,#1a1d22 4px 8px)}
+  /* 自定义颜色 popover */
+  .bento-color-popover{position:fixed;z-index:9999;background:linear-gradient(180deg,#1a1d26 0%,#14161d 100%);border:1px solid #262936;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 16px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset;width:236px;font-family:inherit;animation:bcpIn .15s ease-out}
+  .bento-color-popover.hidden{display:none}
+  @keyframes bcpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .bcp-row{display:flex;gap:6px;align-items:center}
+  .bcp-current{width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.15);flex-shrink:0}
+  .bcp-hex{flex:1;background:rgba(0,0,0,.3);border:1px solid #262936;color:#ececf1;padding:6px 10px;border-radius:6px;font:inherit;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.5px;outline:none}
+  .bcp-hex:focus{border-color:rgba(94,234,212,.5);box-shadow:0 0 0 2px rgba(94,234,212,.15)}
+  .bcp-palette{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .bcp-palette button{width:24px;height:24px;border-radius:5px;border:1px solid rgba(255,255,255,.1);cursor:pointer;padding:0;transition:transform .1s,box-shadow .12s}
+  .bcp-palette button:hover{transform:scale(1.15);box-shadow:0 0 0 2px rgba(255,255,255,.1)}
+  .bcp-actions{display:flex;gap:6px;justify-content:space-between;flex-wrap:wrap}
+  .bcp-btn{background:rgba(255,255,255,.04);border:1px solid #262936;color:#ececf1;padding:6px 10px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;transition:background .12s,border-color .12s;display:inline-flex;align-items:center;gap:4px}
+  .bcp-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15)}
+  .bcp-btn:disabled{opacity:.4;cursor:not-allowed}
+  .bcp-btn.reset:hover{border-color:rgba(248,113,113,.45);color:#f87171}
   .bentos-screen .empty{color:var(--muted);text-align:center;padding:40px}
   .edit-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:6px}
   .edit-toolbar input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:18px}
@@ -5842,8 +5862,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:28px !important;min-height:0 !important;letter-spacing:4px !important;font-weight:800;line-height:1}
     .bento-title .muted{color:#555 !important;font-size:14px !important}
     .line-wrap{flex:0 0 auto;margin:60mm 0 0 !important;overflow:visible !important;width:100% !important;break-inside:auto}
-    .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important;break-inside:auto}
+    /* 打印时:把 --cell-min 收到 0,允许列在 285mm 内压缩,
+       避免 row 溢出到容器外、belt(箭头条)只到容器右边、看起来「断在中间」。
+       inline style 用的是 minmax(var(--cell-min, 120px), 1fr),设了 0 就走 0。 */
+    .line-grid{--cell-min:0 !important;width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important;break-inside:auto}
     .line-grid .row{gap:8px !important}
+    .belt{align-self:stretch !important;width:100% !important}
     .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important}
     .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
@@ -7376,8 +7400,14 @@ function renderOperate() {
   c.appendChild(meta);
 
   const title = document.createElement("div"); title.className = "bento-title";
-  if (bento) title.textContent = bento.name;
-  else { title.innerHTML = '<span class="muted">(输入便当名或从便当库选)</span>'; }
+  if (bento) {
+    title.textContent = bento.name;
+    if (bento.color) {
+      // 自定义色需要同时覆盖 color 和 -webkit-text-fill-color(避免被深色主题的 fill-color CSS 拦掉)
+      title.style.color = bento.color;
+      title.style.webkitTextFillColor = bento.color;
+    }
+  } else { title.innerHTML = '<span class="muted">(输入便当名或从便当库选)</span>'; }
   c.appendChild(title);
   // 顶部搜索框同步当前便当名,避免「搜索框 vs 大字标题」不一致(从便当库切换 / 其它入口进来时也对得上)
   const _searchInp = document.getElementById("bento-search");
@@ -7852,6 +7882,135 @@ function renderEdit() {
   renderEditGrid();
 }
 
+// === 自定义便当颜色 popover ===
+// 解决 native <input type=color> 对话框遮住屏幕、针管(eyedropper)无法取到被遮区域颜色的问题。
+// 包含:预设色板 / hex 输入 / EyeDropper API(取色时 popover 自身先隐藏)/ 重置默认。
+// 7 色精简预设(覆盖主要色相):ivory · 橙 · 黄 · 绿 · 青绿 · 蓝 · 紫
+// 想要其它颜色用「更多颜色」开系统拾色器,或针管取色
+const BENTO_COLOR_PRESETS = [
+  '#ede6d3','#fb923c','#facc15','#34d399','#5eead4','#60a5fa','#a78bfa'
+];
+function closeBentoColorPopover() {
+  document.querySelectorAll('.bento-color-popover').forEach(p => p.remove());
+}
+function openBentoColorPopover(anchorEl, bento, onChange) {
+  closeBentoColorPopover();
+  const pop = document.createElement('div');
+  pop.className = 'bento-color-popover';
+  const current = bento.color || '#ede6d3';
+  pop.innerHTML = `
+    <div class="bcp-row">
+      <div class="bcp-current"></div>
+      <input type="text" class="bcp-hex" maxlength="7" spellcheck="false">
+    </div>
+    <div class="bcp-palette"></div>
+    <div class="bcp-actions">
+      <button class="bcp-btn eye" title="从屏幕取色 (针管)">⊕ 取色</button>
+      <button class="bcp-btn more" title="调出系统拾色器 — 完整色谱、色相条、RGB/HSL">🎨 更多颜色</button>
+      <button class="bcp-btn reset" title="重置为默认颜色">重置</button>
+    </div>
+    <input type="color" class="bcp-native" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
+  `;
+  document.body.appendChild(pop);
+
+  // 定位:锚点正下方;若下方空间不够、上方空间够,则翻到锚点上方,避免针管按钮等被裁
+  const r = anchorEl.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - 244, r.left)) + 'px';
+  const popH = pop.offsetHeight;
+  const spaceBelow = window.innerHeight - r.bottom - 8;
+  const spaceAbove = r.top - 8;
+  if (popH > spaceBelow && spaceAbove >= popH) {
+    pop.style.top = (r.top - popH - 6) + 'px';
+  } else {
+    // 下方放不下、上方也放不下 → 钳制到视窗内,起码不超出底部
+    const top = Math.min(r.bottom + 6, window.innerHeight - popH - 8);
+    pop.style.top = Math.max(8, top) + 'px';
+  }
+
+  const currentEl = pop.querySelector('.bcp-current');
+  const hexInp = pop.querySelector('.bcp-hex');
+  const paletteEl = pop.querySelector('.bcp-palette');
+  const eyeBtn = pop.querySelector('.bcp-btn.eye');
+  const resetBtn = pop.querySelector('.bcp-btn.reset');
+
+  function paint(c) {
+    currentEl.style.background = c;
+    hexInp.value = c;
+  }
+  function apply(c) {
+    bento.color = c;
+    paint(c);
+    anchorEl.style.background = c;
+    anchorEl.classList.remove('default');
+    saveState();
+    if (onChange) onChange();
+  }
+  paint(current);
+
+  // 预设色板
+  BENTO_COLOR_PRESETS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.style.background = c;
+    btn.title = c;
+    btn.onclick = (e) => { e.stopPropagation(); apply(c); };
+    paletteEl.appendChild(btn);
+  });
+
+  // hex 输入(实时校验)
+  hexInp.addEventListener('input', () => {
+    let v = hexInp.value.trim();
+    if (v && !v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) apply(v);
+  });
+
+  // 针管:用浏览器 EyeDropper API。先把 popover 自身藏起来,这样针管能取到被它遮的地方;取完再显示
+  if (typeof window.EyeDropper === 'undefined') {
+    eyeBtn.disabled = true;
+    eyeBtn.title = '此浏览器不支持屏幕取色(需 Chrome/Edge 95+)';
+  } else {
+    eyeBtn.onclick = async (e) => {
+      e.stopPropagation();
+      pop.classList.add('hidden');
+      try {
+        const res = await new window.EyeDropper().open();
+        apply(res.sRGBHex);
+      } catch (_) { /* 用户取消 */ }
+      pop.classList.remove('hidden');
+    };
+  }
+
+  // 更多颜色:打开系统 native 拾色器(完整色谱 / 色相条 / RGB / HSL)
+  const moreBtn = pop.querySelector('.bcp-btn.more');
+  const nativeInp = pop.querySelector('.bcp-native');
+  nativeInp.value = current;
+  moreBtn.onclick = (e) => {
+    e.stopPropagation();
+    nativeInp.click();
+  };
+  nativeInp.addEventListener('input', () => apply(nativeInp.value));
+
+  // 重置
+  resetBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (bento.color) {
+      delete bento.color;
+      saveState();
+      if (onChange) onChange();
+    }
+    closeBentoColorPopover();
+  };
+
+  // 点击 popover 外关闭(下一帧再挂,避免本次 click 立刻把自己关掉)
+  setTimeout(() => {
+    const onDocClick = (ev) => {
+      if (pop.contains(ev.target) || anchorEl.contains(ev.target)) return;
+      closeBentoColorPopover();
+      document.removeEventListener('mousedown', onDocClick);
+    };
+    document.addEventListener('mousedown', onDocClick);
+  }, 0);
+}
+
 function renderBentos() {
   const c = document.getElementById("content");
   c.innerHTML = "";
@@ -7881,7 +8040,25 @@ function renderBentos() {
   } else {
     for (const b of state.bentos.slice().sort((a,b) => a.name.localeCompare(b.name, "zh"))) {
       const it = document.createElement("div"); it.className = "item";
+      // 颜色 swatch:点 = 打开自定义 popover(支持针管 eyedropper / hex / 预设),双击 = 重置回默认
+      const sw = document.createElement("span");
+      sw.className = "bento-color-sw" + (b.color ? "" : " default");
+      sw.title = b.color ? `便当名颜色 ${b.color} · 双击重置` : "设置便当名颜色 · 双击重置";
+      if (b.color) sw.style.background = b.color;
+      sw.onclick = (e) => {
+        e.stopPropagation();
+        openBentoColorPopover(sw, b, () => render());
+      };
+      sw.ondblclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!b.color) return;
+        delete b.color;
+        saveState();
+        render();
+      };
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = b.name;
+      if (b.color) nm.style.color = b.color;
       nm.onclick = () => { state.current = { ...state.current, screen: "edit", editingBentoId: b.id }; saveState(); render(); };
       const ed = document.createElement("button"); ed.textContent = "改";
       ed.onclick = () => nm.click();
@@ -7895,7 +8072,7 @@ function renderBentos() {
           onConfirm: () => { deleteBento(b.id); render(); }
         });
       };
-      it.appendChild(nm); it.appendChild(ed); it.appendChild(dl);
+      it.appendChild(sw); it.appendChild(nm); it.appendChild(ed); it.appendChild(dl);
       wrap.appendChild(it);
     }
   }
@@ -8197,7 +8374,7 @@ const BUNDLE_KEYS_EXACT = [
 ];
 const BUNDLE_KEY_PREFIXES = ['productionBoard_v1_']; // 计划板 每日存档
 const STORAGE_LAST_EXPORT_AT = 'production-management-last-export-at';
-const EXPORT_KEEP_DAYS = 30;
+const EXPORT_KEEP_DAYS = 40;
 const EXPORT_REMIND_DAYS = 25;
 
 function isoDateNDaysAgo(n) {
@@ -8213,7 +8390,7 @@ function collectBundleEntries() {
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k) continue;
-    // 排班表:parse 后只保留近 30 天的 schedules
+    // 排班表:parse 后只保留近 40 天的 schedules
     if (k === 'shift-schedule-data-v1') {
       try {
         const obj = JSON.parse(localStorage.getItem(k) || 'null');
@@ -8314,7 +8491,7 @@ function importAll() {
         return;
       }
       const keyCount = Object.keys(bundle.entries).length;
-      const anchor = document.querySelector('.tabs .io-btn[onclick*="importAll"]') || document.body;
+      const anchor = document.getElementById('importAllBtn') || document.querySelector('.tabs .io-btn[onclick*="importAll"]') || document.body;
       showConfirmPopover(anchor, {
         text: `导入 ${keyCount} 项数据?`,
         sub: '将覆盖当前所有数据,建议先点「导出」备份',
