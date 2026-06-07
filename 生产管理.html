@@ -7965,10 +7965,10 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
     if (/^#[0-9a-fA-F]{6}$/.test(v)) apply(v);
   });
 
-  // 针管:用浏览器 EyeDropper API。先把 popover 自身藏起来,这样针管能取到被它遮的地方;取完再显示
+  // 针管:用浏览器 EyeDropper API。仅桌面 Chrome/Edge 95+ 支持,移动端浏览器全都没有。
+  // 不支持的平台直接移除按钮,避免出现「点了没反应」的灰按钮。
   if (typeof window.EyeDropper === 'undefined') {
-    eyeBtn.disabled = true;
-    eyeBtn.title = '此浏览器不支持屏幕取色(需 Chrome/Edge 95+)';
+    eyeBtn.remove();
   } else {
     eyeBtn.onclick = async (e) => {
       e.stopPropagation();
