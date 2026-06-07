@@ -5793,7 +5793,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .bcp-palette button{width:24px;height:24px;border-radius:5px;border:1px solid rgba(255,255,255,.1);cursor:pointer;padding:0;transition:transform .1s,box-shadow .12s}
   .bcp-palette button:hover{transform:scale(1.15);box-shadow:0 0 0 2px rgba(255,255,255,.1)}
   .bcp-actions{display:flex;gap:6px;justify-content:space-between;flex-wrap:wrap}
-  .bcp-btn{background:rgba(255,255,255,.04);border:1px solid #262936;color:#ececf1;padding:6px 10px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;transition:background .12s,border-color .12s;display:inline-flex;align-items:center;gap:4px}
+  .bcp-btn{position:relative;background:rgba(255,255,255,.04);border:1px solid #262936;color:#ececf1;padding:6px 10px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;transition:background .12s,border-color .12s;display:inline-flex;align-items:center;gap:4px}
   .bcp-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15)}
   .bcp-btn:disabled{opacity:.4;cursor:not-allowed}
   .bcp-btn.reset:hover{border-color:rgba(248,113,113,.45);color:#f87171}
@@ -7906,10 +7906,12 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
     <div class="bcp-palette"></div>
     <div class="bcp-actions">
       <button class="bcp-btn eye" title="从屏幕取色 (针管)">⊕ 取色</button>
-      <button class="bcp-btn more" title="调出系统拾色器 — 完整色谱、色相条、RGB/HSL">🎨 更多颜色</button>
+      <label class="bcp-btn more" title="调出系统拾色器 — 完整色谱、色相条、RGB/HSL">
+        🎨 更多颜色
+        <input type="color" class="bcp-native" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none">
+      </label>
       <button class="bcp-btn reset" title="重置为默认颜色">重置</button>
     </div>
-    <input type="color" class="bcp-native" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
   `;
   document.body.appendChild(pop);
 
@@ -7979,14 +7981,9 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
     };
   }
 
-  // 更多颜色:打开系统 native 拾色器(完整色谱 / 色相条 / RGB / HSL)
-  const moreBtn = pop.querySelector('.bcp-btn.more');
+  // 更多颜色:label + input[type=color] 联动 —— 移动端原生支持,不需要 JS .click()
   const nativeInp = pop.querySelector('.bcp-native');
   nativeInp.value = current;
-  moreBtn.onclick = (e) => {
-    e.stopPropagation();
-    nativeInp.click();
-  };
   nativeInp.addEventListener('input', () => apply(nativeInp.value));
 
   // 重置
