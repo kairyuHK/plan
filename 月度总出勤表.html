@@ -251,8 +251,10 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
     height: var(--row-h) !important;
     font-size: min(calc(var(--row-h) * 0.65), 4.5mm) !important;
     width: auto !important;
-    /* CJK 字体 ascent > descent,line-height:1 下字形视觉偏上,padding-top 下推到视觉中心 */
-    padding-top: calc(var(--row-h) * 0.12) !important;
+    /* CJK 字体 ascent > descent,line-height:1 下字形视觉偏上,padding-top 下推到视觉中心。
+       PC 端 0.09 看起来居中,手机端浏览器/打印机字体度量不同,默认 0(不偏移)。
+       beforeprint 时 JS 按视口宽度切换 --day-cell-pad-ratio。 */
+    padding-top: calc(var(--row-h) * var(--day-cell-pad-ratio, 0.09)) !important;
   }
   /* 〇(契休) 比 ●(实心)看起来大,字号再小一档 */
   table.schedule td.day-cell.contractRest,
@@ -879,6 +881,9 @@ const App = (() => {
       const bodyH = (curDept && curDept.printHeightMm) || 192;
       document.documentElement.style.setProperty('--print-body-h', bodyH + 'mm');
       document.documentElement.style.setProperty('--print-row-h-base', (bodyH - 2) + 'mm');
+      // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
+      const isMobile = window.matchMedia('(max-width: 640px)').matches;
+      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0.09');
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
       // col 宽度直接 inline 设置 — table-layout:fixed 下浏览器对 @media print 里的 mm 单位
@@ -894,6 +899,7 @@ const App = (() => {
       document.documentElement.style.removeProperty('--row-h-fixed');
       document.documentElement.style.removeProperty('--print-body-h');
       document.documentElement.style.removeProperty('--print-row-h-base');
+      document.documentElement.style.removeProperty('--day-cell-pad-ratio');
       // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
       document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
       // Clean up brute-force inline styles
