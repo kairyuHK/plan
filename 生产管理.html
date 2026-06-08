@@ -499,6 +499,10 @@ const JpHolidays = (() => {
 })();
 <\/script>
 <script>
+// 部门分组(模块级别,供 Store 外的渲染代码调用):跨部门 = 调动(⇄);同部门不同线 = 不算调动
+// A=夕盛+01  B=02~05  C=値付け  short=虚拟短期
+const DEPT_OF = { xs:'A', l01:'A', l02:'B', l03:'B', l04:'B', l05:'B', tsk:'C', short:'short' };
+function sameDept(a, b){ return !!a && !!b && DEPT_OF[a] === DEPT_OF[b]; }
 const Store = (() => {
   const KEY = 'shift-schedule-data-v1';
   const DEFAULT_LINES = [
@@ -1052,7 +1056,7 @@ const Pages = (() => {
                   const persons = pids.map(id => peopleById[id]).filter(Boolean);
                   const text = persons.length === 0
                     ? '未分配'
-                    : persons.map(p => escapeHtml(p.name) + (p.homeLine !== line.id ? ' <span class="borrowed">⇄</span>' : '')).join('、');
+                    : persons.map(p => escapeHtml(p.name) + (!sameDept(p.homeLine, line.id) ? ' <span class="borrowed">⇄</span>' : '')).join('、');
                   return `<li data-pos="${escapeHtml(pos)}">
                     <span class="pos-name">${escapeHtml(pos)}</span>
                     <button class="assign-btn ${persons.length?'':'empty'}" data-line="${line.id}" data-pos="${escapeHtml(pos)}">
@@ -1173,8 +1177,8 @@ const Pages = (() => {
       const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
       const q = query.trim().toLowerCase();
       const match = p => !q || p.name.toLowerCase().includes(q);
-      const home = s.people.filter(p => !p.deleted && p.homeLine===lineId && match(p)).sort(byName);
-      const others = s.people.filter(p => !p.deleted && p.homeLine!==lineId && match(p)).sort(byName);
+      const home = s.people.filter(p => !p.deleted && sameDept(p.homeLine, lineId) && match(p)).sort(byName);
+      const others = s.people.filter(p => !p.deleted && !sameDept(p.homeLine, lineId) && match(p)).sort(byName);
       const row = (p) => {
         const selected = currentIds.includes(p.id);
         const full = currentIds.length >= 3 && !selected;
@@ -1193,9 +1197,9 @@ const Pages = (() => {
           </div>
           <div class="ph-search"><input id="picker-search" placeholder="搜索…" value="${escapeHtml(query)}" autofocus></div>
           <div class="ph-body">
-            <div class="section-title">本线人员 (${home.length})</div>
+            <div class="section-title">本部门人员 (${home.length})</div>
             ${home.length? home.map(row).join('') : '<div class="muted" style="padding:8px 4px">（无)</div>'}
-            ${others.length? `<details><summary class="section-title" style="cursor:pointer">借调 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
+            ${others.length? `<details><summary class="section-title" style="cursor:pointer">调动 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
           </div>
           <div class="btn-row">
             <button data-act="clear">清空</button>
@@ -5384,6 +5388,26 @@ function openCalendar(anchorEl) {
   calPopover = document.createElement('div');
   calPopover.className = 'cal-popover';
   document.body.appendChild(calPopover);
+  // click 监听器只能在元素创建时挂一次。
+  // 之前在 renderCalendar() 里挂导致每次翻页都新增一个监听器,
+  // 第 N 次点击会触发 N 个监听器,月份连跳多次,跨年时表现为"一年一年"乱跳。
+  calPopover.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t.dataset && t.dataset.act;
+    if (act === 'prev') {
+      calView.month--;
+      if (calView.month < 1) { calView.month = 12; calView.year--; }
+      renderCalendar();
+    } else if (act === 'next') {
+      calView.month++;
+      if (calView.month > 12) { calView.month = 1; calView.year++; }
+      renderCalendar();
+    } else if (act === 'today') {
+      switchDate(todayStr()); closeCalendar();
+    } else if (t.dataset && t.dataset.date) {
+      switchDate(t.dataset.date); closeCalendar();
+    }
+  });
   renderCalendar();
   positionCalendar(anchorEl);
   setTimeout(() => {
@@ -5453,21 +5477,7 @@ function renderCalendar() {
       <button type="button" class="cal-today-btn" data-act="today">今日</button>
     </div>`;
   calPopover.innerHTML = html;
-  calPopover.addEventListener('click', (e) => {
-    const t = e.target;
-    const act = t.dataset && t.dataset.act;
-    if (act === 'prev') {
-      calView.month--; if (calView.month < 1) { calView.month = 12; calView.year--; }
-      renderCalendar();
-    } else if (act === 'next') {
-      calView.month++; if (calView.month > 12) { calView.month = 1; calView.year++; }
-      renderCalendar();
-    } else if (act === 'today') {
-      switchDate(todayStr()); closeCalendar();
-    } else if (t.dataset && t.dataset.date) {
-      switchDate(t.dataset.date); closeCalendar();
-    }
-  });
+  // click 监听器在 openCalendar 中只挂一次,这里不再重复挂(否则会累加)
 }
 function positionCalendar(anchor) {
   if (!calPopover) return;
@@ -6278,6 +6288,26 @@ function openDateCal(anchor) {
   _dateCal = document.createElement('div');
   _dateCal.className = 'cal-popover';
   document.body.appendChild(_dateCal);
+  // 注意:click 监听器只能在元素创建时挂一次。
+  // 之前在 renderDateCal() 里挂导致每次翻页都新增一个监听器,
+  // 第 N 次点击会触发 N 个监听器,月份连跳多次,跨年时就变成"一年一年"乱跳。
+  _dateCal.addEventListener('click', (e) => {
+    const t = e.target;
+    const act = t.dataset && t.dataset.act;
+    if (act === 'prev') {
+      _dateCalView.month--;
+      if (_dateCalView.month < 1) { _dateCalView.month = 12; _dateCalView.year--; }
+      renderDateCal();
+    } else if (act === 'next') {
+      _dateCalView.month++;
+      if (_dateCalView.month > 12) { _dateCalView.month = 1; _dateCalView.year++; }
+      renderDateCal();
+    } else if (act === 'today') {
+      pickDate(todayString()); closeDateCal();
+    } else if (t.dataset && t.dataset.date) {
+      pickDate(t.dataset.date); closeDateCal();
+    }
+  });
   renderDateCal();
   positionDateCal(anchor);
   setTimeout(() => {
@@ -6346,21 +6376,7 @@ function renderDateCal() {
       <button type="button" class="cal-today-btn" data-act="today">今日</button>
     </div>`;
   _dateCal.innerHTML = html;
-  _dateCal.addEventListener('click', (e) => {
-    const t = e.target;
-    const act = t.dataset && t.dataset.act;
-    if (act === 'prev') {
-      _dateCalView.month--; if (_dateCalView.month < 1) { _dateCalView.month = 12; _dateCalView.year--; }
-      renderDateCal();
-    } else if (act === 'next') {
-      _dateCalView.month++; if (_dateCalView.month > 12) { _dateCalView.month = 1; _dateCalView.year++; }
-      renderDateCal();
-    } else if (act === 'today') {
-      pickDate(todayString()); closeDateCal();
-    } else if (t.dataset && t.dataset.date) {
-      pickDate(t.dataset.date); closeDateCal();
-    }
-  });
+  // click 监听器在 openDateCal 中只挂一次,这里不再重复挂(否则会累加)
 }
 function positionDateCal(anchor) {
   if (!_dateCal) return;
@@ -6435,12 +6451,16 @@ function _personIdsAt(bento, posLabel) {
   return ids;
 }
 
-// 返回 [{name, borrowed}] —— borrowed=true 时表示该人 homeLine ≠ bento.lineId(借调)
+// 部门分组(必须和排班表 iframe 保持一致):跨部门 = 调动
+const PLAN_DEPT_OF = { xs:'A', l01:'A', l02:'B', l03:'B', l04:'B', l05:'B', tsk:'C', short:'short' };
+function planSameDept(a, b){ return !!a && !!b && PLAN_DEPT_OF[a] === PLAN_DEPT_OF[b]; }
+
+// 返回 [{name, borrowed}] —— borrowed=true 表示该人 homeLine 与 bento.lineId 不在同一部门(调动)
 function getPersonInfosForCell(bento, posLabel) {
   return _personIdsAt(bento, posLabel).map(id => {
     const p = scheduleData.people.find(x => x.id === id);
     if (!p) return null;
-    return { name: p.name, borrowed: !!(p.homeLine && p.homeLine !== bento.lineId) };
+    return { name: p.name, borrowed: !!(p.homeLine && !planSameDept(p.homeLine, bento.lineId)) };
   }).filter(Boolean);
 }
 
