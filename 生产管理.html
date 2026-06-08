@@ -5,16 +5,32 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>生产管理</title>
 <style>
+:root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
 .tabs{display:flex;height:48px;background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
 .tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8e8}
-.tabs button.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.4),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
-.tabs button.active:hover{background:linear-gradient(180deg,#fda562 0%,#fb923c 100%);color:#14181f}
+.tabs button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.4),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
+.tabs button.active:hover{background:linear-gradient(180deg,var(--accent-light) 0%,var(--accent) 100%);color:#14181f}
 .tabs .spacer{flex:1 1 auto}
 .tabs .io-btn{border:none;color:#9ca0a8;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px;background:transparent;border-radius:6px;transition:color .18s,background .18s}
-.tabs .io-btn:hover{color:#fb923c;background:rgba(251,146,60,.08)}
+.tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+/* 主题色选择器 */
+.theme-btn{position:relative;width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:50%;background:var(--accent);cursor:pointer;flex:0 0 auto;box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 2px rgba(var(--accent-rgb),.18);transition:transform .15s,box-shadow .2s}
+.theme-btn:hover{transform:scale(1.08);box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 0 3px rgba(var(--accent-rgb),.28)}
+.theme-pop{position:absolute;top:48px;right:12px;z-index:300;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;box-shadow:0 24px 56px rgba(0,0,0,.7);display:none;animation:confirmIn .18s cubic-bezier(.2,.8,.2,1)}
+.theme-pop.show{display:block}
+.theme-pop .grid{display:grid;grid-template-columns:repeat(6,28px);gap:8px;margin-bottom:10px}
+.theme-pop .sw{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;transition:transform .12s,border-color .15s;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.theme-pop .sw:hover{transform:scale(1.12)}
+.theme-pop .sw.active{border-color:#fff;transform:scale(1.12)}
+.theme-pop .row{display:flex;align-items:center;gap:8px;font-size:12px;color:#9ca0a8}
+.theme-pop .row input[type=color]{width:32px;height:24px;padding:0;border:1px solid #2a2d33;border-radius:5px;background:transparent;cursor:pointer}
+.theme-pop .row input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.theme-pop .row input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
+.theme-pop .row .reset{margin-left:auto;background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:4px 10px;border-radius:5px;font:inherit;font-size:11px;cursor:pointer}
+.theme-pop .row .reset:hover{color:#e8e8e8;border-color:#3a3f47}
 @media (max-width:600px){.tabs{padding:0 8px;height:44px}.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform}
@@ -59,15 +75,15 @@ iframe.active{pointer-events:auto}
 .confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
 .confirm-popover button:hover{background:#1f1f23}
 .confirm-popover button:active{transform:scale(0.97)}
-.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
-.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
+.confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
-.toast.info{border-left:3px solid #fb923c}
+.toast.info{border-left:3px solid var(--accent)}
 .toast.hide{animation:toastOut .2s ease-in forwards}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
@@ -81,6 +97,15 @@ iframe.active{pointer-events:auto}
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
+  <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"></button>
+</div>
+<div class="theme-pop" id="themePop">
+  <div class="grid" id="themeGrid"></div>
+  <div class="row">
+    <span>自定义</span>
+    <input type="color" id="themeCustom" value="#fb923c">
+    <button class="reset" id="themeReset" type="button">重置</button>
+  </div>
 </div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
@@ -93,12 +118,27 @@ iframe.active{pointer-events:auto}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>岗位排班表</title>
+<script>
+// 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
+(function(){
+  function apply(c, rgb){
+    if(c) document.documentElement.style.setProperty('--accent', c);
+    if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
+  }
+  window.addEventListener('message', e => {
+    if(!e.data || e.data.type !== 'theme-changed') return;
+    apply(e.data.accent, e.data.accentRgb);
+  });
+  // 加载完成后主动向父壳要一次当前主题(防 iframe 比广播晚到)
+  try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
+})();
+<\/script>
 <style>
 :root{
   /* 调和「月度工时统计」色板:更深底 + 微蓝紫表面 + 柔边框 */
   --bg:#0a0b0e; --card:#14161d; --border:#262936;
   --text:#ececf1; --muted:#8a8d99;
-  --accent:#fb923c; --accent-glow:rgba(251,146,60,.18); --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  --accent:#fb923c; --accent-rgb:251,146,60; --accent-dark:color-mix(in srgb,var(--accent),#000 15%); --accent-light:color-mix(in srgb,var(--accent),#fff 18%); --accent-glow:rgba(var(--accent-rgb),.18); --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
   --line-xs:#f59e0b; --line-l01:#3b82f6; --line-l02:#06b6d4;
   --line-l03:#10b981; --line-l04:#ec4899; --line-l05:#f97316;
   --line-tsk:#8b5cf6; --line-short:#64748b;
@@ -234,10 +274,10 @@ input:focus,select:focus{border-color:var(--accent)}
   @keyframes pickerInUp{from{transform:translateY(100%)}to{transform:none}}
 }
 .date-wrap{position:relative;display:inline-block}
-.date-trigger{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;background:linear-gradient(180deg,#1a1d22 0%,#15181d 100%);border:1px solid rgba(251,146,60,.2);border-radius:999px;cursor:pointer;color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.3px;box-shadow:0 2px 8px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.04) inset;transition:all .2s cubic-bezier(.4,0,.2,1)}
-.date-trigger:hover{border-color:rgba(251,146,60,.5);box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 4px rgba(251,146,60,.08),0 1px 0 rgba(255,255,255,.06) inset;transform:translateY(-1px)}
+.date-trigger{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;background:linear-gradient(180deg,#1a1d22 0%,#15181d 100%);border:1px solid rgba(var(--accent-rgb),.2);border-radius:999px;cursor:pointer;color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.3px;box-shadow:0 2px 8px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.04) inset;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.date-trigger:hover{border-color:rgba(var(--accent-rgb),.5);box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 4px rgba(var(--accent-rgb),.08),0 1px 0 rgba(255,255,255,.06) inset;transform:translateY(-1px)}
 .date-trigger:active{transform:translateY(0)}
-.date-trigger .caret{color:rgba(251,146,60,.6);font-size:10px}
+.date-trigger .caret{color:rgba(var(--accent-rgb),.6);font-size:10px}
 /* 简易日历(样式对齐计划板) */
 .cal-host{position:absolute;top:calc(100% + 6px);left:0;z-index:50;background:#1f2229;border:1px solid #3a3f47;border-radius:10px;padding:12px;box-shadow:0 16px 48px rgba(0,0,0,.6);width:280px;max-width:calc(100vw - 16px);user-select:none;-webkit-user-select:none;animation:calPopIn .16s ease-out}
 .cal-host.hidden{display:none}
@@ -255,12 +295,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .cal-day.other{color:#707783;opacity:.4}
 .cal-day.sat{color:#3b82f6}
 .cal-day.sun{color:var(--danger)}
-.cal-day.today{border-color:rgba(251,146,60,.5)}
+.cal-day.today{border-color:rgba(var(--accent-rgb),.5)}
 .cal-day.selected{background:var(--accent);color:#fff!important;font-weight:700;border-color:var(--accent)}
 .cal-day .has-data{position:absolute;left:50%;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--ok);transform:translateX(-50%)}
 .cal-day.selected .has-data{background:#fff}
 .cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.cal-today-btn{background:rgba(251,146,60,.1);color:var(--accent);border:1px solid rgba(251,146,60,.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
+.cal-today-btn{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
 .cal-today-btn:hover{background:var(--accent);color:#fff}
 .cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:8px;min-height:14px;font-weight:600}
 .cal-host .holiday-label:empty{display:none}
@@ -280,12 +320,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
 .confirm-popover button:hover{background:#1f1f23}
 .confirm-popover button:active{transform:scale(0.97)}
-.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
-.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
+.confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
-.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
@@ -298,7 +338,7 @@ input:focus,select:focus{border-color:var(--accent)}
 
 /* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
-::selection{background:rgba(251,146,60,.28);color:#fff}
+::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
@@ -307,22 +347,22 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 .nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .nav button{transition:all .2s cubic-bezier(.4,0,.2,1)}
 .nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
-.nav button.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.35),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
+.nav button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
 .card{background:linear-gradient(180deg,#1d2027 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 2px 6px rgba(0,0,0,.25),0 12px 28px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
 .card-head{border-top-color:rgba(255,255,255,.05);letter-spacing:.2px}
 .pos-list li,.people-list li,.assign-list li{border-bottom-color:rgba(255,255,255,.05)}
 input,select{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.06);transition:border-color .15s,box-shadow .15s,background .15s}
 input:hover,select:hover{border-color:rgba(255,255,255,.1)}
-input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(251,146,60,.18);background:rgba(0,0,0,.36)}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18);background:rgba(0,0,0,.36)}
 button{transition:transform .12s,background .15s,border-color .15s,box-shadow .15s}
 button:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
 button:active{transform:scale(.97)}
-button.primary{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 2px 8px rgba(251,146,60,.32),0 1px 0 rgba(255,255,255,.18) inset}
-button.primary:hover{background:linear-gradient(180deg,#fda562 0%,#fb923c 100%);box-shadow:0 6px 16px rgba(251,146,60,.4),0 1px 0 rgba(255,255,255,.22) inset}
+button.primary{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 2px 8px rgba(var(--accent-rgb),.32),0 1px 0 rgba(255,255,255,.18) inset}
+button.primary:hover{background:linear-gradient(180deg,var(--accent-light) 0%,var(--accent) 100%);box-shadow:0 6px 16px rgba(var(--accent-rgb),.4),0 1px 0 rgba(255,255,255,.22) inset}
 .assign-btn{transition:all .2s cubic-bezier(.4,0,.2,1);background:rgba(255,255,255,.02)}
-.assign-btn:hover{border-color:rgba(251,146,60,.35);background:rgba(251,146,60,.06);transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.3)}
+.assign-btn:hover{border-color:rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.06);transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.3)}
 .assign-btn.empty{border-color:rgba(255,255,255,.08)}
-.assign-btn.empty:hover{border-color:rgba(251,146,60,.3);color:var(--accent)}
+.assign-btn.empty:hover{border-color:rgba(var(--accent-rgb),.3);color:var(--accent)}
 .stat-big{font-feature-settings:"tnum";background:linear-gradient(180deg,#fff 0%,#cbd0d8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .danger-btn,button.danger{background:rgba(239,68,68,.06)}
 .danger-btn:hover,button.danger:hover{background:rgba(239,68,68,.14);border-color:rgba(248,113,113,.55)}
@@ -1435,6 +1475,20 @@ const Pages = (() => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>流水线生产计划板</title>
+<script>
+// 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
+(function(){
+  function apply(c, rgb){
+    if(c) document.documentElement.style.setProperty('--accent', c);
+    if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
+  }
+  window.addEventListener('message', e => {
+    if(!e.data || e.data.type !== 'theme-changed') return;
+    apply(e.data.accent, e.data.accentRgb);
+  });
+  try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
+})();
+<\/script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>
 <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/script>
 <style>
@@ -1459,9 +1513,12 @@ const Pages = (() => {
     --text: #f1f1f3;
     --text-dim: #9ca0a8;
     --text-mute: #707783;
-    --accent: #fb923c;
-    --accent-soft: rgba(251, 146, 60, 0.10);
-    --accent-glow: rgba(251, 146, 60, 0.18);
+    --accent:#fb923c;
+    --accent-rgb: 251, 146, 60;
+    --accent-dark: color-mix(in srgb, var(--accent), #000 15%);
+    --accent-light: color-mix(in srgb, var(--accent), #fff 18%);
+    --accent-soft: rgba(var(--accent-rgb), 0.10);
+    --accent-glow: rgba(var(--accent-rgb), 0.18);
     --green: #34d399;
     --red: #f87171;
     --blue: #60a5fa;
@@ -2516,7 +2573,7 @@ const Pages = (() => {
     background: rgba(255,255,255,0.02); border: 1px solid var(--border);
     border-radius: var(--radius-sm); transition: background 0.15s, border-color 0.15s;
   }
-  .copy-day-list .copy-day-item:hover { background: var(--accent-soft); border-color: rgba(251,146,60,0.4); }
+  .copy-day-list .copy-day-item:hover { background: var(--accent-soft); border-color: rgba(var(--accent-rgb),0.4); }
   .copy-day-list .copy-day-item .date { flex: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
   .copy-day-list .copy-day-item .dow { color: var(--text-dim); font-size: 11px; min-width: 28px; }
   .copy-day-list .copy-day-item .meta { color: var(--text-mute); font-size: 11px; }
@@ -2528,7 +2585,7 @@ const Pages = (() => {
   .lib-item-btn { background: transparent; border: 1px solid var(--border); color: var(--text-mute); width: 28px; height: 28px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 6px; transition: background 0.15s, color 0.15s, border-color 0.15s; }
   .lib-item-btn.edit:hover { color: var(--blue); border-color: rgba(96,165,250,0.4); background: rgba(96,165,250,0.06); }
   .lib-item-btn.del:hover { color: var(--red); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.06); }
-  .lib-item-btn.apply:hover { color: var(--warn); border-color: rgba(251,146,60,0.45); background: rgba(251,146,60,0.08); }
+  .lib-item-btn.apply:hover { color: var(--warn); border-color: rgba(var(--accent-rgb),0.45); background: rgba(var(--accent-rgb),0.08); }
   .ns-day-mark { font-size: 10px; opacity: 0.7; margin-left: 2px; vertical-align: middle; }
   .lib-empty { text-align: center; color: var(--text-mute); padding: 32px 10px; border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 12px; }
 
@@ -2630,7 +2687,7 @@ const Pages = (() => {
   body.printing .line-config, body.printing .top-btn, body.printing .date-back-today, body.printing .cal-popover, body.printing::before { display: none !important; }
   body.printing .timeline-head { cursor: default !important; }
   body.printing #totalAll, body.printing .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
-  body.printing #totalDur { color: #f97316 !important; }
+  body.printing #totalDur { color:var(--accent-dark) !important; }
   body.printing #totalFinish { color: #2563eb !important; }
   body.printing, body.printing html { overflow: visible !important; height: auto !important; }
   html:has(body.printing) { position: static !important; overflow: visible !important; height: auto !important; }
@@ -2755,12 +2812,12 @@ const Pages = (() => {
   body.printing .topbar { border-bottom: 1px solid #555 !important; }
   body.printing .brand, body.printing .brand-sub, body.printing .clock, body.printing .line-label, body.printing .foot-label, body.printing .foot-val,
   body.printing .tick, body.printing .tick .label { color: #000 !important; background: #fff !important; }
-  body.printing .line-num, body.printing .foot-val.time { color: #f97316 !important; }
+  body.printing .line-num, body.printing .foot-val.time { color:var(--accent-dark) !important; }
   body.printing .foot-val.finish { color: #2563eb !important; }
   body.printing .tick.hour { border-top-color: #bbb !important; }
-  body.printing .tick.hour-20 { border-top: 1.5px solid #f97316 !important; color: #f97316 !important; }
+  body.printing .tick.hour-20 { border-top: 1.5px solid var(--accent-dark) !important; color:var(--accent-dark) !important; }
   body.printing .grid-line.hour { border-top: 1px solid #e2e2e2 !important; }
-  body.printing .grid-line.hour-20 { border-top: 1px solid #f97316 !important; opacity: 0.55 !important; }
+  body.printing .grid-line.hour-20 { border-top: 1px solid var(--accent-dark) !important; opacity: 0.55 !important; }
   body.printing .card {
     background: #fff !important;
     box-shadow: none !important;
@@ -2987,25 +3044,25 @@ const Pages = (() => {
 .confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
 .confirm-popover button:hover{background:#1f1f23}
 .confirm-popover button:active{transform:scale(0.97)}
-.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
-.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
+.confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
-.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:#fb923c;background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
-.toast.info{border-left:3px solid #fb923c}
+.toast.info{border-left:3px solid var(--accent)}
 .toast.hide{animation:toastOut .2s ease-in forwards}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 
 /* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
-::selection{background:rgba(251,146,60,.28);color:#fff}
+::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
@@ -3015,7 +3072,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
    保留 backdrop blur 让身后的 body 辐射光晕能淡淡透上来,质感不死。 */
 .topbar{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)!important}
 .brand{letter-spacing:.3px}
-.brand .dot{box-shadow:0 0 12px rgba(251,146,60,.55)}
+.brand .dot{box-shadow:0 0 12px rgba(var(--accent-rgb),.55)}
 .top-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
 .top-btn:hover{background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important;color:var(--text)!important}
 .top-btn:active{transform:scale(.97)}
@@ -3052,21 +3109,21 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 }
 /* 日期栏的「日」字加一道极细橙色底光,作为焦点 */
 .date-day{
-  text-shadow:0 0 18px rgba(251,146,60,.18);
+  text-shadow:0 0 18px rgba(var(--accent-rgb),.18);
 }
 .qty-total,.time-total,.finish-total,#totalAll,#totalDur,#totalFinish{font-feature-settings:"tnum"}
 /* 卡片 — 微梯度 + 顶部 1px 亮线 + 柔阴影,hover 抬升 */
 .card{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 2px 6px rgba(0,0,0,.32),0 1px 2px rgba(0,0,0,.2)!important;transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
 .card:not(.expanded):hover{transform:translateX(1px);box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 4px 14px rgba(0,0,0,.42),0 1px 2px rgba(0,0,0,.25)!important}
-.card.expanded,.card.active,.card-expanded{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(251,146,60,.22)!important}
+.card.expanded,.card.active,.card-expanded{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.22)!important}
 /* 输入框(卡片字段)— 聚焦光晕 */
 .field-input,.gap,.start-time,.actual-finish{transition:border-color .15s,box-shadow .15s,background .15s}
-.field-input:focus,.gap:focus,.start-time:focus,.actual-finish:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(251,146,60,.18)!important}
+.field-input:focus,.gap:focus,.start-time:focus,.actual-finish:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18)!important}
 /* 按钮 — 通用微动效 */
 button{transition:transform .12s,background .15s,border-color .15s,box-shadow .15s}
 button:active{transform:scale(.97)}
 .head-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
-.head-btn:hover{background:rgba(251,146,60,.08)!important;border-color:rgba(251,146,60,.35)!important;color:var(--accent)!important}
+.head-btn:hover{background:rgba(var(--accent-rgb),.08)!important;border-color:rgba(var(--accent-rgb),.35)!important;color:var(--accent)!important}
 /* picker / modal 弹层 — 更深的玻璃 + 更柔阴影 */
 .picker-modal,#libModal .modal-card{background:linear-gradient(180deg,#1d2027 0%,#13161b 100%)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 /* 数字大屏(总计 / 耗时)— 微金属感 */
@@ -5673,8 +5730,22 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>配置表</title>
+<script>
+// 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
+(function(){
+  function apply(c, rgb){
+    if(c) document.documentElement.style.setProperty('--accent', c);
+    if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
+  }
+  window.addEventListener('message', e => {
+    if(!e.data || e.data.type !== 'theme-changed') return;
+    apply(e.data.accent, e.data.accentRgb);
+  });
+  try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
+})();
+<\/script>
 <style>
-  :root { --bg:#0a0b0e; --fg:#ececf1; --line:#262936; --accent:#fb923c; --accent-glow:rgba(251,146,60,.18); --soft:#14161d; --muted:#8a8d99; }
+  :root { --bg:#0a0b0e; --fg:#ececf1; --line:#262936; --accent:#fb923c; --accent-rgb:251,146,60; --accent-dark:color-mix(in srgb,var(--accent),#000 15%); --accent-light:color-mix(in srgb,var(--accent),#fff 18%); --accent-glow:rgba(var(--accent-rgb),.18); --soft:#14161d; --muted:#8a8d99; }
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
@@ -5736,14 +5807,14 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .chip:hover{border-color:#3a3f47}
   .chip .k{color:var(--muted);letter-spacing:.5px}
   .chip .v{color:var(--fg);font-weight:600;letter-spacing:.3px}
-  .chip.accent{background:linear-gradient(180deg,#1f1d1a 0%,#181613 100%);border-color:rgba(251,146,60,.22)}
+  .chip.accent{background:linear-gradient(180deg,#1f1d1a 0%,#181613 100%);border-color:rgba(var(--accent-rgb),.22)}
   .chip.accent .v{color:var(--accent)}
   .chip input.v{background:transparent;border:none;outline:none;width:60px;padding:0;text-align:center;font:inherit;font-weight:600}
   .chip input.v::placeholder{color:#555;font-weight:400}
   .chip.clickable{cursor:pointer}
-  .chip.clickable:hover{border-color:rgba(251,146,60,.5);box-shadow:0 4px 14px rgba(0,0,0,.4),0 0 0 4px rgba(251,146,60,.08),0 1px 0 rgba(255,255,255,.06) inset;transform:translateY(-1px)}
+  .chip.clickable:hover{border-color:rgba(var(--accent-rgb),.5);box-shadow:0 4px 14px rgba(0,0,0,.4),0 0 0 4px rgba(var(--accent-rgb),.08),0 1px 0 rgba(255,255,255,.06) inset;transform:translateY(-1px)}
   .chip.clickable:active{transform:translateY(0)}
-  .chip .caret{color:rgba(251,146,60,.6);font-size:10px;margin-left:2px}
+  .chip .caret{color:rgba(var(--accent-rgb),.6);font-size:10px;margin-left:2px}
   /* 简易日历弹窗(对齐计划板样式) */
   .cal-popover{position:fixed;z-index:1500;background:#1f2229;border:1px solid #3a3f47;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,.6);padding:12px;width:280px;max-width:calc(100vw - 16px);user-select:none;-webkit-user-select:none;font-family:inherit;animation:calPopIn .16s ease-out}
   @keyframes calPopIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -5760,10 +5831,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .cal-day.other{color:#707783;opacity:.4}
   .cal-day.sat{color:#3b82f6}
   .cal-day.sun{color:#ef4444}
-  .cal-day.today{border-color:rgba(251,146,60,.5)}
+  .cal-day.today{border-color:rgba(var(--accent-rgb),.5)}
   .cal-day.selected{background:var(--accent);color:#14181f!important;font-weight:700;border-color:var(--accent)}
   .cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-  .cal-today-btn{background:rgba(251,146,60,.1);color:var(--accent);border:1px solid rgba(251,146,60,.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
+  .cal-today-btn{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
   .cal-today-btn:hover{background:var(--accent);color:#14181f}
   .bento-title{text-align:center;font-size:32px;font-weight:700;letter-spacing:3px;margin:14px 0 6px;min-height:40px}
   .bento-title .muted{color:#5a5f68;font-weight:400;font-size:15px;letter-spacing:1px}
@@ -5777,7 +5848,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell.dragging{opacity:.25}
   .drag-ghost{position:fixed;pointer-events:none;z-index:1000;opacity:.92;box-shadow:0 12px 32px rgba(0,0,0,.6);transform:rotate(-2deg) scale(1.04);background:#1a1d22;border:1px solid var(--accent);border-radius:8px;padding:10px;display:flex;flex-direction:column;box-sizing:border-box}
   .drop-indicator{position:fixed;width:4px;background:var(--accent);border-radius:2px;pointer-events:none;z-index:999;box-shadow:0 0 12px var(--accent),0 0 4px var(--accent)}
-  .line-grid .cell.drop-target{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 0 12px var(--accent);background:rgba(251,146,60,.1)}
+  .line-grid .cell.drop-target{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 0 12px var(--accent);background:rgba(var(--accent-rgb),.1)}
   .bentos-screen{max-width:720px;margin:0 auto}
   .bentos-screen .toolbar{display:flex;gap:8px;margin-bottom:12px}
   .bentos-screen .toolbar input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit}
@@ -5960,25 +6031,25 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 .confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid #2a2d33;background:transparent;color:#e8e8e8;cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
 .confirm-popover button:hover{background:#1f1f23}
 .confirm-popover button:active{transform:scale(0.97)}
-.confirm-popover button.primary{background:#fb923c;border-color:#fb923c;color:#14181f;box-shadow:0 2px 8px rgba(251,146,60,0.35)}
-.confirm-popover button.primary:hover{background:#fda562;box-shadow:0 4px 12px rgba(251,146,60,0.45)}
+.confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
+.confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
-.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:#fb923c;background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(251,146,60,0.18)}
+.confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
-.toast.info{border-left:3px solid #fb923c}
+.toast.info{border-left:3px solid var(--accent)}
 .toast.hide{animation:toastOut .2s ease-in forwards}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 
 /* ========== 视觉精修:深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
-::selection{background:rgba(251,146,60,.28);color:#fff}
+::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
@@ -5987,10 +6058,10 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 header{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 header input,header button,header select{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);transition:all .18s cubic-bezier(.4,0,.2,1)}
 header input:hover{border-color:rgba(255,255,255,.12)}
-header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(251,146,60,.18);background:rgba(0,0,0,.36)}
+header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18);background:rgba(0,0,0,.36)}
 header button:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:var(--fg)}
 header button:active{transform:scale(.97)}
-header .btn-tab.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(251,146,60,.35),0 4px 14px rgba(251,146,60,.28),0 1px 0 rgba(255,255,255,.18) inset}
+header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
 /* 操作屏单元格 — 微梯度 + 内高光 + hover 抬升 */
 .line-grid .cell{background:linear-gradient(180deg,#1f2329 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 1px 3px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
 .line-grid .cell:not(.empty):hover{border-color:rgba(255,255,255,.1);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 4px 12px rgba(0,0,0,.42)}
@@ -6005,7 +6076,7 @@ header .btn-tab.active{background:linear-gradient(180deg,#fb923c 0%,#f97316 100%
 /* autocomplete 下拉 */
 .autocomplete{background:linear-gradient(180deg,#15181d 0%,#0e1014 100%);border-color:rgba(255,255,255,.08);box-shadow:0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.02) inset;border-radius:8px}
 .autocomplete .opt{transition:background .12s,color .12s;border-radius:4px;margin:1px 4px;padding:7px 10px}
-.autocomplete .opt:hover,.autocomplete .opt.sel{background:rgba(251,146,60,.1);color:var(--accent)}
+.autocomplete .opt:hover,.autocomplete .opt.sel{background:rgba(var(--accent-rgb),.1);color:var(--accent)}
 /* chip 与传送带元素的整体节奏(保留原渐变,只改阴影) */
 .chip{box-shadow:0 1px 3px rgba(0,0,0,.28),0 1px 0 rgba(255,255,255,.04) inset}
 .belt{box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
@@ -8597,6 +8668,13 @@ window.addEventListener('message', (e) => {
       try { configFrame.contentWindow.postMessage(pendingBentoJump, '*'); } catch (_) {}
       pendingBentoJump = null;
     }
+  } else if (t === 'theme-request') {
+    // iframe 启动后回拉一次当前主题色
+    try {
+      const cur = (typeof loadTheme === 'function') ? loadTheme() : '#fb923c';
+      const rgb = (typeof hexToRgb === 'function') ? hexToRgb(cur) : '251,146,60';
+      e.source && e.source.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*');
+    } catch(_){}
   }
 });
 let pendingBentoJump = null;
@@ -8632,6 +8710,96 @@ function activate(app, instant){
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
 document.getElementById('exportAllBtn').addEventListener('click', exportAll);
 document.getElementById('importAllBtn').addEventListener('click', importAll);
+
+// === 主题色系统 ===
+// 把任意 #RRGGBB 转 "r,g,b" 字符串
+function hexToRgb(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex||'').trim());
+  if(!m) return null;
+  const n = parseInt(m[1], 16);
+  return `${(n>>16)&255},${(n>>8)&255},${n&255}`;
+}
+const THEME_KEY = 'workbench-theme-accent';
+const THEME_DEFAULT = '#fb923c';
+const THEME_PRESETS = [
+  '#fb923c', // 橙(默认)
+  '#10b981', // 绿
+  '#3b82f6', // 蓝
+  '#a855f7', // 紫
+  '#ec4899', // 粉
+  '#ef4444', // 红
+  '#06b6d4', // 青
+  '#eab308', // 黄
+  '#14b8a6', // 蓝绿
+  '#f97316', // 深橙
+  '#6366f1', // 靛蓝
+  '#22c55e'  // 鲜绿
+];
+function loadTheme(){
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return /^#[0-9a-f]{6}$/i.test(v||'') ? v : THEME_DEFAULT;
+  } catch(_) { return THEME_DEFAULT; }
+}
+function applyThemeLocal(color){
+  const rgb = hexToRgb(color) || hexToRgb(THEME_DEFAULT);
+  document.documentElement.style.setProperty('--accent', color);
+  document.documentElement.style.setProperty('--accent-rgb', rgb);
+}
+function broadcastTheme(color){
+  const rgb = hexToRgb(color) || hexToRgb(THEME_DEFAULT);
+  document.querySelectorAll('iframe').forEach(f => {
+    try { f.contentWindow && f.contentWindow.postMessage({type:'theme-changed', accent: color, accentRgb: rgb}, '*'); } catch(_){}
+  });
+}
+function setTheme(color, persist){
+  applyThemeLocal(color);
+  broadcastTheme(color);
+  if (persist !== false) {
+    try { localStorage.setItem(THEME_KEY, color); } catch(_){}
+  }
+  // 更新色板选中态
+  document.querySelectorAll('#themeGrid .sw').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.color.toLowerCase() === color.toLowerCase());
+  });
+  const custom = document.getElementById('themeCustom');
+  if (custom) custom.value = color;
+}
+function initThemePicker(){
+  const grid = document.getElementById('themeGrid');
+  THEME_PRESETS.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sw';
+    b.style.background = c;
+    b.dataset.color = c;
+    b.title = c;
+    b.addEventListener('click', () => setTheme(c, true));
+    grid.appendChild(b);
+  });
+  document.getElementById('themeCustom').addEventListener('input', e => setTheme(e.target.value, true));
+  document.getElementById('themeReset').addEventListener('click', () => setTheme(THEME_DEFAULT, true));
+  const btn = document.getElementById('themeBtn');
+  const pop = document.getElementById('themePop');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    pop.classList.toggle('show');
+  });
+  document.addEventListener('click', e => {
+    if (!pop.contains(e.target) && e.target !== btn) pop.classList.remove('show');
+  });
+  // 初始应用
+  setTheme(loadTheme(), false);
+}
+initThemePicker();
+// 每个 iframe 加载完成后广播一次当前主题(确保 iframe 内拿到颜色)
+frames.forEach(f => {
+  f.addEventListener('load', () => {
+    const cur = loadTheme();
+    const rgb = hexToRgb(cur);
+    try { f.contentWindow.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*'); } catch(_){}
+  });
+});
 
 // === 手机端左右滑屏切换 app ===
 const APP_ORDER = ['plan', 'config', 'schedule'];
