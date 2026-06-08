@@ -175,6 +175,15 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 .settings-row .role-input{min-width:120px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
+/* 同部门内人员可拖动重排序。drag-handle 是触发区,鼠标在它上时光标变 grab */
+.settings-sub-people .settings-row{position:relative;transition:background .12s,opacity .12s}
+.settings-sub-people .drag-handle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:24px;color:var(--muted);cursor:grab;font-size:14px;line-height:1;user-select:none;flex-shrink:0;border-radius:4px;letter-spacing:-1px}
+.settings-sub-people .drag-handle:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+.settings-sub-people .drag-handle:active{cursor:grabbing}
+.settings-sub-people .settings-row.dragging{opacity:0.4;background:rgba(124,92,255,0.08)}
+/* 拖到目标行上下半区时,边缘画一条紫色线作为插入位置提示 */
+.settings-sub-people .settings-row.drop-before{box-shadow:0 -2px 0 var(--accent) inset;border-top:2px solid var(--accent);margin-top:-2px}
+.settings-sub-people .settings-row.drop-after{box-shadow:0 2px 0 var(--accent) inset;border-bottom:2px solid var(--accent);margin-bottom:-2px}
 /* 手机竖屏:人员行强制单行,隐藏 label,缩小尺寸保证所有控件能挤一行 */
 @media (max-width:640px){
   .settings-sub-people .settings-row{
@@ -216,6 +225,11 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   }
   html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
+  /* 表格垂直居中于 body(A4 纸张内)。
+     注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
+     A4 可用区,浏览器看到表格上方空白后认为不能整张放进第 1 页,把整张推到第 2 页,第 1 页空白。
+     修复办法是去掉 table 层级的 break-inside:avoid,只保留 tr 级别(防止单行被截断)。
+     这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
   .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
   table.schedule td.cell-focus { outline: none !important; box-shadow: none !important; }
@@ -225,8 +239,10 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   /* kill sticky positions in print — iOS Safari / WebKit duplicates / shifts them otherwise */
   table.schedule thead { position: static !important; top: auto !important; box-shadow: none !important; }
   table.schedule th.name-col, table.schedule td.name-col { position: static !important; left: auto !important; }
-  /* keep entire table on one page */
-  table.schedule { page-break-inside: avoid; break-inside: avoid; }
+  /* 只保留 tr 的 break-inside:avoid(防止单行被分页截断),不再对 table 整体加。
+     table 层级的 break-inside:avoid 在缩放 > 100% 时会触发 bug:
+     浏览器看到表格上方空白后,认为表格不能整张放进当前页,把整张推到下一页,导致空白页。
+     去掉后,缩放时表格仍按 flex center 位置摆放,实际宽度通常仍能在第 1 页放下。 */
   table.schedule tr { page-break-inside: avoid; break-inside: avoid; }
   .nav, #page-settings, #page-data, #modal-host, #test-results { display: none !important; }
   #page-schedule { padding: 0; }
@@ -708,6 +724,20 @@ const Store = (() => {
     for (const k of Object.keys(state.attendance)) if (k.startsWith(`${deptId}|${personId}|`)) delete state.attendance[k];
     commit('people');
   }
+  // 在同一部门内把人员从源位置移动到目标位置。
+  // toPid 为目标参考人员 id;beforeTarget=true 插到目标之前,否则之后。
+  // 操作底层 state.people[deptId] 完整数组,跨越已软删除的人员(removedOn)保持其原位置稳定。
+  function reorderPerson(deptId, fromPid, toPid, beforeTarget) {
+    const list = state.people[deptId] || [];
+    const fromIdx = list.findIndex(p => p.id === fromPid);
+    if (fromIdx < 0 || fromPid === toPid) return;
+    const [moved] = list.splice(fromIdx, 1);
+    const newToIdx = list.findIndex(p => p.id === toPid);
+    if (newToIdx < 0) { list.splice(fromIdx, 0, moved); return; } // 异常回滚
+    const insertAt = beforeTarget ? newToIdx : newToIdx + 1;
+    list.splice(insertAt, 0, moved);
+    commit('people');
+  }
   // transfer: 把人员从原部门调到新部门。原部门设 removedOn=今天(过去周期保留),
   // 新部门添加一份(新 id,addedOn=今天,清空 retiredOn)。
   // 不修改 attendance,原部门历史排班按原 personId 保留。
@@ -766,7 +796,7 @@ const Store = (() => {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment,
-    addPerson, updatePerson, removePerson, purgePerson, transferPerson,
+    addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
     exportJson, importJson, reset, subscribe
   };
 })();
@@ -1577,20 +1607,105 @@ const Pages = (() => {
     sec.appendChild(Render.el('h2', '人员'));
     for (const d of Store.get().departments) {
       sec.appendChild(Render.el('div', { style: { marginTop: '10px', fontWeight: '600' } }, d.name));
-      const sub = Render.el('div.settings-sub-people');
+      const sub = Render.el('div.settings-sub-people', { dataset: { deptid: d.id } });
       // 过滤掉已软删除的人员(removedOn 已设置)。他们的历史排班仍保留在过去周期中,
       // 但不在设置名单里出现。这与「删除」按钮的语义一致。
       for (const p of Store.people(d.id).filter(p => !p.removedOn)) {
         sub.appendChild(buildPersonRow(d.id, p));
       }
       sub.appendChild(buildPersonAddRow(d.id));
+      wirePeopleDragDrop(sub, d.id);
       sec.appendChild(sub);
     }
     return sec;
   }
 
+  // 同部门内人员行拖动重排序。仅在 sub 容器内部生效(跨部门请用部门下拉=transfer)。
+  // 选择器 .settings-row[data-pid] 过滤掉「+ 新增」行,确保新增行不参与拖放。
+  // 边界自动滚动:鼠标拖到视口顶/底 80px 内时,RAF 循环持续滚动页面,
+  // 让用户能拖到当前视口外的位置(HTML5 drag-and-drop 默认不会自动滚动)。
+  function wirePeopleDragDrop(container, deptId) {
+    let draggingPid = null;
+    let lastClientY = 0;
+    let scrollRafId = null;
+    const SCROLL_ZONE = 80; // px,距视口顶/底多远开始滚动
+    const SCROLL_SPEED = 14; // px/frame
+    const clearIndicators = () => {
+      container.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+        el.classList.remove('drop-before', 'drop-after');
+      });
+    };
+    // 全局 dragover 跟踪鼠标 Y(原 container dragover 只在容器内触发,鼠标移到边缘时不更新)
+    const trackY = (e) => { lastClientY = e.clientY; };
+    const scrollTick = () => {
+      if (!draggingPid) { scrollRafId = null; return; }
+      const h = window.innerHeight;
+      if (lastClientY > 0 && lastClientY < SCROLL_ZONE) {
+        window.scrollBy(0, -SCROLL_SPEED);
+      } else if (lastClientY > h - SCROLL_ZONE) {
+        window.scrollBy(0, SCROLL_SPEED);
+      }
+      scrollRafId = requestAnimationFrame(scrollTick);
+    };
+    const startAutoScroll = () => { if (!scrollRafId) scrollRafId = requestAnimationFrame(scrollTick); };
+    const stopAutoScroll = () => {
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+      scrollRafId = null;
+      document.removeEventListener('dragover', trackY);
+    };
+    container.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.settings-row[data-pid]');
+      if (!row) return;
+      draggingPid = row.dataset.pid;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.pid);
+      lastClientY = e.clientY;
+      document.addEventListener('dragover', trackY);
+      startAutoScroll();
+    });
+    container.addEventListener('dragover', (e) => {
+      if (!draggingPid) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearIndicators();
+      const targetRow = e.target.closest('.settings-row[data-pid]');
+      if (!targetRow || targetRow.dataset.pid === draggingPid) return;
+      const rect = targetRow.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      targetRow.classList.add(before ? 'drop-before' : 'drop-after');
+    });
+    container.addEventListener('dragleave', (e) => {
+      // 鼠标离开整个 sub 容器时才清提示(避免在子元素间移动时闪烁)
+      if (!container.contains(e.relatedTarget)) clearIndicators();
+    });
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!draggingPid) return;
+      const targetRow = e.target.closest('.settings-row[data-pid]');
+      clearIndicators();
+      if (targetRow && targetRow.dataset.pid !== draggingPid) {
+        const rect = targetRow.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        Store.reorderPerson(deptId, draggingPid, targetRow.dataset.pid, before);
+        // commit('people') 会触发整页重渲染,后续 dragend 可能落在已被替换的 DOM 上,无影响
+      }
+      draggingPid = null;
+      stopAutoScroll();
+    });
+    container.addEventListener('dragend', () => {
+      container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+      clearIndicators();
+      draggingPid = null;
+      stopAutoScroll();
+    });
+  }
+
   function buildPersonRow(deptId, p) {
-    const row = Render.el('div.settings-row', { dataset: { pid: p.id } });
+    const row = Render.el('div.settings-row', { dataset: { pid: p.id }, draggable: 'true' });
+    // 拖拽手柄 — 仅作为视觉提示。整行 draggable=true 已让任意空白处都能触发拖拽,
+    // 输入框/按钮自身的点击事件不受影响(浏览器默认让 input 元素消耗 mousedown)。
+    row.appendChild(Render.el('span.drag-handle', { title: '拖动重排序' }, '⋮⋮'));
     row.appendChild(Render.el('input.role-input', {
       placeholder: '役職', value: p.role || '',
       onchange: (e) => Store.updatePerson(deptId, p.id, { role: e.target.value })
