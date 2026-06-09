@@ -1798,10 +1798,15 @@ const Pages = (() => {
       row.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, it.label + ':'));
       const cur = sizes[it.key];
       const input = Render.el('input.num', {
-        type: 'number',
+        // type:text + inputmode:numeric:iOS Safari 上 type=number 的光标无法移动,改成 text 类型保留正常文本编辑
+        type: 'text',
+        inputmode: 'numeric',
+        pattern: '[0-9]*',
         value: cur != null ? String(cur) : '',
         placeholder: String(it.defaultPx),
         title: '空值=使用默认 ' + it.defaultPx + 'px',
+        // 聚焦时全选当前值,方便直接覆盖输入新数字
+        onfocus: (e) => e.target.select(),
         onchange: (e) => {
           const v = e.target.value.trim();
           if (v === '') Store.resetSize(it.key);
