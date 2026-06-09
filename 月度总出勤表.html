@@ -100,7 +100,7 @@ body:not(.editing) table.schedule td.dispatch input{cursor:default}
 body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
-.today-badge{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#f97316;color:#fff;border-radius:50%;font-weight:700;font-size:11px;line-height:1;font-family:var(--font-mono)}
+.today-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11px;line-height:1}
 /* row / column highlight (click name-col / date-th to toggle) */
 table.schedule td.name-col{cursor:pointer}
 table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-row th[data-ymd]{cursor:pointer}
@@ -347,7 +347,15 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   table.schedule td.day-cell.retired { color: #888; background: #f5f5f5 !important; }
   table.schedule th.sat { color: #1d4ed8 !important; }
   table.schedule th.sun { color: #b91c1c !important; }
-  .today-badge { background: #f97316 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* 打印时跟着 --row-h 缩放,字号匹配相邻日期数字,圆只比字大一圈,视觉上协调 */
+  .today-badge {
+    background: #f97316 !important; color: #fff !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    width: calc(var(--row-h) * 0.7) !important;
+    height: calc(var(--row-h) * 0.7) !important;
+    font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important;
+    font-weight: 500 !important;
+  }
   table.schedule tr.stat-row td { background: #f5f5f5 !important; height: 22px; font-weight: 600; }
   table.schedule td.required, table.schedule td.dispatch { padding: 0; }
   table.schedule td.required input, table.schedule td.dispatch input {
