@@ -1162,13 +1162,16 @@ const Pages = (() => {
   }
 
   // 通用拖拽尺寸调整。handle 是拖拽元素,key 是 state.sizes 的 key,axis 是 'x'(列宽) 或 'y'(行高),
-  // refSelector 是 querySelector 字符串,用于从 DOM 读取初始尺寸(初次拖拽时还没有 inline 样式)。
+  // measureSel 用于读初始尺寸(必须指向有真实 layout box 的元素 — th/td,不能是 col,
+  //           因为 col 元素在手机 Safari 下 getBoundingClientRect 返回 0,导致拖动开始时尺寸被设成 0)。
+  // applySel 用于拖动时实时改 inline width(列宽就是 col 元素,行高同 measureSel)。
   // 拖拽时直接改 documentElement 上的 CSS 变量,所有同类元素一起预览;松手后 Store.setSize 提交+重渲。
   // 双击 handle 重置该 key,清除 CSS 变量回退到默认值。
-  function wireResize(handle, key, axis, refSelector) {
+  function wireResize(handle, key, axis, measureSel, applySel) {
     const cssVar = '--' + key + (axis === 'x' ? '-w' : '-h');
+    applySel = applySel || measureSel;
     const onStart = (clientPos) => {
-      const ref = document.querySelector(refSelector);
+      const ref = document.querySelector(measureSel);
       if (!ref) return;
       const rect = ref.getBoundingClientRect();
       const startSize = axis === 'x' ? rect.width : rect.height;
@@ -1184,7 +1187,7 @@ const Pages = (() => {
         // 行高:只改 CSS 变量(tbody tr td 通过 var 读)
         document.documentElement.style.setProperty(cssVar, curSize + 'px');
         if (axis === 'x') {
-          document.querySelectorAll(refSelector).forEach(el => el.style.width = curSize + 'px');
+          document.querySelectorAll(applySel).forEach(el => el.style.width = curSize + 'px');
         }
       };
       const onUp = () => {
@@ -1441,19 +1444,19 @@ const Pages = (() => {
     thead.appendChild(r0);
 
     const r1 = Render.el('tr.head-row');
-    // 5 个固定列各自独立 key + handle。refSelector 用对应的 col 元素,GetBoundingClientRect 取实际渲染宽度
-    const addFixedColHeader = (cls, label, key, refSel) => {
+    // 5 个固定列各自独立 key + handle。measureSel 用 th(有真实 layout box),applySel 用 col(改 inline width 触发布局)
+    const addFixedColHeader = (cls, label, key, measureSel, applySel) => {
       const th = Render.el(cls, { rowspan: 2 }, label);
       const handle = Render.el('span.col-resize-handle', { title: '拖动调整列宽,双击重置' });
-      wireResize(handle, key, 'x', refSel);
+      wireResize(handle, key, 'x', measureSel, applySel);
       th.appendChild(handle);
       r1.appendChild(th);
     };
-    addFixedColHeader('th.role-col', '役職', 'col-role', 'table.schedule col.col-role');
-    addFixedColHeader('th.name-col', '氏名', 'col-name', 'table.schedule col.col-name');
-    addFixedColHeader('th.sum-col', '有休', 'col-sum-paid', 'table.schedule col.col-sum.s-paid');
-    addFixedColHeader('th.sum-col', '契休', 'col-sum-contract', 'table.schedule col.col-sum.s-contract');
-    addFixedColHeader('th.sum-col', '残', 'col-sum-remain', 'table.schedule col.col-sum.s-remain');
+    addFixedColHeader('th.role-col', '役職', 'col-role', 'table.schedule th.role-col', 'table.schedule col.col-role');
+    addFixedColHeader('th.name-col', '氏名', 'col-name', 'table.schedule th.name-col', 'table.schedule col.col-name');
+    addFixedColHeader('th.sum-col.s-paid', '有休', 'col-sum-paid', 'table.schedule th.sum-col.s-paid', 'table.schedule col.col-sum.s-paid');
+    addFixedColHeader('th.sum-col.s-contract', '契休', 'col-sum-contract', 'table.schedule th.sum-col.s-contract', 'table.schedule col.col-sum.s-contract');
+    addFixedColHeader('th.sum-col.s-remain', '残', 'col-sum-remain', 'table.schedule th.sum-col.s-remain', 'table.schedule col.col-sum.s-remain');
     // 日期列所有 31 个共享 col-day 宽度 key。每个 th 都加 handle,拖任意一个都改 --col-day-w
     for (const d of days) {
       const content = d.ymd === todayYmd
@@ -1463,7 +1466,7 @@ const Pages = (() => {
       if (d.isSat) th.classList.add('sat');
       if (d.isSun || d.isHoliday) th.classList.add('sun');
       const colHandle = Render.el('span.col-resize-handle', { title: '拖动调整所有日期列宽(统一),双击重置' });
-      wireResize(colHandle, 'col-day', 'x', 'table.schedule col.col-day');
+      wireResize(colHandle, 'col-day', 'x', 'table.schedule thead tr.head-row th[data-ymd]', 'table.schedule col.col-day');
       th.appendChild(colHandle);
       r1.appendChild(th);
     }
@@ -1826,7 +1829,7 @@ const Pages = (() => {
         onchange: (e) => Store.renameDepartment(d.id, e.target.value || '未命名')
       });
       row.appendChild(nameInput);
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '必要:'));
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '必要人数:'));
       row.appendChild(Render.el('input.num', {
         type: 'number', min: '0',
         value: String(d.requiredCount != null ? d.requiredCount : 22),
