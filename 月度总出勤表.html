@@ -70,23 +70,28 @@ input[type=number]{-moz-appearance:textfield}
 table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:3;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
-table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%}
+table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%;table-layout:fixed}
 table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
-table.schedule col.col-role{width:60px}
-table.schedule col.col-name{width:130px}
+table.schedule col.col-role{width:var(--col-role-w, 60px)}
+table.schedule col.col-name{width:var(--col-name-w, 130px)}
 table.schedule col.col-sum{width:36px}
-table.schedule col.col-day{width:calc(27px * var(--cell-scale, 1))}
+table.schedule col.col-sum.s-paid{width:var(--col-sum-paid-w, 36px)}
+table.schedule col.col-sum.s-contract{width:var(--col-sum-contract-w, 36px)}
+table.schedule col.col-sum.s-remain{width:var(--col-sum-remain-w, 36px)}
+table.schedule col.col-day{width:var(--col-day-w, 27px)}
+table.schedule tbody tr:not(.stat-row)>td{height:var(--row-person-h, 25px)}
+table.schedule tbody tr.stat-row>td{height:var(--row-stat-h, 25px)}
 table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
-table.schedule th.role-col,table.schedule td.role-col{min-width:60px;text-align:left;padding-left:6px}
-table.schedule th.name-col,table.schedule td.name-col{min-width:110px;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1}
+table.schedule th.role-col,table.schedule td.role-col{min-width:10px;text-align:left;padding-left:6px}
+table.schedule th.name-col,table.schedule td.name-col{min-width:20px;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1}
 table.schedule td.name-col{background:var(--card)}
-table.schedule th.sum-col,table.schedule td.sum-col{min-width:36px;color:var(--muted)}
+table.schedule th.sum-col,table.schedule td.sum-col{min-width:10px;color:var(--muted)}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
-table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:calc(27px * var(--cell-scale, 1));height:calc(25px * var(--cell-scale, 1));box-sizing:border-box;padding:0;vertical-align:middle}
-table.schedule td.day-cell{width:calc(27px * var(--cell-scale, 1));height:calc(25px * var(--cell-scale, 1));box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
+table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:27px;height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
+table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--danger)}
@@ -208,12 +213,19 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .settings-section>.settings-row>input.num{width:44px;flex:0 0 44px;padding:6px 2px;font-size:12px;text-align:center}
   .settings-section>.settings-row>.grow{display:none}
   .settings-section>.settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
-  /* 手机屏幕排班表强制固定布局,所有日期列严格按 col-day 宽度,不再受 cell 内容(〇/有/空)影响。
-     屏幕默认是 table-layout:auto,cell 宽 = max(col 声明宽度, cell 内容最小宽度),
-     不同列内容不同时(空 cell vs 有〇的 cell)会出现列宽不一致,视觉不齐。
-     fixed 布局严格按 col 宽分配,均匀美观;表格自然超出视口宽度时浏览器自动横向滚动。 */
-  table.schedule{table-layout:fixed}
 }
+/* 单元格尺寸拖拽手柄(屏幕全平台),打印模式隐藏 */
+table.schedule thead th[data-ymd]{position:relative}
+table.schedule thead th.role-col,table.schedule thead th.name-col,table.schedule thead th.sum-col{position:relative}
+table.schedule td.name-col{position:relative}
+table.schedule tr.stat-row td.label{position:relative}
+.col-resize-handle{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:5;background:transparent}
+.col-resize-handle:hover{background:rgba(124,92,255,0.5)}
+.row-resize-handle{position:absolute;bottom:-3px;left:0;width:100%;height:6px;cursor:row-resize;z-index:5;background:transparent}
+.row-resize-handle:hover{background:rgba(124,92,255,0.5)}
+body.resizing{user-select:none}
+body.resizing.resizing-col{cursor:col-resize!important}
+body.resizing.resizing-row{cursor:row-resize!important}
 /* data */
 .data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
 .data-stats{font-family:var(--font-mono);color:var(--muted);font-size:13px;line-height:1.8}
@@ -226,7 +238,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
        row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
-    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), calc(7mm * var(--cell-scale, 1))));
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
   }
   html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
@@ -237,6 +249,15 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
      这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
   .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
+  .col-resize-handle, .row-resize-handle { display: none !important; }
+  /* position:relative 在 border-collapse:collapse 的 table cell 上会让浏览器渲染时丢边框,
+     屏幕需要 relative 来定位拖拽手柄,但打印不需要 handle,统一强制 static 让边框正常显示 */
+  table.schedule thead th[data-ymd],
+  table.schedule thead th.role-col,
+  table.schedule thead th.name-col,
+  table.schedule thead th.sum-col,
+  table.schedule td.name-col,
+  table.schedule tr.stat-row td.label { position: static !important; }
   table.schedule td.cell-focus { outline: none !important; box-shadow: none !important; }
   .color-palette { display: none !important; }
   /* preserve inline cell colors in print */
@@ -318,11 +339,19 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   table.schedule th.dept-name { text-align: left; padding-left: 6px; font-weight: 700; font-size: 14px; color: #000 !important; background: #fff !important; height: 26px; }
   table.schedule th.month-label { font-weight: 700; font-size: 13px; color: #000 !important; background: #ddd !important; letter-spacing: 2px; height: 26px; }
   /* fixed column widths(mm) — A4 横向可用 ≈ 289mm
-     左侧信息区 100mm (1/3) + 日期区 189mm (2/3) 的黄金比例 */
-  table.schedule col.col-role { width: 20mm !important; }
-  table.schedule col.col-name { width: 30mm !important; }
-  table.schedule col.col-sum { width: 8mm !important; }
-  table.schedule col.col-day { width: auto !important; }
+     左侧信息区 100mm (1/3) + 日期区 189mm (2/3) 的黄金比例。
+     用户在屏幕拖宽设过 --col-*-w (px) 时生效;否则用 mm fallback。
+     用户的 px 值 1mm≈3.78px,印刷尺寸自动按 96dpi 换算。 */
+  table.schedule col.col-role { width: var(--col-role-w, 20mm) !important; }
+  table.schedule col.col-name { width: var(--col-name-w, 30mm) !important; }
+  table.schedule col.col-sum.s-paid { width: var(--col-sum-paid-w, 8mm) !important; }
+  table.schedule col.col-sum.s-contract { width: var(--col-sum-contract-w, 8mm) !important; }
+  table.schedule col.col-sum.s-remain { width: var(--col-sum-remain-w, 8mm) !important; }
+  /* col-day:用户设过宽度则用 px,否则 auto(table-layout:fixed 均分剩余宽度) */
+  table.schedule col.col-day { width: var(--col-day-w, auto); }
+  /* tbody 行高同步 — 用户设过 --row-*-h (px) 用之,否则 fallback 到自动公式 var(--row-h) */
+  table.schedule tbody tr:not(.stat-row) > td { height: var(--row-person-h, var(--row-h)) !important; }
+  table.schedule tbody tr.stat-row > td { height: var(--row-stat-h, var(--row-h)) !important; }
   /* 各列字号 — 比例 0.5 保持夕盛(人多)原大小,mm 上限保护人少部门 */
   table.schedule th.role-col, table.schedule td.role-col {
     padding-left: 1mm;
@@ -496,10 +525,19 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     departments: [
-      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 },
-      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 },
-      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 }
+      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192 },
+      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192 },
+      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192 }
     ],
+    // 单元格尺寸覆盖。所有部门共享(用户调一次,所有部门生效)。
+    // key 含义:
+    //   col-role/col-name: 役職/氏名 列宽 px
+    //   col-sum-paid/col-sum-contract/col-sum-remain: 有休/契休/残 列宽 px (3 个独立)
+    //   col-day: 所有日期列统一宽度 px
+    //   row-person: 所有人员行统一高度 px
+    //   row-stat: 必要人数/ライン合計/派遣短期/過不足 4 行统一高度 px
+    // 没设置的 key 用 CSS var() fallback 的默认值。
+    sizes: {},
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
     cellColors: {},
@@ -529,9 +567,9 @@ const Store = (() => {
       if (Array.isArray(parsed.departments)) {
         parsed.departments.forEach(d => {
           if (d.printHeightMm == null) d.printHeightMm = 192;
-          if (d.cellSizePct == null) d.cellSizePct = 100;
         });
       }
+      if (!parsed.sizes) parsed.sizes = {};
       // 校正 ui.currentDept:如果指向已删除部门(或 null),改为第一个部门。
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
       // 用户「选」首项时 onchange 不触发 → 看起来部门下拉无反应。
@@ -679,7 +717,7 @@ const Store = (() => {
   function addDepartment(name) {
     const id = Util.newId('d');
     // 新部门自动带打印高度默认值 192mm,与现有部门保持一致
-    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192, cellSizePct: 100 });
+    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192 });
     state.people[id] = [];
     commit('dept');
     return id;
@@ -700,14 +738,26 @@ const Store = (() => {
       commit('dept');
     }
   }
-  function setDeptCellSize(id, pct) {
-    const d = state.departments.find(x => x.id === id);
-    if (d) {
-      // 50-200% 范围,避免极端值破坏排版
-      d.cellSizePct = Math.max(50, Math.min(200, Number(pct) || 100));
-      commit('dept');
-    }
+  // 单元格尺寸:统一存到 state.sizes,key 见 defaults() 注释。
+  // 单位 px,clamp 限制范围避免极端值破坏排版。
+  const SIZE_LIMITS = {
+    'col-role':       [10, 200],
+    'col-name':       [20, 400],
+    'col-sum-paid':   [10, 100],
+    'col-sum-contract': [10, 100],
+    'col-sum-remain': [10, 100],
+    'col-day':        [12, 80],
+    'row-person':     [14, 80],
+    'row-stat':       [14, 80],
+  };
+  function setSize(key, px) {
+    const limits = SIZE_LIMITS[key];
+    if (!limits) return;
+    const n = Math.max(limits[0], Math.min(limits[1], Math.round(Number(px) || 0)));
+    state.sizes[key] = n;
+    commit('size');
   }
+  function resetSize(key) { delete state.sizes[key]; commit('size'); }
   function removeDepartment(id) {
     state.departments = state.departments.filter(d => d.id !== id);
     delete state.people[id];
@@ -802,8 +852,8 @@ const Store = (() => {
     if (!parsed.cellTexts) parsed.cellTexts = {};
     parsed.departments.forEach(d => {
       if (d.printHeightMm == null) d.printHeightMm = 192;
-      if (d.cellSizePct == null) d.cellSizePct = 100;
     });
+    if (!parsed.sizes) parsed.sizes = {};
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
@@ -822,7 +872,8 @@ const Store = (() => {
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
-    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, setDeptCellSize, removeDepartment,
+    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment,
+    setSize, resetSize,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
     exportJson, importJson, reset, subscribe
   };
@@ -967,13 +1018,8 @@ const App = (() => {
       document.body.classList.toggle('print-dept-haraidashi', !!(curDept && curDept.name === '払出'));
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
-      // col 宽度直接 inline 设置。注意:CSS 里的 @media print 有 !important,
-      // inline style 必须用 setProperty + 'important' 才能压过它(手机 Safari 严格按规范处理,
-      // 普通 .style.width 不带 important 会输给 CSS !important,导致 col-name 退回 30mm 截断长名字)。
-      document.querySelectorAll('table.schedule col.col-role').forEach(c => c.style.setProperty('width', '20mm', 'important'));
-      document.querySelectorAll('table.schedule col.col-name').forEach(c => c.style.setProperty('width', '30mm', 'important'));
-      document.querySelectorAll('table.schedule col.col-sum').forEach(c => c.style.setProperty('width', '8mm', 'important'));
-      document.querySelectorAll('table.schedule col.col-day').forEach(c => c.style.setProperty('width', 'auto', 'important'));
+      // col 宽度交给 print CSS 处理(支持用户 --col-*-w 自定义 px 值;未设时 fallback 到 mm)。
+      // 此处不再 inline 覆盖,inline 会压过 CSS 里的 var fallback 链,让用户自定义失效。
     });
     window.addEventListener('afterprint', () => {
       if (originalTitle) document.title = originalTitle;
@@ -1097,6 +1143,59 @@ const Pages = (() => {
     });
   }
 
+  // 通用拖拽尺寸调整。handle 是拖拽元素,key 是 state.sizes 的 key,axis 是 'x'(列宽) 或 'y'(行高),
+  // refSelector 是 querySelector 字符串,用于从 DOM 读取初始尺寸(初次拖拽时还没有 inline 样式)。
+  // 拖拽时直接改 documentElement 上的 CSS 变量,所有同类元素一起预览;松手后 Store.setSize 提交+重渲。
+  // 双击 handle 重置该 key,清除 CSS 变量回退到默认值。
+  function wireResize(handle, key, axis, refSelector) {
+    const cssVar = '--' + key + (axis === 'x' ? '-w' : '-h');
+    const onStart = (clientPos) => {
+      const ref = document.querySelector(refSelector);
+      if (!ref) return;
+      const rect = ref.getBoundingClientRect();
+      const startSize = axis === 'x' ? rect.width : rect.height;
+      let curSize = startSize;
+      document.body.classList.add('resizing', axis === 'x' ? 'resizing-col' : 'resizing-row');
+      const limits = { 'col-role':[10,200], 'col-name':[20,400], 'col-sum-paid':[10,100],
+        'col-sum-contract':[10,100], 'col-sum-remain':[10,100], 'col-day':[12,80],
+        'row-person':[14,80], 'row-stat':[14,80] }[key] || [8, 400];
+      const onMove = (pos) => {
+        const delta = pos - clientPos;
+        curSize = Math.max(limits[0], Math.min(limits[1], Math.round(startSize + delta)));
+        document.documentElement.style.setProperty(cssVar, curSize + 'px');
+      };
+      const onUp = () => {
+        document.body.classList.remove('resizing', 'resizing-col', 'resizing-row');
+        document.removeEventListener('mousemove', mm);
+        document.removeEventListener('mouseup', mu);
+        document.removeEventListener('touchmove', tm);
+        document.removeEventListener('touchend', tu);
+        if (curSize !== startSize) Store.setSize(key, curSize);
+      };
+      const mm = (e) => onMove(axis === 'x' ? e.clientX : e.clientY);
+      const mu = () => onUp();
+      const tm = (e) => { onMove(axis === 'x' ? e.touches[0].clientX : e.touches[0].clientY); e.preventDefault(); };
+      const tu = () => onUp();
+      document.addEventListener('mousemove', mm);
+      document.addEventListener('mouseup', mu);
+      document.addEventListener('touchmove', tm, { passive: false });
+      document.addEventListener('touchend', tu);
+    };
+    handle.addEventListener('mousedown', (e) => {
+      e.stopPropagation(); e.preventDefault();
+      onStart(axis === 'x' ? e.clientX : e.clientY);
+    });
+    handle.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      onStart(axis === 'x' ? e.touches[0].clientX : e.touches[0].clientY);
+    }, { passive: true });
+    handle.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      Store.resetSize(key);
+    });
+    handle.addEventListener('click', (e) => e.stopPropagation());
+  }
+
   function renderSchedule() {
     const host = document.getElementById('page-schedule');
     Render.clear(host);
@@ -1104,10 +1203,15 @@ const Pages = (() => {
     renderPeriodNav();
     if (Store.get().ui.editMode) host.appendChild(buildEntryHint());
     host.appendChild(buildTable());
-    // 当前部门的单元格缩放系数 → CSS 变量,屏幕 day-cell 宽高 + 打印行高上限 一起按比例缩放
-    const curDept = Store.dept();
-    const cellScale = ((curDept && curDept.cellSizePct) || 100) / 100;
-    document.documentElement.style.setProperty('--cell-scale', String(cellScale));
+    // 用户自定义尺寸 → CSS 变量。每次 render 都清掉再重设,确保 reset (delete sizes[key]) 能回退到默认
+    const root = document.documentElement;
+    const sizes = Store.get().sizes || {};
+    ['col-role-w','col-name-w','col-sum-paid-w','col-sum-contract-w','col-sum-remain-w','col-day-w','row-person-h','row-stat-h']
+      .forEach(v => root.style.removeProperty('--' + v));
+    Object.entries(sizes).forEach(([key, px]) => {
+      const suffix = key.startsWith('col-') ? '-w' : '-h';
+      root.style.setProperty('--' + key + suffix, px + 'px');
+    });
     requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
   }
 
@@ -1256,14 +1360,13 @@ const Pages = (() => {
 
   function buildColgroup(days) {
     const cg = Render.el('colgroup');
-    // inline style 优先级最高,绕过所有 CSS 冲突。
-    // 左侧信息区 100mm (役職 20 + 氏名 50 + sum 10×3) = 1/3 A4,日期区 189mm = 2/3。
-    cg.appendChild(Render.el('col.col-role', { style: { width: '20mm' } }));
-    cg.appendChild(Render.el('col.col-name', { style: { width: '30mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    cg.appendChild(Render.el('col.col-sum',  { style: { width: '8mm' } }));
-    // col-day 不设固定宽度,让 table-layout:fixed 把剩余宽度均分给 N 列
+    // 屏幕用 CSS var (默认值在 fallback 里); 打印用 beforeprint JS 设置 inline mm 强制覆盖。
+    // 3 个 col-sum 用 s-paid/s-contract/s-remain 区分,各自独立绑 CSS var。
+    cg.appendChild(Render.el('col.col-role'));
+    cg.appendChild(Render.el('col.col-name'));
+    cg.appendChild(Render.el('col.col-sum.s-paid'));
+    cg.appendChild(Render.el('col.col-sum.s-contract'));
+    cg.appendChild(Render.el('col.col-sum.s-remain'));
     for (let i = 0; i < days.length; i++) cg.appendChild(Render.el('col.col-day'));
     return cg;
   }
@@ -1288,11 +1391,20 @@ const Pages = (() => {
     thead.appendChild(r0);
 
     const r1 = Render.el('tr.head-row');
-    r1.appendChild(Render.el('th.role-col', { rowspan: 2 }, '役職'));
-    r1.appendChild(Render.el('th.name-col', { rowspan: 2 }, '氏名'));
-    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '有休'));
-    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '契休'));
-    r1.appendChild(Render.el('th.sum-col', { rowspan: 2 }, '残'));
+    // 5 个固定列各自独立 key + handle。refSelector 用对应的 col 元素,GetBoundingClientRect 取实际渲染宽度
+    const addFixedColHeader = (cls, label, key, refSel) => {
+      const th = Render.el(cls, { rowspan: 2 }, label);
+      const handle = Render.el('span.col-resize-handle', { title: '拖动调整列宽,双击重置' });
+      wireResize(handle, key, 'x', refSel);
+      th.appendChild(handle);
+      r1.appendChild(th);
+    };
+    addFixedColHeader('th.role-col', '役職', 'col-role', 'table.schedule col.col-role');
+    addFixedColHeader('th.name-col', '氏名', 'col-name', 'table.schedule col.col-name');
+    addFixedColHeader('th.sum-col', '有休', 'col-sum-paid', 'table.schedule col.col-sum.s-paid');
+    addFixedColHeader('th.sum-col', '契休', 'col-sum-contract', 'table.schedule col.col-sum.s-contract');
+    addFixedColHeader('th.sum-col', '残', 'col-sum-remain', 'table.schedule col.col-sum.s-remain');
+    // 日期列所有 31 个共享 col-day 宽度 key。每个 th 都加 handle,拖任意一个都改 --col-day-w
     for (const d of days) {
       const content = d.ymd === todayYmd
         ? Render.el('span.today-badge', String(d.day))
@@ -1300,6 +1412,9 @@ const Pages = (() => {
       const th = Render.el('th', { dataset: { ymd: d.ymd }, onclick: () => toggleCol(d.ymd) }, content);
       if (d.isSat) th.classList.add('sat');
       if (d.isSun || d.isHoliday) th.classList.add('sun');
+      const colHandle = Render.el('span.col-resize-handle', { title: '拖动调整所有日期列宽(统一),双击重置' });
+      wireResize(colHandle, 'col-day', 'x', 'table.schedule col.col-day');
+      th.appendChild(colHandle);
       r1.appendChild(th);
     }
     thead.appendChild(r1);
@@ -1346,6 +1461,10 @@ const Pages = (() => {
         const capMm = (TARGET_MM / widthUnits).toFixed(2);
         nameTd.style.setProperty('--name-cap', capMm + 'mm');
       }
+      // 行高拖拽手柄 — 名字 td 底部 6px 拖拽区,改写 row-person(所有人员行统一)
+      const rowHandle = Render.el('span.row-resize-handle', { title: '拖动调整所有人员行高(统一),双击重置' });
+      wireResize(rowHandle, 'row-person', 'y', 'table.schedule tbody tr:not(.stat-row) > td.name-col');
+      nameTd.appendChild(rowHandle);
       tr.appendChild(nameTd);
 
       const sums = computeSums(deptId, p, periodKey, days);
@@ -1431,9 +1550,18 @@ const Pages = (() => {
     const requireds = days.map(d => Store.requiredCount(deptId, d.ymd));
     const dispatches = days.map(d => Store.dispatchCount(deptId, d.ymd));
 
+    // Stat 行 label td 加行高拖拽 handle:4 行共享 row-stat key,拖任意一个都改 --row-stat-h
+    const addStatRowHandle = (labelTd) => {
+      const handle = Render.el('span.row-resize-handle', { title: '拖动调整 stat 4 行高(统一),双击重置' });
+      wireResize(handle, 'row-stat', 'y', 'table.schedule tbody tr.stat-row > td.label');
+      labelTd.appendChild(handle);
+    };
+
     // Row 1: 必要人数 (editable, default 22)
     const r1 = Render.el('tr.stat-row');
-    r1.appendChild(Render.el('td.label', { colspan: 5 }, '必要人数'));
+    const r1Label = Render.el('td.label', { colspan: 5 }, '必要人数');
+    addStatRowHandle(r1Label);
+    r1.appendChild(r1Label);
     const editing = Store.get().ui.editMode;
     for (let i = 0; i < days.length; i++) {
       const td = Render.el('td.required', { dataset: { ymd: days[i].ymd } });
@@ -1452,14 +1580,18 @@ const Pages = (() => {
 
     // Row 2: ライン合計 (auto)
     const r2 = Render.el('tr.stat-row');
-    r2.appendChild(Render.el('td.label', { colspan: 5 }, 'ライン合計'));
+    const r2Label = Render.el('td.label', { colspan: 5 }, 'ライン合計');
+    addStatRowHandle(r2Label);
+    r2.appendChild(r2Label);
     for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
     // Row 3: 派遣短期 (手动输入,蓝色)
     // 派遣是排班时提前预约的,数字由人工填写。
     const r3 = Render.el('tr.stat-row');
-    r3.appendChild(Render.el('td.label', { colspan: 5 }, '派遣短期'));
+    const r3Label = Render.el('td.label', { colspan: 5 }, '派遣短期');
+    addStatRowHandle(r3Label);
+    r3.appendChild(r3Label);
     // 跳焦工具(放在 buildStatRows 函数内,闭包捕获 days 引用)
     // preventScroll: true 关键 — 阻止 focus 触发 scrollIntoView,
     // 否则浏览器会把新 input 滚到视野中导致整个表格跳动,用户以为"没跳"。
@@ -1542,7 +1674,9 @@ const Pages = (() => {
     // Row 4: 過不足 = ライン合計 + 派遣短期 − 必要人数
     // 正数 = 人手多余 / 0 = 刚好 / 负数 = 人手不足(临时缺勤导致)
     const r4 = Render.el('tr.stat-row');
-    r4.appendChild(Render.el('td.label', { colspan: 5 }, '過不足'));
+    const r4Label = Render.el('td.label', { colspan: 5 }, '過不足');
+    addStatRowHandle(r4Label);
+    r4.appendChild(r4Label);
     for (let i = 0; i < days.length; i++) {
       const excess = lineTotals[i] + dispatches[i] - requireds[i];
       const td = Render.el('td.excess', { dataset: { ymd: days[i].ymd } }, String(excess));
@@ -1610,13 +1744,6 @@ const Pages = (() => {
         value: String(d.printHeightMm != null ? d.printHeightMm : 192),
         title: '打印高度(mm),范围 100-210(默认 192)',
         onchange: (e) => Store.setDeptPrintHeight(d.id, e.target.value)
-      }));
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '格%:'));
-      row.appendChild(Render.el('input.num', {
-        type: 'number', min: '50', max: '200', step: '5',
-        value: String(d.cellSizePct != null ? d.cellSizePct : 100),
-        title: '单元格大小百分比,50-200%(默认 100),屏幕宽高 + 打印行高一起缩放',
-        onchange: (e) => Store.setDeptCellSize(d.id, e.target.value)
       }));
       row.appendChild(Render.el('span.grow'));
       const delDeptBtn = Render.el('button.danger', {}, '删除');
