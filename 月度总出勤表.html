@@ -208,6 +208,11 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .settings-section>.settings-row>input.num{width:44px;flex:0 0 44px;padding:6px 2px;font-size:12px;text-align:center}
   .settings-section>.settings-row>.grow{display:none}
   .settings-section>.settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
+  /* 手机屏幕排班表强制固定布局,所有日期列严格按 col-day 宽度,不再受 cell 内容(〇/有/空)影响。
+     屏幕默认是 table-layout:auto,cell 宽 = max(col 声明宽度, cell 内容最小宽度),
+     不同列内容不同时(空 cell vs 有〇的 cell)会出现列宽不一致,视觉不齐。
+     fixed 布局严格按 col 宽分配,均匀美观;表格自然超出视口宽度时浏览器自动横向滚动。 */
+  table.schedule{table-layout:fixed}
 }
 /* data */
 .data-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
