@@ -221,14 +221,9 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
        row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
-    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), var(--row-h-cap, 7mm)));
   }
-  /* zoom: 0.84 把整体内容缩到 84%,匹配 Chrome 打印对话框 84% 缩放下的视觉。
-     原因:A4 横向可用区在 @page margin:4mm 设定下理论是 289×202mm,但浏览器最小
-     边距通常 >4mm(常见 6-7mm),实际只剩 ~285×198mm。表格 100% 宽度(289mm)
-     横向溢出 → 浏览器把溢出部分挤到第 2 页。zoom 0.84 后表格实际占用 ~243mm,
-     稳定在 1 页内,用户打印对话框选 100% 缩放就是想要的大小。 */
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; zoom: 0.84; }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
   /* 表格垂直居中于 body(A4 纸张内)。
      注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
@@ -356,8 +351,8 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .today-badge {
     background: #f97316 !important; color: #fff !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    width: calc(var(--row-h) * 0.65) !important;
-    height: calc(var(--row-h) * 0.65) !important;
+    width: calc(var(--row-h) * 0.67) !important;
+    height: calc(var(--row-h) * 0.67) !important;
     font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important;
     font-weight: 500 !important;
   }
@@ -931,10 +926,21 @@ const App = (() => {
       // 应用当前部门的打印高度(每个部门可独立设置,默认 192mm)
       const curDept = Store.dept();
       const bodyH = (curDept && curDept.printHeightMm) || 192;
-      document.documentElement.style.setProperty('--print-body-h', bodyH + 'mm');
-      document.documentElement.style.setProperty('--print-row-h-base', (bodyH - 2) + 'mm');
-      // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
+      // 手机端打印特殊处理:
+      // 手机 Safari 打印 A4 横向时,实际可用区比 @page margin:4mm 声明小(浏览器最小边距更大),
+      // 表格 100% 宽 ≈ 289mm 会横向溢出 → 第 2 页。修复:body 缩到 84% (zoom 0.84) 让表格只占 ~243mm。
+      // 但单纯 zoom 0.84 会让表格只填 A4 的 84%,下方有大片空白 → 把 body 高度按 1/0.84 放大,
+      // row-h 上限按 1/0.84 放大,缩放后正好和 PC 端 192mm 体验一致(填满 A4 + 单元格同尺寸)。
+      // PC 端 (视口 > 640px) 完全不动,继续走原 192mm + 7mm row-h cap。
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
+      const PRINT_ZOOM = 0.84;
+      const declaredBodyH = isMobile ? (bodyH / PRINT_ZOOM) : bodyH;
+      const declaredRowCap = isMobile ? (7 / PRINT_ZOOM) : 7;
+      document.documentElement.style.setProperty('--print-body-h', declaredBodyH + 'mm');
+      document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
+      document.documentElement.style.setProperty('--row-h-cap', declaredRowCap + 'mm');
+      document.body.style.zoom = isMobile ? String(PRINT_ZOOM) : '';
+      // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
       document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0');
       // 払出 部门特例:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
       document.body.classList.toggle('print-dept-haraidashi', !!(curDept && curDept.name === '払出'));
@@ -955,6 +961,8 @@ const App = (() => {
       document.documentElement.style.removeProperty('--print-body-h');
       document.documentElement.style.removeProperty('--print-row-h-base');
       document.documentElement.style.removeProperty('--day-cell-pad-ratio');
+      document.documentElement.style.removeProperty('--row-h-cap');
+      document.body.style.removeProperty('zoom');
       document.body.classList.remove('print-dept-haraidashi');
       // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
       document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
