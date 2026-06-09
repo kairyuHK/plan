@@ -70,8 +70,10 @@ input[type=number]{-moz-appearance:textfield}
 table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:3;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
-table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:100%;table-layout:fixed}
-table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap}
+/* table 自然宽度(width:auto) — 之前 width:100% 配合 table-layout:fixed 会把多余空间按比例
+   分配给各列,col 声明 10px 实际渲染成 ~14px,用户无法真正拖到最小值。auto 严格按 col 声明值 */
+table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:auto;table-layout:fixed}
+table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap;box-sizing:border-box}
 table.schedule col.col-role{width:var(--col-role-w, 60px)}
 table.schedule col.col-name{width:var(--col-name-w, 130px)}
 table.schedule col.col-sum{width:36px}
@@ -84,14 +86,14 @@ table.schedule tbody tr.stat-row>td{height:var(--row-stat-h, 25px)}
 table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
-table.schedule th.role-col,table.schedule td.role-col{min-width:10px;text-align:left;padding-left:6px}
-table.schedule th.name-col,table.schedule td.name-col{min-width:20px;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1}
+table.schedule th.role-col,table.schedule td.role-col{min-width:0;text-align:left;padding-left:6px;overflow:hidden}
+table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
 table.schedule td.name-col{background:var(--card)}
-table.schedule th.sum-col,table.schedule td.sum-col{min-width:10px;color:var(--muted)}
+table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--muted);overflow:hidden}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
-table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:27px;height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
-table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
+table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
+table.schedule td.day-cell{height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--danger)}
@@ -277,7 +279,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
     background: #fff;
     /* height: auto 让 table 按 row heights 自然累加(190mm),
        不强制拉到容器 100%(192mm),否则最后一行下边框会贴 body 底沿被 overflow 裁掉。 */
-    width: 100%; height: auto; table-layout: fixed;
+    width: 100% !important; height: auto; table-layout: fixed;
     border-collapse: collapse;
     margin: 0;
   }
@@ -347,8 +349,9 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule col.col-sum.s-paid { width: var(--col-sum-paid-w, 8mm) !important; }
   table.schedule col.col-sum.s-contract { width: var(--col-sum-contract-w, 8mm) !important; }
   table.schedule col.col-sum.s-remain { width: var(--col-sum-remain-w, 8mm) !important; }
-  /* col-day:用户设过宽度则用 px,否则 auto(table-layout:fixed 均分剩余宽度) */
-  table.schedule col.col-day { width: var(--col-day-w, auto); }
+  /* col-day:打印时强制覆盖屏幕的 inline 自动撑满宽度。
+     用户显式设过 --col-day-w 则用之;否则 auto 让 fixed layout 把 A4 剩余宽度均分给 31 天 */
+  table.schedule col.col-day { width: var(--col-day-w, auto) !important; }
   /* tbody 行高同步 — 用户设过 --row-*-h (px) 用之,否则 fallback 到自动公式 var(--row-h) */
   table.schedule tbody tr:not(.stat-row) > td { height: var(--row-person-h, var(--row-h)) !important; }
   table.schedule tbody tr.stat-row > td { height: var(--row-stat-h, var(--row-h)) !important; }
@@ -959,6 +962,15 @@ const App = (() => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
     });
     window.addEventListener('hashchange', showRoute);
+    // 窗口宽度变化时重排 schedule(table 总宽 = 容器宽度 自适应)
+    let resizeT;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeT);
+      resizeT = setTimeout(() => {
+        const hash = location.hash in routes ? location.hash : '#/schedule';
+        if (hash === '#/schedule') Pages.renderSchedule();
+      }, 150);
+    });
   }
 
   function updateEditUI() {
@@ -1162,7 +1174,12 @@ const Pages = (() => {
       const onMove = (pos) => {
         const delta = pos - clientPos;
         curSize = Math.max(limits[0], Math.min(limits[1], Math.round(startSize + delta)));
+        // 列宽:同时改 CSS 变量(打印 fallback 链) + 所有匹配 col 的 inline width(屏幕主路径)
+        // 行高:只改 CSS 变量(tbody tr td 通过 var 读)
         document.documentElement.style.setProperty(cssVar, curSize + 'px');
+        if (axis === 'x') {
+          document.querySelectorAll(refSelector).forEach(el => el.style.width = curSize + 'px');
+        }
       };
       const onUp = () => {
         document.body.classList.remove('resizing', 'resizing-col', 'resizing-row');
@@ -1343,7 +1360,23 @@ const Pages = (() => {
     const tbl = Render.el('table.schedule');
     const days = Period.days(Store.get().ui.currentPeriod);
     const todayYmd = Util.ymd(new Date());
-    tbl.appendChild(buildColgroup(days));
+    // 显式算 table 总宽。固定列严格按声明值,日期列自动撑满剩余 viewport(若用户未自定义)。
+    // 这样 table.width 是具体 px → table-layout:fixed 严格生效;同时 table 总宽=viewport 不留空白。
+    const sizes = Store.get().sizes || {};
+    const fixedSum = (sizes['col-role'] || 60)
+      + (sizes['col-name'] || 130)
+      + (sizes['col-sum-paid'] || 36)
+      + (sizes['col-sum-contract'] || 36)
+      + (sizes['col-sum-remain'] || 36);
+    // 取容器宽 = page-schedule 内宽(已在 DOM 里 → clientWidth 有效)
+    const pageSchedule = document.getElementById('page-schedule');
+    const containerW = pageSchedule ? pageSchedule.clientWidth : (window.innerWidth - 32);
+    // 自动日期列宽:剩余空间 / 天数,下限 27px(防止日期列太小);用户显式设过则用用户值(严格)
+    const autoDayW = Math.max(27, Math.floor((containerW - fixedSum) / days.length));
+    const dayW = sizes['col-day'] != null ? sizes['col-day'] : autoDayW;
+    const totalW = fixedSum + dayW * days.length;
+    tbl.style.width = totalW + 'px';
+    tbl.appendChild(buildColgroup(days, dayW));
     tbl.appendChild(buildHeader(days, todayYmd));
     tbl.appendChild(buildBody(days, todayYmd));
     wrap.appendChild(tbl);
@@ -1358,16 +1391,26 @@ const Pages = (() => {
     return wrap;
   }
 
-  function buildColgroup(days) {
+  function buildColgroup(days, dayW) {
     const cg = Render.el('colgroup');
-    // 屏幕用 CSS var (默认值在 fallback 里); 打印用 beforeprint JS 设置 inline mm 强制覆盖。
-    // 3 个 col-sum 用 s-paid/s-contract/s-remain 区分,各自独立绑 CSS var。
-    cg.appendChild(Render.el('col.col-role'));
-    cg.appendChild(Render.el('col.col-name'));
-    cg.appendChild(Render.el('col.col-sum.s-paid'));
-    cg.appendChild(Render.el('col.col-sum.s-contract'));
-    cg.appendChild(Render.el('col.col-sum.s-remain'));
-    for (let i = 0; i < days.length; i++) cg.appendChild(Render.el('col.col-day'));
+    // inline style 优先级最高,直接写 px 值绕开所有 CSS 优先级 / box-sizing 解析差异问题。
+    const sizes = Store.get().sizes || {};
+    const applyCol = (col, sizeKey, defaultPx) => {
+      const px = sizes[sizeKey];
+      if (px != null) col.style.width = px + 'px';
+      return col;
+    };
+    cg.appendChild(applyCol(Render.el('col.col-role'),         'col-role',         60));
+    cg.appendChild(applyCol(Render.el('col.col-name'),         'col-name',         130));
+    cg.appendChild(applyCol(Render.el('col.col-sum.s-paid'),   'col-sum-paid',     36));
+    cg.appendChild(applyCol(Render.el('col.col-sum.s-contract'),'col-sum-contract',36));
+    cg.appendChild(applyCol(Render.el('col.col-sum.s-remain'), 'col-sum-remain',   36));
+    // 日期列宽:由 buildTable 计算后传入(用户自定义则用用户值,否则自动撑满 viewport)
+    for (let i = 0; i < days.length; i++) {
+      const col = Render.el('col.col-day');
+      col.style.width = (dayW || 27) + 'px';
+      cg.appendChild(col);
+    }
     return cg;
   }
 
@@ -1718,7 +1761,52 @@ const Pages = (() => {
     const host = document.getElementById('page-settings');
     Render.clear(host);
     host.appendChild(buildDeptSection());
+    host.appendChild(buildSizesSection());
     host.appendChild(buildPeopleSection());
+  }
+
+  // 单元格尺寸 section:8 个 px 数值输入框,精确调整,可补充拖拽手柄之外的精度控制。
+  // 与拖拽共享 Store.setSize/resetSize,所以调任何一处另一处立即同步。
+  function buildSizesSection() {
+    const sec = Render.el('div.settings-section');
+    sec.appendChild(Render.el('h2', '单元格尺寸'));
+    sec.appendChild(Render.el('div', { style: { color: 'var(--muted)', fontSize: '12px', marginBottom: '8px' } },
+      '直接输入 px 值,或在排班表头/行底部拖动手柄。调一次屏幕+打印同步。空值=用默认。'));
+    const items = [
+      { key: 'col-role',        label: '役職列宽',  defaultPx: 60,  unit: 'px' },
+      { key: 'col-name',        label: '氏名列宽',  defaultPx: 130, unit: 'px' },
+      { key: 'col-sum-paid',    label: '有休列宽',  defaultPx: 36,  unit: 'px' },
+      { key: 'col-sum-contract',label: '契休列宽',  defaultPx: 36,  unit: 'px' },
+      { key: 'col-sum-remain',  label: '残列宽',    defaultPx: 36,  unit: 'px' },
+      { key: 'col-day',         label: '日期列宽',  defaultPx: 27,  unit: 'px' },
+      { key: 'row-person',      label: '人员行高',  defaultPx: 25,  unit: 'px' },
+      { key: 'row-stat',        label: 'Stat 行高', defaultPx: 25,  unit: 'px' },
+    ];
+    const sizes = Store.get().sizes || {};
+    for (const it of items) {
+      const row = Render.el('div.settings-row');
+      row.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, it.label + ':'));
+      const cur = sizes[it.key];
+      const input = Render.el('input.num', {
+        type: 'number',
+        value: cur != null ? String(cur) : '',
+        placeholder: String(it.defaultPx),
+        title: '空值=使用默认 ' + it.defaultPx + 'px',
+        onchange: (e) => {
+          const v = e.target.value.trim();
+          if (v === '') Store.resetSize(it.key);
+          else Store.setSize(it.key, v);
+        }
+      });
+      row.appendChild(input);
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)', fontSize: '11px' } }, it.unit));
+      row.appendChild(Render.el('span.grow'));
+      const resetBtn = Render.el('button', { title: '恢复默认' }, '重置');
+      resetBtn.addEventListener('click', () => Store.resetSize(it.key));
+      row.appendChild(resetBtn);
+      sec.appendChild(row);
+    }
+    return sec;
   }
 
   function buildDeptSection() {
