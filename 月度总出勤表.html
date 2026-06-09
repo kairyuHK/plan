@@ -223,7 +223,12 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
     --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
+  /* zoom: 0.84 把整体内容缩到 84%,匹配 Chrome 打印对话框 84% 缩放下的视觉。
+     原因:A4 横向可用区在 @page margin:4mm 设定下理论是 289×202mm,但浏览器最小
+     边距通常 >4mm(常见 6-7mm),实际只剩 ~285×198mm。表格 100% 宽度(289mm)
+     横向溢出 → 浏览器把溢出部分挤到第 2 页。zoom 0.84 后表格实际占用 ~243mm,
+     稳定在 1 页内,用户打印对话框选 100% 缩放就是想要的大小。 */
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; zoom: 0.84; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
   /* 表格垂直居中于 body(A4 纸张内)。
      注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
@@ -351,8 +356,8 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .today-badge {
     background: #f97316 !important; color: #fff !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    width: calc(var(--row-h) * 0.6) !important;
-    height: calc(var(--row-h) * 0.6) !important;
+    width: calc(var(--row-h) * 0.65) !important;
+    height: calc(var(--row-h) * 0.65) !important;
     font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important;
     font-weight: 500 !important;
   }
