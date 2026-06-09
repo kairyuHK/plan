@@ -1826,13 +1826,6 @@ const Pages = (() => {
         title: '必要人数默认值',
         onchange: (e) => Store.setDeptRequired(d.id, e.target.value)
       }));
-      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '高度:'));
-      row.appendChild(Render.el('input.num', {
-        type: 'number', min: '100', max: '210',
-        value: String(d.printHeightMm != null ? d.printHeightMm : 192),
-        title: '打印高度(mm),范围 100-210(默认 192)',
-        onchange: (e) => Store.setDeptPrintHeight(d.id, e.target.value)
-      }));
       row.appendChild(Render.el('span.grow'));
       const delDeptBtn = Render.el('button.danger', {}, '删除');
       delDeptBtn.addEventListener('click', (e) => {
