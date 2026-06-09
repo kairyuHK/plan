@@ -75,7 +75,7 @@ table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4
 table.schedule col.col-role{width:60px}
 table.schedule col.col-name{width:130px}
 table.schedule col.col-sum{width:36px}
-table.schedule col.col-day{width:27px}
+table.schedule col.col-day{width:calc(27px * var(--cell-scale, 1))}
 table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
@@ -85,8 +85,8 @@ table.schedule td.name-col{background:var(--card)}
 table.schedule th.sum-col,table.schedule td.sum-col{min-width:36px;color:var(--muted)}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
-table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:27px;height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
-table.schedule td.day-cell{width:27px;height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
+table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){width:calc(27px * var(--cell-scale, 1));height:calc(25px * var(--cell-scale, 1));box-sizing:border-box;padding:0;vertical-align:middle}
+table.schedule td.day-cell{width:calc(27px * var(--cell-scale, 1));height:calc(25px * var(--cell-scale, 1));box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--danger)}
@@ -226,7 +226,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
        row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
-    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), calc(7mm * var(--cell-scale, 1))));
   }
   html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
@@ -496,9 +496,9 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     departments: [
-      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192 },
-      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192 },
-      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192 }
+      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 },
+      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 },
+      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192, cellSizePct: 100 }
     ],
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
@@ -525,9 +525,12 @@ const Store = (() => {
       if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
       if (!parsed.cellColors) parsed.cellColors = {};
       if (!parsed.cellTexts) parsed.cellTexts = {};
-      // 旧数据兼容:部门没有 printHeightMm 时补 192
+      // 旧数据兼容:部门缺少新字段时补默认值
       if (Array.isArray(parsed.departments)) {
-        parsed.departments.forEach(d => { if (d.printHeightMm == null) d.printHeightMm = 192; });
+        parsed.departments.forEach(d => {
+          if (d.printHeightMm == null) d.printHeightMm = 192;
+          if (d.cellSizePct == null) d.cellSizePct = 100;
+        });
       }
       // 校正 ui.currentDept:如果指向已删除部门(或 null),改为第一个部门。
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
@@ -676,7 +679,7 @@ const Store = (() => {
   function addDepartment(name) {
     const id = Util.newId('d');
     // 新部门自动带打印高度默认值 192mm,与现有部门保持一致
-    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192 });
+    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192, cellSizePct: 100 });
     state.people[id] = [];
     commit('dept');
     return id;
@@ -694,6 +697,14 @@ const Store = (() => {
     if (d) {
       // 限制在合理范围 100-210mm 之间(A4 横向高度 210mm)
       d.printHeightMm = Math.max(100, Math.min(210, Number(mm) || 192));
+      commit('dept');
+    }
+  }
+  function setDeptCellSize(id, pct) {
+    const d = state.departments.find(x => x.id === id);
+    if (d) {
+      // 50-200% 范围,避免极端值破坏排版
+      d.cellSizePct = Math.max(50, Math.min(200, Number(pct) || 100));
       commit('dept');
     }
   }
@@ -789,7 +800,10 @@ const Store = (() => {
     if (!parsed.attendance) parsed.attendance = {};
     if (!parsed.cellColors) parsed.cellColors = {};
     if (!parsed.cellTexts) parsed.cellTexts = {};
-    parsed.departments.forEach(d => { if (d.printHeightMm == null) d.printHeightMm = 192; });
+    parsed.departments.forEach(d => {
+      if (d.printHeightMm == null) d.printHeightMm = 192;
+      if (d.cellSizePct == null) d.cellSizePct = 100;
+    });
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
@@ -808,7 +822,7 @@ const Store = (() => {
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
-    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment,
+    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, setDeptCellSize, removeDepartment,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
     exportJson, importJson, reset, subscribe
   };
@@ -1090,6 +1104,10 @@ const Pages = (() => {
     renderPeriodNav();
     if (Store.get().ui.editMode) host.appendChild(buildEntryHint());
     host.appendChild(buildTable());
+    // 当前部门的单元格缩放系数 → CSS 变量,屏幕 day-cell 宽高 + 打印行高上限 一起按比例缩放
+    const curDept = Store.dept();
+    const cellScale = ((curDept && curDept.cellSizePct) || 100) / 100;
+    document.documentElement.style.setProperty('--cell-scale', String(cellScale));
     requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
   }
 
@@ -1592,6 +1610,13 @@ const Pages = (() => {
         value: String(d.printHeightMm != null ? d.printHeightMm : 192),
         title: '打印高度(mm),范围 100-210(默认 192)',
         onchange: (e) => Store.setDeptPrintHeight(d.id, e.target.value)
+      }));
+      row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '格%:'));
+      row.appendChild(Render.el('input.num', {
+        type: 'number', min: '50', max: '200', step: '5',
+        value: String(d.cellSizePct != null ? d.cellSizePct : 100),
+        title: '单元格大小百分比,50-200%(默认 100),屏幕宽高 + 打印行高一起缩放',
+        onchange: (e) => Store.setDeptCellSize(d.id, e.target.value)
       }));
       row.appendChild(Render.el('span.grow'));
       const delDeptBtn = Render.el('button.danger', {}, '删除');
