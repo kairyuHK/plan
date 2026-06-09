@@ -180,6 +180,8 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 .settings-row .role-input{min-width:120px}
+/* 单元格尺寸输入:左对齐 + 足够宽,iOS Safari 上窄+center 文本框光标定位会异常 */
+.settings-row input.size-input{width:80px;font-family:var(--font-mono);text-align:left;padding:6px 10px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
 .settings-sub-people{padding-left:8px;border-left:2px solid var(--border);margin-top:6px}
 /* 同部门内人员可拖动重排序。drag-handle 是触发区,鼠标在它上时光标变 grab */
@@ -1797,8 +1799,8 @@ const Pages = (() => {
       const row = Render.el('div.settings-row');
       row.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, it.label + ':'));
       const cur = sizes[it.key];
-      const input = Render.el('input.num', {
-        // type:text + inputmode:numeric:iOS Safari 上 type=number 的光标无法移动,改成 text 类型保留正常文本编辑
+      const input = Render.el('input.size-input', {
+        // type:text + inputmode:numeric:iOS Safari 上 type=number 光标无法移动,改成 text 保留正常文本编辑
         type: 'text',
         inputmode: 'numeric',
         pattern: '[0-9]*',
