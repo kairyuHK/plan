@@ -938,8 +938,14 @@ const App = (() => {
       // 行高公式自动让单元格按比例略变小,表格仍能填满 95% 左右的 A4 高度。
       // PC 端 (视口 > 640px) 完全不动,继续走原 bodyH。
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
-      const MOBILE_BODY_SCALE = 0.94;
-      const declaredBodyH = isMobile ? (bodyH * MOBILE_BODY_SCALE) : bodyH;
+      // 0.78:Safari iOS 打印 A4 横向时会额外占用 ~30-50mm(URL/页码/最小边距),
+      // 实际可用 ≈ 160-180mm。192 × 0.78 = 150mm 稳塞 1 页;
+      // 156mm 最大上限防止用户改大 printHeightMm 后又溢出。
+      const MOBILE_BODY_SCALE = 0.78;
+      const MOBILE_BODY_CAP_MM = 156;
+      const declaredBodyH = isMobile
+        ? Math.min(bodyH * MOBILE_BODY_SCALE, MOBILE_BODY_CAP_MM)
+        : bodyH;
       document.documentElement.style.setProperty('--print-body-h', declaredBodyH + 'mm');
       document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
       // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
