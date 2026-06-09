@@ -221,7 +221,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
        row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
-    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), var(--row-h-cap, 7mm)));
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
   }
   html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
@@ -926,20 +926,17 @@ const App = (() => {
       // 应用当前部门的打印高度(每个部门可独立设置,默认 192mm)
       const curDept = Store.dept();
       const bodyH = (curDept && curDept.printHeightMm) || 192;
-      // 手机端打印特殊处理:
-      // 手机 Safari 打印 A4 横向时,实际可用区比 @page margin:4mm 声明小(浏览器最小边距更大),
-      // 表格 100% 宽 ≈ 289mm 会横向溢出 → 第 2 页。修复:body 缩到 84% (zoom 0.84) 让表格只占 ~243mm。
-      // 但单纯 zoom 0.84 会让表格只填 A4 的 84%,下方有大片空白 → 把 body 高度按 1/0.84 放大,
-      // row-h 上限按 1/0.84 放大,缩放后正好和 PC 端 192mm 体验一致(填满 A4 + 单元格同尺寸)。
-      // PC 端 (视口 > 640px) 完全不动,继续走原 192mm + 7mm row-h cap。
+      // 手机端打印 A4 横向时实际可用区比 PC 小(Safari 最小边距更大,无法压到 @page 4mm)。
+      // 192mm body 在手机上常溢出到第 2 页。
+      // 试过的不工作方案:zoom 0.84 — Safari 打印模式按声明尺寸分页,不看 zoom,无效。
+      // 当前方案:手机端 bodyH × 0.94(≈ 180mm)直接缩小声明高度,稳塞 1 页;
+      // 行高公式自动让单元格按比例略变小,表格仍能填满 95% 左右的 A4 高度。
+      // PC 端 (视口 > 640px) 完全不动,继续走原 bodyH。
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
-      const PRINT_ZOOM = 0.84;
-      const declaredBodyH = isMobile ? (bodyH / PRINT_ZOOM) : bodyH;
-      const declaredRowCap = isMobile ? (7 / PRINT_ZOOM) : 7;
+      const MOBILE_BODY_SCALE = 0.94;
+      const declaredBodyH = isMobile ? (bodyH * MOBILE_BODY_SCALE) : bodyH;
       document.documentElement.style.setProperty('--print-body-h', declaredBodyH + 'mm');
       document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
-      document.documentElement.style.setProperty('--row-h-cap', declaredRowCap + 'mm');
-      document.body.style.zoom = isMobile ? String(PRINT_ZOOM) : '';
       // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
       document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0');
       // 払出 部门特例:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
@@ -961,8 +958,6 @@ const App = (() => {
       document.documentElement.style.removeProperty('--print-body-h');
       document.documentElement.style.removeProperty('--print-row-h-base');
       document.documentElement.style.removeProperty('--day-cell-pad-ratio');
-      document.documentElement.style.removeProperty('--row-h-cap');
-      document.body.style.removeProperty('zoom');
       document.body.classList.remove('print-dept-haraidashi');
       // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
       document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
