@@ -3692,20 +3692,26 @@ function renderColorPicker() {
   custom.addEventListener('change', () => { selectedColor = custom.value; renderColorPicker(); });
   libColorPicker.appendChild(custom);
 }
-// 扫描当前显示日期(currentDate)板子上所有 libId 卡片的快照,返回 {speed, mp, divergent, count}。
+// 扫描当前显示日期(currentDate)板子上所有 libId 卡片的快照,
+// 返回 {speed, mp, divergent, count, lineIds, singleLineId}。
 // speed=null 表示当天没有该品名的卡片(信息列显示库默认值)。
+// singleLineId: 所有卡片都在同一条线时返回该 lineId,否则返回 null(用于按线挑选显示速度)。
 function getDaySnapshotForLib(libId) {
   let speed = null, mp = null, divergent = false, count = 0;
+  const lineIds = new Set();
   document.querySelectorAll('.card[data-type="job"]').forEach(card => {
     if (card.dataset.libId !== libId) return;
     const s = parseFloat(card.dataset.speed) || 0;
     const meterInp = popupQ(card, '.meter-people');
     const m = Math.max(1, parseInt(meterInp && meterInp.value) || 1);
+    const lid = getLineIdFromNode(card);
+    if (lid) lineIds.add(lid);
     if (count === 0) { speed = s; mp = m; }
     else if (s !== speed || m !== mp) divergent = true;
     count++;
   });
-  return { speed, mp, divergent, count };
+  const singleLineId = lineIds.size === 1 ? Array.from(lineIds)[0] : null;
+  return { speed, mp, divergent, count, lineIds, singleLineId };
 }
 function renderLibList() {
   if (library.length === 0) {
@@ -3723,23 +3729,40 @@ function renderLibList() {
     row.className = 'lib-item';
     row.style.setProperty('--lib-color', item.color);
     const peopleText = fmtPeople(item.people);
-    const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
     // 信息列:优先显示「当天卡片快照」的速度/计量人数,没有卡片时回落到库默认值。
-    // count>0 + 跟库不同 → 加 (库 X) 提示;divergent → 加「≠」表示同日多张卡数值不一致。
+    // 流水线/品名速度都改为「按所在线」解析:卡片只在一条线 → 用那条线的覆盖值;多条线则用默认。
     const snap = getDaySnapshotForLib(item.id);
     const libSpeed = item.speed;
     const libMeter = item.meterPeople > 0 ? item.meterPeople : 1;
+    // 按线解析流水线速度(显示用):
+    //   - 卡片都在一条线 → 用 resolveItemLineSpeed(item, singleLineId)
+    //   - 多条线或无卡片  → 回退默认 item.lineSpeed
+    const resolvedLineSpeed = snap.singleLineId
+      ? resolveItemLineSpeed(item, snap.singleLineId)
+      : (parseFloat(item.lineSpeed) || 0);
+    const lineSpdText = resolvedLineSpeed > 0 ? `${resolvedLineSpeed}` : '—';
+    // 当流水线速度是按线覆盖来的(不是默认值) → 加角标提示
+    const lineSpdLineMark = (snap.singleLineId && item.lineSpeedByLine && item.lineSpeedByLine[snap.singleLineId] > 0)
+      ? `<sup style="color:var(--accent);font-size:9px" title="${LINE_ID_DISPLAY[snap.singleLineId]} 线的覆盖值">†</sup>`
+      : '';
     let dispSpeed, dispMeter, daySuffix = '';
     if (snap.count > 0) {
       dispSpeed = snap.speed > 0 ? snap.speed : libSpeed;
       dispMeter = snap.mp > 0 ? snap.mp : libMeter;
-      const diffSpeed = (snap.speed > 0 && snap.speed !== libSpeed);
+      // 判断「跟库不同」时也要按线解析的默认值比较:卡片在 01 上 → 比的是 01 的目标值
+      const expectedSpeed = snap.singleLineId ? resolveItemSpeed(item, snap.singleLineId) : libSpeed;
+      const diffSpeed = (snap.speed > 0 && snap.speed !== expectedSpeed);
       const diffMeter = (snap.mp !== libMeter);
       if (diffSpeed || diffMeter) {
-        daySuffix = ` <span class="ns-day-mark" title="${currentDate} 卡片快照与品名库默认值不同(库:速度 ${libSpeed} · 计量 ${libMeter})">·当日</span>`;
+        daySuffix = ` <span class="ns-day-mark" title="${currentDate} 卡片快照与品名库${snap.singleLineId ? LINE_ID_DISPLAY[snap.singleLineId]+' 线' : '默认'}值不同(应为:速度 ${expectedSpeed} · 计量 ${libMeter})">·当日</span>`;
       }
       if (snap.divergent) {
         daySuffix += ` <span class="ns-day-mark" style="color:var(--warn)" title="${currentDate} 同品名多张卡数值不一致,显示的是第一张">≠</span>`;
+      }
+      // 卡片在按线覆盖的线上 + 用的就是覆盖值 → 加角标(同流水线速度)
+      if (snap.singleLineId && item.speedByLine && item.speedByLine[snap.singleLineId] > 0
+          && snap.speed > 0 && snap.speed === item.speedByLine[snap.singleLineId]) {
+        daySuffix += `<sup style="color:var(--accent);font-size:9px" title="${LINE_ID_DISPLAY[snap.singleLineId]} 线的覆盖值">†</sup>`;
       }
     } else {
       dispSpeed = libSpeed;
@@ -3778,7 +3801,7 @@ function renderLibList() {
     row.innerHTML = `
       <div class="lib-item-row">
         <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
-        <div class="lib-item-info">品名 <span class="ns">${dispSpeed}</span> · 计量 <span class="ns">${meterText}</span>${daySuffix}<br>流水线 ${lineSpdText}<br>${peopleText}</div>
+        <div class="lib-item-info">品名 <span class="ns">${dispSpeed}</span> · 计量 <span class="ns">${meterText}</span>${daySuffix}<br>流水线 ${lineSpdText}${lineSpdLineMark}<br>${peopleText}</div>
         <div class="lib-item-btns">
           <button class="lib-item-btn per-line${perLineActiveCls}" title="${perLineTitle}">📏</button>
           <button class="lib-item-btn apply" title="把当前的品名速度 / 计量人数 应用到 ${currentDate} 该品名的所有卡片(其它日期不变)">⤓</button>
@@ -4593,6 +4616,8 @@ function attachCardInteraction(card) {
     holdReady = true;
     card.classList.add('dragging');
     setActiveCard(null);
+    // 记一下起拖时所在线 id,finalize 时跟落点比对 —— 跨线就重新解析速度
+    card._dragOriginLineId = getLineIdFromNode(card);
     if (navigator.vibrate) try { navigator.vibrate(25); } catch (e) {}
   }
   function doDragMove(x, y) {
@@ -4606,6 +4631,24 @@ function attachCardInteraction(card) {
     if (dragMode) {
       card.classList.remove('dragging');
       hideDropIndicator();
+      // 跨线拖动:按新落点的线重新解析品名速度 / 流水线速度 → 写回 dataset/输入框
+      if (card.dataset.type === 'job') {
+        const newLineId = getLineIdFromNode(card);
+        const originLineId = card._dragOriginLineId;
+        if (newLineId && newLineId !== originLineId) {
+          const _li = findLibItem(card.dataset.libId);
+          if (_li) {
+            const resSpd = resolveItemSpeed(_li, newLineId);
+            card.dataset.speed = resSpd > 0 ? String(resSpd) : '';
+            const lineSpdInp = popupQ(card, '.line-speed');
+            if (lineSpdInp) {
+              const resLs = resolveItemLineSpeed(_li, newLineId);
+              lineSpdInp.value = resLs > 0 ? resLs : '';
+            }
+          }
+        }
+      }
+      delete card._dragOriginLineId;
       document.querySelectorAll('.line').forEach(l => recalc(l));
       scheduleSaveBoard();
     } else if (holdReady) {
