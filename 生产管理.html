@@ -2568,7 +2568,14 @@ const Pages = (() => {
   }
   .lib-per-line input[type=number]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
   .lib-per-line input[type=number]:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.01); }
-  .lib-per-line input.has-override { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06) }
+  /* 注:.has-override 不再单独高亮 —— 用户只希望「当前所在线」那一行亮,其他线全部保持默认外观 */
+  /* 当前卡片所在线那一行 —— 只让两个输入框变亮,标签和点都不要 */
+  .lib-per-line .pl-row.active-line .pl-line { color: var(--accent); }
+  .lib-per-line .pl-row.active-line input[type=number] {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.12);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.22);
+  }
   .lib-item-btn.per-line.active { color: var(--accent); border-color: rgba(var(--accent-rgb),0.5); background: rgba(var(--accent-rgb),0.08); }
   .lib-item-btn.per-line:hover { color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); background: rgba(var(--accent-rgb),0.06); }
   .lib-item-name { flex: 1; font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3785,14 +3792,17 @@ function renderLibList() {
     const perLineActiveCls = hasOverride ? ' active' : '';
     const perLineTitle = hasOverride ? '按线设置(已有覆盖)' : '按线设置(留空 = 用默认)';
     const lineSpeedReadonly = lockedByBento; // 流水线速度受便当库管控时只读
-    // 値付け(tsk) 不在按线速度面板里出现 —— 値付け线上的卡片直接用品名/流水线速度默认值
+    // 値付け(tsk) 不在按线速度面板里出现 —— 値付け线上的卡片直接用品名/流水线速度默认值。
+    // 当卡片只在一条线上时,给那一行加 active-line,整行(标签+两个输入框)高亮成主题色。
+    const activeLid = snap.singleLineId || null;
     const perLineRows = LINE_IDS_ORDER.filter(lid => lid !== 'tsk').map(lid => {
       const sV = (item.speedByLine && item.speedByLine[lid] > 0) ? item.speedByLine[lid] : '';
       const lV = (item.lineSpeedByLine && item.lineSpeedByLine[lid] > 0) ? item.lineSpeedByLine[lid] : '';
       const sCls = sV !== '' ? ' has-override' : '';
       const lCls = lV !== '' ? ' has-override' : '';
+      const rowCls = (lid === activeLid) ? 'pl-row active-line' : 'pl-row';
       const lockTip = lineSpeedReadonly ? 'title="由配置表 · 便当库自动同步" readonly disabled' : '';
-      return `<div class="pl-row">
+      return `<div class="${rowCls}">
         <span class="pl-line">${LINE_ID_DISPLAY[lid]}</span>
         <input type="number" class="pl-speed${sCls}" data-line="${lid}" min="0" step="0.01" inputmode="decimal" placeholder="默认 ${item.speed || '—'}" value="${sV}">
         <input type="number" class="pl-line-speed${lCls}" data-line="${lid}" min="0" step="0.01" inputmode="decimal" placeholder="默认 ${item.lineSpeed || '—'}" value="${lV}" ${lockTip}>
