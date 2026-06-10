@@ -229,16 +229,18 @@ table.schedule tr.stat-row td.label{position:relative}
 .row-resize-handle:hover{background:rgba(124,92,255,0.5)}
 /* 手机端:加宽手柄触摸区到 12px,禁文字选中(长按选中干扰拖拽),touch-action:none 阻止浏览器抢占手势 */
 @media (max-width:640px){
-  .col-resize-handle{right:-6px;width:12px;touch-action:none;user-select:none;-webkit-user-select:none}
-  .row-resize-handle{bottom:-6px;height:12px;touch-action:none;user-select:none;-webkit-user-select:none}
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-  /* 手机端横向滚动时固定 役職 + 氏名 列 — 用户横向滑动看日期时左侧人员信息始终可见。
+  /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
+  .col-resize-handle,.row-resize-handle{display:none!important}
+  /* schedule-wrap 自己做横向滚动容器,sticky 相对它工作比依赖 body 滚更稳 */
+  .schedule-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* 横向滚动时固定 役職 + 氏名 列 — 用户横向滑动看日期时左侧人员信息始终可见。
      z-index 高于 day cell;background 不透明覆盖滚动到下方的 day cell;
      name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义)。 */
-  table.schedule th.role-col,table.schedule td.role-col{position:sticky;left:0;z-index:3}
+  table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
   table.schedule th.role-col{background:#1c1c20}
   table.schedule td.role-col{background:var(--card)}
-  table.schedule th.name-col,table.schedule td.name-col{left:var(--col-role-w,60px);z-index:3}
+  table.schedule th.name-col,table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
