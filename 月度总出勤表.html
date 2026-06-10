@@ -67,7 +67,7 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
 .schedule-wrap{margin-top:10px}
-table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:3;background:#1c1c20}
+table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
 /* table 自然宽度(width:auto) — 之前 width:100% 配合 table-layout:fixed 会把多余空间按比例
@@ -233,12 +233,14 @@ table.schedule tr.stat-row td.label{position:relative}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
   /* 横向滚动时固定 役職 + 氏名 列 — 用户横向滑动看日期时左侧人员信息始终可见。
-     z-index 高于 day cell;background 不透明覆盖滚动到下方的 day cell;
-     name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义)。 */
+     z-index 3:thead(4)更高,确保垂直滚到 thead 区域时 thead 覆盖 tbody sticky 列;
+     name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义);
+     background 显式声明确保 sub-pixel 不漏底色。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
-  table.schedule th.role-col{background:#1c1c20}
-  table.schedule td.role-col{background:var(--card)}
-  table.schedule th.name-col,table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important}
+  table.schedule th.role-col{background:#1c1c20!important}
+  table.schedule td.role-col{background:var(--card)!important}
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important;background:var(--card)!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
