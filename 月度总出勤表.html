@@ -232,8 +232,6 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
-  /* schedule-wrap 自己做横向滚动容器,sticky 相对它工作比依赖 body 滚更稳 */
-  .schedule-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* 横向滚动时固定 役職 + 氏名 列 — 用户横向滑动看日期时左侧人员信息始终可见。
      z-index 高于 day cell;background 不透明覆盖滚动到下方的 day cell;
      name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义)。 */
