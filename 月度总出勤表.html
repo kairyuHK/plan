@@ -239,8 +239,12 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
   table.schedule th.role-col{background:#1c1c20!important}
   table.schedule td.role-col{background:var(--card)!important}
-  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important;background:#1c1c20!important}
-  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;text-align:left!important;background:var(--card)!important}
+  /* left 减 1px:浏览器 sub-pixel 渲染时 role-col 右边沿和 name-col 左边沿可能有 0.5-1px 缝隙,
+     name-col 微微左移 1px 重叠覆盖,避免横向滚动时露出 day-cell 内容 */
+  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;text-align:left!important;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;text-align:left!important;background:var(--card)!important}
+  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
+  table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
@@ -283,7 +287,13 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule td.day-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* kill sticky positions in print — iOS Safari / WebKit duplicates / shifts them otherwise */
   table.schedule thead { position: static !important; top: auto !important; box-shadow: none !important; }
-  table.schedule th.name-col, table.schedule td.name-col { position: static !important; left: auto !important; }
+  /* 手机端 sticky 的 role-col / name-col 在打印时也要去掉 position 和强制 dark bg,
+     否则打印出来 リーダー 列是黑底(屏幕 sticky 用的 var(--card)=#161618) */
+  table.schedule th.role-col, table.schedule td.role-col,
+  table.schedule th.name-col, table.schedule td.name-col {
+    position: static !important; left: auto !important;
+    background: #fff !important;
+  }
   /* 只保留 tr 的 break-inside:avoid(防止单行被分页截断),不再对 table 整体加。
      table 层级的 break-inside:avoid 在缩放 > 100% 时会触发 bug:
      浏览器看到表格上方空白后,认为表格不能整张放进当前页,把整张推到下一页,导致空白页。
@@ -979,14 +989,19 @@ const App = (() => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
     });
     window.addEventListener('hashchange', showRoute);
-    // 窗口宽度变化时重排 schedule(table 总宽 = 容器宽度 自适应)
+    // 窗口宽度变化时重排 schedule。但**只在宽度变化时**重渲 —— iOS Safari 滚动时
+    // URL 栏隐藏/显示会触发 resize 事件,但 innerWidth 不变(只 innerHeight 变),
+    // 之前不区分导致每次滚动都触发 renderSchedule → DOM 重建 → 滚动位置归零的 bug。
     let resizeT;
+    let lastResizeW = window.innerWidth;
     window.addEventListener('resize', () => {
+      if (window.innerWidth === lastResizeW) return; // 仅高度变化(URL 栏开合)→ 忽略
+      lastResizeW = window.innerWidth;
       clearTimeout(resizeT);
       resizeT = setTimeout(() => {
         const hash = location.hash in routes ? location.hash : '#/schedule';
         if (hash === '#/schedule') Pages.renderSchedule();
-      }, 150);
+      }, 200);
     });
   }
 
