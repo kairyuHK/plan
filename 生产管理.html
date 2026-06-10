@@ -3368,6 +3368,8 @@ function applyBentoOverlay() {
     const prevName = item.name;
     const prevSpeed = item.lineSpeed;
     const prevPeople = item.people;
+    // 拍一份按线速度的快照,用于检测有没有任何 lid 的值变了 → 否则 affected 不会包含此项,显示不刷新
+    const prevLineSpdMap = JSON.stringify(item.lineSpeedByLine || {});
     let b = null;
     // 1) 用 bentoId 找(便当改名也能跟随)
     if (item.bentoId) {
@@ -3385,21 +3387,29 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) item.lineSpeed = spd;
       if (Array.isArray(b.line)) item.people = b.line.length;
-      // 把配置表的 b.lineSpeeds 同步到品名库的 lineSpeedByLine(只覆盖,不清空已有 key)
+      // 把配置表的 b.lineSpeeds 同步到品名库的 lineSpeedByLine。
+      // 已链接便当时配置表是唯一真源 —— 值清空 = 删 key,而不是保留旧值。
+      // 値付け(tsk)不参与同步:plan 板不暴露 tsk 的按线编辑,也不从配置表隐式接收
       if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
         if (!item.lineSpeedByLine || typeof item.lineSpeedByLine !== 'object') item.lineSpeedByLine = {};
         for (const lid in b.lineSpeeds) {
+          if (lid === 'tsk') continue;
           const v = parseFloat(b.lineSpeeds[lid]);
           if (v > 0) item.lineSpeedByLine[lid] = v;
+          else delete item.lineSpeedByLine[lid];
         }
+        // 清掉历史可能残留的 tsk(避免老数据靠默认 fallback 看不出来)
+        if (item.lineSpeedByLine.tsk != null) delete item.lineSpeedByLine.tsk;
       }
     } else {
       item._bentoLinked = false;
     }
+    const nextLineSpdMap = JSON.stringify(item.lineSpeedByLine || {});
     if (wasLinked !== item._bentoLinked
         || prevName !== item.name
         || prevSpeed !== item.lineSpeed
-        || prevPeople !== item.people) {
+        || prevPeople !== item.people
+        || prevLineSpdMap !== nextLineSpdMap) {
       affected.push(item.id);
     }
   });
@@ -3416,22 +3426,26 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) byName.lineSpeed = spd;
       if (Array.isArray(b.line)) byName.people = b.line.length;
-      // 同步按线流水线速度
+      // 同步按线流水线速度(同样排除 tsk + 空值删 key)
       if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
         if (!byName.lineSpeedByLine || typeof byName.lineSpeedByLine !== 'object') byName.lineSpeedByLine = {};
         for (const lid in b.lineSpeeds) {
+          if (lid === 'tsk') continue;
           const v = parseFloat(b.lineSpeeds[lid]);
           if (v > 0) byName.lineSpeedByLine[lid] = v;
+          else delete byName.lineSpeedByLine[lid];
         }
+        if (byName.lineSpeedByLine.tsk != null) delete byName.lineSpeedByLine.tsk;
       }
       linkedIds.add(b.id);
       if (!affected.includes(byName.id)) affected.push(byName.id);
       continue;
     }
-    // 从配置表 b.lineSpeeds 起始拷一份按线速度
+    // 从配置表 b.lineSpeeds 起始拷一份按线速度(排除 tsk)
     const initLineSpeedByLine = {};
     if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
       for (const lid in b.lineSpeeds) {
+        if (lid === 'tsk') continue;
         const v = parseFloat(b.lineSpeeds[lid]);
         if (v > 0) initLineSpeedByLine[lid] = v;
       }
@@ -8035,16 +8049,24 @@ function renderEdit() {
     if (b.lineId) b.lineSpeeds[b.lineId] = speedInp.value;
     saveState();
   };
-  // 生产线下拉(来自排班表)
+  // 生产线下拉(来自排班表)。値付け(tsk)不允许在便当库里指派 —— 业务约定:値付け线不参与便当生产
   const lineSel = document.createElement("select");
   lineSel.style.cssText = "flex:0 0 130px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
   const emptyOpt = document.createElement("option"); emptyOpt.value = ""; emptyOpt.textContent = "（未选生产线）";
   lineSel.appendChild(emptyOpt);
-  (scheduleData.lines || []).filter(ln => !ln.virtual).forEach(ln => {
+  (scheduleData.lines || []).filter(ln => !ln.virtual && ln.id !== 'tsk').forEach(ln => {
     const opt = document.createElement("option");
     opt.value = ln.id; opt.textContent = ln.name;
     lineSel.appendChild(opt);
   });
+  // 老数据兜底:如果当前便当之前指派的是 値付け,先把这条 option 临时挂回去显示,让用户能看到再切走
+  if (b.lineId === 'tsk') {
+    const opt = document.createElement("option");
+    opt.value = 'tsk';
+    opt.textContent = '値付け（已停用,请改选其他线）';
+    opt.style.color = '#f87171';
+    lineSel.appendChild(opt);
+  }
   lineSel.value = b.lineId || "";
   lineSel.onchange = () => {
     const newLineId = lineSel.value || null;
