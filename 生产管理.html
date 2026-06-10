@@ -2544,7 +2544,6 @@ const Pages = (() => {
 
   .lib-list { display: flex; flex-direction: column; gap: 8px; }
   .lib-item {
-    display: flex; align-items: center; gap: 10px;
     padding: 11px 14px;
     background: rgba(255,255,255,0.02);
     border: 1px solid var(--border);
@@ -2552,7 +2551,26 @@ const Pages = (() => {
     border-left: 2px solid var(--lib-color, var(--border-strong));
     transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
   }
+  .lib-item-row { display: flex; align-items: center; gap: 10px; }
   .lib-item:hover { background: rgba(255,255,255,0.04); border-color: var(--border-strong); border-left-color: var(--lib-color, var(--border-strong)); }
+  /* 按线速度面板:折叠在每个品名条目下面 */
+  .lib-per-line { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .lib-item.expanded .lib-per-line { display: block; }
+  .lib-per-line .pl-title { font-size: 11px; color: var(--text-mute); margin-bottom: 6px; letter-spacing: .3px; }
+  .lib-per-line .pl-head, .lib-per-line .pl-row { display: grid; grid-template-columns: 56px 1fr 1fr; gap: 6px; align-items: center; padding: 3px 0; }
+  .lib-per-line .pl-head { font-size: 10px; color: var(--text-mute); padding-bottom: 4px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .lib-per-line .pl-row .pl-line { font-size: 11px; color: var(--text-dim); font-weight: 500 }
+  .lib-per-line input[type=number] {
+    width: 100%; min-width: 0;
+    background: rgba(255,255,255,0.025); border: 1px solid var(--border-strong);
+    color: var(--text); padding: 4px 8px; font: inherit; font-size: 12px;
+    outline: none; border-radius: 5px; font-variant-numeric: tabular-nums;
+  }
+  .lib-per-line input[type=number]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .lib-per-line input[type=number]:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.01); }
+  .lib-per-line input.has-override { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06) }
+  .lib-item-btn.per-line.active { color: var(--accent); border-color: rgba(var(--accent-rgb),0.5); background: rgba(var(--accent-rgb),0.08); }
+  .lib-item-btn.per-line:hover { color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); background: rgba(var(--accent-rgb),0.06); }
   .lib-item-name { flex: 1; font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bento-link { display: inline-block; font-size: 12px; vertical-align: -1px; margin-right: 2px; opacity: 0.9; cursor: help; }
   .lib-add-form input:disabled { opacity: 0.55; cursor: not-allowed; background: rgba(255,255,255,0.015); }
@@ -3367,6 +3385,14 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) item.lineSpeed = spd;
       if (Array.isArray(b.line)) item.people = b.line.length;
+      // 把配置表的 b.lineSpeeds 同步到品名库的 lineSpeedByLine(只覆盖,不清空已有 key)
+      if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
+        if (!item.lineSpeedByLine || typeof item.lineSpeedByLine !== 'object') item.lineSpeedByLine = {};
+        for (const lid in b.lineSpeeds) {
+          const v = parseFloat(b.lineSpeeds[lid]);
+          if (v > 0) item.lineSpeedByLine[lid] = v;
+        }
+      }
     } else {
       item._bentoLinked = false;
     }
@@ -3390,15 +3416,33 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) byName.lineSpeed = spd;
       if (Array.isArray(b.line)) byName.people = b.line.length;
+      // 同步按线流水线速度
+      if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
+        if (!byName.lineSpeedByLine || typeof byName.lineSpeedByLine !== 'object') byName.lineSpeedByLine = {};
+        for (const lid in b.lineSpeeds) {
+          const v = parseFloat(b.lineSpeeds[lid]);
+          if (v > 0) byName.lineSpeedByLine[lid] = v;
+        }
+      }
       linkedIds.add(b.id);
       if (!affected.includes(byName.id)) affected.push(byName.id);
       continue;
+    }
+    // 从配置表 b.lineSpeeds 起始拷一份按线速度
+    const initLineSpeedByLine = {};
+    if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
+      for (const lid in b.lineSpeeds) {
+        const v = parseFloat(b.lineSpeeds[lid]);
+        if (v > 0) initLineSpeedByLine[lid] = v;
+      }
     }
     const newItem = {
       id: uid(),
       name: (b.name || '').trim(),
       speed: 0, // 品名速度:便当库没有此字段,由用户后续手动填写
       lineSpeed: parseFloat(b.speed) > 0 ? parseFloat(b.speed) : 0,
+      speedByLine: {},
+      lineSpeedByLine: initLineSpeedByLine,
       people: Array.isArray(b.line) ? b.line.length : 0,
       meterPeople: 1,
       color: COLORS[library.length % COLORS.length],
@@ -3436,6 +3480,44 @@ const COLORS = [
 
 let library = [];
 let currentPickTargetLine = null;
+
+// ============ 每条生产线的速度解析 ============
+// 计划板用 1~7 编号生产线,排班表/配置表用 'xs','l01'...'tsk' 字符串 id。
+// 两边映射在很多地方都要用,集中放一处。
+const LINE_NUM_TO_ID = { 1:'xs', 2:'l01', 3:'l02', 4:'l03', 5:'l04', 6:'l05', 7:'tsk' };
+const LINE_ID_TO_NUM = { xs:1, l01:2, l02:3, l03:4, l04:5, l05:6, tsk:7 };
+const LINE_IDS_ORDER = ['xs','l01','l02','l03','l04','l05','tsk'];
+const LINE_ID_DISPLAY = { xs:'夕盛', l01:'01', l02:'02', l03:'03', l04:'04', l05:'05', tsk:'値付け' };
+
+// 从 DOM 节点(grid / card / line 内部任意节点)反向找出其所在生产线的 lineId(可能为 null)
+function getLineIdFromNode(node) {
+  if (!node) return null;
+  const lineEl = node.closest ? node.closest('.line') : null;
+  const num = lineEl && parseInt(lineEl.dataset.line, 10);
+  return num ? (LINE_NUM_TO_ID[num] || null) : null;
+}
+// 按线解析品名速度(math 用):优先 speedByLine[lineId],回退到 item.speed
+function resolveItemSpeed(item, lineId) {
+  if (!item) return 0;
+  const m = item.speedByLine;
+  if (lineId && m && parseFloat(m[lineId]) > 0) return parseFloat(m[lineId]);
+  return parseFloat(item.speed) || 0;
+}
+// 按线解析流水线速度(显示值):优先 lineSpeedByLine[lineId],回退到 item.lineSpeed
+function resolveItemLineSpeed(item, lineId) {
+  if (!item) return 0;
+  const m = item.lineSpeedByLine;
+  if (lineId && m && parseFloat(m[lineId]) > 0) return parseFloat(m[lineId]);
+  return parseFloat(item.lineSpeed) || 0;
+}
+// 是否存在任意按线覆盖(用于 UI 提示"因线而异")
+function hasPerLineSpeed(item) {
+  const a = item && item.speedByLine;
+  const b = item && item.lineSpeedByLine;
+  const any = obj => obj && Object.values(obj).some(v => parseFloat(v) > 0);
+  return any(a) || any(b);
+}
+
 let activeCard = null;
 let editingLibId = null;
 let saveTimer = null;
@@ -3455,6 +3537,9 @@ function loadLibrary() {
     if (item.people == null) item.people = 0;
     if (item.lineSpeed == null) item.lineSpeed = 0;
     if (item.meterPeople == null || item.meterPeople <= 0) item.meterPeople = 1;
+    // 旧数据兜底:确保按线覆盖 map 存在(空对象,不破坏默认行为)
+    if (!item.speedByLine || typeof item.speedByLine !== 'object') item.speedByLine = {};
+    if (!item.lineSpeedByLine || typeof item.lineSpeedByLine !== 'object') item.lineSpeedByLine = {};
   });
   refreshBentoMapFromStorage();
   applyBentoOverlay();
@@ -3658,17 +3743,74 @@ function renderLibList() {
     const delBtnHtml = lockedByBento
       ? `<button class="lib-item-btn del" title="已链接便当库,不可删除(请在配置表 · 便当库中删除该便当)" disabled>×</button>`
       : `<button class="lib-item-btn del" title="${isDup ? '删除重复的共享项' : '删除'}">×</button>`;
+    // 按线设置:左列品名速度(plan 板自有,可改),右列流水线速度(若 _bentoLinked 则锁定,由配置表同步)
+    const hasOverride = hasPerLineSpeed(item);
+    const perLineActiveCls = hasOverride ? ' active' : '';
+    const perLineTitle = hasOverride ? '按线设置(已有覆盖)' : '按线设置(留空 = 用默认)';
+    const lineSpeedReadonly = lockedByBento; // 流水线速度受便当库管控时只读
+    // 値付け(tsk) 不在按线速度面板里出现 —— 値付け线上的卡片直接用品名/流水线速度默认值
+    const perLineRows = LINE_IDS_ORDER.filter(lid => lid !== 'tsk').map(lid => {
+      const sV = (item.speedByLine && item.speedByLine[lid] > 0) ? item.speedByLine[lid] : '';
+      const lV = (item.lineSpeedByLine && item.lineSpeedByLine[lid] > 0) ? item.lineSpeedByLine[lid] : '';
+      const sCls = sV !== '' ? ' has-override' : '';
+      const lCls = lV !== '' ? ' has-override' : '';
+      const lockTip = lineSpeedReadonly ? 'title="由配置表 · 便当库自动同步" readonly disabled' : '';
+      return `<div class="pl-row">
+        <span class="pl-line">${LINE_ID_DISPLAY[lid]}</span>
+        <input type="number" class="pl-speed${sCls}" data-line="${lid}" min="0" step="0.01" inputmode="decimal" placeholder="默认 ${item.speed || '—'}" value="${sV}">
+        <input type="number" class="pl-line-speed${lCls}" data-line="${lid}" min="0" step="0.01" inputmode="decimal" placeholder="默认 ${item.lineSpeed || '—'}" value="${lV}" ${lockTip}>
+      </div>`;
+    }).join('');
     row.innerHTML = `
-      <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
-      <div class="lib-item-info">品名 <span class="ns">${dispSpeed}</span> · 计量 <span class="ns">${meterText}</span>${daySuffix}<br>流水线 ${lineSpdText}<br>${peopleText}</div>
-      <div class="lib-item-btns">
-        <button class="lib-item-btn apply" title="把当前的品名速度 / 计量人数 应用到 ${currentDate} 该品名的所有卡片(其它日期不变)">⤓</button>
-        <button class="lib-item-btn edit" title="编辑">✎</button>
-        ${delBtnHtml}
+      <div class="lib-item-row">
+        <div class="lib-item-name">${linkBadge}${escapeHtml(item.name)}</div>
+        <div class="lib-item-info">品名 <span class="ns">${dispSpeed}</span> · 计量 <span class="ns">${meterText}</span>${daySuffix}<br>流水线 ${lineSpdText}<br>${peopleText}</div>
+        <div class="lib-item-btns">
+          <button class="lib-item-btn per-line${perLineActiveCls}" title="${perLineTitle}">📏</button>
+          <button class="lib-item-btn apply" title="把当前的品名速度 / 计量人数 应用到 ${currentDate} 该品名的所有卡片(其它日期不变)">⤓</button>
+          <button class="lib-item-btn edit" title="编辑">✎</button>
+          ${delBtnHtml}
+        </div>
+      </div>
+      <div class="lib-per-line">
+        <div class="pl-title">按生产线设置（留空 = 用默认值）</div>
+        <div class="pl-head"><span>线</span><span>品名速度</span><span>流水线速度</span></div>
+        ${perLineRows}
       </div>
     `;
     row.querySelector('.lib-item-btn.apply').addEventListener('click', () => applyLibToCurrentDate(item.id));
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
+    // 按线展开
+    row.querySelector('.lib-item-btn.per-line').addEventListener('click', () => {
+      row.classList.toggle('expanded');
+    });
+    // 按线输入:实时落库
+    row.querySelectorAll('.lib-per-line .pl-speed').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const lid = inp.dataset.line;
+        const v = parseFloat(inp.value);
+        if (!item.speedByLine) item.speedByLine = {};
+        if (v > 0) item.speedByLine[lid] = v;
+        else delete item.speedByLine[lid];
+        inp.classList.toggle('has-override', v > 0);
+        saveLibrary();
+        // 更新按钮高亮(是否有任何覆盖)
+        row.querySelector('.lib-item-btn.per-line').classList.toggle('active', hasPerLineSpeed(item));
+      });
+    });
+    row.querySelectorAll('.lib-per-line .pl-line-speed').forEach(inp => {
+      if (inp.disabled) return;
+      inp.addEventListener('change', () => {
+        const lid = inp.dataset.line;
+        const v = parseFloat(inp.value);
+        if (!item.lineSpeedByLine) item.lineSpeedByLine = {};
+        if (v > 0) item.lineSpeedByLine[lid] = v;
+        else delete item.lineSpeedByLine[lid];
+        inp.classList.toggle('has-override', v > 0);
+        saveLibrary();
+        row.querySelector('.lib-item-btn.per-line').classList.toggle('active', hasPerLineSpeed(item));
+      });
+    });
     if (!lockedByBento) {
       const delBtn = row.querySelector('.lib-item-btn.del');
       delBtn.addEventListener('click', () => {
@@ -3792,7 +3934,12 @@ function propagateLibChange(libId) {
     const lineSpdInp = popupQ(card, '.line-speed');
     const peopleInp = popupQ(card, '.people');
     const meterInp = popupQ(card, '.meter-people');
-    if (lineSpdInp) lineSpdInp.value = item.lineSpeed > 0 ? item.lineSpeed : '';
+    if (lineSpdInp) {
+      // 按卡片所在线解析流水线速度(显示用)
+      const _lineId = getLineIdFromNode(card);
+      const _ls = resolveItemLineSpeed(item, _lineId);
+      lineSpdInp.value = _ls > 0 ? _ls : '';
+    }
     if (peopleInp) peopleInp.value = (item.people === '?' || item.people === '？') ? '?' : (item.people > 0 ? item.people : '');
     // 品名速度 / 计量人数 已改为每张卡独立快照,品名库编辑不再回写已有卡片(避免改动之前日期的计划)。
     affectedLines.add(card.closest('.line'));
@@ -3809,9 +3956,18 @@ function applyLibToCurrentDate(libId) {
   let count = 0;
   document.querySelectorAll('.card[data-type="job"]').forEach(card => {
     if (card.dataset.libId !== libId) return;
-    card.dataset.speed = item.speed > 0 ? String(item.speed) : '';
+    // 按卡片所在线解析速度,把当前库的默认/覆盖值推送到卡片快照
+    const lineId = getLineIdFromNode(card);
+    const resolved = resolveItemSpeed(item, lineId);
+    card.dataset.speed = resolved > 0 ? String(resolved) : '';
     const meterInp = popupQ(card, '.meter-people');
     if (meterInp) meterInp.value = item.meterPeople > 0 ? item.meterPeople : 1;
+    // 同时更新流水线速度输入(显示用)
+    const lineSpdInp = popupQ(card, '.line-speed');
+    if (lineSpdInp) {
+      const resolvedLs = resolveItemLineSpeed(item, lineId);
+      lineSpdInp.value = resolvedLs > 0 ? resolvedLs : '';
+    }
     affectedLines.add(card.closest('.line'));
     count++;
   });
@@ -3862,16 +4018,24 @@ function openPicker(line) {
     });
   } else {
     pickList.innerHTML = '';
+    // 这个挑选弹窗是要把品名放到 currentPickTargetLine 上。按目标线解析速度,让用户看到的就是真实写到卡片上的值。
+    const _targetLineId = getLineIdFromNode(currentPickTargetLine);
     [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
       const row = document.createElement('div');
       row.className = 'pick-item';
       row.style.setProperty('--lib-color', item.color);
       const peopleText = fmtPeople(item.people);
-      const lineSpdText = item.lineSpeed > 0 ? `${item.lineSpeed}` : '—';
+      const resSpd = resolveItemSpeed(item, _targetLineId);
+      const resLineSpd = resolveItemLineSpeed(item, _targetLineId);
+      // 用 † 标记一下:该值来自按线覆盖,而非默认
+      const spdMark = (resSpd > 0 && item.speedByLine && item.speedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
+      const lspMark = (resLineSpd > 0 && item.lineSpeedByLine && item.lineSpeedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
+      const spdText = resSpd > 0 ? resSpd : (item.speed || '—');
+      const lineSpdText = resLineSpd > 0 ? resLineSpd : '—';
       const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
       row.innerHTML = `
         <div class="pick-item-name">${escapeHtml(item.name)}</div>
-        <div class="pick-item-info">品名 <span class="ns">${item.speed}</span> · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}<br>${peopleText}</div>`;
+        <div class="pick-item-info">品名 <span class="ns">${spdText}</span>${spdMark} · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}${lspMark}<br>${peopleText}</div>`;
       row.addEventListener('click', () => {
         addJobCard(currentPickTargetLine.querySelector('.cards-grid'), item);
         pickModal.classList.remove('show');
@@ -3973,18 +4137,24 @@ function addJobCard(grid, libItem, savedData) {
   node.dataset.libId = libItem.id;
   node.dataset.name = libItem.name;
   node.dataset.color = libItem.color;
+  // 卡片所在线的 lineId(用于按线解析速度;历史卡载入时也能正确反推所在线)
+  const _lineId = getLineIdFromNode(grid);
   // 每张卡自带「品名速度」快照:历史日期载入时优先使用保存的快照,新增的卡才取品名库当前值。
+  // 新增卡按「所在线」解析:speedByLine[lineId] 优先,否则用 item.speed 默认值。
   // 这样在品名库里改速度只影响新增卡,不会回溯改写之前日期的计划。
+  const _resolvedSpeed = resolveItemSpeed(libItem, _lineId);
   const _speedSnap = (savedData && savedData.speed != null && savedData.speed !== '' && parseFloat(savedData.speed) > 0)
     ? parseFloat(savedData.speed)
-    : (libItem.speed > 0 ? libItem.speed : 0);
+    : (_resolvedSpeed > 0 ? _resolvedSpeed : 0);
   node.dataset.speed = _speedSnap ? String(_speedSnap) : '';
   node.style.borderLeftColor = libItem.color;
   // 计量人数同理:历史卡优先快照,新增卡取库默认值。
   const meterPeopleVal = (savedData && savedData.meterPeople != null && savedData.meterPeople !== '')
     ? (Math.max(1, parseInt(savedData.meterPeople) || 1))
     : (libItem.meterPeople > 0 ? libItem.meterPeople : 1);
-  const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (libItem.lineSpeed > 0 ? libItem.lineSpeed : '');
+  // 流水线速度也按线解析:lineSpeedByLine[lineId] 优先,否则 item.lineSpeed 默认值
+  const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
+  const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (_resolvedLineSpeed > 0 ? _resolvedLineSpeed : '');
   const qtyVal = savedData?.qty != null ? savedData.qty : '';
   const peopleVal = savedData?.people != null ? savedData.people : ((libItem.people === '?' || libItem.people === '？') ? '?' : (libItem.people > 0 ? libItem.people : ''));
   node.innerHTML = `
@@ -4847,7 +5017,10 @@ function captureState() {
       const type = card.dataset.type;
       if (type === 'job') {
         const _li = findLibItem(card.dataset.libId);
-        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: card.dataset.speed || (_li ? _li.speed : ''), lineSpeed: popupQ(card, '.line-speed').value, qty: popupQ(card, '.qty').value, people: popupQ(card, '.people').value, meterPeople: popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : 1) });
+        // 极旧卡片无 dataset.speed 时,按当前所在线解析回退,而不是直接用 item.speed 默认值
+        const _lid = getLineIdFromNode(card);
+        const _fallbackSpd = _li ? resolveItemSpeed(_li, _lid) : 0;
+        lineData.cards.push({ type: 'job', libId: card.dataset.libId, name: card.dataset.name, color: card.dataset.color, speed: card.dataset.speed || (_fallbackSpd > 0 ? String(_fallbackSpd) : ''), lineSpeed: popupQ(card, '.line-speed').value, qty: popupQ(card, '.qty').value, people: popupQ(card, '.people').value, meterPeople: popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : 1) });
       } else if (type === 'rest') {
         lineData.cards.push({ type: 'rest', name: popupQ(card, '.rest-name-input').value, min: popupQ(card, '.rest-min').value, fixed: popupQ(card, '.rest-fixed').value });
       }
@@ -5321,7 +5494,9 @@ function doExportCsv() {
     line.querySelectorAll('.card').forEach(card => {
       if (card.dataset.type === 'job') {
         const _li = findLibItem(card.dataset.libId);
-        const _speedVal = _li ? _li.speed : '';
+        // 优先用卡片快照,没有就按所在线解析品名库默认/覆盖
+        const _lid = getLineIdFromNode(card);
+        const _speedVal = card.dataset.speed || (_li ? (resolveItemSpeed(_li, _lid) || '') : '');
         const _meterVal = popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : '');
         rows.push([lineNum, '品名', card.dataset.name, popupQ(card, '.qty').value, _speedVal, _meterVal, popupQ(card, '.line-speed').value, popupQ(card, '.people').value, popupQ(card, '.duration').textContent.replace('耗时 ',''), popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
       } else if (card.dataset.type === 'rest') {
@@ -5786,7 +5961,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
   .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
-  .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:15px;font-weight:400;line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 16px}
   .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:16px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
@@ -5836,7 +6011,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
   .cal-today-btn{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
   .cal-today-btn:hover{background:var(--accent);color:#14181f}
-  .bento-title{text-align:center;font-size:32px;font-weight:700;letter-spacing:3px;margin:14px 0 6px;min-height:40px}
+  .bento-title{text-align:center;font-size:var(--bento-title-size,32px);font-weight:var(--bento-title-weight,700);letter-spacing:3px;margin:14px 0 6px;min-height:40px}
   .bento-title .muted{color:#5a5f68;font-weight:400;font-size:15px;letter-spacing:1px}
   .line-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .autocomplete{position:absolute;background:#0a0c10;border:1px solid var(--line);border-radius:6px;min-width:240px;max-height:280px;overflow:auto;z-index:5}
@@ -6082,8 +6257,22 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 .belt{box-shadow:0 1px 2px rgba(0,0,0,.4) inset}
 /* 大标题 */
 /* 大字便当名:去掉金属梯度,改成柔暖白 + 极轻青绿光晕,克制又有氛围 */
-.bento-title{background:none;color:#ede6d3;-webkit-text-fill-color:#ede6d3;text-shadow:0 1px 2px rgba(0,0,0,.5),0 0 28px rgba(94,234,212,.10);letter-spacing:4px;font-weight:600}
+.bento-title{background:none;color:#ede6d3;-webkit-text-fill-color:#ede6d3;text-shadow:0 1px 2px rgba(0,0,0,.5),0 0 28px rgba(94,234,212,.10);letter-spacing:4px;font-weight:var(--bento-title-weight,600)}
 .bento-title .muted{color:#6a6e78;-webkit-text-fill-color:#6a6e78;text-shadow:none}
+/* 字体调节弹窗 */
+.font-pop{position:fixed;top:54px;right:16px;z-index:50;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;box-shadow:0 24px 56px rgba(0,0,0,.7);min-width:280px;display:none;animation:calPopIn .16s ease-out}
+.font-pop.show{display:block}
+.font-pop .grp{margin-bottom:14px}
+.font-pop .grp:last-child{margin-bottom:0}
+.font-pop .grp-title{font-size:12px;font-weight:600;color:#9ca0a8;margin-bottom:8px;letter-spacing:.4px}
+.font-pop .row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.font-pop .row label{font-size:12px;color:#9ca0a8;width:36px;flex:0 0 36px}
+.font-pop .row input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+.font-pop .row .val{font-size:12px;color:var(--fg);font-variant-numeric:tabular-nums;width:42px;text-align:right;flex:0 0 42px}
+.font-pop .actions{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.font-pop .reset{background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:5px 12px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
+.font-pop .reset:hover{color:#e8e8e8;border-color:#3a3f47}
+#btn-font{font-weight:600;letter-spacing:.5px}
 </style>
 </head>
 <body>
@@ -6094,6 +6283,7 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
   <button class="btn-tab" data-screen="bentos">便当库</button>
   <button id="btn-materials">材料库</button>
   <button class="btn-tab" data-screen="line">线设置</button>
+  <button id="btn-font" title="字体调节">Aa</button>
   <span class="grow"></span>
   <div class="menu-wrap"><button id="btn-export">输出 ▾</button>
     <div class="menu" id="export-menu">
@@ -6102,6 +6292,19 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     </div>
   </div>
 </header>
+<div class="font-pop" id="font-pop">
+  <div class="grp">
+    <div class="grp-title">便当名</div>
+    <div class="row"><label>字号</label><input type="range" id="fp-bento-size" min="16" max="56" step="1"><span class="val" id="fp-bento-size-v"></span></div>
+    <div class="row"><label>粗细</label><input type="range" id="fp-bento-weight" min="300" max="900" step="100"><span class="val" id="fp-bento-weight-v"></span></div>
+  </div>
+  <div class="grp">
+    <div class="grp-title">卡片文字</div>
+    <div class="row"><label>字号</label><input type="range" id="fp-mats-size" min="10" max="24" step="1"><span class="val" id="fp-mats-size-v"></span></div>
+    <div class="row"><label>粗细</label><input type="range" id="fp-mats-weight" min="300" max="900" step="100"><span class="val" id="fp-mats-weight-v"></span></div>
+  </div>
+  <div class="actions"><button class="reset" id="fp-reset" type="button">重置默认</button></div>
+</div>
 <main id="content"></main>
 <div class="backdrop" id="backdrop"></div>
 <div class="modal" id="save-modal">
@@ -6123,6 +6326,70 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
   </div>
 </aside>
 <script>
+// === 字体调节(便当名 / 卡片文字) ===
+(function(){
+  const FONT_KEY = 'config-font-prefs-v1';
+  const DEFAULTS = { bentoSize: 32, bentoWeight: 600, matsSize: 15, matsWeight: 400 };
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function clampStep(v, lo, hi, step){ return clamp(Math.round(v/step)*step, lo, hi); }
+  function load(){
+    try {
+      const p = JSON.parse(localStorage.getItem(FONT_KEY) || '{}');
+      return {
+        bentoSize: clamp(+p.bentoSize || DEFAULTS.bentoSize, 16, 56),
+        bentoWeight: clampStep(+p.bentoWeight || DEFAULTS.bentoWeight, 300, 900, 100),
+        matsSize: clamp(+p.matsSize || DEFAULTS.matsSize, 10, 24),
+        matsWeight: clampStep(+p.matsWeight || DEFAULTS.matsWeight, 300, 900, 100)
+      };
+    } catch(_) { return Object.assign({}, DEFAULTS); }
+  }
+  function save(s){ try { localStorage.setItem(FONT_KEY, JSON.stringify(s)); } catch(_){} }
+  function apply(s){
+    const r = document.documentElement.style;
+    r.setProperty('--bento-title-size', s.bentoSize + 'px');
+    r.setProperty('--bento-title-weight', String(s.bentoWeight));
+    r.setProperty('--mats-size', s.matsSize + 'px');
+    r.setProperty('--mats-weight', String(s.matsWeight));
+  }
+  function syncUI(s){
+    const setRange = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+    const setText  = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+    setRange('fp-bento-size', s.bentoSize);     setText('fp-bento-size-v', s.bentoSize + 'px');
+    setRange('fp-bento-weight', s.bentoWeight); setText('fp-bento-weight-v', s.bentoWeight);
+    setRange('fp-mats-size', s.matsSize);       setText('fp-mats-size-v', s.matsSize + 'px');
+    setRange('fp-mats-weight', s.matsWeight);   setText('fp-mats-weight-v', s.matsWeight);
+  }
+  const state = load();
+  apply(state);
+  function init(){
+    const pop = document.getElementById('font-pop');
+    const btn = document.getElementById('btn-font');
+    if(!pop || !btn) return;
+    syncUI(state);
+    btn.addEventListener('click', e => { e.stopPropagation(); pop.classList.toggle('show'); });
+    document.addEventListener('click', e => {
+      if(!pop.contains(e.target) && e.target !== btn) pop.classList.remove('show');
+    });
+    const bind = (id, key) => {
+      const el = document.getElementById(id); if(!el) return;
+      el.addEventListener('input', () => {
+        state[key] = parseInt(el.value, 10);
+        apply(state); save(state); syncUI(state);
+      });
+    };
+    bind('fp-bento-size', 'bentoSize');
+    bind('fp-bento-weight', 'bentoWeight');
+    bind('fp-mats-size', 'matsSize');
+    bind('fp-mats-weight', 'matsWeight');
+    document.getElementById('fp-reset').addEventListener('click', () => {
+      Object.assign(state, DEFAULTS);
+      apply(state); save(state); syncUI(state);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
 // === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
 function showConfirmPopover(anchor, opts) {
   document.querySelectorAll('.confirm-popover').forEach(el => el.remove());
