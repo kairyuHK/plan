@@ -78,8 +78,8 @@ input[type=number]{-moz-appearance:textfield}
   -webkit-overflow-scrolling:touch;
   max-height:calc(100vh - var(--sticky-nav,50px) - 4px);
   max-height:calc(100dvh - var(--sticky-nav,50px) - 4px);
-  /* 左右两侧对称预留滚动条空间 → 表格左右空白对称(否则滚动条只占右侧,右边多 8px 空白) */
-  scrollbar-gutter:stable both-edges;
+  /* 仅右侧预留滚动条空间(8px)。配合页面左右各 8px 边距 → 左 8px,右 8px+滚动条 8px */
+  scrollbar-gutter:stable;
   /* 细滚动条 + 深色主题(Firefox)。默认透明,滚动时(.is-scrolling)才显示 */
   scrollbar-width:thin;
   scrollbar-color:transparent transparent;
@@ -93,8 +93,9 @@ input[type=number]{-moz-appearance:textfield}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#4a4a52}
 /* 排班页表格区已自带滚动容器,去掉 body 外层多余滚动条(设置/数据页仍正常滚动) */
 body:has(#page-schedule:not(.hidden)){overflow:hidden}
-/* 排班页顶部收紧,设置/数据页不动 */
-#page-schedule.page{padding-top:4px}
+/* 排班页:顶部收紧。左边距 8px;右边距 0,右侧那 8px 由 scrollbar-gutter 预留充当
+   (= 滚动条位置)→ 左右视觉留白都是 8px,对称。设置/数据页不动。 */
+#page-schedule.page{padding:4px 0 14px 8px}
 /* thead 吸附到滚动容器(.schedule-wrap)顶端 — 容器已在工具栏下方,故 top:0 */
 table.schedule thead{position:sticky;top:0;z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
@@ -1537,9 +1538,9 @@ const Pages = (() => {
       + (sizes['col-sum-contract'] || 36)
       + (sizes['col-sum-remain'] || 36);
     // 真正可放表格的宽度 = page-schedule 内容宽(clientWidth 含左右内边距,要减掉)
-    //   − 滚动容器左右对称预留的滚动条空间(scrollbar-gutter:both-edges,8px×2=16px)。
+    //   − 右侧预留的滚动条空间(scrollbar-gutter:stable,单侧 8px)。
     // 不减全的话自适应表格会比可视区宽 → 最后一列(15日)被挤到右边看不见。
-    const GUTTER_W = 16; // scrollbar-gutter both-edges 两侧各 8px
+    const GUTTER_W = 8; // scrollbar-gutter stable 仅右侧 8px
     const pageSchedule = document.getElementById('page-schedule');
     let containerW;
     if (pageSchedule) {
@@ -1550,10 +1551,14 @@ const Pages = (() => {
       containerW = window.innerWidth - 32 - GUTTER_W;
     }
     // 自动日期列宽:剩余空间 / 天数,下限 27px(防止日期列太小);用户显式设过则用用户值(严格)
+    const isAutoDay = sizes['col-day'] == null;
     const autoDayW = Math.max(27, Math.floor((containerW - fixedSum) / days.length));
-    const dayW = sizes['col-day'] != null ? sizes['col-day'] : autoDayW;
+    const dayW = isAutoDay ? autoDayW : sizes['col-day'];
     const totalW = fixedSum + dayW * days.length;
-    tbl.style.width = totalW + 'px';
+    // 自动模式:表格宽 = 容器宽。floor 取整余数(各列累加比容器少几十 px)由 table-layout:fixed
+    //   均摊给各列(每列约 +1px,看不出),表格填满容器 → 消除右侧多余空隙,左右留白对称。
+    // 自定义模式:严格用各列之和(用户指定的列宽不被重新分配)。
+    tbl.style.width = (isAutoDay ? containerW : totalW) + 'px';
     tbl.appendChild(buildColgroup(days, dayW));
     tbl.appendChild(buildHeader(days, todayYmd));
     tbl.appendChild(buildBody(days, todayYmd));
