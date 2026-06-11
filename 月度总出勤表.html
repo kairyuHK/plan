@@ -1251,6 +1251,10 @@ const Pages = (() => {
 
   function renderSchedule() {
     const host = document.getElementById('page-schedule');
+    // 保存滚动位置:点 day-cell 等任何 store 操作都触发整页重渲(DOM rebuild),
+    // 浏览器丢失滚动状态会回到顶部。RAF 里 rebuild 完成后还原。
+    const savedScrollX = window.scrollX;
+    const savedScrollY = window.scrollY;
     Render.clear(host);
     renderDeptTabs();
     renderPeriodNav();
@@ -1265,7 +1269,13 @@ const Pages = (() => {
       const suffix = key.startsWith('col-') ? '-w' : '-h';
       root.style.setProperty('--' + key + suffix, px + 'px');
     });
-    requestAnimationFrame(() => { syncStickyOffsets(); applyHighlight(); applyFocus(); });
+    requestAnimationFrame(() => {
+      syncStickyOffsets(); applyHighlight(); applyFocus();
+      // 还原滚动位置 — DOM rebuild 后浏览器会回到 (0,0),用保存值同步回去
+      if (window.scrollX !== savedScrollX || window.scrollY !== savedScrollY) {
+        window.scrollTo(savedScrollX, savedScrollY);
+      }
+    });
   }
 
   function buildEntryHint() {
@@ -1635,12 +1645,24 @@ const Pages = (() => {
       wireResize(handle, 'row-stat', 'y', 'table.schedule tbody tr.stat-row > td.label');
       labelTd.appendChild(handle);
     };
+    // 生成 stat 行的 5 个固定列前缀:役職空 / 氏名含 label(sticky 锚点) / 3 个 sum 空。
+    // 之前用 colspan:5 把 label 一格横跨 5 列,但用户要求 label 仅落在氏名列且固定。
+    // 拆成 5 个独立 td 后 label 用 td.name-col.label class,在 mobile 上自动继承 name-col 的 sticky 行为。
+    const buildStatLeading = (labelText) => {
+      const cells = [];
+      cells.push(Render.el('td.role-col'));                          // 役職:空
+      const labelTd = Render.el('td.name-col.label', labelText);     // 氏名:label(sticky 在此)
+      addStatRowHandle(labelTd);
+      cells.push(labelTd);
+      cells.push(Render.el('td.sum-col'));                           // 有休:空
+      cells.push(Render.el('td.sum-col'));                           // 契休:空
+      cells.push(Render.el('td.sum-col'));                           // 残:空
+      return cells;
+    };
 
     // Row 1: 必要人数 (editable, default 22)
     const r1 = Render.el('tr.stat-row');
-    const r1Label = Render.el('td.label', { colspan: 5 }, '必要人数');
-    addStatRowHandle(r1Label);
-    r1.appendChild(r1Label);
+    buildStatLeading('必要人数').forEach(c => r1.appendChild(c));
     const editing = Store.get().ui.editMode;
     for (let i = 0; i < days.length; i++) {
       const td = Render.el('td.required', { dataset: { ymd: days[i].ymd } });
@@ -1659,18 +1681,14 @@ const Pages = (() => {
 
     // Row 2: ライン合計 (auto)
     const r2 = Render.el('tr.stat-row');
-    const r2Label = Render.el('td.label', { colspan: 5 }, 'ライン合計');
-    addStatRowHandle(r2Label);
-    r2.appendChild(r2Label);
+    buildStatLeading('ライン合計').forEach(c => r2.appendChild(c));
     for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
     // Row 3: 派遣短期 (手动输入,蓝色)
     // 派遣是排班时提前预约的,数字由人工填写。
     const r3 = Render.el('tr.stat-row');
-    const r3Label = Render.el('td.label', { colspan: 5 }, '派遣短期');
-    addStatRowHandle(r3Label);
-    r3.appendChild(r3Label);
+    buildStatLeading('派遣短期').forEach(c => r3.appendChild(c));
     // 跳焦工具(放在 buildStatRows 函数内,闭包捕获 days 引用)
     // preventScroll: true 关键 — 阻止 focus 触发 scrollIntoView,
     // 否则浏览器会把新 input 滚到视野中导致整个表格跳动,用户以为"没跳"。
@@ -1753,9 +1771,7 @@ const Pages = (() => {
     // Row 4: 過不足 = ライン合計 + 派遣短期 − 必要人数
     // 正数 = 人手多余 / 0 = 刚好 / 负数 = 人手不足(临时缺勤导致)
     const r4 = Render.el('tr.stat-row');
-    const r4Label = Render.el('td.label', { colspan: 5 }, '過不足');
-    addStatRowHandle(r4Label);
-    r4.appendChild(r4Label);
+    buildStatLeading('過不足').forEach(c => r4.appendChild(c));
     for (let i = 0; i < days.length; i++) {
       const excess = lineTotals[i] + dispatches[i] - requireds[i];
       const td = Render.el('td.excess', { dataset: { ymd: days[i].ymd } }, String(excess));
