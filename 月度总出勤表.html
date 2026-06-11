@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>月度总出勤表</title>
 <style>
 :root{
@@ -1032,7 +1032,25 @@ const App = (() => {
     return `${d ? d.name : ''}月度出勤表${y}${m1}16-${m2}15`;
   }
 
+  // 禁用缩放(双击放大 + 双指捏合)——避免进入 iOS Safari 缩放后大表重栅格化的卡顿状态。
+  // iOS Safari 会忽略 viewport 的 maximum-scale/user-scalable(无障碍考虑),必须用 JS 拦截手势。
+  function disableZoom() {
+    // 捏合(双指):拦截 iOS 专有的 gesture 事件。单指滚动不受影响(gesture 仅多指触发)。
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+      document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+    // 双击放大:同一元素 300ms 内二次轻点 → 拦截第二次的默认缩放。
+    // 只在"同一元素"时拦 → 快速点不同格子录入不受影响(不同 target 不拦)。
+    let lastTapEnd = 0, lastTapTarget = null;
+    document.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTapEnd <= 300 && e.target === lastTapTarget) e.preventDefault();
+      lastTapEnd = now;
+      lastTapTarget = e.target;
+    }, { passive: false });
+  }
+
   function init() {
+    disableZoom();
     bindNav();
     showRoute();
     updateDirtyIndicator();
@@ -1145,35 +1163,15 @@ const Pages = (() => {
 
   // 点出勤格后的局部更新:只改受影响的 3 处,不重建整表(手机端卡顿根因)。
   // 复用 computeSums / computeLineTotal 等全量渲染同款计算函数 → 显示值不可能与全量渲染不一致。
-  // 底部统计列(ライン合計/過不足)的延迟批量更新队列。
-  // 把这部分从点击的即时路径里拆出来 → 即时重绘脏区从"半张表包围盒"缩成"点击那一行",
-  // 缩放状态下重栅格化的瓦片大幅减少 → 点格子更跟手。统计在 180ms 后补上(几乎察觉不到)。
-  let _statPatchT = null;
-  const _pendingStatYmds = new Set();
-  function flushStatPatches() {
-    const deptId = Store.get().ui.currentDept;
-    _pendingStatYmds.forEach(ymd => {
-      const lineTotal = computeLineTotal(deptId, ymd);
-      const ltEl = document.querySelector(`tr.stat-row td.linetotal[data-ymd="${ymd}"]`);
-      if (ltEl) ltEl.textContent = String(lineTotal);
-      const excess = lineTotal + Store.dispatchCount(deptId, ymd) - Store.requiredCount(deptId, ymd);
-      const exEl = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
-      if (exEl) {
-        exEl.textContent = String(excess);
-        exEl.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
-      }
-    });
-    _pendingStatYmds.clear();
-  }
-
   function patchDayCell(deptId, personId, ymd) {
     const periodKey = Store.get().ui.currentPeriod;
     const days = Period.days(periodKey);
     const person = Store.peopleInPeriod(deptId, periodKey).find(p => p.id === personId);
     if (!person) return;
-    // ---- 即时:只改点击那一行(格子 + 同行的 有休/契休/残),脏区是一条细横条 ----
+    // 1) 被点的格子本身
     const cell = document.querySelector(`td.day-cell[data-person="${personId}"][data-ymd="${ymd}"]`);
     if (cell) applyDayCellVisual(cell, deptId, personId, ymd);
+    // 2) 该人员的 有休/契休/残 汇总(整周期重算)
     const sums = computeSums(deptId, person, periodKey, days);
     const row = document.querySelector(`tr[data-person-id="${personId}"]`);
     if (row) {
@@ -1189,10 +1187,16 @@ const Pages = (() => {
       const remainEl = row.querySelector('td.sum-col[data-sum="remain"]');
       if (remainEl) remainEl.textContent = String(sums.remaining);
     }
-    // ---- 延迟:底部 ライン合計/過不足(不同行,在表底)从即时脏区里剔除,180ms 后批量补 ----
-    _pendingStatYmds.add(ymd);
-    clearTimeout(_statPatchT);
-    _statPatchT = setTimeout(flushStatPatches, 180);
+    // 3) 当天的 ライン合計 + 過不足
+    const lineTotal = computeLineTotal(deptId, ymd);
+    const ltEl = document.querySelector(`tr.stat-row td.linetotal[data-ymd="${ymd}"]`);
+    if (ltEl) ltEl.textContent = String(lineTotal);
+    const excess = lineTotal + Store.dispatchCount(deptId, ymd) - Store.requiredCount(deptId, ymd);
+    const exEl = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
+    if (exEl) {
+      exEl.textContent = String(excess);
+      exEl.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
+    }
   }
   function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; activeTool = null; renderPalette(); }
   let activeTool = null; // 'text' = 文字工具激活;点击单元格弹 popover 输入一个字符
