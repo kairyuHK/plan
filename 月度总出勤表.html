@@ -69,12 +69,34 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button{padding:3px 9px;font-size:13px;color:var(--muted);border-color:transparent;background:#1c1c20}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
-.schedule-wrap{margin-top:10px}
-/* 收紧排班表与工具栏的距离(桌面+手机)。原本顶部 24px(page padding 14 + wrap margin 10)
-   太空,且和滚动后日期头吸附到工具栏下方(几乎0间距)不一致。只改排班页,设置/数据页不动。 */
+/* 表格区做成独立滚动容器:固定高度=视口-工具栏,内部纵向滚动 → 滚动条只滚日期下方的人员内容,
+   工具栏 + 日期头(thead sticky 在容器顶端)完全不动。横向滚动也在容器内,氏名列 sticky 照常。
+   100dvh 处理 iOS Safari 地址栏开合(老浏览器回退 100vh)。max-height(非 height):人少时容器随内容收缩,不留空白。 */
+.schedule-wrap{
+  margin-top:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  max-height:calc(100vh - var(--sticky-nav,50px) - 4px);
+  max-height:calc(100dvh - var(--sticky-nav,50px) - 4px);
+  /* 左右两侧对称预留滚动条空间 → 表格左右空白对称(否则滚动条只占右侧,右边多 8px 空白) */
+  scrollbar-gutter:stable both-edges;
+  /* 细滚动条 + 深色主题(Firefox)。默认透明,滚动时(.is-scrolling)才显示 */
+  scrollbar-width:thin;
+  scrollbar-color:transparent transparent;
+}
+.schedule-wrap.is-scrolling{scrollbar-color:#3a3a40 transparent}
+/* 细滚动条 + 深色主题(Chrome/Edge/桌面 Safari)。滑块默认透明,滚动时才显示 → 停下自动隐藏 */
+.schedule-wrap::-webkit-scrollbar{width:8px;height:8px}
+.schedule-wrap::-webkit-scrollbar-track{background:transparent}
+.schedule-wrap::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;transition:background .25s}
+.schedule-wrap.is-scrolling::-webkit-scrollbar-thumb{background:#3a3a40}
+.schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#4a4a52}
+/* 排班页表格区已自带滚动容器,去掉 body 外层多余滚动条(设置/数据页仍正常滚动) */
+body:has(#page-schedule:not(.hidden)){overflow:hidden}
+/* 排班页顶部收紧,设置/数据页不动 */
 #page-schedule.page{padding-top:4px}
-#page-schedule .schedule-wrap{margin-top:0}
-table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:4;background:#1c1c20}
+/* thead 吸附到滚动容器(.schedule-wrap)顶端 — 容器已在工具栏下方,故 top:0 */
+table.schedule thead{position:sticky;top:0;z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
 /* table 自然宽度(width:auto) — 之前 width:100% 配合 table-layout:fixed 会把多余空间按比例
@@ -277,7 +299,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
      A4 可用区,浏览器看到表格上方空白后认为不能整张放进第 1 页,把整张推到第 2 页,第 1 页空白。
      修复办法是去掉 table 层级的 break-inside:avoid,只保留 tr 级别(防止单行被截断)。
      这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
-  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); display: flex; flex-direction: column; justify-content: center; }
+  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: center; }
   .entry-hint { display: none !important; }
   .col-resize-handle, .row-resize-handle { display: none !important; }
   /* position:relative 在 border-collapse:collapse 的 table cell 上会让浏览器渲染时丢边框,
@@ -1496,6 +1518,13 @@ const Pages = (() => {
 
   function buildTable() {
     const wrap = Render.el('div.schedule-wrap');
+    // 滚动时显示滚动条,停 800ms 后隐藏(覆盖式行为)。wrap 每次重建,监听随之重建,无泄漏。
+    let scrollHideT;
+    wrap.addEventListener('scroll', () => {
+      wrap.classList.add('is-scrolling');
+      clearTimeout(scrollHideT);
+      scrollHideT = setTimeout(() => wrap.classList.remove('is-scrolling'), 800);
+    }, { passive: true });
     const tbl = Render.el('table.schedule');
     const days = Period.days(Store.get().ui.currentPeriod);
     const todayYmd = Util.ymd(new Date());
@@ -1507,9 +1536,19 @@ const Pages = (() => {
       + (sizes['col-sum-paid'] || 36)
       + (sizes['col-sum-contract'] || 36)
       + (sizes['col-sum-remain'] || 36);
-    // 取容器宽 = page-schedule 内宽(已在 DOM 里 → clientWidth 有效)
+    // 真正可放表格的宽度 = page-schedule 内容宽(clientWidth 含左右内边距,要减掉)
+    //   − 滚动容器左右对称预留的滚动条空间(scrollbar-gutter:both-edges,8px×2=16px)。
+    // 不减全的话自适应表格会比可视区宽 → 最后一列(15日)被挤到右边看不见。
+    const GUTTER_W = 16; // scrollbar-gutter both-edges 两侧各 8px
     const pageSchedule = document.getElementById('page-schedule');
-    const containerW = pageSchedule ? pageSchedule.clientWidth : (window.innerWidth - 32);
+    let containerW;
+    if (pageSchedule) {
+      const cs = getComputedStyle(pageSchedule);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); // 左右内边距(各 16px)
+      containerW = pageSchedule.clientWidth - padX - GUTTER_W;
+    } else {
+      containerW = window.innerWidth - 32 - GUTTER_W;
+    }
     // 自动日期列宽:剩余空间 / 天数,下限 27px(防止日期列太小);用户显式设过则用用户值(严格)
     const autoDayW = Math.max(27, Math.floor((containerW - fixedSum) / days.length));
     const dayW = sizes['col-day'] != null ? sizes['col-day'] : autoDayW;
