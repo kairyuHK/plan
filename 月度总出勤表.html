@@ -15,6 +15,9 @@
   --font-mono:ui-monospace,Consolas,monospace;
 }
 *{box-sizing:border-box}
+/* touch-action:manipulation = 允许平移 + 双指捏合缩放,禁用双击放大。
+   touch-action 不继承,所以广播到所有元素才能覆盖任意位置的双击。 */
+*{touch-action:manipulation}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
@@ -1032,16 +1035,13 @@ const App = (() => {
     return `${d ? d.name : ''}月度出勤表${y}${m1}16-${m2}15`;
   }
 
-  // 禁用缩放(双击放大 + 双指捏合)——避免进入 iOS Safari 缩放后大表重栅格化的卡顿状态。
-  // iOS Safari 会忽略 viewport 的 maximum-scale/user-scalable(无障碍考虑),必须用 JS 拦截手势。
-  function disableZoom() {
-    // 捏合(双指):拦截 iOS 专有的 gesture 事件。单指滚动不受影响(gesture 仅多指触发)。
-    ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
-      document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
-    // 双击放大:同一元素 300ms 内二次轻点 → 拦截第二次的默认缩放。
-    // 只在"同一元素"时拦 → 快速点不同格子录入不受影响(不同 target 不拦)。
+  // 关闭双击放大(保留双指捏合):用 touchend 检测同一元素 300ms 内二次轻点,拦截其默认缩放。
+  // 不拦双指手势 → 捏合缩放保留。只在"同一元素"二次轻点才拦 → 快速点不同格子录入不受影响。
+  // (纯 CSS touch-action:manipulation 在部分 iOS 版本对双击缩放不生效,JS 兜底更可靠。)
+  function disableDoubleTapZoom() {
     let lastTapEnd = 0, lastTapTarget = null;
     document.addEventListener('touchend', e => {
+      if (e.touches && e.touches.length > 0) return; // 多指(捏合)不处理
       const now = Date.now();
       if (now - lastTapEnd <= 300 && e.target === lastTapTarget) e.preventDefault();
       lastTapEnd = now;
@@ -1050,7 +1050,7 @@ const App = (() => {
   }
 
   function init() {
-    disableZoom();
+    disableDoubleTapZoom();
     bindNav();
     showRoute();
     updateDirtyIndicator();
