@@ -617,6 +617,12 @@ const Store = (() => {
     listeners.forEach(fn => fn('persist'));
   }, 100);
 
+  // 静默持久化:只写 localStorage,不触发 listeners(不重渲)。
+  // 用于高频局部更新(点出勤格),避免每次点击触发整表重建 → 手机端卡顿的根因。
+  const persistSilent = Util.debounce(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
+  }, 150);
+
   function commit(reason = 'change') {
     listeners.forEach(fn => fn(reason));
     persist();
@@ -662,7 +668,8 @@ const Store = (() => {
   // ---- mutators ----
   function setUi(patch) { Object.assign(state.ui, patch); commit('ui'); }
 
-  function setCell(deptId, personId, ymd, status, color) {
+  // silent=true:只 persist 不 commit(不触发整表重渲),调用方负责局部更新 DOM。
+  function setCell(deptId, personId, ymd, status, color, silent) {
     const k = cellKey(deptId, personId, ymd);
     if (status === 'work') delete state.attendance[k];
     else state.attendance[k] = status;
@@ -674,10 +681,11 @@ const Store = (() => {
       if (color === null) delete state.cellColors[k];
       else state.cellColors[k] = color;
     }
-    commit('cell');
+    if (silent) persistSilent();
+    else commit('cell');
   }
 
-  function cycleCell(deptId, personId, ymd, color) {
+  function cycleCell(deptId, personId, ymd, color, silent) {
     const current = cellStatus(deptId, personId, ymd);
     // 派生 retired(来自 retiredOn 字段,旧数据兼容)仍不可编辑
     const person = (state.people[deptId] || []).find(pp => pp.id === personId);
@@ -685,15 +693,15 @@ const Store = (() => {
     if (isDerivedRetired) return;
     // 选了颜色 → 当作"涂色刷",强制设为 work + 填色;不再切换状态
     // 选了「clear」(✕)→ 强制设为 work + 清色
-    if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null); return; }
-    if (color) { setCell(deptId, personId, ymd, 'work', color); return; }
+    if (color === 'clear') { setCell(deptId, personId, ymd, 'work', null, silent); return; }
+    if (color) { setCell(deptId, personId, ymd, 'work', color, silent); return; }
     // 没选颜色 → 状态循环 空→〇→有→✲→空(欠跳过,只能键盘 3 设置);
     // 已经是欠的格子点击会直接回到空
     const next = current === 'work' ? 'contractRest'
                : current === 'contractRest' ? 'paidLeave'
                : current === 'paidLeave' ? 'retired'
                : 'work';
-    setCell(deptId, personId, ymd, next);
+    setCell(deptId, personId, ymd, next, undefined, silent);
   }
 
   const cellColor = (deptId, personId, ymd) => state.cellColors[cellKey(deptId, personId, ymd)] || null;
@@ -1109,6 +1117,69 @@ const Pages = (() => {
     red: '#dc2626', orange: '#ea580c', yellow: '#ca8a04',
     green: '#16a34a', blue: '#2563eb', purple: '#9333ea'
   };
+  const CELL_STATUS_CLASSES = ['work', 'contractRest', 'paidLeave', 'absent', 'retired'];
+
+  // 把单元格的视觉(状态 class + 显示字符 + 颜色)从 store 同步到一个 td 上。
+  // buildBody 和 patchDayCell 共用 → 两条路径渲染逻辑绝对一致,不会出现"点了不更新"或"显示错"的偏差。
+  // 只增删状态相关 class,保留 hl-col/hl-row/cell-focus 等高亮/焦点 class。
+  function applyDayCellVisual(td, deptId, personId, ymd) {
+    CELL_STATUS_CLASSES.forEach(c => td.classList.remove(c));
+    td.classList.remove('has-text');
+    td.style.removeProperty('background-color');
+    td.style.removeProperty('color');
+    const st = Store.cellStatus(deptId, personId, ymd);
+    const ct = Store.cellText(deptId, personId, ymd); // { text, color } 或 null
+    const displayChar = (ct && ct.text)
+      || (st === 'contractRest' ? '〇' : st === 'paidLeave' ? '有' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : '');
+    td.textContent = displayChar;
+    td.classList.add(st);
+    if (ct && ct.text) td.classList.add('has-text');
+    const c = Store.cellColor(deptId, personId, ymd);
+    if (c && COLOR_MAP[c]) {
+      td.style.setProperty('background-color', COLOR_MAP[c], 'important');
+      td.style.setProperty('color', '#fff', 'important');
+    } else if (ct && ct.color && COLOR_MAP[ct.color]) {
+      td.style.setProperty('color', COLOR_MAP[ct.color], 'important');
+    }
+  }
+
+  // 点出勤格后的局部更新:只改受影响的 3 处,不重建整表(手机端卡顿根因)。
+  // 复用 computeSums / computeLineTotal 等全量渲染同款计算函数 → 显示值不可能与全量渲染不一致。
+  function patchDayCell(deptId, personId, ymd) {
+    const periodKey = Store.get().ui.currentPeriod;
+    const days = Period.days(periodKey);
+    const person = Store.peopleInPeriod(deptId, periodKey).find(p => p.id === personId);
+    if (!person) return;
+    // 1) 被点的格子本身
+    const cell = document.querySelector(`td.day-cell[data-person="${personId}"][data-ymd="${ymd}"]`);
+    if (cell) applyDayCellVisual(cell, deptId, personId, ymd);
+    // 2) 该人员的 有休/契休/残 汇总(整周期重算)
+    const sums = computeSums(deptId, person, periodKey, days);
+    const row = document.querySelector(`tr[data-person-id="${personId}"]`);
+    if (row) {
+      const paidEl = row.querySelector('td.sum-col[data-sum="paid"]');
+      if (paidEl) paidEl.textContent = String(sums.paid);
+      const contractEl = row.querySelector('td.sum-col[data-sum="contract"]');
+      if (contractEl) {
+        contractEl.textContent = String(sums.contract);
+        contractEl.classList.remove('over', 'under');
+        if (sums.restCount > sums.contract) contractEl.classList.add('over');
+        else if (sums.restCount < sums.contract) contractEl.classList.add('under');
+      }
+      const remainEl = row.querySelector('td.sum-col[data-sum="remain"]');
+      if (remainEl) remainEl.textContent = String(sums.remaining);
+    }
+    // 3) 当天的 ライン合計 + 過不足
+    const lineTotal = computeLineTotal(deptId, ymd);
+    const ltEl = document.querySelector(`tr.stat-row td.linetotal[data-ymd="${ymd}"]`);
+    if (ltEl) ltEl.textContent = String(lineTotal);
+    const excess = lineTotal + Store.dispatchCount(deptId, ymd) - Store.requiredCount(deptId, ymd);
+    const exEl = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
+    if (exEl) {
+      exEl.textContent = String(excess);
+      exEl.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
+    }
+  }
   function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; activeTool = null; renderPalette(); }
   let activeTool = null; // 'text' = 文字工具激活;点击单元格弹 popover 输入一个字符
   function setActiveTool(tool) { activeTool = (activeTool === tool) ? null : tool; activeColor = null; renderPalette(); }
@@ -1557,40 +1628,24 @@ const Pages = (() => {
       tr.appendChild(nameTd);
 
       const sums = computeSums(deptId, p, periodKey, days);
-      tr.appendChild(Render.el('td.sum-col', String(sums.paid)));
-      const contractTd = Render.el('td.sum-col', String(sums.contract));
+      tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'paid' } }, String(sums.paid)));
+      const contractTd = Render.el('td.sum-col', { dataset: { sum: 'contract' } }, String(sums.contract));
       if (sums.restCount > sums.contract) contractTd.classList.add('over');
       else if (sums.restCount < sums.contract) contractTd.classList.add('under');
       tr.appendChild(contractTd);
-      tr.appendChild(Render.el('td.sum-col', String(sums.remaining)));
+      tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'remain' } }, String(sums.remaining)));
 
       for (const d of days) {
         const st = Store.cellStatus(deptId, p.id, d.ymd);
-        const ct = Store.cellText(deptId, p.id, d.ymd); // { text, color } 或 null
-        // 优先级:自定义文字 > 状态字符
-        const displayChar = (ct && ct.text)
-          || (st === 'contractRest' ? '〇' : st === 'paidLeave' ? '有' : st === 'absent' ? '欠' : st === 'retired' ? '✲' : '');
-        const td = Render.el('td.day-cell',
-          { dataset: { person: p.id, ymd: d.ymd } },
-          displayChar
-        );
-        td.classList.add(st);
-        if (ct && ct.text) td.classList.add('has-text');
-        const c = Store.cellColor(deptId, p.id, d.ymd);
-        if (c && COLOR_MAP[c]) {
-          // 背景色填满 + 字色变白(默认 cellColor 优先于文字色)
-          td.style.setProperty('background-color', COLOR_MAP[c], 'important');
-          td.style.setProperty('color', '#fff', 'important');
-        } else if (ct && ct.color && COLOR_MAP[ct.color]) {
-          // 没填背景色 → 应用自定义文字色(不再强制 bold,保持细字)
-          td.style.setProperty('color', COLOR_MAP[ct.color], 'important');
-        }
+        const td = Render.el('td.day-cell', { dataset: { person: p.id, ymd: d.ymd } });
+        // 视觉(状态 class + 字符 + 颜色)由共享函数填充,与 patchDayCell 完全一致
+        applyDayCellVisual(td, deptId, p.id, d.ymd);
         const isDerivedRetired = st === 'retired' && p.retiredOn && d.ymd >= p.retiredOn;
         if (!isDerivedRetired) {
           td.addEventListener('click', () => {
             if (!Store.get().ui.editMode) return;
             focusedCell = { personId: p.id, ymd: d.ymd };
-            // 文字工具激活 → 弹 popover 输入字符 + 选颜色;否则正常状态循环
+            // 文字工具激活 → 弹 popover 输入字符 + 选颜色(走全量重渲,低频);否则正常状态循环
             if (activeTool === 'text') {
               const ct = Store.cellText(deptId, p.id, d.ymd);
               showConfirmPopover(td, {
@@ -1608,7 +1663,10 @@ const Pages = (() => {
                 }
               });
             } else {
-              Store.cycleCell(deptId, p.id, d.ymd, activeColor);
+              // 静默改 store + 只局部更新受影响的格子 → 不重建整表(手机端流畅关键)
+              Store.cycleCell(deptId, p.id, d.ymd, activeColor, true);
+              patchDayCell(deptId, p.id, d.ymd);
+              applyFocus();
             }
           });
         }
@@ -1682,7 +1740,7 @@ const Pages = (() => {
     // Row 2: ライン合計 (auto)
     const r2 = Render.el('tr.stat-row');
     buildStatLeading('ライン合計').forEach(c => r2.appendChild(c));
-    for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
+    for (let i = 0; i < days.length; i++) r2.appendChild(Render.el('td.linetotal', { dataset: { ymd: days[i].ymd } }, String(lineTotals[i])));
     out.push(r2);
 
     // Row 3: 派遣短期 (手动输入,蓝色)
