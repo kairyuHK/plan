@@ -245,15 +245,6 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;text-align:left!important;background:var(--card)!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
-  /* 缩放时(body.vv-zoomed,scale≠1)临时取消所有 sticky:iOS Safari 在非默认缩放下,
-     重栅格化带大量 sticky 合成层的大表面极慢,任何重绘(点格子/高亮)都卡 ~1s。
-     缩放状态下冻结列本就无意义(在看放大区域/全表) → 取消 sticky 砍掉 60+ 合成层 → 重绘变快。
-     缩放回默认 scale=1 后 class 移除,sticky 自动恢复,横滑仍冻结氏名列。 */
-  body.vv-zoomed table.schedule thead{position:static!important}
-  body.vv-zoomed table.schedule th.role-col,
-  body.vv-zoomed table.schedule td.role-col,
-  body.vv-zoomed table.schedule th.name-col,
-  body.vv-zoomed table.schedule td.name-col{position:static!important;left:auto!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
@@ -1006,20 +997,6 @@ const App = (() => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
     });
     window.addEventListener('hashchange', showRoute);
-    // 监听 visualViewport 缩放:scale≠1 时给 body 加 vv-zoomed,CSS 据此临时取消 sticky,
-    // 让放大/缩小状态下的重绘不再被 60+ sticky 合成层拖慢(手机端卡顿根因)。
-    if (window.visualViewport) {
-      const vv = window.visualViewport;
-      let vvT;
-      const syncZoomClass = () => {
-        // scale 容差:0.99~1.01 视为默认缩放(避免浮点抖动误判)
-        const zoomed = vv.scale > 1.01 || vv.scale < 0.99;
-        document.body.classList.toggle('vv-zoomed', zoomed);
-      };
-      // 缩放手势进行中 resize 连续触发 → 防抖,手势停下后再切换(避免捏合途中反复 reflow)
-      vv.addEventListener('resize', () => { clearTimeout(vvT); vvT = setTimeout(syncZoomClass, 120); });
-      syncZoomClass();
-    }
     // 窗口宽度变化时重排 schedule。但**只在宽度变化时**重渲 —— iOS Safari 滚动时
     // URL 栏隐藏/显示会触发 resize 事件,但 innerWidth 不变(只 innerHeight 变),
     // 之前不区分导致每次滚动都触发 renderSchedule → DOM 重建 → 滚动位置归零的 bug。
@@ -1168,15 +1145,35 @@ const Pages = (() => {
 
   // 点出勤格后的局部更新:只改受影响的 3 处,不重建整表(手机端卡顿根因)。
   // 复用 computeSums / computeLineTotal 等全量渲染同款计算函数 → 显示值不可能与全量渲染不一致。
+  // 底部统计列(ライン合計/過不足)的延迟批量更新队列。
+  // 把这部分从点击的即时路径里拆出来 → 即时重绘脏区从"半张表包围盒"缩成"点击那一行",
+  // 缩放状态下重栅格化的瓦片大幅减少 → 点格子更跟手。统计在 180ms 后补上(几乎察觉不到)。
+  let _statPatchT = null;
+  const _pendingStatYmds = new Set();
+  function flushStatPatches() {
+    const deptId = Store.get().ui.currentDept;
+    _pendingStatYmds.forEach(ymd => {
+      const lineTotal = computeLineTotal(deptId, ymd);
+      const ltEl = document.querySelector(`tr.stat-row td.linetotal[data-ymd="${ymd}"]`);
+      if (ltEl) ltEl.textContent = String(lineTotal);
+      const excess = lineTotal + Store.dispatchCount(deptId, ymd) - Store.requiredCount(deptId, ymd);
+      const exEl = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
+      if (exEl) {
+        exEl.textContent = String(excess);
+        exEl.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
+      }
+    });
+    _pendingStatYmds.clear();
+  }
+
   function patchDayCell(deptId, personId, ymd) {
     const periodKey = Store.get().ui.currentPeriod;
     const days = Period.days(periodKey);
     const person = Store.peopleInPeriod(deptId, periodKey).find(p => p.id === personId);
     if (!person) return;
-    // 1) 被点的格子本身
+    // ---- 即时:只改点击那一行(格子 + 同行的 有休/契休/残),脏区是一条细横条 ----
     const cell = document.querySelector(`td.day-cell[data-person="${personId}"][data-ymd="${ymd}"]`);
     if (cell) applyDayCellVisual(cell, deptId, personId, ymd);
-    // 2) 该人员的 有休/契休/残 汇总(整周期重算)
     const sums = computeSums(deptId, person, periodKey, days);
     const row = document.querySelector(`tr[data-person-id="${personId}"]`);
     if (row) {
@@ -1192,16 +1189,10 @@ const Pages = (() => {
       const remainEl = row.querySelector('td.sum-col[data-sum="remain"]');
       if (remainEl) remainEl.textContent = String(sums.remaining);
     }
-    // 3) 当天的 ライン合計 + 過不足
-    const lineTotal = computeLineTotal(deptId, ymd);
-    const ltEl = document.querySelector(`tr.stat-row td.linetotal[data-ymd="${ymd}"]`);
-    if (ltEl) ltEl.textContent = String(lineTotal);
-    const excess = lineTotal + Store.dispatchCount(deptId, ymd) - Store.requiredCount(deptId, ymd);
-    const exEl = document.querySelector(`tr.stat-row td.excess[data-ymd="${ymd}"]`);
-    if (exEl) {
-      exEl.textContent = String(excess);
-      exEl.style.color = excess < 0 ? 'var(--danger)' : excess > 0 ? 'var(--muted)' : '';
-    }
+    // ---- 延迟:底部 ライン合計/過不足(不同行,在表底)从即时脏区里剔除,180ms 后批量补 ----
+    _pendingStatYmds.add(ymd);
+    clearTimeout(_statPatchT);
+    _statPatchT = setTimeout(flushStatPatches, 180);
   }
   function setActiveColor(c) { activeColor = (activeColor === c) ? null : c; activeTool = null; renderPalette(); }
   let activeTool = null; // 'text' = 文字工具激活;点击单元格弹 popover 输入一个字符
