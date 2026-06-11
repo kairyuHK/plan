@@ -70,6 +70,10 @@ input[type=number]{-moz-appearance:textfield}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
 .period-nav span{color:var(--text);padding:0 6px}
 .schedule-wrap{margin-top:10px}
+/* 收紧排班表与工具栏的距离(桌面+手机)。原本顶部 24px(page padding 14 + wrap margin 10)
+   太空,且和滚动后日期头吸附到工具栏下方(几乎0间距)不一致。只改排班页,设置/数据页不动。 */
+#page-schedule.page{padding-top:4px}
+#page-schedule .schedule-wrap{margin-top:0}
 table.schedule thead{position:sticky;top:var(--sticky-nav,50px);z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
