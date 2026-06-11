@@ -114,8 +114,6 @@ table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-ro
 table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
 table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
-/* 手机端锚点高亮 — 单格 inset 边框,重绘代价 O(1),不随表大小/缩放变化 */
-table.schedule .hl-anchor{box-shadow:inset 0 0 0 2px var(--accent)}
 /* keyboard focus indicator(仅在编辑模式下显示,锁定时即使焦点逻辑保留也不画边框) */
 body.editing table.schedule td.day-cell.cell-focus{position:relative;box-shadow:inset 0 0 0 2px var(--accent),0 0 0 1px var(--accent);z-index:2}
 /* color palette toolbar */
@@ -1248,29 +1246,15 @@ const Pages = (() => {
   }
 
   function applyHighlight() {
-    document.querySelectorAll('.hl-row, .hl-col, .hl-anchor').forEach(el => {
+    document.querySelectorAll('.hl-row, .hl-col').forEach(el => {
       el.classList.remove('hl-row');
       el.classList.remove('hl-col');
-      el.classList.remove('hl-anchor');
     });
-    // 手机端缩小看全屏时,整行/整列背景重绘横跨大 backing store + 多 sticky 合成层 → ~1s 卡顿。
-    // 改为只高亮锚点单元格(氏名格 / 日期表头),单格重绘 → 即时。桌面端仍整行整列。
-    const mobile = window.matchMedia('(max-width:640px)').matches;
     highlightedRows.forEach(pid => {
-      if (mobile) {
-        const nameTd = document.querySelector(`tr[data-person-id="${pid}"] td.name-col`);
-        if (nameTd) nameTd.classList.add('hl-anchor');
-      } else {
-        document.querySelectorAll(`tr[data-person-id="${pid}"]`).forEach(tr => tr.classList.add('hl-row'));
-      }
+      document.querySelectorAll(`tr[data-person-id="${pid}"]`).forEach(tr => tr.classList.add('hl-row'));
     });
     highlightedCols.forEach(ymd => {
-      if (mobile) {
-        const th = document.querySelector(`thead tr.head-row th[data-ymd="${ymd}"]`);
-        if (th) th.classList.add('hl-anchor');
-      } else {
-        document.querySelectorAll(`[data-ymd="${ymd}"]`).forEach(el => el.classList.add('hl-col'));
-      }
+      document.querySelectorAll(`[data-ymd="${ymd}"]`).forEach(el => el.classList.add('hl-col'));
     });
   }
 
