@@ -267,21 +267,15 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
-  /* 横向滚动时固定 役職 + 氏名 列 — 用户横向滑动看日期时左侧人员信息始终可见。
-     z-index 3:thead(4)更高,确保垂直滚到 thead 区域时 thead 覆盖 tbody sticky 列;
-     name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义);
-     background 显式声明确保 sub-pixel 不漏底色。 */
-  /* border-collapse + sticky 会丢掉 sticky 单元格的边框(WebKit 已知问题),用 inset box-shadow
-     画回:左边框/右边框/下边框(行分隔线)。另用向左实心 shadow(与背景同色)盖住 sub-pixel 缝隙:
-     name-col 盖 役職/氏名 之间;role-col 盖 役職 左边沿。 */
+  /* 横向滚动时固定 役職 + 氏名 列。边框交给表格自身的 border-collapse(单线),不再加 box-shadow
+     (之前加 inset 边框和 collapse 边框叠成了双线)。name-col 紧贴 role 右侧。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
-  table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
-  table.schedule td.role-col{background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card),inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
-  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;box-shadow:-3px 0 0 0 #1c1c20,inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
-  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card),inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
-  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯。边框/缝盖保留 */
-  table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:-3px 0 0 0 #1d2823,inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
-  table.schedule tr.hl-row td.name-col{background:#1d2823!important;box-shadow:-3px 0 0 0 #1d2823,inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  table.schedule th.role-col{background:#1c1c20!important}
+  table.schedule td.role-col{background:var(--card)!important}
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important}
+  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
+  table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
