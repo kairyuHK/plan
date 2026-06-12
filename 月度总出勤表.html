@@ -102,8 +102,11 @@ table.schedule thead th{background:#1c1c20}
 table.schedule thead th.dept-name{background:#161618}
 /* table 自然宽度(width:auto) — 之前 width:100% 配合 table-layout:fixed 会把多余空间按比例
    分配给各列,col 声明 10px 实际渲染成 ~14px,用户无法真正拖到最小值。auto 严格按 col 声明值 */
-table.schedule{border-collapse:collapse;font-size:11px;background:var(--card);width:auto;table-layout:fixed}
-table.schedule th,table.schedule td{border:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap;box-sizing:border-box}
+/* border-collapse:separate — 边框属于各单元格(而非表格),sticky 列冻结时边框跟着冻结,
+   横向滚动不再出现"边框线滚走露出后面"的缝。每格只画 右+下 边框(避免相邻格双线);
+   首列(役職)补左边框、表格补上边框,闭合网格。打印时被 @media print 覆盖回 collapse。 */
+table.schedule{border-collapse:separate;border-spacing:0;border-top:1px solid var(--border);font-size:11px;background:var(--card);width:auto;table-layout:fixed}
+table.schedule th,table.schedule td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap;box-sizing:border-box}
 table.schedule col.col-role{width:var(--col-role-w, 60px)}
 table.schedule col.col-name{width:var(--col-name-w, 130px)}
 table.schedule col.col-sum{width:36px}
@@ -116,7 +119,7 @@ table.schedule tbody tr.stat-row>td{height:var(--row-stat-h, 25px)}
 table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
-table.schedule th.role-col,table.schedule td.role-col{min-width:0;text-align:left;padding-left:6px;overflow:hidden}
+table.schedule th.role-col,table.schedule td.role-col{min-width:0;text-align:left;padding-left:6px;overflow:hidden;border-left:1px solid var(--border)}
 table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
 table.schedule td.name-col{background:var(--card)}
 table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--muted);overflow:hidden}
@@ -267,18 +270,15 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
-  /* 横向滚动固定 役職 + 氏名 列。collapse 边框正常(单线),问题只是滚动时两 sticky 列之间的
-     sub-pixel 合成缝(露出后面 day-cell)。修法:name-col 向左重叠 1px 消除缝 —— 重叠会盖住
-     collapse 的列分隔线,故补一条 inset 左边框当分隔线(单线,不与 collapse 重复)。
-     role-col 加 1px 向左实心填充,盖住左端的缝。 */
+  /* 横向滚动固定 役職 + 氏名 列。separate 边框模型下边框属于单元格,sticky 时跟着冻结,
+     不再有"边框滚走露缝"的问题,故无需任何 box-shadow 补丁。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
-  table.schedule th.role-col{background:#1c1c20!important;box-shadow:-1px 0 0 0 #1c1c20}
-  table.schedule td.role-col{background:var(--card)!important;box-shadow:-1px 0 0 0 var(--card)}
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;box-shadow:inset 1px 0 0 0 var(--border)}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;box-shadow:inset 1px 0 0 0 var(--border)}
+  table.schedule th.role-col{background:#1c1c20!important}
+  table.schedule td.role-col{background:var(--card)!important}
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
-  table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:-1px 0 0 0 #1d2823}
-  table.schedule tr.hl-row td.name-col{background:#1d2823!important;box-shadow:inset 1px 0 0 0 var(--border)}
+  table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
@@ -341,7 +341,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
     /* height: auto 让 table 按 row heights 自然累加(190mm),
        不强制拉到容器 100%(192mm),否则最后一行下边框会贴 body 底沿被 overflow 裁掉。 */
     width: 100% !important; height: auto; table-layout: fixed;
-    border-collapse: collapse;
+    border-collapse: collapse; border-top: 0; border-spacing: 0;
     margin: 0;
   }
   table.schedule th, table.schedule td {
