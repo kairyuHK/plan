@@ -117,7 +117,7 @@ table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
 table.schedule th.role-col,table.schedule td.role-col{min-width:0;text-align:left;padding-left:6px;overflow:hidden}
-table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:center;padding:0 4px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
+table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
 table.schedule td.name-col{background:var(--card)}
 table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--muted);overflow:hidden}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
@@ -257,6 +257,11 @@ table.schedule tr.stat-row td.label{position:relative}
 .col-resize-handle:hover{background:rgba(124,92,255,0.5)}
 .row-resize-handle{position:absolute;bottom:-3px;left:0;width:100%;height:6px;cursor:row-resize;z-index:5;background:transparent}
 .row-resize-handle:hover{background:rgba(124,92,255,0.5)}
+/* 所有触屏设备(手机/平板,横竖屏都算)关闭拖拽手柄 — 触屏拖拽不便,改用设置页输入精确调。
+   hover:none + pointer:coarse 精准匹配触屏,不误伤桌面触摸屏笔记本的鼠标操作。 */
+@media (hover:none) and (pointer:coarse){
+  .col-resize-handle,.row-resize-handle{display:none!important}
+}
 /* 手机端:加宽手柄触摸区到 12px,禁文字选中(长按选中干扰拖拽),touch-action:none 阻止浏览器抢占手势 */
 @media (max-width:640px){
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -266,16 +271,17 @@ table.schedule tr.stat-row td.label{position:relative}
      z-index 3:thead(4)更高,确保垂直滚到 thead 区域时 thead 覆盖 tbody sticky 列;
      name-col 的 left 偏移 = role 列宽(CSS var,跟随用户自定义);
      background 显式声明确保 sub-pixel 不漏底色。 */
+  /* border-collapse + sticky 会丢掉 sticky 单元格的边框(WebKit 已知问题),用 inset box-shadow
+     画回:左边框/右边框/下边框(行分隔线)。另用向左实心 shadow(与背景同色)盖住 sub-pixel 缝隙:
+     name-col 盖 役職/氏名 之间;role-col 盖 役職 左边沿。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
-  table.schedule th.role-col{background:#1c1c20!important}
-  table.schedule td.role-col{background:var(--card)!important}
-  /* name-col 紧贴 role-col 右侧。box-shadow 向左延伸 3px(与各自背景同色),把两列之间
-     sub-pixel 渲染缝隙盖死,横向滚动时不再露出后面的 day-cell 内容(单纯 left 重叠不够稳)。 */
-  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;box-shadow:-3px 0 0 0 #1c1c20}
-  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card)}
-  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
-  table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
-  table.schedule tr.hl-row td.name-col{box-shadow:-3px 0 0 0 #1d2823}
+  table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  table.schedule td.role-col{background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card),inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;box-shadow:-3px 0 0 0 #1c1c20,inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card),inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯。边框/缝盖保留 */
+  table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:-3px 0 0 0 #1d2823,inset 1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
+  table.schedule tr.hl-row td.name-col{background:#1d2823!important;box-shadow:-3px 0 0 0 #1d2823,inset 1px 0 0 0 var(--border),inset -1px 0 0 0 var(--border),inset 0 -1px 0 0 var(--border)}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
@@ -419,7 +425,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
     font-size: min(calc(var(--row-h) * 0.5), 4mm) !important;
   }
   table.schedule th.name-col, table.schedule td.name-col {
-    padding: 0 1mm; text-align: center; position: static; background: #fff !important;
+    padding-left: 1mm; text-align: left; position: static; background: #fff !important;
     /* var(--name-cap) 由 JS 按名字长度逐个 td 设置(纯 mm 值),min() 取它和 row-h 的较小者。
        变量未设时回退 4mm 默认上限。短名字不受影响,长名字按比例缩小到能塞进 30mm 列宽。 */
     font-size: min(calc(var(--row-h) * 0.5), var(--name-cap, 4mm)) !important;
