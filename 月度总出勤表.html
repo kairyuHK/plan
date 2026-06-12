@@ -269,12 +269,13 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important}
   table.schedule th.role-col{background:#1c1c20!important}
   table.schedule td.role-col{background:var(--card)!important}
-  /* left 减 1px:浏览器 sub-pixel 渲染时 role-col 右边沿和 name-col 左边沿可能有 0.5-1px 缝隙,
-     name-col 微微左移 1px 重叠覆盖,避免横向滚动时露出 day-cell 内容 */
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important}
+  /* name-col 紧贴 role-col 右侧。box-shadow 向左延伸 3px(与各自背景同色),把两列之间
+     sub-pixel 渲染缝隙盖死,横向滚动时不再露出后面的 day-cell 内容(单纯 left 重叠不够稳)。 */
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;box-shadow:-3px 0 0 0 #1c1c20}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;box-shadow:-3px 0 0 0 var(--card)}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
+  table.schedule tr.hl-row td.name-col{box-shadow:-3px 0 0 0 #1d2823}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
