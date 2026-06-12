@@ -117,7 +117,7 @@ table.schedule th{background:#1c1c20;font-weight:500}
 table.schedule th.dept-name{text-align:left;padding-left:6px;font-weight:700;font-size:13px;color:var(--accent);background:var(--bg)}
 table.schedule th.month-label{font-weight:700;font-size:12px;color:var(--text);background:#1c1c20;letter-spacing:1px}
 table.schedule th.role-col,table.schedule td.role-col{min-width:0;text-align:left;padding-left:6px;overflow:hidden}
-table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:left;padding-left:6px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
+table.schedule th.name-col,table.schedule td.name-col{min-width:0;text-align:center;padding:0 4px;position:sticky;left:0;background:#1c1c20;z-index:1;overflow:hidden}
 table.schedule td.name-col{background:var(--card)}
 table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--muted);overflow:hidden}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
@@ -271,8 +271,8 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule td.role-col{background:var(--card)!important}
   /* left 减 1px:浏览器 sub-pixel 渲染时 role-col 右边沿和 name-col 左边沿可能有 0.5-1px 缝隙,
      name-col 微微左移 1px 重叠覆盖,避免横向滚动时露出 day-cell 内容 */
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;text-align:left!important;background:#1c1c20!important}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;text-align:left!important;background:var(--card)!important}
+  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col,table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
@@ -418,7 +418,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
     font-size: min(calc(var(--row-h) * 0.5), 4mm) !important;
   }
   table.schedule th.name-col, table.schedule td.name-col {
-    padding-left: 1mm; position: static; background: #fff !important;
+    padding: 0 1mm; text-align: center; position: static; background: #fff !important;
     /* var(--name-cap) 由 JS 按名字长度逐个 td 设置(纯 mm 值),min() 取它和 row-h 的较小者。
        变量未设时回退 4mm 默认上限。短名字不受影响,长名字按比例缩小到能塞进 30mm 列宽。 */
     font-size: min(calc(var(--row-h) * 0.5), var(--name-cap, 4mm)) !important;
@@ -1671,21 +1671,26 @@ const Pages = (() => {
     for (const p of people) {
       const tr = Render.el('tr', { dataset: { personId: p.id } });
       tr.appendChild(Render.el('td.role-col', p.role || ''));
-      // 名字过长时自动缩字体:30mm 列宽 - padding 2mm - border ≈ 27.5mm 实际可用
-      // 长名字打印自动缩字号 — col-name 30mm,留 2mm padding+safety,目标名字宽度 ≤ 26mm。
-      // 仅设 --name-cap 这个 CSS 变量,由 @media print 的 name-col 规则在 min() 里读取。
-      // 不直接设 inline font-size:
-      //   - 手机 Safari 对内联 min/calc/var 解析不稳;
-      //   - 纯 mm 内联会同时影响屏幕显示(mm→px 转换让屏幕字号反而更大);
-      //   - 用 CSS 变量后,屏幕不应用 @media print,完全不受影响。
+      // 名字过长时自动缩字号完全显示 —— 按"当前氏名列宽"算(含手动调过的宽度),屏幕 + 打印都生效。
+      // 文字宽 ≈ widthUnits × fontSize(全角 1em、半角 0.5em),故 fontSize ≤ 可用宽 / widthUnits。
       const nameTd = Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || '');
       const nameStr = p.name || '';
       let widthUnits = 0; // 1 全角 = 1, 半角/空格 = 0.5
       for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
-      const TARGET_MM = 26; // 30mm 列宽 - 2mm padding/safety
-      if (widthUnits * 4 > TARGET_MM) {
-        const capMm = (TARGET_MM / widthUnits).toFixed(2);
-        nameTd.style.setProperty('--name-cap', capMm + 'mm');
+      if (widthUnits > 0) {
+        const szs = Store.get().sizes || {};
+        const colNamePx = szs['col-name'] != null ? szs['col-name'] : 130; // 当前氏名列宽(px)
+        // 屏幕:默认 11px 放不下就缩到刚好(留 10px 给左 padding + 安全),下限 6px。
+        const screenAvail = colNamePx - 10;
+        if (screenAvail / widthUnits < 11) {
+          nameTd.style.fontSize = Math.max(6, screenAvail / widthUnits).toFixed(1) + 'px';
+        }
+        // 打印:列宽自定义时打印列=同一 px,上限用 px;未自定义时打印列=30mm,上限用 mm。
+        // --name-cap 被 @media print 的 min(row-h*0.5, name-cap) 读取,自动只在过长时压字号。
+        const printCap = szs['col-name'] != null
+          ? Math.max(6, (colNamePx - 8) / widthUnits).toFixed(1) + 'px'
+          : (26 / widthUnits).toFixed(2) + 'mm'; // 30mm 列 - 4mm padding/safety
+        nameTd.style.setProperty('--name-cap', printCap);
       }
       // 行高拖拽手柄 — 名字 td 底部 6px 拖拽区,改写 row-person(所有人员行统一)
       const rowHandle = Render.el('span.row-resize-handle', { title: '拖动调整所有人员行高(统一),双击重置' });
