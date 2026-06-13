@@ -53,6 +53,10 @@ input[type=number]{-moz-appearance:textfield}
   .nav button#btn-edit-toggle{order:7;margin-left:auto}
   .nav button[data-route="#/settings"]{order:8}
   .nav button#btn-print{order:9}
+  /* 个人视图:出力 PNG 在第三行(数据下方),设置在出力 PNG 左侧。
+     锁定/打印被 personal-mode 隐藏后,给设置补 margin-left:auto 把「设置+出力」整体推到右侧。 */
+  .nav button#btn-personal-export{order:10}
+  body.personal-mode .nav button[data-route="#/settings"]{margin-left:auto}
 }
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
