@@ -5557,15 +5557,28 @@ function doPrint() {
     _printCleanedUp = false;
     _printCleanup = setupPrintLayout();
     document.body.classList.add('printing');
+
+    // === DEBUG TOAST ===
+    // 把 setupPrintLayout 实际作用到 DOM 上的关键参数显示出来,方便定位「为什么没变化」。
+    // 如果 toast 不出来,说明 doPrint 根本没被调用 / setupPrintLayout 出错;
+    // 如果 toast 出来但参数怪异,就是计算逻辑的问题。
+    try {
+      const root = document.documentElement;
+      const hourPx = getComputedStyle(root).getPropertyValue('--hour-px').trim();
+      const cw = document.querySelector('.cards-wrap');
+      const cwH = cw ? cw.style.height : '(无)';
+      const cards = document.querySelectorAll('.card').length;
+      const bodyH = document.body.offsetHeight;
+      const vw = window.innerWidth;
+      showToast(`hour-px=${hourPx} | cards-wrap.h=${cwH} | cards=${cards} | body=${bodyH}px | vw=${vw}px`, 'info');
+    } catch(e) {
+      showToast('DEBUG ERR: ' + e.message, 'error');
+    }
+
     setTimeout(() => {
-      // ⚠️ 只用 afterprint 触发 cleanup。
-      // 之前用 visibilitychange / matchMedia('print') / focus 多重触发是个 bug:
-      // iOS Safari 打开打印对话框时 visibilityState 没切到 hidden(对话框只是覆盖
-      // 不是新页面),onVis 立即被触发 → cleanup 提前跑 → setupPrintLayout 的
-      // inline style 全部还原 → 实际打印用的是原始布局 → 用户看到的就是「没变化」。
       window.addEventListener('afterprint', _doPrintCleanup, { once: true });
       window.print();
-    }, 80);
+    }, 4000); // 给 4 秒让你看到 toast 内容,再开打印对话框
   }, 40);
 }
 
