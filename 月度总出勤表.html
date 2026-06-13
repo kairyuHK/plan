@@ -231,6 +231,14 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 /* 拖到目标行上下半区时,边缘画一条紫色线作为插入位置提示 */
 .settings-sub-people .settings-row.drop-before{box-shadow:0 -2px 0 var(--accent) inset;border-top:2px solid var(--accent);margin-top:-2px}
 .settings-sub-people .settings-row.drop-after{box-shadow:0 2px 0 var(--accent) inset;border-bottom:2px solid var(--accent);margin-bottom:-2px}
+/* 部门拖拽换位 — 视觉与人员一致 */
+.settings-sub-depts .settings-row{position:relative;transition:background .12s,opacity .12s}
+.settings-sub-depts .drag-handle{display:inline-flex;align-items:center;justify-content:center;width:18px;height:24px;color:var(--muted);cursor:grab;font-size:14px;line-height:1;user-select:none;flex-shrink:0;border-radius:4px;letter-spacing:-1px}
+.settings-sub-depts .drag-handle:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+.settings-sub-depts .drag-handle:active{cursor:grabbing}
+.settings-sub-depts .settings-row.dragging{opacity:0.4;background:rgba(124,92,255,0.08)}
+.settings-sub-depts .settings-row.drop-before{box-shadow:0 -2px 0 var(--accent) inset;border-top:2px solid var(--accent);margin-top:-2px}
+.settings-sub-depts .settings-row.drop-after{box-shadow:0 2px 0 var(--accent) inset;border-bottom:2px solid var(--accent);margin-bottom:-2px}
 /* 手机竖屏:人员行强制单行,隐藏 label,缩小尺寸保证所有控件能挤一行 */
 @media (max-width:640px){
   .settings-sub-people .settings-row{
@@ -248,13 +256,21 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
   .settings-sub-people .settings-row>input.num{width:36px;flex:0 0 36px;padding:6px 2px;font-size:12px;text-align:center}
   .settings-sub-people .settings-row>select.person-dept{min-width:60px;flex:0 0 auto;padding:6px 4px;font-size:11px}
   .settings-sub-people .settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
-  /* 手机竖屏:部门行强制单行(名称 + 必要 + 高度 + 删除 全挤一行) */
-  .settings-section>.settings-row{flex-wrap:nowrap;gap:4px}
-  .settings-section>.settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 6px}
-  .settings-section>.settings-row>span:not(.grow){font-size:11px;flex-shrink:0}
-  .settings-section>.settings-row>input.num{width:44px;flex:0 0 44px;padding:6px 2px;font-size:12px;text-align:center}
-  .settings-section>.settings-row>.grow{display:none}
-  .settings-section>.settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
+  /* 手机竖屏:部门行强制单行(名称 + 必要 + 高度 + 删除 全挤一行)。
+     原选择器 .settings-section>.settings-row 现在还匹配「+新增部门」按钮行;
+     拖拽改造后部门行包在 .settings-sub-depts 里,需要并列选择两处。 */
+  .settings-section>.settings-row,
+  .settings-sub-depts>.settings-row{flex-wrap:nowrap;gap:4px}
+  .settings-section>.settings-row>.name-input,
+  .settings-sub-depts>.settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 6px}
+  .settings-section>.settings-row>span:not(.grow):not(.drag-handle),
+  .settings-sub-depts>.settings-row>span:not(.grow):not(.drag-handle){font-size:11px;flex-shrink:0}
+  .settings-section>.settings-row>input.num,
+  .settings-sub-depts>.settings-row>input.num{width:44px;flex:0 0 44px;padding:6px 2px;font-size:12px;text-align:center}
+  .settings-section>.settings-row>.grow,
+  .settings-sub-depts>.settings-row>.grow{display:none}
+  .settings-section>.settings-row>button.danger,
+  .settings-sub-depts>.settings-row>button.danger{padding:6px 8px;font-size:12px;flex:0 0 auto}
 }
 /* 单元格尺寸拖拽手柄(屏幕全平台),打印模式隐藏 */
 table.schedule thead th[data-ymd]{position:relative}
@@ -1090,6 +1106,18 @@ const Store = (() => {
     if (state.ui.currentDept === id) state.ui.currentDept = state.departments[0]?.id || null;
     commit('dept');
   }
+  // 部门拖拽换位 — 与 reorderPerson 同结构。fromId/toId 是部门 id,beforeTarget=true 插到目标之前。
+  function reorderDepartment(fromId, toId, beforeTarget) {
+    const list = state.departments;
+    const fromIdx = list.findIndex(d => d.id === fromId);
+    if (fromIdx < 0 || fromId === toId) return;
+    const [moved] = list.splice(fromIdx, 1);
+    const newToIdx = list.findIndex(d => d.id === toId);
+    if (newToIdx < 0) { list.splice(fromIdx, 0, moved); return; }
+    const insertAt = beforeTarget ? newToIdx : newToIdx + 1;
+    list.splice(insertAt, 0, moved);
+    commit('dept');
+  }
 
   // people
   function addPerson(deptId, person) {
@@ -1196,7 +1224,7 @@ const Store = (() => {
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
-    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment,
+    addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
     setSize, resetSize,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
     exportJson, importJson, reset, subscribe
@@ -2291,8 +2319,13 @@ const Pages = (() => {
   function buildDeptSection() {
     const sec = Render.el('div.settings-section');
     sec.appendChild(Render.el('h2', '部门'));
+    const list = Render.el('div.settings-sub-depts');
     for (const d of Store.get().departments) {
-      const row = Render.el('div.settings-row');
+      const row = Render.el('div.settings-row.dept-row', {
+        dataset: { deptid: d.id },
+        draggable: 'true'
+      });
+      row.appendChild(Render.el('span.drag-handle', { title: '拖动重排序部门' }, '⋮⋮'));
       const nameInput = Render.el('input.name-input', {
         value: d.name,
         onchange: (e) => Store.renameDepartment(d.id, e.target.value || '未命名')
@@ -2318,8 +2351,10 @@ const Pages = (() => {
         });
       });
       row.appendChild(delDeptBtn);
-      sec.appendChild(row);
+      list.appendChild(row);
     }
+    wireDeptsDragDrop(list);
+    sec.appendChild(list);
     const addRow = Render.el('div.settings-row');
     const addDeptBtn = Render.el('button.primary', {}, '+ 新增部门');
     addDeptBtn.addEventListener('click', (e) => {
@@ -2435,6 +2470,78 @@ const Pages = (() => {
       container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
       clearIndicators();
       draggingPid = null;
+      stopAutoScroll();
+    });
+  }
+
+  // 部门列表拖拽换位 — 与 wirePeopleDragDrop 结构一致,只是数据维度从 person 换成 department。
+  function wireDeptsDragDrop(container) {
+    let draggingId = null;
+    let lastClientY = 0;
+    let scrollRafId = null;
+    const SCROLL_ZONE = 80;
+    const SCROLL_SPEED = 14;
+    const clearIndicators = () => {
+      container.querySelectorAll('.drop-before, .drop-after').forEach(el => {
+        el.classList.remove('drop-before', 'drop-after');
+      });
+    };
+    const trackY = (e) => { lastClientY = e.clientY; };
+    const scrollTick = () => {
+      if (!draggingId) { scrollRafId = null; return; }
+      const h = window.innerHeight;
+      if (lastClientY > 0 && lastClientY < SCROLL_ZONE) window.scrollBy(0, -SCROLL_SPEED);
+      else if (lastClientY > h - SCROLL_ZONE) window.scrollBy(0, SCROLL_SPEED);
+      scrollRafId = requestAnimationFrame(scrollTick);
+    };
+    const startAutoScroll = () => { if (!scrollRafId) scrollRafId = requestAnimationFrame(scrollTick); };
+    const stopAutoScroll = () => {
+      if (scrollRafId) cancelAnimationFrame(scrollRafId);
+      scrollRafId = null;
+      document.removeEventListener('dragover', trackY);
+    };
+    container.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.settings-row[data-deptid]');
+      if (!row) return;
+      draggingId = row.dataset.deptid;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.deptid);
+      lastClientY = e.clientY;
+      document.addEventListener('dragover', trackY);
+      startAutoScroll();
+    });
+    container.addEventListener('dragover', (e) => {
+      if (!draggingId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearIndicators();
+      const targetRow = e.target.closest('.settings-row[data-deptid]');
+      if (!targetRow || targetRow.dataset.deptid === draggingId) return;
+      const rect = targetRow.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      targetRow.classList.add(before ? 'drop-before' : 'drop-after');
+    });
+    container.addEventListener('dragleave', (e) => {
+      if (!container.contains(e.relatedTarget)) clearIndicators();
+    });
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!draggingId) return;
+      const targetRow = e.target.closest('.settings-row[data-deptid]');
+      clearIndicators();
+      if (targetRow && targetRow.dataset.deptid !== draggingId) {
+        const rect = targetRow.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        Store.reorderDepartment(draggingId, targetRow.dataset.deptid, before);
+      }
+      draggingId = null;
+      stopAutoScroll();
+    });
+    container.addEventListener('dragend', () => {
+      container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+      clearIndicators();
+      draggingId = null;
       stopAutoScroll();
     });
   }
