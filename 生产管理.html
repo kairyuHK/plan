@@ -6062,6 +6062,11 @@ function syncMobLayout() {
 }
 
 window.addEventListener('resize', () => {
+  // ⚠️ 打印模式下不要重排卡片!iOS Safari 切到打印模式时 viewport 会变,触发 resize,
+  // 这里如果还跑 renderTimeline + cards-grid.height = getTotalPx() + recalc,
+  // 会把 setupPrintLayout 通过 trimGridForExport 设置的 visH/translateY/--hour-px
+  // 全部覆盖掉,实际打印用的就是默认 8:00-22:00 全范围、卡片缩小的样子。
+  if (document.body.classList.contains('printing')) return;
   syncMobLayout();
   renderTimeline();
   document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
