@@ -270,19 +270,18 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
-  /* 横向滚动固定 役職 + 氏名 列。即使 border-collapse:separate,iOS Safari 在 sticky 列上
-     border-right 仍会滞后一帧(合成时序问题)→ 滚动时露缝。
-     根治:把 sticky 列的右分隔线从 border-right 改成 inset box-shadow ——
-     box-shadow 是和背景一起合成到 sticky 层的,永远跟着内容,绝不滞后。
-     name-col 的左分隔线同理用 inset 1px 左阴影。 */
+  /* 横向滚动固定 役職 + 氏名 列。
+     役職和氏名之间的分隔线画在 role-col 的右沿(inset -1px)→ 这条线在最左侧 sticky 层上,
+     横滑时永远不动。氏名列向左重叠 1px 物理消除两层接触缝(打印后 backing store 精度变化也不漏)。
+     氏名列右沿那条分隔线由后面的 sum-col 自身的 border-left 提供(separate 模型下属于 sum-col)。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important;border-right:0!important}
   table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule td.role-col{background:var(--card)!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border-right:0!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border-right:0!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯。inset 边框保留 */
+  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important}
+  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important}
+  /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  table.schedule tr.hl-row td.name-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
+  table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
 body.resizing{user-select:none}
 body.resizing.resizing-col{cursor:col-resize!important}
