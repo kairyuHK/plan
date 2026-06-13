@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>月度总出勤表</title>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 :root{
   --bg:#0a0a0b; --card:#161618; --border:#26262a;
@@ -486,6 +487,200 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule td.dispatch input::-webkit-outer-spin-button,
   table.schedule td.dispatch input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
 }
+
+/* ============================================================
+   个人排班表 (page-personal) — 移植自原排班表,作用域限定 */
+/* ============================================================ */
+#page-personal { padding: 0; max-width: 100%; }
+.personal-app {
+  max-width: 580px; margin: 0 auto; padding: 14px 14px 60px;
+  position: relative; z-index: 1;
+}
+.personal-toolbar {
+  display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 14px;
+}
+.personal-export-btn {
+  background: linear-gradient(135deg, #a5b4fc, #93c5fd);
+  color: #0a0d12;
+  border: 1px solid #93c5fd;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .18s cubic-bezier(0.4,0,0.2,1);
+  letter-spacing: 0.02em;
+  display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 12px rgba(129,140,248,0.25);
+}
+.personal-export-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(129,140,248,0.35);
+}
+.personal-export-btn:active { transform: translateY(0) scale(0.98); }
+.personal-export-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.personal-day-list {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; align-items: start;
+}
+.personal-day-list .month-col {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.personal-day-list .month-col-head {
+  display: flex; align-items: baseline; justify-content: center; gap: 3px;
+  color: #e8eaef;
+  font-size: 13px; font-weight: 600;
+  padding: 8px 0;
+  border: 1px solid #262a36;
+  background: #1f2330;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  position: relative;
+  font-variant-numeric: tabular-nums;
+}
+.personal-day-list .month-col-head::before {
+  content: ''; position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  width: 4px; height: 4px; border-radius: 50%;
+  background: #93c5fd; opacity: 0.85;
+}
+.personal-day-list .month-col-head .m-num { font-size: 16px; font-weight: 700; }
+.personal-day-list .month-col-head .m-suffix { color: #6b7280; font-size: 11px; font-weight: 500; margin-left: 1px; }
+
+.personal-day-list .day-row {
+  position: relative;
+  display: grid; grid-template-columns: 32px 1fr;
+  min-height: 40px;
+  background: #1f2330;
+  border: 1px solid #262a36;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all .18s cubic-bezier(0.4,0,0.2,1);
+}
+.personal-day-list .day-row:hover { border-color: #353a48; }
+.personal-day-list .day-row.sun .day-cell .dnum,
+.personal-day-list .day-row.sun .day-cell .dow { color: #f87171; }
+.personal-day-list .day-row.sat .day-cell .dnum,
+.personal-day-list .day-row.sat .day-cell .dow { color: #60a5fa; }
+.personal-day-list .day-row.today .day-cell .dnum {
+  background: #f0b878; color: #0a0d12;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+}
+.personal-day-list .day-row.both-rest { background: #3a2a1c; }
+
+.personal-day-list .day-cell {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 2px 0;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  background: #191d28;
+  gap: 1px;
+}
+.personal-day-list .day-cell .dow {
+  font-size: 9px; font-weight: 700; color: #a0a7b4;
+  letter-spacing: 0.5px; line-height: 1.1;
+}
+.personal-day-list .day-cell .dnum {
+  font-size: 16px; font-weight: 800; line-height: 1.1;
+  color: #e8eaef;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+.personal-day-list .shifts {
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.personal-day-list .shift {
+  display: flex; align-items: center; justify-content: center;
+  padding: 7px 2px;
+  font-weight: 700;
+  position: relative;
+}
+.personal-day-list .shifts .shift + .shift { border-left: 1px solid #15181e; }
+.personal-day-list .shift-mark {
+  font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
+}
+.personal-day-list .shift.work { background: #233148; color: #9fc4ee; }
+.personal-day-list .shift.rest { background: #3a2a1c; color: #efbb86; }
+.personal-day-list .shift.rest .shift-mark { font-size: 16px; }
+.personal-day-list .shifts .shift + .shift.work { background: #243c30; color: #9fd4b3; }
+.personal-day-list .day-row.both-rest .shift.rest { background: #3a2a1c; color: #efbb86; }
+
+.personal-day-list .both-rest-tag {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(10,13,18,0.55);
+  color: #efbb86;
+  font-size: 8px; font-weight: 700;
+  padding: 2px 5px; border-radius: 3px;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(232,165,101,0.30);
+  pointer-events: none; z-index: 2;
+}
+
+.personal-legend-card {
+  background: #1f2330;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-top: 24px;
+}
+.personal-legend-card .legend-title {
+  font-size: 10.5px; font-weight: 600; color: #6b7280;
+  letter-spacing: 0.15em; margin-bottom: 14px;
+  text-transform: uppercase;
+}
+.personal-legend-card .legend-list {
+  display: flex; flex-wrap: wrap; gap: 10px 18px;
+  font-size: 11.5px; color: #a0a7b4;
+  font-weight: 600; letter-spacing: 0.2px;
+}
+.personal-legend-card .legend-item { display: flex; align-items: center; gap: 7px; }
+.personal-legend-card .legend-dot {
+  width: 14px; height: 14px; border-radius: 4px;
+  flex-shrink: 0; border: 1px solid rgba(255,255,255,0.12);
+}
+
+.personal-empty-notice {
+  padding: 40px 16px;
+  text-align: center;
+  color: #a0a7b4;
+  background: #1f2330;
+  border: 1.5px dashed rgba(255,255,255,0.12);
+  border-radius: 16px;
+  line-height: 1.8;
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+.personal-empty-notice strong { color: #efbb86; font-weight: 700; }
+.personal-empty-notice small { display: block; margin-top: 8px; color: #6b7280; font-size: 12px; }
+
+@media (max-width: 380px) {
+  .personal-app { padding: 14px 8px 60px; }
+  .personal-day-list { gap: 7px; }
+  .personal-day-list .day-row { grid-template-columns: 28px 1fr; }
+  .personal-day-list .day-cell .dnum { font-size: 14px; }
+  .personal-day-list .day-cell .dow { font-size: 8px; }
+  .personal-day-list .day-row.today .day-cell .dnum { width: 21px; height: 21px; font-size: 11.5px; }
+  .personal-day-list .shift { padding: 6px 2px; }
+  .personal-day-list .shift-mark { font-size: 13.5px; }
+  .personal-day-list .shift.rest .shift-mark { font-size: 14.5px; }
+  .personal-day-list .month-col-head { font-size: 12px; padding: 6px 0; }
+}
+
+/* 进入个人视图时,隐藏与排班表无关的主导航按钮 */
+body.personal-mode #btn-edit-toggle,
+body.personal-mode #btn-print { display: none !important; }
+/* 出力 PNG 按钮 — 仅在个人视图显示 */
+body:not(.personal-mode) #btn-personal-export { display: none !important; }
+
+/* 个人视图打印时不出现 — 用 PNG 出力替代 */
+@media print {
+  body.personal-mode #page-personal { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -498,11 +693,13 @@ body.resizing.resizing-row{cursor:row-resize!important}
   <button id="btn-edit-toggle">🔒 锁定</button>
   <button data-route="#/settings">⚙ 设置</button>
   <button data-route="#/data">⬇⬆ 数据</button>
+  <button class="primary" id="btn-personal-export">📷 出力 PNG</button>
   <button class="primary" id="btn-print">🖨 打印</button>
 </nav>
 <section id="page-schedule" class="page"></section>
 <section id="page-settings" class="page hidden"></section>
 <section id="page-data" class="page hidden"></section>
+<section id="page-personal" class="page hidden"></section>
 <div id="modal-host"></div>
 <div id="test-results" class="hidden"></div>
 <script>
@@ -654,7 +851,8 @@ const Store = (() => {
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
       // 用户「选」首项时 onchange 不触发 → 看起来部门下拉无反应。
       if (parsed.ui && Array.isArray(parsed.departments) && parsed.departments.length > 0) {
-        if (!parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
+        // '__personal__' 是合法的虚拟视图 id (個人排班),不强制改回真实部门
+        if (parsed.ui.currentDept !== '__personal__' && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
           parsed.ui.currentDept = parsed.departments[0].id;
         }
       }
@@ -945,7 +1143,7 @@ const Store = (() => {
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
-    if (!parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
+    if (parsed.ui.currentDept !== '__personal__' && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
       parsed.ui.currentDept = parsed.departments[0]?.id || null;
     }
     if (!parsed.ui.currentPeriod) parsed.ui.currentPeriod = Period.todayKey();
@@ -1015,6 +1213,10 @@ const App = (() => {
     for (const [r, id] of Object.entries(routes)) {
       document.getElementById(id).classList.toggle('hidden', r !== hash);
     }
+    // 非 schedule 路由要主动隐藏 page-personal(routes 映射里没有它,默认不会被切换)
+    if (hash !== '#/schedule') {
+      document.getElementById('page-personal').classList.add('hidden');
+    }
     if (hash === '#/schedule') Pages.renderSchedule();
     else if (hash === '#/settings') Pages.renderSettings();
     else if (hash === '#/data') Pages.renderData();
@@ -1043,6 +1245,9 @@ const App = (() => {
       });
     });
     document.getElementById('btn-print').addEventListener('click', () => window.print());
+    document.getElementById('btn-personal-export').addEventListener('click', (e) => {
+      Pages.exportPersonalPNG(e.currentTarget);
+    });
     document.getElementById('btn-edit-toggle').addEventListener('click', () => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
     });
@@ -1065,7 +1270,9 @@ const App = (() => {
 
   function updateEditUI() {
     const editing = !!Store.get().ui.editMode;
-    document.body.classList.toggle('editing', editing);
+    const isPersonal = Store.get().ui.currentDept === '__personal__';
+    document.body.classList.toggle('editing', editing && !isPersonal);
+    document.body.classList.toggle('personal-mode', isPersonal);
     const btn = document.getElementById('btn-edit-toggle');
     btn.textContent = editing ? '✏ 编辑中' : '🔒 锁定';
     btn.classList.toggle('primary', editing);
@@ -1174,6 +1381,15 @@ const App = (() => {
 })();
 
 const Pages = (() => {
+  // 「個人」虚拟部门 id — 选中此项时进入个人排班视图(由两个固定人员组成)。
+  // 出勤A = 「夕盛」部门「白 海竜」、出勤B = 「払出」部门「ビョウ セイイ」。
+  // 「出」= cellStatus === 'work'(或文字标记为班次「早/晚」);其他状态(〇/有/欠/✲)= 「休」。
+  const PERSONAL_VIEW = '__personal__';
+  const PERSONAL_A = { deptName: '夕盛', personName: '白 海竜' };
+  const PERSONAL_B = { deptName: '払出', personName: 'ビョウ セイイ' };
+  // 算作出勤的特殊文字(班次标记)— 与 computeLineTotal 保持一致
+  const WORK_TEXTS_PERSONAL = new Set(['早', '晚', '早番', '遅番', '中']);
+
   const highlightedRows = new Set();   // personId
   const highlightedCols = new Set();   // ymd
   let focusedCell = null;              // { personId, ymd } or null
@@ -1386,6 +1602,18 @@ const Pages = (() => {
   }
 
   function renderSchedule() {
+    // 「個人」虚拟视图:绕过整张排班表,渲染由两个固定人员组成的个人排班页
+    const isPersonal = Store.get().ui.currentDept === PERSONAL_VIEW;
+    if (isPersonal) {
+      document.getElementById('page-schedule').classList.add('hidden');
+      document.getElementById('page-personal').classList.remove('hidden');
+      renderDeptTabs();
+      renderPeriodNav();
+      renderPersonal();
+      return;
+    }
+    document.getElementById('page-personal').classList.add('hidden');
+    document.getElementById('page-schedule').classList.remove('hidden');
     const host = document.getElementById('page-schedule');
     // 保存滚动位置:点 day-cell 等任何 store 操作都触发整页重渲(DOM rebuild),
     // 浏览器丢失滚动状态会回到顶部。RAF 里 rebuild 完成后还原。
@@ -1510,18 +1738,28 @@ const Pages = (() => {
     Render.clear(host);
     const depts = Store.get().departments;
     let cur = Store.get().ui.currentDept;
-    // 运行时保险:cur 指向已删除部门时立即同步,避免 select 显示与 state 脱节
-    if (depts.length > 0 && !depts.find(d => d.id === cur)) {
+    // 运行时保险:cur 指向已删除部门时立即同步,避免 select 显示与 state 脱节。
+    // '__personal__' 是合法的虚拟视图 id,不修正。
+    if (depts.length > 0 && cur !== PERSONAL_VIEW && !depts.find(d => d.id === cur)) {
       cur = depts[0].id;
       Store.setUi({ currentDept: cur });
       return; // setUi 会触发 listener 重新渲染整页
     }
     const sel = Render.el('select.dept-select', {
-      onchange: (e) => Store.setUi({ currentDept: e.target.value })
+      onchange: (e) => {
+        const val = e.target.value;
+        // 切到「個人」视图时,如果当前在 设置/数据 页,自动跳回排班(個人排班)
+        if (val === PERSONAL_VIEW && location.hash && location.hash !== '#/schedule') {
+          history.replaceState(null, '', location.pathname + location.search);
+        }
+        Store.setUi({ currentDept: val });
+      }
     });
     for (const d of depts) {
       sel.appendChild(Render.el('option', { value: d.id }, d.name));
     }
+    // 「個人」视图选项 — 切到此处会显示由两个固定人员组成的排班表
+    sel.appendChild(Render.el('option', { value: PERSONAL_VIEW }, '個人'));
     sel.value = cur || '';
     host.appendChild(sel);
   }
@@ -2495,7 +2733,157 @@ const Pages = (() => {
     });
   }
 
-  return { renderSchedule, renderSettings, renderData };
+  // ---- 个人排班 (personal view) ----
+  // 在 state 中按部门名 + 人员名定位人员。容忍空格 / 软删除人员。
+  function findPersonByConfig(cfg) {
+    const state = Store.get();
+    const norm = s => (s || '').replace(/\s+/g, '').trim();
+    const dept = state.departments.find(d => d.name === cfg.deptName)
+              || state.departments.find(d => norm(d.name) === norm(cfg.deptName));
+    if (!dept) return { dept: null, person: null };
+    const people = (state.people[dept.id] || []).filter(p => !p.removedOn);
+    const target = norm(cfg.personName);
+    let person = people.find(p => p.name === cfg.personName)
+              || people.find(p => norm(p.name) === target);
+    if (!person) {
+      // 子串匹配作为最后兜底
+      person = people.find(p => norm(p.name) && (norm(p.name).includes(target) || target.includes(norm(p.name))));
+    }
+    return { dept, person: person || null };
+  }
+
+  // 判定某人某天是否「出勤」。规则与 computeLineTotal 一致:
+  //   cellStatus === 'work' 且(无文字标记 或 文字是班次标记「早/晚」等)→ 出
+  //   其余(〇/有/欠/✲/自定义文字)→ 休
+  function isPersonWorking(deptId, personId, ymd) {
+    if (!deptId || !personId) return false;
+    if (Store.cellStatus(deptId, personId, ymd) !== 'work') return false;
+    const ct = Store.cellText(deptId, personId, ymd);
+    if (ct && ct.text && !WORK_TEXTS_PERSONAL.has(ct.text)) return false;
+    return true;
+  }
+
+  function renderPersonal() {
+    const host = document.getElementById('page-personal');
+    Render.clear(host);
+    const wrap = Render.el('div.personal-app', { id: 'personalApp' });
+
+    const a = findPersonByConfig(PERSONAL_A);
+    const b = findPersonByConfig(PERSONAL_B);
+
+    // 缺人员提示(不阻塞渲染,缺哪个就标红哪个)
+    if (!a.person || !b.person) {
+      const notice = Render.el('div.personal-empty-notice');
+      const lines = [];
+      if (!a.person) lines.push(`<div>未找到 出勤A:<strong>${PERSONAL_A.deptName} · ${PERSONAL_A.personName}</strong></div>`);
+      if (!b.person) lines.push(`<div>未找到 出勤B:<strong>${PERSONAL_B.deptName} · ${PERSONAL_B.personName}</strong></div>`);
+      notice.innerHTML = lines.join('') + '<small>请到「⚙ 设置」检查部门和人员名称是否一致(空格、半/全角)</small>';
+      wrap.appendChild(notice);
+    }
+
+    const days = Period.days(Store.get().ui.currentPeriod);
+    const todayYmd = Util.ymd(new Date());
+
+    // 按月份分组(周期 = 16 日至次月 15 日,通常跨两个月)
+    const monthGroups = [];
+    for (const d of days) {
+      const m = parseInt(d.ymd.slice(5, 7), 10);
+      let g = monthGroups[monthGroups.length - 1];
+      if (!g || g.month !== m) { g = { month: m, dates: [] }; monthGroups.push(g); }
+      g.dates.push(d);
+    }
+
+    const dayList = Render.el('div.personal-day-list', { id: 'personalDayList' });
+    for (const g of monthGroups) {
+      const col = Render.el('div.month-col');
+      const head = Render.el('div.month-col-head');
+      head.appendChild(Render.el('span.m-num', String(g.month)));
+      head.appendChild(Render.el('span.m-suffix', '月'));
+      col.appendChild(head);
+
+      for (const d of g.dates) {
+        const workA = a.person ? isPersonWorking(a.dept.id, a.person.id, d.ymd) : false;
+        const workB = b.person ? isPersonWorking(b.dept.id, b.person.id, d.ymd) : false;
+        const bothRest = !workA && !workB;
+
+        const row = Render.el('div.day-row');
+        if (d.isSun || d.isHoliday) row.classList.add('sun');
+        else if (d.isSat) row.classList.add('sat');
+        if (d.ymd === todayYmd) row.classList.add('today');
+        if (bothRest) row.classList.add('both-rest');
+        if (bothRest) row.appendChild(Render.el('span.both-rest-tag', '全休'));
+
+        const dayCell = Render.el('div.day-cell');
+        dayCell.appendChild(Render.el('div.dow', d.weekdayJp));
+        dayCell.appendChild(Render.el('div.dnum', String(d.day)));
+        row.appendChild(dayCell);
+
+        const shifts = Render.el('div.shifts');
+        const sA = Render.el('div.shift.' + (workA ? 'work' : 'rest'));
+        sA.appendChild(Render.el('span.shift-mark', workA ? '出' : '休'));
+        const sB = Render.el('div.shift.' + (workB ? 'work' : 'rest'));
+        sB.appendChild(Render.el('span.shift-mark', workB ? '出' : '休'));
+        shifts.appendChild(sA);
+        shifts.appendChild(sB);
+        row.appendChild(shifts);
+
+        col.appendChild(row);
+      }
+      dayList.appendChild(col);
+    }
+    wrap.appendChild(dayList);
+
+    const legend = Render.el('div.personal-legend-card');
+    legend.innerHTML = `
+      <div class="legend-title">凡例</div>
+      <div class="legend-list">
+        <div class="legend-item"><span class="legend-dot" style="background:#233148"></span>出勤A</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#243c30"></span>出勤B</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3a2a1c"></span>休み</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f0b878;border-radius:50%"></span>今日</div>
+        <div class="legend-item" style="color:#60a5fa;font-weight:700">土</div>
+        <div class="legend-item" style="color:#f87171;font-weight:700">日・祝</div>
+      </div>
+    `;
+    wrap.appendChild(legend);
+
+    host.appendChild(wrap);
+  }
+
+  async function exportPersonalPNG(btn) {
+    if (typeof html2canvas === 'undefined') {
+      showToast('html2canvas が読み込めません', 'error');
+      return;
+    }
+    const root = document.getElementById('personalApp');
+    if (!root) { showToast('个人视图未渲染', 'error'); return; }
+    const prevBtnText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '出力中…'; }
+    await new Promise(r => setTimeout(r, 50));
+    try {
+      const canvas = await html2canvas(root, {
+        scale: 2,
+        backgroundColor: '#0a0a0b',
+        useCORS: true,
+        logging: false,
+        windowWidth: root.scrollWidth,
+        windowHeight: root.scrollHeight
+      });
+      const period = Store.get().ui.currentPeriod;
+      const [year, month] = period.split('-');
+      const link = document.createElement('a');
+      link.download = `personal-shift-${year}${month}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('PNG出力完了', 'success');
+    } catch (e) {
+      showToast('出力エラー: ' + e.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = prevBtnText; }
+    }
+  }
+
+  return { renderSchedule, renderSettings, renderData, renderPersonal, exportPersonalPNG };
 })();
 
 const Tests = (() => {
