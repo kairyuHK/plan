@@ -1155,6 +1155,15 @@ const App = (() => {
       document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input').forEach(i => {
         i.style.removeProperty('font-size');
       });
+      // 打印进出会让 sticky 列的合成层位置错位(尚未对齐就先画了一帧)→ 露缝。
+      // 用户捏合手势能恢复 = 强制重新合成。这里在 afterprint 后两个 RAF 内主动触发一次:
+      // 临时改 transform 让浏览器废弃旧合成层 → 下一帧用新合成层重画 → 缝消失。
+      requestAnimationFrame(() => {
+        const tbl = document.querySelector('#page-schedule table.schedule');
+        if (!tbl) return;
+        tbl.style.transform = 'translateZ(0)';
+        requestAnimationFrame(() => { tbl.style.transform = ''; });
+      });
     });
   }
 
