@@ -1155,15 +1155,17 @@ const App = (() => {
       document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input').forEach(i => {
         i.style.removeProperty('font-size');
       });
-      // 打印进出会让 sticky 列的合成层位置错位(尚未对齐就先画了一帧)→ 露缝。
-      // 用户捏合手势能恢复 = 强制重新合成。这里在 afterprint 后两个 RAF 内主动触发一次:
-      // 临时改 transform 让浏览器废弃旧合成层 → 下一帧用新合成层重画 → 缝消失。
-      requestAnimationFrame(() => {
-        const tbl = document.querySelector('#page-schedule table.schedule');
-        if (!tbl) return;
-        tbl.style.transform = 'translateZ(0)';
-        requestAnimationFrame(() => { tbl.style.transform = ''; });
-      });
+      // 打印进出会让 sticky 列合成层错位(露缝),用户捏合手势=强制重新合成 → 修复。
+      // 这里主动模拟"强制重新合成":先等 150ms 让打印对话框完全收起、layout 稳定,
+      // 然后微动一下滚动容器的横向 scrollLeft(±1px再还原)——浏览器会重新计算 sticky
+      // 各层位置,等同捏合的修复效果。比 transform 触发更彻底,iOS Safari 实测有效。
+      setTimeout(() => {
+        const wrap = document.querySelector('#page-schedule .schedule-wrap');
+        if (!wrap) return;
+        const sl = wrap.scrollLeft;
+        wrap.scrollLeft = sl + 1;
+        requestAnimationFrame(() => { wrap.scrollLeft = sl; });
+      }, 150);
     });
   }
 
