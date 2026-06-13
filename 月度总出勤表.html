@@ -333,10 +333,10 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule th.name-col, table.schedule td.name-col {
     position: static !important; left: auto !important;
     background: #fff !important;
-    /* 屏幕端为防"边框滚走"把 role 的 border-right 和 name 的 border-left 都 !important 干掉了,
-       打印时这些 !important 还在生效 → 役職/氏名之间没线。这里强制恢复成 1px 灰线。 */
-    border-right: 1px solid #999 !important;
-    border-left: 1px solid #999 !important;
+    /* 屏幕端 role border-right:0 和 name border-left:0 是在 @media(max-width:640px) 里,
+       不在 @media print 里,这里本就不需要显式恢复。
+       之前加的 1px !important 反而破坏 border-collapse 的相邻合并,导致这两条线比其他列略粗略深。
+       让 collapse 自然合并即可,各列粗细统一。 */
   }
   /* 只保留 tr 的 break-inside:avoid(防止单行被分页截断),不再对 table 整体加。
      table 层级的 break-inside:avoid 在缩放 > 100% 时会触发 bug:
