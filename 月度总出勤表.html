@@ -1155,17 +1155,14 @@ const App = (() => {
       document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input').forEach(i => {
         i.style.removeProperty('font-size');
       });
-      // 打印进出会让 sticky 列合成层错位(露缝),用户捏合手势=强制重新合成 → 修复。
-      // 这里主动模拟"强制重新合成":先等 150ms 让打印对话框完全收起、layout 稳定,
-      // 然后微动一下滚动容器的横向 scrollLeft(±1px再还原)——浏览器会重新计算 sticky
-      // 各层位置,等同捏合的修复效果。比 transform 触发更彻底,iOS Safari 实测有效。
+      // 打印进出会让 sticky 列合成层错位(露缝),时序补丁(transform/scrollLeft 触发重排)都无效 →
+      // 兜底:整张表 DOM 推倒重渲。renderSchedule 内部已保存/还原 scrollX/Y,用户无感。
+      // 延迟 100ms 等打印对话框完全收起再渲,避免和未稳定的 layout 撞车。
       setTimeout(() => {
-        const wrap = document.querySelector('#page-schedule .schedule-wrap');
-        if (!wrap) return;
-        const sl = wrap.scrollLeft;
-        wrap.scrollLeft = sl + 1;
-        requestAnimationFrame(() => { wrap.scrollLeft = sl; });
-      }, 150);
+        if (location.hash === '' || location.hash === '#/' || location.hash === '#/schedule') {
+          Pages.renderSchedule();
+        }
+      }, 100);
     });
   }
 
