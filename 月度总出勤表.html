@@ -274,14 +274,14 @@ table.schedule tr.stat-row td.label{position:relative}
      役職和氏名之间的分隔线画在 role-col 的右沿(inset -1px)→ 这条线在最左侧 sticky 层上,
      横滑时永远不动。氏名列向左重叠 1px 物理消除两层接触缝(打印后 backing store 精度变化也不漏)。
      氏名列右沿那条分隔线由后面的 sum-col 自身的 border-left 提供(separate 模型下属于 sum-col)。 */
-  /* 役職和氏名之间的分隔线:由 role-col 的 inset 右阴影独家提供。
-     z-index 4 高于氏名(3)→ 这条线永远在最上层,不会被氏名的 sub-pixel 偏移盖到 → 钉死不动。 */
-  table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:4;text-align:left!important;border-right:0!important}
+  /* role-col z-index 回到 3(避免盖 thead)。
+     役職/氏名之间的分隔线由 role-col 的 inset -1px 右阴影 提供,在 role sticky 层最右沿 1px。
+     氏名列 left 改回精确贴合(不重叠),且去掉 border-left → 物理上不存在能盖到这条阴影的东西。 */
+  table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important;border-right:0!important}
   table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule td.role-col{background:var(--card)!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  /* 氏名列 z-index 3,低于 role-col(4)→ 即使氏名向左重叠 1px,也压不到 role 的 inset 阴影 */
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border-left:0!important}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border-left:0!important}
+  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;border-left:0!important}
+  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;border-left:0!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule tr.hl-row td.name-col{background:#1d2823!important}
