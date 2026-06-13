@@ -277,16 +277,10 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important;border-right:0!important}
   table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule td.role-col{background:var(--card)!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  /* 氏名列做成"纯背景层"——去掉所有 border(left/right/top/bottom)。separate 模型下
-     border 跟内容合成,sticky 列上 border 会在横滑时"漂移"出层边界,遮住后面的列。
-     役職和氏名之间的分隔线:由 role-col 的 inset 右阴影提供(钉死在 role sticky 层)。
-     氏名和有休之间的分隔线:由有休列(sum-col)自己的 border-left 提供(separate 模型下属于 sum-col)。 */
-  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border:0!important}
-  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border:0!important}
-  /* 氏名 sticky 层没了 border-bottom,行分隔线靠后面 cell 的 border-top — 但 separate 默认无 border-top。
-     补:tr 间的横线由 day-cell 的 border-bottom 提供,但氏名行内补一条 inset 下阴影才完整。
-     inset 阴影在 sticky 层内,横滑不漂。 */
-  table.schedule th.name-col,table.schedule td.name-col{box-shadow:inset 0 -1px 0 0 var(--border)}
+  /* 氏名列:保留 border-right(行分隔线由 border-bottom 自然提供 — 与其他列对齐),
+     仅去掉横滑会漂的部分。border-right 是确保 氏名/有休 之间有分隔线的关键。 */
+  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border-left:0!important}
+  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border-left:0!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule tr.hl-row td.name-col{background:#1d2823!important}
