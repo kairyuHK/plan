@@ -351,7 +351,11 @@ body.resizing.resizing-row{cursor:row-resize!important}
     margin: 0;
   }
   table.schedule th, table.schedule td {
-    border: 1px solid #999; padding: 0 2px; color: #000; background: #fff !important;
+    /* 显式 reset 屏幕(separate 模型)留下的 border-right/bottom/inset shadow,
+       再统一画 collapse 单线网格,避免叠出双线 / 粗细不一 */
+    border: 1px solid #999 !important;
+    box-shadow: none !important;
+    padding: 0 2px; color: #000; background: #fff !important;
     line-height: 1 !important;
     height: var(--row-h) !important;
     font-size: min(calc(var(--row-h) * 0.55), 3.8mm) !important;
