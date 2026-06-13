@@ -50,25 +50,22 @@ iframe.active{pointer-events:auto}
    同时把顶部 tab 栏隐藏,只让 iframe 的内容铺满整页。 */
 @media print {
   @page { size: landscape; margin: 6mm; }
-  /* Chrome 打印 iframe 时会无视 CSS height/overflow:hidden,在预览灰色区域把 iframe
-     内容铺到页面之外。多层裁切策略:overflow:clip(比 hidden 更严格,不允许任何
-     溢出绘制) + clip-path:inset(0) + contain:strict(让元素脱离主文档布局流,
-     Chrome 不能再把内容渲染到容器之外)。 */
+  /* iOS Safari iframe 打印不认 mm 单位的 height 和 contain:strict —— 会让 iframe 收缩
+     到内容自然高度,纸面下半部分留大片空白。改用百分比让 iframe 一层层撑满父容器,
+     最终铺满整张纸,然后 iframe 内部 body.printing 自己负责把内容铺满。 */
   html, body {
     background: #fff !important;
-    width: 297mm !important; max-width: 297mm !important;
-    height: 210mm !important; max-height: 210mm !important;
-    overflow: clip !important;
-    clip-path: inset(0) !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
     margin: 0 !important; padding: 0 !important;
   }
   .tabs { display: none !important; }
   .frame-wrap {
     position: static !important; top: auto !important; background: #fff !important;
-    width: 285mm !important; max-width: 285mm !important;
-    height: 198mm !important; max-height: 198mm !important;
-    overflow: clip !important;
-    clip-path: inset(0) !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
     margin: 0 !important; padding: 0 !important;
   }
   iframe { display: none !important; }
@@ -77,13 +74,10 @@ iframe.active{pointer-events:auto}
     position: static !important;
     background: #fff !important;
     transform: none !important;
-    width: 285mm !important;
-    max-width: 285mm !important;
-    height: 198mm !important;
-    max-height: 198mm !important;
-    overflow: clip !important;
-    clip-path: inset(0) !important;
-    contain: strict !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: 0 !important;
+    overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
