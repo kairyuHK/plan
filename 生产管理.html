@@ -5557,8 +5557,24 @@ function doPrint() {
     _printCleanup = setupPrintLayout();
     document.body.classList.add('printing');
     setTimeout(() => {
+      // === cleanup 触发器 ===
+      // ⚠️ 不能用定时兜底 —— 手机打印对话框停留时间不可预测,定时太短会在用户
+      // 确认前就还原布局,实际打印到的就是「下方空白」的原样;定时太长又会卡屏幕。
+      // 只依赖事件:afterprint(关闭对话框)+ matchMedia('print') 退出 + 焦点回来。
       window.addEventListener('afterprint', _doPrintCleanup, { once: true });
-      setTimeout(_doPrintCleanup, 3000);
+      const mq = window.matchMedia('print');
+      const mqHandler = (e) => {
+        if (!e.matches) { _doPrintCleanup(); mq.removeEventListener('change', mqHandler); }
+      };
+      mq.addEventListener('change', mqHandler);
+      // visibilitychange:iOS Safari 关掉打印对话框后页面会从 hidden 切回 visible。
+      const onVis = () => {
+        if (document.visibilityState === 'visible') {
+          _doPrintCleanup();
+          document.removeEventListener('visibilitychange', onVis);
+        }
+      };
+      document.addEventListener('visibilitychange', onVis);
       window.print();
     }, 80);
   }, 40);
