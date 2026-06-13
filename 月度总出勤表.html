@@ -503,6 +503,41 @@ body.resizing.resizing-row{cursor:row-resize!important}
 .personal-toolbar {
   display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 14px;
 }
+
+/* 期间徽章 — 排班表同款,左对齐贴在月份列上方;只读不可点 */
+.personal-period-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px 9px 12px;
+  border-radius: 999px;
+  background: #1f2330;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #e8eaef;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03) inset;
+  margin-bottom: 14px;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  cursor: default;
+}
+.personal-period-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  background: #93c5fd;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(147,197,253,0.14), 0 0 10px rgba(147,197,253,0.28);
+  animation: personal-period-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes personal-period-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 .personal-export-btn {
   background: linear-gradient(135deg, #a5b4fc, #93c5fd);
   color: #0a0d12;
@@ -2767,10 +2802,23 @@ const Pages = (() => {
     return true;
   }
 
+  // 排班表同款期间格式: `2026年6月16日 〜 2026年7月15日`(年份两端都有,跨年也对)
+  function personalPeriodLabel(periodKey) {
+    const [y, m] = periodKey.split('-').map(Number);
+    const endY = m === 12 ? y + 1 : y;
+    const endM = m === 12 ? 1 : m + 1;
+    return `${y}年${m}月16日 〜 ${endY}年${endM}月15日`;
+  }
+
   function renderPersonal() {
     const host = document.getElementById('page-personal');
     Render.clear(host);
     const wrap = Render.el('div.personal-app', { id: 'personalApp' });
+
+    // 期间徽章 — 同步月度总出勤表的当前周期,只读不可点
+    const periodBadge = Render.el('div.personal-period-badge',
+      personalPeriodLabel(Store.get().ui.currentPeriod));
+    wrap.appendChild(periodBadge);
 
     const a = findPersonByConfig(PERSONAL_A);
     const b = findPersonByConfig(PERSONAL_B);
