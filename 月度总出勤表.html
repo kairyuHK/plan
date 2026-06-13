@@ -333,10 +333,12 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule th.name-col, table.schedule td.name-col {
     position: static !important; left: auto !important;
     background: #fff !important;
-    /* 屏幕端 role border-right:0 和 name border-left:0 是在 @media(max-width:640px) 里,
-       不在 @media print 里,这里本就不需要显式恢复。
-       之前加的 1px !important 反而破坏 border-collapse 的相邻合并,导致这两条线比其他列略粗略深。
-       让 collapse 自然合并即可,各列粗细统一。 */
+    /* 手机 Safari 打印时 viewport ≤640px → @media(max-width:640px) 仍匹配 →
+       屏幕端的 border-right:0 / border-left:0 !important 还在生效 → 打印这两条线缺失。
+       用同等 !important 恢复。用 #bbb 比基础 #999 浅一档,补偿"独立 border"vs"collapse 合并 border"
+       的视觉重量差,使粗细颜色和邻列一致。 */
+    border-right: 1px solid #bbb !important;
+    border-left: 1px solid #bbb !important;
   }
   /* 只保留 tr 的 break-inside:avoid(防止单行被分页截断),不再对 table 整体加。
      table 层级的 break-inside:avoid 在缩放 > 100% 时会触发 bug:
