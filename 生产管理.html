@@ -5533,12 +5533,19 @@ function _doPrintCleanup() {
   document.body.classList.remove('printing');
   if (_printCleanup) { _printCleanup(); _printCleanup = null; }
 }
+// 每次 beforeprint 都重新跑 setupPrintLayout。iOS 打印对话框里切换方向 / 纸张大小
+// 会触发多次 beforeprint。如果直接跳过(因为 body.printing 已经在),用户看到的
+// 就是上次的旧布局 —— 但 iOS 在不同方向下需要的压缩比不一样,必须重算。
+// 重算前先把上次的 cleanup 跑一遍把 inline 还原,再重新计算。
 window.addEventListener('beforeprint', () => {
-  if (!document.body.classList.contains('printing')) {
-    _printCleanedUp = false;
-    _printCleanup = setupPrintLayout();
-    document.body.classList.add('printing');
+  if (_printCleanup) {
+    try { _printCleanup(); } catch(e) {}
+    _printCleanup = null;
   }
+  document.body.classList.remove('printing');
+  _printCleanedUp = false;
+  _printCleanup = setupPrintLayout();
+  document.body.classList.add('printing');
 });
 window.addEventListener('afterprint', () => {
   _doPrintCleanup();
