@@ -5553,6 +5553,19 @@ window.addEventListener('afterprint', () => {
 
 function doPrint() {
   exportMenu.classList.remove('show');
+  // === 手机端走「导出 PDF」逻辑 ===
+  // iOS Safari 打印 iframe 时会无视 iframe 内部 CSS 尺寸,强行用一套不可控的缩放,
+  // 导致纸面下半部分大片空白。这是浏览器层面的限制,Web 端无法修复。
+  // 手机端直接走 doExportPdf() —— 它用 html2canvas 截图 + jsPDF 生成的 PDF,
+  // 内容能精确铺满一页;用户拿到 PDF 后从任意 PDF 阅读器打印即可。
+  // PC 端仍走原生 window.print(),保留可选中文字 + 锐利缩放的优点。
+  const isMobile = window.matchMedia('(max-width: 900px)').matches
+    || (window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1100);
+  if (isMobile) {
+    showToast('手机端打印请用导出 PDF,正在生成…', 'info');
+    doExportPdf();
+    return;
+  }
   setTimeout(() => {
     _printCleanedUp = false;
     _printCleanup = setupPrintLayout();
