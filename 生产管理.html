@@ -5440,6 +5440,13 @@ function setupPrintLayout() {
   const origHourPxStr = getComputedStyle(root).getPropertyValue('--hour-px').trim();
   const origHourPx = parseFloat(origHourPxStr) || 140;
 
+  // 手机横屏 body 上有 mob-ls 类,它把 line-foot/timeline-foot 隐藏、line-head 拉到
+  // 92px,等等 —— 这些规则即使在打印态下也会通过 specificity 漏过去几条,导致手机
+  // 横屏打印跟 PC 不一致。打印期间直接把这个类移除,cleanup 时再加回来,确保打印
+  // 走的是同一套 body.printing.printing-compact PC 规则。
+  const wasMobLs = document.body.classList.contains('mob-ls');
+  if (wasMobLs) document.body.classList.remove('mob-ls');
+
   // 关键:无论手机还是 PC,打印基线统一拉到 140 px/hour。
   // 手机原始是 100,PC 是 140;如果不统一,后面 cardRange / 压缩比例两边算不一样,
   // 打印出来就会不一样。
@@ -5473,11 +5480,13 @@ function setupPrintLayout() {
   //   565 + 175 = 740, 留 8px buffer。
   const PAGE_H_FOR_CARDS = 565;
   let newHourPx = PRINT_BASELINE_HOUR_PX;
-  if (cardRange > PAGE_H_FOR_CARDS && cardRange > 0) {
-    // 真实 cardRange > 一页预算时按比例压缩;下限 1px/hour 足够极端密集
-    newHourPx = Math.max(1, PRINT_BASELINE_HOUR_PX * (PAGE_H_FOR_CARDS / cardRange));
+  if (cardRange > 0) {
+    // 不管太密(>预算)还是太稀(<预算),都按比例缩放让 cardRange 精确等于 PAGE_H_FOR_CARDS,
+    // 这样卡片永远填满整页,既不超出也不会在下方留出大片空白。
+    // 上限 280 px/hour(=2x 基线),数据极少时不至于拉得太夸张;下限 1 px/hour 应对极端密集。
+    newHourPx = Math.max(1, Math.min(280, PRINT_BASELINE_HOUR_PX * (PAGE_H_FOR_CARDS / cardRange)));
   }
-  // 跟「基线 140」对比决定是否需要二次 rescale;但只要 cardRange ≤ 560 就保持 140 不再算
+  // 只要跟基线差超过 0.5px/hour 就需要重排
   const needRescale = Math.abs(newHourPx - PRINT_BASELINE_HOUR_PX) > 0.5;
   if (needRescale) {
     root.style.setProperty('--hour-px', newHourPx + 'px');
@@ -5497,6 +5506,7 @@ function setupPrintLayout() {
     restoreInputs();
     restore();
     document.body.classList.remove('printing-compact');
+    if (wasMobLs) document.body.classList.add('mob-ls');
     // 一开始就把 --hour-px 拉到了 140 基线,无论有没有二次 rescale 都得还原
     root.style.setProperty('--hour-px', origHourPxStr);
     renderTimeline();
