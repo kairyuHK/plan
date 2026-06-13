@@ -5395,10 +5395,23 @@ function trimGridForExport(minVisH) {
   let visH = maxBottom - shift + 8;
   if (typeof minVisH === 'number' && minVisH > visH) visH = minVisH;
   const restoreFns = [];
+  // 用 setProperty 加 important 优先级 —— 手机端 @media (max-width: 900px) 里有
+  // `.cards-wrap { height: auto }` 等规则,普通 inline 干不过它就会让卡片区缩水,
+  // 手机打印出现纸面下半部分大片空白。
   const setStyles = (el, styles) => {
     const prev = {};
-    for (const k in styles) { prev[k] = el.style[k]; el.style[k] = styles[k]; }
-    restoreFns.push(() => { for (const k in prev) el.style[k] = prev[k]; });
+    for (const k in styles) {
+      prev[k] = el.style.getPropertyValue(k);
+      const v = styles[k];
+      if (v === '') el.style.removeProperty(k);
+      else el.style.setProperty(k, v, 'important');
+    }
+    restoreFns.push(() => {
+      for (const k in prev) {
+        if (prev[k]) el.style.setProperty(k, prev[k]);
+        else el.style.removeProperty(k);
+      }
+    });
   };
   document.querySelectorAll('.cards-grid').forEach(grid => {
     setStyles(grid, { transform: shift > 0 ? `translateY(-${shift}px)` : '', height: (visH + shift) + 'px' });
