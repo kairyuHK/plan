@@ -4312,6 +4312,7 @@ function addJobCard(grid, libItem, savedData) {
     if (line) openPicker(line);
   });
   // 弹窗里的便当名 — 已链接配置表便当库时可点,跳转到该便当
+  // 同时把这张卡片所在的生产线 id 带过去,配置表会切到该线上下文(每条生产线一份独立配置)
   const nameEl = node.querySelector('.card-name-display');
   if (nameEl) {
     refreshNameLinkState(nameEl, libItem.id);
@@ -4319,8 +4320,9 @@ function addJobCard(grid, libItem, savedData) {
       const it = findLibItem(libItem.id);
       if (!it || !it.bentoId) return;
       e.stopPropagation();
+      const lineId = getLineIdFromNode(node);
       try {
-        window.parent.postMessage({ type: 'jump-to-bento', bentoId: it.bentoId, bentoName: it.name }, '*');
+        window.parent.postMessage({ type: 'jump-to-bento', bentoId: it.bentoId, bentoName: it.name, lineId }, '*');
       } catch (_) {}
     });
   }
@@ -6717,7 +6719,54 @@ function migrate(s) {
     if (b.lineId && b.speed && b.lineSpeeds[b.lineId] == null) {
       b.lineSpeeds[b.lineId] = b.speed;
     }
+    // === 按线缓存卡片布局 / 材料分配 ===
+    // 同一个便当在不同生产线上可以有不同的卡片排布和材料分配。
+    // b.line / b.assignments 始终是「当前 b.lineId 这条线」的工作副本;
+    // b.layouts[lineId] 保存其它线已编辑过的布局,切线时还原。
+    if (!b.layouts || typeof b.layouts !== "object") b.layouts = {};
+    if (b.lineId && !b.layouts[b.lineId] && Array.isArray(b.line) && b.line.length) {
+      b.layouts[b.lineId] = {
+        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
+        assignments: JSON.parse(JSON.stringify(b.assignments || {}))
+      };
+    }
   }
+}
+
+// 切换便当当前在编辑/操作的生产线 —— 该便当在每条线上都有独立的卡片布局和材料分配
+function switchBentoToLine(b, newLineId) {
+  if (!b) return;
+  const oldLineId = b.lineId;
+  if ((newLineId || null) === (oldLineId || null)) return;
+  if (!b.layouts || typeof b.layouts !== "object") b.layouts = {};
+  if (!b.lineSpeeds || typeof b.lineSpeeds !== "object") b.lineSpeeds = {};
+
+  // 1) 当前 line/assignments 快照到旧线缓存
+  if (oldLineId) {
+    b.layouts[oldLineId] = {
+      line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
+      assignments: JSON.parse(JSON.stringify(b.assignments || {}))
+    };
+    if (b.speed != null && b.speed !== "") b.lineSpeeds[oldLineId] = b.speed;
+  }
+
+  b.lineId = newLineId || null;
+
+  // 2) 加载新线:有缓存就还原,没缓存就用该线模板初始化(空材料分配)
+  if (newLineId) {
+    if (b.layouts[newLineId]) {
+      const saved = b.layouts[newLineId];
+      b.line = saved.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label }));
+      b.assignments = JSON.parse(JSON.stringify(saved.assignments || {}));
+    } else {
+      const tpl = getLineTemplate(newLineId);
+      b.line = tpl.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
+      b.assignments = {};
+    }
+    const ss = b.lineSpeeds[newLineId];
+    b.speed = (ss != null && ss !== "") ? ss : "";
+  }
+  // newLineId == null:保持当前 line/assignments 不变,只清掉归属线
 }
 
 function loadState() {
@@ -7050,7 +7099,12 @@ window.addEventListener('message', (e) => {
     // 从计划板弹窗点便当名跳过来:切到「操作屏」并选中这条便当
     const target = (e.data.bentoId && state.bentos.find(b => b.id === e.data.bentoId))
       || (e.data.bentoName && state.bentos.find(b => b.name === e.data.bentoName));
+    // 计划板会带 lineId(那张卡片所在生产线);把便当切到那条线的布局再打开
+    const jumpLineId = e.data.lineId || null;
     if (target) {
+      if (jumpLineId && jumpLineId !== target.lineId) {
+        switchBentoToLine(target, jumpLineId);
+      }
       state.current = { ...state.current, screen: 'operate', bentoId: target.id };
     } else {
       // 便当已被删/找不到 → 退到便当库列表,用户自己定位
@@ -7236,7 +7290,9 @@ function addBento(name) {
     name,
     assignments: {},
     // 新便当：复制当前模板作为初始卡片布局（独立 posId）
-    line: state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }))
+    line: state.line.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label })),
+    // 按线缓存:每条线一份独立的卡片布局/材料分配,切线时从这里取
+    layouts: {}
   };
   state.bentos.push(b);
   saveState();
@@ -8270,48 +8326,28 @@ function renderEdit() {
   lineSel.value = b.lineId || "";
   lineSel.onchange = () => {
     const newLineId = lineSel.value || null;
-    if (newLineId === b.lineId) return;
-    // 切线之前先把当前 speed 落档到旧 lineId(覆盖前最后存一次)
-    if (b.lineId && b.speed) b.lineSpeeds[b.lineId] = b.speed;
-
-    // 「新建状态」= 之前没有 lineId(b.lineId 为 null/空);此时第一次选生产线才弹确认。
-    // 「修改状态」= 已经有 lineId,只是换到另一条线;不弹框,只切换生产线 + 同步 speed,
-    //               布局(b.line / assignments)保持不变。
+    if ((newLineId || null) === (b.lineId || null)) return;
+    // 新模型:每条线有自己的卡片布局/材料分配/速度,switchBentoToLine 做快照与还原
+    // 「未选生产线 → 第一次选线」时,把当前已编辑的 line/assignments 直接挪到该线,不弹模板覆盖确认
     const wasUnset = !b.lineId;
-
-    if (newLineId) {
+    if (wasUnset && newLineId) {
+      // 首次绑线:把现有 line/assignments 当作这条线的初始布局(不调用 switch 以免被模板冲掉)
       b.lineId = newLineId;
-      // 把这条线之前存过的 LINE 速度调出来当前生效;没存过就清空让用户填新值
-      const saved = b.lineSpeeds[newLineId];
-      b.speed = (saved != null && saved !== "") ? saved : "";
-
-      if (wasUnset) {
-        // 新建场景:第一次选生产线 → 弹 popover,默认套用该线的卡片布局
-        const lineName = (scheduleData.lines || []).find(l => l.id === newLineId)?.name || newLineId;
-        showConfirmPopover(lineSel, {
-          text: `套用「${lineName}」默认布局?`,
-          sub: '会覆盖当前便当的卡片和材料分配',
-          confirmText: '套用',
-          cancelText: '保持不变',
-          onConfirm: () => {
-            applyLineTemplateToBento(b, newLineId);
-            renderEdit();
-          },
-          onCancel: () => {
-            // 不套用布局,只切换生产线 + 同步 speed
-            saveState();
-            renderEdit();
-          }
-        });
-        return;
-      }
-      // 修改场景:布局原样保留,只换 lineId + speed
-    } else {
-      b.lineId = null;
-      // 没选线时 speed 保留显示但不再归属任何线
+      b.layouts = b.layouts || {};
+      b.layouts[newLineId] = {
+        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
+        assignments: JSON.parse(JSON.stringify(b.assignments || {}))
+      };
+      const ss = (b.lineSpeeds || {})[newLineId];
+      if (ss != null && ss !== "") b.speed = ss;
+      saveState();
+      renderEdit();
+      return;
     }
+    // 已绑过线 → 真正的「按线切换该便当布局」:旧线快照 + 加载新线缓存(没缓存就用该线模板)
+    switchBentoToLine(b, newLineId);
     saveState();
-    renderEdit(); // 刷新 speedInp 的值
+    renderEdit();
   };
   const cardBtn = document.createElement("button"); cardBtn.textContent = "管理卡片";
   const addCardBtn = document.createElement("button"); addCardBtn.textContent = "+ 卡片";
