@@ -1281,7 +1281,23 @@ const Pages = (() => {
         };
       });
       const search = host.querySelector('#picker-search');
-      search.addEventListener('input', e => { query = e.target.value; render(); search.focus(); search.setSelectionRange(query.length, query.length); });
+      search.addEventListener('input', e => {
+        // 关键:render() 会重建整个 host 内的 DOM,e.target 这个旧 input 会被销毁;
+        // 必须在 render 后重新查询新 input 并把焦点 + 光标位置/滚动位置还原回去,
+        // 否则会出现「输入一个字 → 光标跳回开头/视图回到顶部」的体验
+        const caret = e.target.selectionStart;
+        const bodyScroll = host.querySelector('.ph-body')?.scrollTop || 0;
+        query = e.target.value;
+        render();
+        const nb = host.querySelector('.ph-body'); if (nb) nb.scrollTop = bodyScroll;
+        const ns = host.querySelector('#picker-search');
+        if (ns) {
+          ns.focus();
+          // caret 可能因 IME 合成阶段为 null,fallback 到末尾
+          const pos = (caret != null) ? caret : ns.value.length;
+          try { ns.setSelectionRange(pos, pos); } catch (_) {}
+        }
+      });
       host.onclick = e => { if(e.target===host) close(); };
     }
     render();
@@ -3453,6 +3469,18 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) item.lineSpeed = spd;
       if (Array.isArray(b.line)) item.people = b.line.length;
+      // 按线人数:同一便当在不同生产线上卡片布局可能不同 → 每条线一份独立人数
+      if (b.layouts && typeof b.layouts === 'object') {
+        if (!item.peopleByLine || typeof item.peopleByLine !== 'object') item.peopleByLine = {};
+        // 清空旧 map,完全以配置表为准
+        for (const k in item.peopleByLine) delete item.peopleByLine[k];
+        for (const lid in b.layouts) {
+          if (lid === 'tsk') continue;
+          const lay = b.layouts[lid];
+          const n = lay && Array.isArray(lay.line) ? lay.line.length : 0;
+          if (n > 0) item.peopleByLine[lid] = n;
+        }
+      }
       // 把配置表的 b.lineSpeeds 同步到品名库的 lineSpeedByLine。
       // 已链接便当时配置表是唯一真源 —— 值清空 = 删 key,而不是保留旧值。
       // 値付け(tsk)不参与同步:plan 板不暴露 tsk 的按线编辑,也不从配置表隐式接收
@@ -3492,6 +3520,17 @@ function applyBentoOverlay() {
       const spd = parseFloat(b.speed);
       if (spd > 0) byName.lineSpeed = spd;
       if (Array.isArray(b.line)) byName.people = b.line.length;
+      // 按线人数同步
+      if (b.layouts && typeof b.layouts === 'object') {
+        if (!byName.peopleByLine || typeof byName.peopleByLine !== 'object') byName.peopleByLine = {};
+        for (const k in byName.peopleByLine) delete byName.peopleByLine[k];
+        for (const lid in b.layouts) {
+          if (lid === 'tsk') continue;
+          const lay = b.layouts[lid];
+          const n = lay && Array.isArray(lay.line) ? lay.line.length : 0;
+          if (n > 0) byName.peopleByLine[lid] = n;
+        }
+      }
       // 同步按线流水线速度(同样排除 tsk + 空值删 key)
       if (b.lineSpeeds && typeof b.lineSpeeds === 'object') {
         if (!byName.lineSpeedByLine || typeof byName.lineSpeedByLine !== 'object') byName.lineSpeedByLine = {};
@@ -3516,6 +3555,16 @@ function applyBentoOverlay() {
         if (v > 0) initLineSpeedByLine[lid] = v;
       }
     }
+    // 按线人数初始 map(b.layouts 取每条线布局长度)
+    const initPeopleByLine = {};
+    if (b.layouts && typeof b.layouts === 'object') {
+      for (const lid in b.layouts) {
+        if (lid === 'tsk') continue;
+        const lay = b.layouts[lid];
+        const n = lay && Array.isArray(lay.line) ? lay.line.length : 0;
+        if (n > 0) initPeopleByLine[lid] = n;
+      }
+    }
     const newItem = {
       id: uid(),
       name: (b.name || '').trim(),
@@ -3524,6 +3573,7 @@ function applyBentoOverlay() {
       speedByLine: {},
       lineSpeedByLine: initLineSpeedByLine,
       people: Array.isArray(b.line) ? b.line.length : 0,
+      peopleByLine: initPeopleByLine,
       meterPeople: 1,
       color: COLORS[library.length % COLORS.length],
       bentoId: b.id,
@@ -3590,6 +3640,26 @@ function resolveItemLineSpeed(item, lineId) {
   if (lineId && m && parseFloat(m[lineId]) > 0) return parseFloat(m[lineId]);
   return parseFloat(item.lineSpeed) || 0;
 }
+// 按线解析人数:同一便当在不同生产线上的卡片布局可能不同(配置表 option 3) → 取那条线的位数。
+// 返回 '?' / 数字 / 0。优先 item.peopleByLine[lineId],回退 item.people。
+function resolveItemPeople(item, lineId) {
+  if (!item) return 0;
+  const m = item.peopleByLine;
+  if (lineId && m) {
+    const v = m[lineId];
+    if (v === '?' || v === '？') return '?';
+    const n = parseInt(v);
+    if (n > 0) return n;
+  }
+  if (item.people === '?' || item.people === '？') return '?';
+  const n = parseInt(item.people);
+  return n > 0 ? n : 0;
+}
+// 把 resolveItemPeople 的结果填到 input.value 的工具(空 / ? / 数字)
+function peopleToInputVal(v) {
+  if (v === '?' || v === '？') return '?';
+  return (typeof v === 'number' && v > 0) ? String(v) : '';
+}
 // 是否存在任意按线覆盖(用于 UI 提示"因线而异")
 function hasPerLineSpeed(item) {
   const a = item && item.speedByLine;
@@ -3620,6 +3690,7 @@ function loadLibrary() {
     // 旧数据兜底:确保按线覆盖 map 存在(空对象,不破坏默认行为)
     if (!item.speedByLine || typeof item.speedByLine !== 'object') item.speedByLine = {};
     if (!item.lineSpeedByLine || typeof item.lineSpeedByLine !== 'object') item.lineSpeedByLine = {};
+    if (!item.peopleByLine || typeof item.peopleByLine !== 'object') item.peopleByLine = {};
   });
   refreshBentoMapFromStorage();
   applyBentoOverlay();
@@ -4130,7 +4201,8 @@ function openPicker(line) {
       const row = document.createElement('div');
       row.className = 'pick-item';
       row.style.setProperty('--lib-color', item.color);
-      const peopleText = fmtPeople(item.people);
+      // 按目标线解析人数(同一便当在不同线上卡片数可能不同)
+      const peopleText = fmtPeople(resolveItemPeople(item, _targetLineId));
       const resSpd = resolveItemSpeed(item, _targetLineId);
       const resLineSpd = resolveItemLineSpeed(item, _targetLineId);
       // 用 † 标记一下:该值来自按线覆盖,而非默认
@@ -4173,7 +4245,7 @@ function buildLine(num) {
       <div class="line-config">
         <div class="cfg">
           <span class="cfg-label">起始</span>
-          <input class="cfg-input start-time" type="time" value="08:00">
+          <input class="cfg-input start-time" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="08:00">
         </div>
         <div class="cfg">
           <span class="cfg-label">切换</span>
@@ -4210,7 +4282,38 @@ function buildLine(num) {
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
-  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  // 起始时间:type=text 允许手机端键盘输入(原 type=time 在手机上只能滚轮);
+  // input 时即时 recalc,blur 时统一归一化(8→08:00、830→08:30、0830→08:30、08.30→08:30)
+  const _stInp = line.querySelector('.start-time');
+  _stInp.addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  _stInp.addEventListener('blur', () => {
+    const raw = (_stInp.value || '').trim();
+    if (!raw) return;
+    // 提取数字 + 冒号
+    let s = raw.replace(/[^\d:]/g, '');
+    let h, m;
+    if (s.includes(':')) {
+      const [hs, ms] = s.split(':');
+      h = parseInt(hs, 10);
+      m = parseInt(ms, 10);
+    } else if (s.length >= 3) {
+      // "830" → 8:30,"0830" → 08:30
+      const padded = s.padStart(4, '0');
+      h = parseInt(padded.slice(0, 2), 10);
+      m = parseInt(padded.slice(2, 4), 10);
+    } else {
+      // "8" → 08:00
+      h = parseInt(s, 10);
+      m = 0;
+    }
+    if (!isFinite(h) || !isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
+    const norm = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    if (norm !== _stInp.value) {
+      _stInp.value = norm;
+      recalc(line);
+      scheduleSaveBoard();
+    }
+  });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
@@ -4262,7 +4365,8 @@ function addJobCard(grid, libItem, savedData) {
   const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
   const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (_resolvedLineSpeed > 0 ? _resolvedLineSpeed : '');
   const qtyVal = savedData?.qty != null ? savedData.qty : '';
-  const peopleVal = savedData?.people != null ? savedData.people : ((libItem.people === '?' || libItem.people === '？') ? '?' : (libItem.people > 0 ? libItem.people : ''));
+  // 人数按目标线解析:同一便当在不同生产线上的卡片布局可能不同(peopleByLine[lineId])
+  const peopleVal = savedData?.people != null ? savedData.people : peopleToInputVal(resolveItemPeople(libItem, _lineId));
   node.innerHTML = `
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
@@ -4702,7 +4806,7 @@ function attachCardInteraction(card) {
     if (dragMode) {
       card.classList.remove('dragging');
       hideDropIndicator();
-      // 跨线拖动:按新落点的线重新解析品名速度 / 流水线速度 → 写回 dataset/输入框
+      // 跨线拖动:按新落点的线重新解析品名速度 / 流水线速度 / 人数 → 写回 dataset/输入框
       if (card.dataset.type === 'job') {
         const newLineId = getLineIdFromNode(card);
         const originLineId = card._dragOriginLineId;
@@ -4715,6 +4819,11 @@ function attachCardInteraction(card) {
             if (lineSpdInp) {
               const resLs = resolveItemLineSpeed(_li, newLineId);
               lineSpdInp.value = resLs > 0 ? resLs : '';
+            }
+            // 人数:取新落点线对应的便当布局长度;同步刷紧凑视图的 .compact-people
+            const peopleInp = popupQ(card, '.people');
+            if (peopleInp) {
+              peopleInp.value = peopleToInputVal(resolveItemPeople(_li, newLineId));
             }
           }
         }
