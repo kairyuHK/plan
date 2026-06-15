@@ -1228,7 +1228,37 @@ const Pages = (() => {
       return Array.isArray(v) ? v.slice() : (v ? [v] : []);
     }
 
-    function render(){
+    // 关键重构:一次性建好 picker 外壳(head + search 输入框 + 空 body + 按钮);
+    // 输入时只重渲 body 列表区,绝不重建 search input ——
+    // 否则中/日文 IME 合成会被打断、光标跳回开头、列表滚动归零。
+    function buildShell(){
+      host.innerHTML = `
+        <div class="picker">
+          <div class="ph-head">
+            <div class="title">选择 ${escapeHtml(s.lines.find(l=>l.id===lineId).name)} · ${escapeHtml(posName)} <span class="count" id="picker-count">0/3</span></div>
+            <button data-act="close">✕</button>
+          </div>
+          <div class="ph-search"><input id="picker-search" placeholder="搜索…" autofocus></div>
+          <div class="ph-body" id="picker-body"></div>
+          <div class="btn-row">
+            <button data-act="clear">清空</button>
+            <div class="spacer"></div>
+            <button data-act="done" class="primary">完成</button>
+          </div>
+        </div>
+      `;
+      host.classList.remove('hidden');
+      const close = () => { host.classList.add('hidden'); host.innerHTML=''; };
+      host.querySelector('[data-act="close"]').onclick = close;
+      host.querySelector('[data-act="done"]').onclick = close;
+      host.querySelector('[data-act="clear"]').onclick = () => { Store.assign(currentDate, lineId, posName, null); renderBody(); };
+      const search = host.querySelector('#picker-search');
+      search.addEventListener('input', e => { query = e.target.value; renderBody(); });
+      // IME 合成中不触发 input(浏览器会在 compositionend 后单独发一次 input),已经天然安全
+      host.onclick = e => { if(e.target===host) close(); };
+    }
+
+    function renderBody(){
       const currentIds = getCurrentIds();
       const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
       const q = query.trim().toLowerCase();
@@ -1245,31 +1275,19 @@ const Pages = (() => {
           <span class="home">${s.lines.find(l=>l.id===p.homeLine)?.name||''}</span>
         </div>`;
       };
-      host.innerHTML = `
-        <div class="picker">
-          <div class="ph-head">
-            <div class="title">选择 ${escapeHtml(s.lines.find(l=>l.id===lineId).name)} · ${escapeHtml(posName)} <span class="count">${currentIds.length}/3</span></div>
-            <button data-act="close">✕</button>
-          </div>
-          <div class="ph-search"><input id="picker-search" placeholder="搜索…" value="${escapeHtml(query)}" autofocus></div>
-          <div class="ph-body">
-            <div class="section-title">本部门人员 (${home.length})</div>
-            ${home.length? home.map(row).join('') : '<div class="muted" style="padding:8px 4px">（无)</div>'}
-            ${others.length? `<details><summary class="section-title" style="cursor:pointer">调动 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
-          </div>
-          <div class="btn-row">
-            <button data-act="clear">清空</button>
-            <div class="spacer"></div>
-            <button data-act="done" class="primary">完成</button>
-          </div>
-        </div>
+      const countEl = host.querySelector('#picker-count');
+      if (countEl) countEl.textContent = `${currentIds.length}/3`;
+      const body = host.querySelector('#picker-body');
+      if (!body) return;
+      // 保留滚动位置(过滤变化时列表高度变,scrollTop 也会被钳到有效范围)
+      const prevScroll = body.scrollTop;
+      body.innerHTML = `
+        <div class="section-title">本部门人员 (${home.length})</div>
+        ${home.length? home.map(row).join('') : '<div class="muted" style="padding:8px 4px">（无)</div>'}
+        ${others.length? `<details><summary class="section-title" style="cursor:pointer">调动 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
       `;
-      host.classList.remove('hidden');
-      const close = () => { host.classList.add('hidden'); host.innerHTML=''; };
-      host.querySelector('[data-act="close"]').onclick = close;
-      host.querySelector('[data-act="done"]').onclick = close;
-      host.querySelector('[data-act="clear"]').onclick = () => { Store.assign(currentDate, lineId, posName, null); render(); };
-      host.querySelectorAll('.person-row').forEach(r => {
+      body.scrollTop = prevScroll;
+      body.querySelectorAll('.person-row').forEach(r => {
         if(r.classList.contains('disabled')) return;
         r.onclick = () => {
           const ids = getCurrentIds();
@@ -1277,30 +1295,13 @@ const Pages = (() => {
           if(i >= 0) ids.splice(i, 1);
           else if(ids.length < 3) ids.push(r.dataset.pid);
           Store.assign(currentDate, lineId, posName, ids.length ? ids : null);
-          render();
+          renderBody();
         };
       });
-      const search = host.querySelector('#picker-search');
-      search.addEventListener('input', e => {
-        // 关键:render() 会重建整个 host 内的 DOM,e.target 这个旧 input 会被销毁;
-        // 必须在 render 后重新查询新 input 并把焦点 + 光标位置/滚动位置还原回去,
-        // 否则会出现「输入一个字 → 光标跳回开头/视图回到顶部」的体验
-        const caret = e.target.selectionStart;
-        const bodyScroll = host.querySelector('.ph-body')?.scrollTop || 0;
-        query = e.target.value;
-        render();
-        const nb = host.querySelector('.ph-body'); if (nb) nb.scrollTop = bodyScroll;
-        const ns = host.querySelector('#picker-search');
-        if (ns) {
-          ns.focus();
-          // caret 可能因 IME 合成阶段为 null,fallback 到末尾
-          const pos = (caret != null) ? caret : ns.value.length;
-          try { ns.setSelectionRange(pos, pos); } catch (_) {}
-        }
-      });
-      host.onclick = e => { if(e.target===host) close(); };
     }
-    render();
+
+    buildShell();
+    renderBody();
   }
 
   function updateAutosaveStatus(){
@@ -2071,8 +2072,13 @@ const Pages = (() => {
     width: 100%; background: transparent; border: none;
     color: var(--blue); font-size: 12px; font-weight: 600;
     font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
+    cursor: pointer; color-scheme: dark;
+    -webkit-appearance: none; appearance: none;
   }
-  .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+  /* 跟 actual-finish 保持一致 — 不挂 -webkit-appearance 时 iOS 偶尔会把 time picker 直接关掉 */
+  .cfg-input[type=time]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+  .cfg-input[type=time]::-webkit-inner-spin-button,
+  .cfg-input[type=time]::-webkit-clear-button { display: none; }
   .cfg:last-child .cfg-input { text-align: right; }
 
   .cards-wrap { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: none; }
@@ -4243,10 +4249,10 @@ function buildLine(num) {
         </div>
       </div>
       <div class="line-config">
-        <div class="cfg">
+        <label class="cfg" title="点击设置起始时间">
           <span class="cfg-label">起始</span>
-          <input class="cfg-input start-time" type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" value="08:00">
-        </div>
+          <input class="cfg-input start-time" type="time" value="08:00">
+        </label>
         <div class="cfg">
           <span class="cfg-label">切换</span>
           <input class="cfg-input gap" type="number" min="0" step="1" value="0" inputmode="numeric">
@@ -4282,38 +4288,7 @@ function buildLine(num) {
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
-  // 起始时间:type=text 允许手机端键盘输入(原 type=time 在手机上只能滚轮);
-  // input 时即时 recalc,blur 时统一归一化(8→08:00、830→08:30、0830→08:30、08.30→08:30)
-  const _stInp = line.querySelector('.start-time');
-  _stInp.addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  _stInp.addEventListener('blur', () => {
-    const raw = (_stInp.value || '').trim();
-    if (!raw) return;
-    // 提取数字 + 冒号
-    let s = raw.replace(/[^\d:]/g, '');
-    let h, m;
-    if (s.includes(':')) {
-      const [hs, ms] = s.split(':');
-      h = parseInt(hs, 10);
-      m = parseInt(ms, 10);
-    } else if (s.length >= 3) {
-      // "830" → 8:30,"0830" → 08:30
-      const padded = s.padStart(4, '0');
-      h = parseInt(padded.slice(0, 2), 10);
-      m = parseInt(padded.slice(2, 4), 10);
-    } else {
-      // "8" → 08:00
-      h = parseInt(s, 10);
-      m = 0;
-    }
-    if (!isFinite(h) || !isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return;
-    const norm = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-    if (norm !== _stInp.value) {
-      _stInp.value = norm;
-      recalc(line);
-      scheduleSaveBoard();
-    }
-  });
+  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
