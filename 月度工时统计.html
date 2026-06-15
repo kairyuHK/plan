@@ -773,25 +773,6 @@
     color: var(--text-faint);
     cursor: not-allowed;
   }
-  .time-reset {
-    background: none;
-    border: none;
-    color: var(--accent-dim);
-    font-size: 11px;
-    font-family: var(--font-body);
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    padding: 4px 8px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: all 0.14s ease;
-    -webkit-tap-highlight-color: transparent;
-    flex-shrink: 0;
-  }
-  .time-reset:hover, .time-reset:active {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-  }
 
   .day .num {
     font-family: var(--font-mono);
@@ -1421,13 +1402,11 @@
               ${prevCarryOut != null && showTimes ? `<span class="carry-prev" title="前日跨夜至 ${minToTime(prevCarryOut)},此前不再计入">← ${minToTime(prevCarryOut)}</span>` : ''}
               <input type="time" class="time-input" data-field="in" data-key="${key}"
                 value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
-              ${rec?.in && showTimes ? `<button class="time-reset" data-reset-field="in" data-key="${key}" title="清空">还原</button>` : ''}
             </span>
             <span class="sep">→</span>
             <span class="out-cell">
               <input type="time" class="time-input" data-field="out" data-key="${key}"
                 value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
-              ${rec?.out && showTimes ? `<button class="time-reset" data-reset-field="out" data-key="${key}" title="清空">还原</button>` : ''}
               ${overnight ? '<span class="next-day">翌日</span>' : ''}
             </span>
           </div>
@@ -1497,9 +1476,22 @@
     });
   }
 
+  // 仅手机端:点了时间框但没点"完成"(比如触碰外部区域)→ 还原原值
+  // 原理:iOS 原生 picker 点完成才会触发 change 事件,触碰外部只会 blur 不会 change
+  const IS_MOBILE = window.matchMedia('(max-width: 880px)').matches;
+  const pickerSessions = new WeakMap();
+
+  els.days.addEventListener('focusin', e => {
+    const inp = e.target.closest('.time-input');
+    if (!inp || !IS_MOBILE) return;
+    pickerSessions.set(inp, { original: inp.value, committed: false });
+  });
+
   els.days.addEventListener('change', e => {
     const inp = e.target.closest('.time-input');
     if (!inp) return;
+    const sess = pickerSessions.get(inp);
+    if (sess) sess.committed = true;
     const key = inp.dataset.key;
     const field = inp.dataset.field;
     const rec = state.days[key] || {};
@@ -1511,17 +1503,34 @@
   });
 
   // 输入框失焦时:先兜底保存当前值(防止 change 时序未到导致丢失),再重渲染。
+  // 手机端:若整个 picker 会话没有触发过 change(用户没点"完成"),则还原原值。
   els.days.addEventListener('focusout', e => {
     const inp = e.target.closest('.time-input');
     if (!inp) return;
     const key = inp.dataset.key;
     const field = inp.dataset.field;
-    const rec = state.days[key] || {};
-    if (rec[field] !== inp.value) {
-      rec[field] = inp.value;
-      state.days[key] = rec;
-      save();
+    const sess = pickerSessions.get(inp);
+
+    if (IS_MOBILE && sess && !sess.committed) {
+      // 用户没点"完成"——还原
+      inp.value = sess.original;
+      const rec = state.days[key];
+      if (rec) {
+        if (sess.original) rec[field] = sess.original;
+        else delete rec[field];
+        if (!rec.in && !rec.out && !rec.tag) delete state.days[key];
+        save();
+      }
+    } else {
+      // 正常兜底保存
+      const rec = state.days[key] || {};
+      if (rec[field] !== inp.value) {
+        rec[field] = inp.value;
+        state.days[key] = rec;
+        save();
+      }
     }
+    pickerSessions.delete(inp);
     setTimeout(() => {
       if (!els.days.contains(document.activeElement)) render();
     }, 0);
@@ -1529,21 +1538,6 @@
 
   // mousedown so the action fires before any focus/blur side-effects.
   els.days.addEventListener('mousedown', e => {
-    const rst = e.target.closest('[data-reset-field]');
-    if (rst) {
-      e.preventDefault();
-      e.stopPropagation();
-      const key = rst.dataset.key;
-      const field = rst.dataset.resetField;
-      const rec = state.days[key];
-      if (rec) {
-        delete rec[field];
-        if (!rec.in && !rec.out && !rec.tag) delete state.days[key];
-        save();
-        render();
-      }
-      return;
-    }
     const opt = e.target.closest('[data-set-tag]');
     if (opt) {
       e.preventDefault();
