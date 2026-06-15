@@ -2513,6 +2513,47 @@ const Pages = (() => {
     -webkit-backdrop-filter: blur(8px);
   }
   .modal-mask.show { display: flex; animation: maskIn 0.16s var(--ease); }
+  /* === 手机端自定义时间选择器 === */
+  .mtp-modal { max-width: 320px; }
+  .mtp-body {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; padding: 28px 24px;
+  }
+  .mtp-input {
+    width: 100px; height: 80px;
+    background: var(--panel-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--accent);
+    font: 600 44px/1 var(--font-mono, ui-monospace, monospace);
+    text-align: center;
+    outline: none;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+  }
+  .mtp-input::-webkit-outer-spin-button,
+  .mtp-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .mtp-input:focus { border-color: var(--accent); background: var(--accent-soft); }
+  .mtp-colon {
+    color: var(--text-mute);
+    font: 600 36px/1 var(--font-mono, ui-monospace, monospace);
+  }
+  .mtp-foot {
+    display: flex; gap: 8px; justify-content: flex-end;
+    padding: 12px 16px; border-top: 1px solid var(--border-strong);
+  }
+  .mtp-btn {
+    height: 36px; padding: 0 18px;
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text); border-radius: var(--radius-sm);
+    font: 500 14px inherit; cursor: pointer;
+  }
+  .mtp-btn:hover { background: rgba(255,255,255,0.06); }
+  .mtp-btn.primary {
+    background: var(--accent); border-color: var(--accent); color: #000;
+    font-weight: 600;
+  }
+  .mtp-btn.primary:hover { filter: brightness(1.05); }
   @keyframes maskIn { from { opacity: 0; } to { opacity: 1; } }
   .modal {
     background: var(--panel-elevated);
@@ -3364,6 +3405,25 @@ button:active{transform:scale(.97)}
   </div>
 </div>
 
+<!-- 手机端自定义时间选择器(原生 picker 在某些设备/容器内不稳定,改自己接管) -->
+<div class="modal-mask" id="mobileTimeModal">
+  <div class="modal mtp-modal">
+    <div class="modal-head">
+      <div class="modal-title" id="mtpTitle">设置时间</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-body mtp-body">
+      <input class="mtp-input" id="mtpHour" type="number" min="0" max="23" step="1" inputmode="numeric" maxlength="2">
+      <span class="mtp-colon">:</span>
+      <input class="mtp-input" id="mtpMin" type="number" min="0" max="59" step="1" inputmode="numeric" maxlength="2">
+    </div>
+    <div class="modal-foot mtp-foot">
+      <button class="mtp-btn" id="mtpCancel">取消</button>
+      <button class="mtp-btn primary" id="mtpOk">完成</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
 function showConfirmPopover(anchor, opts) {
@@ -3766,6 +3826,61 @@ function parseClock(str) {
   const [h, m] = str.split(':').map(Number);
   if (h > 23 || m > 59) return null;
   return h * 3600 + m * 60;
+}
+
+// === 自定义手机端时间选择器 ===
+// 接管 .start-time 这种 type=time input —— 弹出 HH/MM 数字输入框模态框
+function openMobileTimePicker(targetInput, title) {
+  const modal = document.getElementById('mobileTimeModal');
+  if (!modal) return;
+  const hInp = document.getElementById('mtpHour');
+  const mInp = document.getElementById('mtpMin');
+  const titleEl = document.getElementById('mtpTitle');
+  const okBtn = document.getElementById('mtpOk');
+  const cancelBtn = document.getElementById('mtpCancel');
+  const closeBtn = modal.querySelector('[data-close]');
+  titleEl.textContent = title || '设置时间';
+  // 用当前 input 值初始化(没值就用 08:00)
+  const cur = (targetInput.value || '').match(/^(\d{1,2}):(\d{2})$/);
+  hInp.value = cur ? String(parseInt(cur[1], 10)).padStart(2, '0') : '08';
+  mInp.value = cur ? cur[2] : '00';
+  modal.classList.add('show');
+  // 自动聚焦小时输入框并全选,方便直接打字覆盖
+  setTimeout(() => { hInp.focus(); hInp.select(); }, 50);
+  const cleanup = () => {
+    modal.classList.remove('show');
+    okBtn.onclick = null;
+    cancelBtn.onclick = null;
+    closeBtn.onclick = null;
+    modal.onclick = null;
+    hInp.onkeydown = null;
+    mInp.onkeydown = null;
+  };
+  const save = () => {
+    const h = Math.max(0, Math.min(23, parseInt(hInp.value, 10) || 0));
+    const m = Math.max(0, Math.min(59, parseInt(mInp.value, 10) || 0));
+    const norm = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    if (targetInput.value !== norm) {
+      targetInput.value = norm;
+      targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    cleanup();
+  };
+  okBtn.onclick = save;
+  cancelBtn.onclick = cleanup;
+  closeBtn.onclick = cleanup;
+  modal.onclick = (e) => { if (e.target === modal) cleanup(); };
+  // 小时框输入 2 位数后自动跳到分钟框;Enter 确认
+  hInp.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+  };
+  hInp.oninput = () => {
+    const v = hInp.value;
+    if (v.length >= 2) { mInp.focus(); mInp.select(); }
+  };
+  mInp.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+  };
 }
 function fmtClock(totalSec) {
   if (!isFinite(totalSec) || totalSec < 0) return '—';
@@ -4313,11 +4428,18 @@ function buildLine(num) {
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
   const _stInp = line.querySelector('.start-time');
   _stInp.addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  // 手机端 workaround:阻止冒泡到 document.mousedown/touchstart(那俩会调 setActiveCard → reattachPopup,
-  // 搬动卡片弹窗 DOM。原生 time picker 已经因 .line-head 是 sticky 而对 reflow 敏感,DOM 搬动会
-  // 踩中 iOS Safari 的 picker 自动关闭 bug。)
-  // 注:不显式调 showPicker() —— 在已打开 picker 上再调一次反而会把它关掉。
+  // 手机端接管 start-time:原生 picker 在 .line-head(sticky)里不稳定 —— 改用自定义弹窗(HH/MM 数字输入框)。
+  // readonly 阻止原生 picker 弹出;click 改弹自定义模态框,既能滚轮 step、也能直接打字输入。
+  // PC 端 (>900px) 不动,继续用原生 picker。
   if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+    _stInp.readOnly = true;
+    _stInp.style.cursor = 'pointer';
+    _stInp.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openMobileTimePicker(_stInp, '起始时间');
+    });
+    // 同时还要阻止冒泡(touchstart 不会触发 click,但要防止全局 handler 跑 setActiveCard)
     ['mousedown', 'touchstart'].forEach(ev => {
       _stInp.addEventListener(ev, e => e.stopPropagation(), { passive: true });
     });
