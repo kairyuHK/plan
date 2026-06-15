@@ -2078,13 +2078,30 @@ const Pages = (() => {
     width: 100%; background: transparent; border: none;
     color: var(--blue); font-size: 12px; font-weight: 600;
     font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
-    cursor: pointer; color-scheme: dark;
-    -webkit-appearance: none; appearance: none;
   }
-  /* 跟 actual-finish 保持一致 — 不挂 -webkit-appearance 时 iOS 偶尔会把 time picker 直接关掉 */
-  .cfg-input[type=time]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
-  .cfg-input[type=time]::-webkit-inner-spin-button,
-  .cfg-input[type=time]::-webkit-clear-button { display: none; }
+  .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+  /* 手机端:让起始时间 input 跟 实结(actual-finish)内部结构完全一致,避免点击时间数字 picker 自动关 */
+  @media (max-width: 900px) {
+    .cfg-input[type=time] {
+      cursor: pointer; color-scheme: dark;
+      -webkit-appearance: none; appearance: none;
+    }
+    .cfg-input[type=time]::-webkit-inner-spin-button,
+    .cfg-input[type=time]::-webkit-clear-button { display: none; }
+    .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; -webkit-appearance: none; }
+    .cfg-input[type=time]::-webkit-datetime-edit,
+    .cfg-input[type=time]::-webkit-datetime-edit-fields-wrapper { padding: 0; margin: 0; }
+    .cfg-input[type=time]::-webkit-datetime-edit,
+    .cfg-input[type=time]::-webkit-datetime-edit-fields-wrapper,
+    .cfg-input[type=time]::-webkit-datetime-edit-hour-field,
+    .cfg-input[type=time]::-webkit-datetime-edit-minute-field,
+    .cfg-input[type=time]::-webkit-datetime-edit-text,
+    .cfg-input[type=time]::-webkit-datetime-edit-ampm-field {
+      color: var(--blue);
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+  }
   .cfg:last-child .cfg-input { text-align: right; }
 
   .cards-wrap { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: none; }
@@ -4296,19 +4313,15 @@ function buildLine(num) {
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
   const _stInp = line.querySelector('.start-time');
   _stInp.addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  // 阻止冒泡到 document 上的 mousedown/touchstart(那俩会调 setActiveCard(null) → reattachPopup
-  // 把卡片弹窗 DOM 搬回卡片里。原生 time picker 已经因为 .line-head 是 sticky 而对 reflow 敏感,
-  // 这一搬动恰好踩中 iOS Safari 的 picker 自动关闭 bug。actual-finish 在非 sticky 的 .line-foot 里所以没事)
-  ['mousedown', 'touchstart'].forEach(ev => {
-    _stInp.addEventListener(ev, e => e.stopPropagation(), { passive: true });
-  });
-  // 显式调 showPicker() 打开原生时间选择器(iOS 16+/Chrome 99+ 支持),
-  // 这比单纯靠 click→focus→picker 的隐式链路稳,不容易被同一 tap 内的其它事件干扰关掉
-  _stInp.addEventListener('click', e => {
-    if (typeof _stInp.showPicker === 'function') {
-      try { _stInp.showPicker(); } catch (_) {}
-    }
-  });
+  // 手机端 workaround:阻止冒泡到 document.mousedown/touchstart(那俩会调 setActiveCard → reattachPopup,
+  // 搬动卡片弹窗 DOM。原生 time picker 已经因 .line-head 是 sticky 而对 reflow 敏感,DOM 搬动会
+  // 踩中 iOS Safari 的 picker 自动关闭 bug。)
+  // 注:不显式调 showPicker() —— 在已打开 picker 上再调一次反而会把它关掉。
+  if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+    ['mousedown', 'touchstart'].forEach(ev => {
+      _stInp.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+    });
+  }
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
