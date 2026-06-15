@@ -773,25 +773,24 @@
     color: var(--text-faint);
     cursor: not-allowed;
   }
-  .tag-menu-sep {
-    height: 1px;
-    background: var(--border-soft);
-    margin: 4px 6px;
+  .time-reset {
+    background: none;
+    border: none;
+    color: var(--accent-dim);
+    font-size: 11px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.14s ease;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
   }
-  .tag-menu button.reset {
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-  .tag-menu button.reset:hover {
-    background: color-mix(in srgb, var(--c-leave) 12%, transparent);
-    color: var(--c-leave);
-  }
-  .tag-menu button.reset .dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    border: 1.5px dashed currentColor;
-    background: transparent;
-    box-sizing: border-box;
+  .time-reset:hover, .time-reset:active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   .day .num {
@@ -1414,11 +1413,6 @@
                 <span>${v.label}</span>
               </button>
             `).join('')}
-            <div class="tag-menu-sep"></div>
-            <button class="reset" data-reset-day="${key}">
-              <span class="dot"></span>
-              <span>还原空白</span>
-            </button>
           </div>
         </div>
         <div class="times-wrap">
@@ -1427,11 +1421,13 @@
               ${prevCarryOut != null && showTimes ? `<span class="carry-prev" title="前日跨夜至 ${minToTime(prevCarryOut)},此前不再计入">← ${minToTime(prevCarryOut)}</span>` : ''}
               <input type="time" class="time-input" data-field="in" data-key="${key}"
                 value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
+              ${rec?.in && showTimes ? `<button class="time-reset" data-reset-field="in" data-key="${key}" title="清空">还原</button>` : ''}
             </span>
             <span class="sep">→</span>
             <span class="out-cell">
               <input type="time" class="time-input" data-field="out" data-key="${key}"
                 value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
+              ${rec?.out && showTimes ? `<button class="time-reset" data-reset-field="out" data-key="${key}" title="清空">还原</button>` : ''}
               ${overnight ? '<span class="next-day">翌日</span>' : ''}
             </span>
           </div>
@@ -1533,15 +1529,19 @@
 
   // mousedown so the action fires before any focus/blur side-effects.
   els.days.addEventListener('mousedown', e => {
-    const rst = e.target.closest('[data-reset-day]');
+    const rst = e.target.closest('[data-reset-field]');
     if (rst) {
       e.preventDefault();
       e.stopPropagation();
-      const key = rst.dataset.resetDay;
-      delete state.days[key];
-      closeAllMenus();
-      save();
-      render();
+      const key = rst.dataset.key;
+      const field = rst.dataset.resetField;
+      const rec = state.days[key];
+      if (rec) {
+        delete rec[field];
+        if (!rec.in && !rec.out && !rec.tag) delete state.days[key];
+        save();
+        render();
+      }
       return;
     }
     const opt = e.target.closest('[data-set-tag]');
