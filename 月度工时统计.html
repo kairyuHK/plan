@@ -1442,6 +1442,130 @@
     });
   }
 
+  // 轻量更新:不重建 DOM,仅刷新当前周期内的工时数字 + 统计卡数值,避免闪烁
+  function refreshCalc() {
+    const { y, m } = parseYM(state.cursor);
+    const { start, end } = periodRange(state.cursor, state.cycleStart);
+
+    let totalNormal = 0, totalOT = 0, totalHoliday = 0;
+    let attendedCount = 0, leaveCount = 0, absentCount = 0;
+
+    const rows = els.days.children;
+    let i = 0;
+    const iter = new Date(start);
+    while (iter <= end) {
+      const yy = iter.getFullYear();
+      const mm = iter.getMonth();
+      const d = iter.getDate();
+      const key = ymdKey(yy, mm, d);
+      const rec = state.days[key];
+
+      const prevDate = new Date(yy, mm, d - 1);
+      const prevKey = ymdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+      const prevRec = state.days[prevKey];
+      let prevCarryOut = null;
+      if (prevRec?.in && prevRec?.out) {
+        const pIn = timeToMin(prevRec.in);
+        const pOut = timeToMin(prevRec.out);
+        if (pOut < pIn) prevCarryOut = pOut;
+      }
+
+      const calc = calcDay(rec, yy, mm, d, prevCarryOut);
+
+      totalNormal += calc.normal;
+      totalOT += calc.ot;
+      totalHoliday += calc.holidayHrs;
+      if (calc.attended) attendedCount++;
+      if (calc.paidLeave) leaveCount++;
+      if (calc.absent) absentCount++;
+
+      const row = rows[i++];
+      if (row) {
+        const workEl = row.querySelector('.num.work');
+        const otEl = row.querySelector('.num.ot');
+        const hasWork = !!(calc.normal + calc.ot);
+        if (workEl) {
+          workEl.classList.toggle('zero', !hasWork);
+          workEl.innerHTML = `<span class="nlbl">实际</span>${fmtHours(calc.work || calc.normal)}`;
+        }
+        if (otEl) {
+          otEl.classList.toggle('zero', !calc.ot);
+          otEl.innerHTML = `<span class="nlbl">加班</span>${calc.ot ? '+' + fmtHours(calc.ot) : '—'}`;
+        }
+        // 跨夜徽章原地增删,不重建整行
+        const outCell = row.querySelector('.out-cell');
+        if (outCell) {
+          const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
+          const overnight = showTimes && rec?.in && rec?.out && timeToMin(rec.out) < timeToMin(rec.in);
+          const existing = outCell.querySelector('.next-day');
+          if (overnight && !existing) {
+            const badge = document.createElement('span');
+            badge.className = 'next-day';
+            badge.textContent = '翌日';
+            outCell.appendChild(badge);
+          } else if (!overnight && existing) {
+            existing.remove();
+          }
+        }
+        const inCell = row.querySelector('.in-cell');
+        if (inCell) {
+          const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
+          const existing = inCell.querySelector('.carry-prev');
+          if (prevCarryOut != null && showTimes && !existing) {
+            const span = document.createElement('span');
+            span.className = 'carry-prev';
+            span.title = `前日跨夜至 ${minToTime(prevCarryOut)},此前不再计入`;
+            span.textContent = `← ${minToTime(prevCarryOut)}`;
+            inCell.insertBefore(span, inCell.firstElementChild);
+          } else if ((prevCarryOut == null || !showTimes) && existing) {
+            existing.remove();
+          }
+        }
+      }
+
+      iter.setDate(iter.getDate() + 1);
+    }
+
+    // 统计卡 — 原地更新文本
+    const asOf = end;
+    const { start: lvStart, end: lvEnd } = leaveYearWindow(asOf, state.leaveResetMonth);
+    const cutoff = asOf < lvEnd ? asOf : lvEnd;
+    const leaveUsed = countLeaveDaysInWindow(lvStart, cutoff);
+    const leaveRemaining = Math.max(0, state.annualLeave - leaveUsed);
+    const lvPeriod = `${lvStart.getFullYear()}/${String(lvStart.getMonth()+1).padStart(2,'0')} – ${lvEnd.getFullYear()}/${String(lvEnd.getMonth()+1).padStart(2,'0')}`;
+    const asOfStr = `${asOf.getFullYear()}/${String(asOf.getMonth()+1).padStart(2,'0')}/${String(asOf.getDate()).padStart(2,'0')}`;
+
+    const cards = els.stats.querySelectorAll('.stat');
+    if (cards.length !== 6) {
+      renderStats({
+        totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount,
+        leaveUsed, leaveRemaining, leavePeriod: lvPeriod, leaveTotal: state.annualLeave,
+        leaveAsOf: asOfStr,
+      });
+      return;
+    }
+    const data = [
+      { value: totalNormal + totalOT, unit: 'h' },
+      { value: totalNormal, unit: 'h' },
+      { value: totalOT, unit: 'h' },
+      { value: totalHoliday, unit: 'h' },
+      { value: `${attendedCount}`, unit: `/ ${leaveCount} / ${absentCount}` },
+      { value: leaveRemaining, unit: `天 / ${state.annualLeave}`, sub: `截至 ${asOfStr} 已用 ${leaveUsed} 天 · 周期 ${lvPeriod}` },
+    ];
+    cards.forEach((card, idx) => {
+      const d = data[idx];
+      const valueEl = card.querySelector('.value');
+      if (valueEl) {
+        valueEl.innerHTML = `${typeof d.value === 'number' ? fmtStatValue(d.value) : d.value}<span class="unit">${d.unit}</span>`;
+      }
+      if (d.sub) {
+        const subEl = card.querySelector('.sub');
+        if (subEl) subEl.textContent = d.sub;
+      }
+    });
+    cards[5].classList.toggle('low', leaveRemaining <= 5);
+  }
+
   function renderStats(s) {
     const lowLeave = s.leaveRemaining <= 5;
     const cards = [
@@ -1544,7 +1668,7 @@
     activePickerInput = null;
     touchedOutside = false;
     setTimeout(() => {
-      if (!els.days.contains(document.activeElement)) render();
+      if (!els.days.contains(document.activeElement)) refreshCalc();
     }, 0);
   });
 
