@@ -1476,34 +1476,44 @@
     });
   }
 
-  // 仅手机端:点了时间框但没点"完成"(比如触碰外部区域)→ 还原原值
-  // 原理:iOS 原生 picker 点完成才会触发 change 事件,触碰外部只会 blur 不会 change
+  // 仅手机端:picker 开启期间只要用户在页面其他区域产生过 pointerdown,
+  // 就视为"放弃"(没点完成),失焦时还原。iOS 完成按钮在系统 UI 内不会向页面派发 pointerdown。
   const IS_MOBILE = window.matchMedia('(max-width: 880px)').matches;
   const pickerSessions = new WeakMap();
+  let activePickerInput = null;
+  let touchedOutside = false;
+
+  if (IS_MOBILE) {
+    const markOutside = e => {
+      if (activePickerInput && !activePickerInput.contains(e.target)) {
+        touchedOutside = true;
+      }
+    };
+    document.addEventListener('pointerdown', markOutside, true);
+    document.addEventListener('touchstart', markOutside, { capture: true, passive: true });
+  }
 
   els.days.addEventListener('focusin', e => {
     const inp = e.target.closest('.time-input');
     if (!inp || !IS_MOBILE) return;
-    pickerSessions.set(inp, { original: inp.value, committed: false });
+    activePickerInput = inp;
+    touchedOutside = false;
+    pickerSessions.set(inp, { original: inp.value });
   });
 
   els.days.addEventListener('change', e => {
     const inp = e.target.closest('.time-input');
     if (!inp) return;
-    const sess = pickerSessions.get(inp);
-    if (sess) sess.committed = true;
+    // 手机端:有过外部触碰 → 视为放弃,不写入(focusout 再统一还原)
+    if (IS_MOBILE && pickerSessions.has(inp) && touchedOutside) return;
     const key = inp.dataset.key;
     const field = inp.dataset.field;
     const rec = state.days[key] || {};
     rec[field] = inp.value;
     state.days[key] = rec;
     save();
-    // 不在这里 render —— 移动端原生选择器还没选完分钟时,
-    // 重建 DOM 会让选择器锚点丢失而提前关闭。
   });
 
-  // 输入框失焦时:先兜底保存当前值(防止 change 时序未到导致丢失),再重渲染。
-  // 手机端:若整个 picker 会话没有触发过 change(用户没点"完成"),则还原原值。
   els.days.addEventListener('focusout', e => {
     const inp = e.target.closest('.time-input');
     if (!inp) return;
@@ -1511,8 +1521,8 @@
     const field = inp.dataset.field;
     const sess = pickerSessions.get(inp);
 
-    if (IS_MOBILE && sess && !sess.committed) {
-      // 用户没点"完成"——还原
+    if (IS_MOBILE && sess && touchedOutside) {
+      // 还原 DOM 与 state 到 picker 打开之前
       inp.value = sess.original;
       const rec = state.days[key];
       if (rec) {
@@ -1522,7 +1532,7 @@
         save();
       }
     } else {
-      // 正常兜底保存
+      // PC 端 / 点了"完成" → 兜底保存
       const rec = state.days[key] || {};
       if (rec[field] !== inp.value) {
         rec[field] = inp.value;
@@ -1531,6 +1541,8 @@
       }
     }
     pickerSessions.delete(inp);
+    activePickerInput = null;
+    touchedOutside = false;
     setTimeout(() => {
       if (!els.days.contains(document.activeElement)) render();
     }, 0);
