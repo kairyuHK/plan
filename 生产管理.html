@@ -4916,10 +4916,20 @@ function attachCardInteraction(card) {
 }
 
 // 点击卡片之外（且不在弹窗内）关闭弹窗
+// 注意:原生 time/date picker 在部分手机浏览器里是「页面内 overlay」而非纯系统弹窗,
+// 用户点 picker 里的数字时,click/mousedown/touchstart 会冒泡到 document。
+// 如果这里继续调 setActiveCard(null) → reattachPopup 搬卡片弹窗 DOM,picker 会被一起关掉。
+// 所以当前 focus 在 input[type=time] / type=date 上(意味着 picker 大概率开着)时,直接跳过。
+function _timeInputFocused() {
+  const ae = document.activeElement;
+  return !!(ae && ae.matches && ae.matches('input[type=time], input[type=date], input[type=datetime-local]'));
+}
 document.addEventListener('mousedown', (e) => {
+  if (_timeInputFocused()) return;
   if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 });
 document.addEventListener('touchstart', (e) => {
+  if (_timeInputFocused()) return;
   if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 }, { passive: true });
 
