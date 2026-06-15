@@ -1258,6 +1258,9 @@ const Pages = (() => {
       host.onclick = e => { if(e.target===host) close(); };
     }
 
+    // 调动 <details> 的展开状态在重渲之间手动持久化,
+    // 否则用户从调动里选人 → renderBody 重建 → <details> 默认折叠 → 看起来「跳回顶部」
+    let othersOpen = false;
     function renderBody(){
       const currentIds = getCurrentIds();
       const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
@@ -1284,8 +1287,11 @@ const Pages = (() => {
       body.innerHTML = `
         <div class="section-title">本部门人员 (${home.length})</div>
         ${home.length? home.map(row).join('') : '<div class="muted" style="padding:8px 4px">（无)</div>'}
-        ${others.length? `<details><summary class="section-title" style="cursor:pointer">调动 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
+        ${others.length? `<details ${othersOpen?'open':''}><summary class="section-title" style="cursor:pointer">调动 (${others.length})</summary>${others.map(row).join('')}</details>` : ''}
       `;
+      // 监听 details 的 toggle,把开关状态记住,下一次重渲沿用
+      const det = body.querySelector('details');
+      if (det) det.addEventListener('toggle', () => { othersOpen = det.open; });
       body.scrollTop = prevScroll;
       body.querySelectorAll('.person-row').forEach(r => {
         if(r.classList.contains('disabled')) return;
@@ -4288,7 +4294,21 @@ function buildLine(num) {
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
-  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  const _stInp = line.querySelector('.start-time');
+  _stInp.addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  // 阻止冒泡到 document 上的 mousedown/touchstart(那俩会调 setActiveCard(null) → reattachPopup
+  // 把卡片弹窗 DOM 搬回卡片里。原生 time picker 已经因为 .line-head 是 sticky 而对 reflow 敏感,
+  // 这一搬动恰好踩中 iOS Safari 的 picker 自动关闭 bug。actual-finish 在非 sticky 的 .line-foot 里所以没事)
+  ['mousedown', 'touchstart'].forEach(ev => {
+    _stInp.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  });
+  // 显式调 showPicker() 打开原生时间选择器(iOS 16+/Chrome 99+ 支持),
+  // 这比单纯靠 click→focus→picker 的隐式链路稳,不容易被同一 tap 内的其它事件干扰关掉
+  _stInp.addEventListener('click', e => {
+    if (typeof _stInp.showPicker === 'function') {
+      try { _stInp.showPicker(); } catch (_) {}
+    }
+  });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
