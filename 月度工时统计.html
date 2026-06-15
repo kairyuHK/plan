@@ -773,28 +773,25 @@
     color: var(--text-faint);
     cursor: not-allowed;
   }
-  .time-clear {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text-dim);
-    font-size: 13px;
-    line-height: 1;
-    font-family: var(--font-body);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent;
+  .tag-menu-sep {
+    height: 1px;
+    background: var(--border-soft);
+    margin: 4px 6px;
   }
-  .time-clear:hover, .time-clear:active {
-    background: color-mix(in srgb, var(--c-leave) 18%, var(--surface-2));
-    border-color: color-mix(in srgb, var(--c-leave) 55%, var(--border));
+  .tag-menu button.reset {
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+  .tag-menu button.reset:hover {
+    background: color-mix(in srgb, var(--c-leave) 12%, transparent);
     color: var(--c-leave);
+  }
+  .tag-menu button.reset .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    border: 1.5px dashed currentColor;
+    background: transparent;
+    box-sizing: border-box;
   }
 
   .day .num {
@@ -1417,6 +1414,11 @@
                 <span>${v.label}</span>
               </button>
             `).join('')}
+            <div class="tag-menu-sep"></div>
+            <button class="reset" data-reset-day="${key}">
+              <span class="dot"></span>
+              <span>还原空白</span>
+            </button>
           </div>
         </div>
         <div class="times-wrap">
@@ -1531,6 +1533,17 @@
 
   // mousedown so the action fires before any focus/blur side-effects.
   els.days.addEventListener('mousedown', e => {
+    const rst = e.target.closest('[data-reset-day]');
+    if (rst) {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = rst.dataset.resetDay;
+      delete state.days[key];
+      closeAllMenus();
+      save();
+      render();
+      return;
+    }
     const opt = e.target.closest('[data-set-tag]');
     if (opt) {
       e.preventDefault();
