@@ -914,6 +914,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   font-size: 12px; color: var(--h-text-dim); flex-wrap: wrap;
 }
 #page-hours .h-config label {
+  position: relative;
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 10px; background: var(--h-surface);
   border: 1px solid var(--h-border); border-radius: var(--h-radius-sm);
@@ -928,30 +929,32 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   color-scheme: dark;
 }
 #page-hours .h-config input[type="number"] { width: 30px; }
-/* 人员名:输入框与弹层共享一个 wrap,弹层 left:0 / right:0 → 宽度严格等于 wrap(输入框)宽度 */
-#page-hours .h-config input.h-person-input { width: 100%; text-align: left; }
-#page-hours .h-person-wrap {
-  position: relative;
-  display: inline-flex; align-items: center;
-  width: 200px; /* PC 上的固定输入栏宽度 */
+/* 人员名:input + chev + pop 都直接相对 label 定位 → pop 宽度严格 = label 外边框宽度 */
+#page-hours .h-config input.h-person-input {
+  flex: 1 1 auto; min-width: 0;
+  text-align: left;
+  padding-right: 14px !important; /* 给右侧 chev 留位置 */
 }
 #page-hours .h-person-chev {
-  position: absolute; right: 0; top: 50%;
+  position: absolute; right: 10px; top: 50%;
   transform: translateY(-50%);
   color: var(--h-text-faint); font-size: 9px;
   pointer-events: none; user-select: none;
   transition: transform 0.18s ease, color 0.18s ease;
 }
-#page-hours .h-person-wrap:focus-within .h-person-chev {
+#page-hours .h-config label:focus-within .h-person-chev {
   color: var(--h-accent);
   transform: translateY(-50%) rotate(180deg);
 }
-#page-hours .h-person-input { padding-right: 14px !important; }
+/* 给 PC 上人员名 label 一个合理的最小宽度,避免过于挤压 */
+#page-hours .h-config label.h-person-label { min-width: 220px; }
 #page-hours .h-person-pop {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  /* 关键:-1px 偏移让 pop 外边框严格对齐 label 外边框
+     (label 自带 1px border,absolute 元素的 left:0 起点 = label padding box 左边沿 = label 外边框 + 1px) */
+  left: -1px;
+  right: -1px;
   /* 不设 min-width / max-width → 严格匹配 wrap 宽度 */
   max-height: 280px;
   overflow-y: auto;
@@ -1295,9 +1298,10 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-config label{flex:1 1 0;min-width:0;padding:6px 6px;font-size:10px;gap:3px;justify-content:center}
   #page-hours .h-config label > span{font-size:9px}
   #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
-  #page-hours .h-config input.h-person-input{width:100%;font-size:11px;text-align:left}
-  /* wrap 沿用 flex 拉伸 → 弹层 left:0/right:0 等于输入栏宽度 = 垂直对齐 */
-  #page-hours .h-person-wrap{width:auto;flex:1 1 0;min-width:0;display:inline-flex;align-items:center}
+  #page-hours .h-config input.h-person-input{flex:1 1 auto;min-width:0;font-size:11px;text-align:left}
+  /* 手机端取消 PC 上的 220px min-width 限制,人员名 label 跟随 config 行 flex 拉伸 */
+  #page-hours .h-config label.h-person-label{min-width:0}
+  #page-hours .h-person-chev{right:6px}
   #page-hours .h-person-pop{max-height:240px;padding:3px;border-radius:8px}
   #page-hours .h-person-pop .h-person-item{padding:6px 8px;font-size:11px;gap:4px;line-height:1.3;border-radius:5px}
   #page-hours .h-person-pop .h-person-item:hover{padding-left:10px}
@@ -3871,13 +3875,11 @@ const Pages = (() => {
           <label title="周期起始日">起始日
             <input type="number" id="h-cycleStart" min="1" max="28" step="1" />
           </label>
-          <label title="人员名(可手动输入或从下拉选择)">人员名
-            <span class="h-person-wrap">
-              <input type="text" class="h-person-input" id="h-personName"
-                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-              <span class="h-person-chev">▾</span>
-              <div class="h-person-pop" id="h-personPop"></div>
-            </span>
+          <label class="h-person-label" title="人员名(可手动输入或从下拉选择)">人员名
+            <input type="text" class="h-person-input" id="h-personName"
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+            <span class="h-person-chev">▾</span>
+            <div class="h-person-pop" id="h-personPop"></div>
           </label>
         </div>
       </div>
@@ -4141,9 +4143,9 @@ const Pages = (() => {
           document.getElementById('h-picker')?.classList.remove('open');
         }
       });
-      // 点击 人员名 wrap 外部 → 关闭弹层
+      // 点击 人员名 label 外部 → 关闭弹层
       document.addEventListener('mousedown', e => {
-        if (!e.target.closest('.h-person-wrap')) {
+        if (!e.target.closest('.h-person-label')) {
           document.getElementById('h-personPop')?.classList.remove('open');
         }
       });
