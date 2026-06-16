@@ -23,8 +23,6 @@
 /* touch-action:manipulation = 允许平移 + 双指捏合缩放,禁用双击放大。
    touch-action 不继承,所以广播到所有元素才能覆盖任意位置的双击。 */
 *{touch-action:manipulation}
-/* color-scheme: dark — 让 iOS Safari 原生时间/日期选择器、滚动条等系统 UI 跟随暗色主题 */
-html{color-scheme:dark}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
@@ -1305,92 +1303,6 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   filter: invert(0.55); opacity: 0.55; cursor: pointer;
 }
 #page-hours .h-time:disabled { background: transparent; color: var(--h-text-faint); cursor: not-allowed; }
-/* 手机端时间按钮 — 复用 .h-time 基础样式,只加 cursor 和文字微调 */
-#page-hours .h-time-btn { cursor: pointer; }
-#page-hours .h-time-btn:active { background: var(--h-surface-3); border-color: var(--h-accent); }
-#page-hours .h-time-btn:disabled { cursor: not-allowed; }
-/* 自定义时间选择器弹层(手机端替代 iOS 原生 picker,我们自绘箭头 + 完全控制定位) */
-.h-time-pop {
-  position: fixed; z-index: 1000;
-  background: var(--h-surface, #14161d);
-  border: 1px solid color-mix(in srgb, var(--h-accent, #5eead4) 40%, var(--h-border, #262936));
-  border-radius: 12px;
-  padding: 14px 16px 12px;
-  box-shadow: 0 18px 44px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4);
-  min-width: 220px;
-  font-family: var(--h-font-body, sans-serif);
-  color: var(--h-text, #ececf1);
-  animation: hTimePopIn .14s cubic-bezier(0.2,0.7,0.2,1);
-}
-@keyframes hTimePopIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
-}
-.h-time-pop::before {
-  /* 自绘三角箭头(旋转 45° 的方块,通过 border 实现仅两边可见) */
-  content: '';
-  position: absolute;
-  width: 12px; height: 12px;
-  background: var(--h-surface, #14161d);
-  border: 1px solid color-mix(in srgb, var(--h-accent, #5eead4) 40%, var(--h-border, #262936));
-  transform: rotate(45deg);
-  left: var(--h-arrow-x, 50%);
-  margin-left: -7px;
-}
-.h-time-pop.above::before {
-  /* 弹层在 input 上方 → 箭头在弹层底部,指向下方 input(只显示右下两边) */
-  bottom: -7px;
-  border-top: none; border-left: none;
-}
-.h-time-pop.below::before {
-  /* 弹层在 input 下方 → 箭头在弹层顶部,指向上方 input(只显示左上两边) */
-  top: -7px;
-  border-bottom: none; border-right: none;
-}
-.h-time-pop .h-tp-fields {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--h-font-mono, monospace); font-size: 30px;
-  margin: 4px 0 14px;
-}
-.h-time-pop .h-tp-fields input {
-  width: 64px; height: 56px;
-  text-align: center;
-  font: inherit; font-weight: 500;
-  background: var(--h-surface-2, #1a1d26);
-  border: 1px solid var(--h-border, #262936);
-  border-radius: 8px;
-  color: var(--h-text, #ececf1);
-  padding: 0;
-  outline: none;
-  -moz-appearance: textfield;
-}
-.h-time-pop .h-tp-fields input::-webkit-outer-spin-button,
-.h-time-pop .h-tp-fields input::-webkit-inner-spin-button {
-  -webkit-appearance: none; margin: 0;
-}
-.h-time-pop .h-tp-fields input:focus {
-  border-color: var(--h-accent, #5eead4);
-  box-shadow: 0 0 0 3px rgba(94,234,212,0.18);
-}
-.h-time-pop .h-tp-sep { color: var(--h-text-dim, #8a8d99); font-weight: 400; }
-.h-time-pop .h-tp-actions {
-  display: flex; gap: 8px; justify-content: flex-end;
-}
-.h-time-pop .h-tp-actions button {
-  padding: 8px 16px; min-width: 64px;
-  border-radius: 8px;
-  background: var(--h-surface-2, #1a1d26);
-  border: 1px solid var(--h-border, #262936);
-  color: var(--h-text, #ececf1);
-  font: inherit; cursor: pointer;
-  transition: background .12s ease;
-}
-.h-time-pop .h-tp-actions button:active { transform: scale(0.97); }
-.h-time-pop .h-tp-actions button.primary {
-  background: var(--h-accent, #5eead4);
-  border-color: var(--h-accent, #5eead4);
-  color: #07120f; font-weight: 600;
-}
 #page-hours .h-num {
   font-family: var(--h-font-mono); font-size: 13.5px; font-weight: 500;
   font-feature-settings: "tnum"; text-align: center; letter-spacing: 0.01em;
@@ -4254,15 +4166,11 @@ const Pages = (() => {
           <div class="h-times">
             <span class="h-in-cell">
               ${prevCarryOut != null && showTimes ? `<span class="h-carry-prev">← ${hoursMinToTime(prevCarryOut)}</span>` : ''}
-              ${HOURS_IS_MOBILE
-                ? `<button type="button" class="h-time h-time-btn" data-field="in" data-key="${key}"${showTimes ? '' : ' disabled'}>${rec?.in || '--:--'}</button>`
-                : `<input type="time" class="h-time" data-field="in" data-key="${key}" value="${rec?.in || ''}"${showTimes ? '' : ' disabled'} />`}
+              <input type="time" class="h-time" data-field="in" data-key="${key}" value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
             </span>
             <span class="h-sep">→</span>
             <span class="h-out-cell">
-              ${HOURS_IS_MOBILE
-                ? `<button type="button" class="h-time h-time-btn" data-field="out" data-key="${key}"${showTimes ? '' : ' disabled'}>${rec?.out || '--:--'}</button>`
-                : `<input type="time" class="h-time" data-field="out" data-key="${key}" value="${rec?.out || ''}"${showTimes ? '' : ' disabled'} />`}
+              <input type="time" class="h-time" data-field="out" data-key="${key}" value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
               ${overnight ? '<span class="h-next-day">翌日</span>' : ''}
             </span>
           </div>
@@ -4403,118 +4311,6 @@ const Pages = (() => {
     });
   }
 
-  // 自定义时间选择器(手机端)— 自绘箭头始终指向 anchor 按钮
-  function openHoursTimePopover(anchorBtn) {
-    document.querySelectorAll('.h-time-pop').forEach(el => el.remove());
-
-    const key = anchorBtn.dataset.key;
-    const field = anchorBtn.dataset.field;
-    const data = getHoursPersonData();
-    const rec = data.days[key] || {};
-    const cur = rec[field] || '';
-    let hh, mm;
-    if (cur) {
-      const parts = cur.split(':');
-      hh = parts[0] || '00';
-      mm = parts[1] || '00';
-    } else {
-      const now = new Date();
-      hh = Util.pad2(now.getHours());
-      mm = Util.pad2(now.getMinutes());
-    }
-
-    const pop = document.createElement('div');
-    pop.className = 'h-time-pop';
-    pop.innerHTML = `
-      <div class="h-tp-fields">
-        <input type="text" class="h-tp-hh" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${hh}" />
-        <span class="h-tp-sep">:</span>
-        <input type="text" class="h-tp-mm" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${mm}" />
-      </div>
-      <div class="h-tp-actions">
-        <button type="button" class="h-tp-cancel">还原</button>
-        <button type="button" class="h-tp-confirm primary">完成</button>
-      </div>
-    `;
-    document.body.appendChild(pop);
-
-    // 定位:基于 anchor 的 viewport 位置 + 弹层尺寸
-    const rect = anchorBtn.getBoundingClientRect();
-    const popRect = pop.getBoundingClientRect();
-    const margin = 8;
-    const gap = 10; // 弹层与 anchor 之间的距离(留给箭头)
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-
-    let position, top;
-    if (spaceBelow >= popRect.height + gap + margin || spaceBelow >= spaceAbove) {
-      position = 'below';
-      top = rect.bottom + gap;
-    } else {
-      position = 'above';
-      top = rect.top - popRect.height - gap;
-    }
-    pop.classList.add(position);
-
-    // 水平居中 anchor,但保证弹层不超出视口
-    let left = rect.left + rect.width / 2 - popRect.width / 2;
-    left = Math.max(margin, Math.min(left, window.innerWidth - popRect.width - margin));
-    pop.style.left = left + 'px';
-    pop.style.top = top + 'px';
-    // 箭头位置:始终指向 anchor 中线
-    const arrowX = rect.left + rect.width / 2 - left;
-    pop.style.setProperty('--h-arrow-x', arrowX + 'px');
-
-    const hhInput = pop.querySelector('.h-tp-hh');
-    const mmInput = pop.querySelector('.h-tp-mm');
-    setTimeout(() => { hhInput.focus(); hhInput.select(); }, 30);
-
-    // HH 输满 2 位自动跳到 MM;输入只允许数字
-    hhInput.addEventListener('input', () => {
-      hhInput.value = hhInput.value.replace(/\D/g, '').slice(0, 2);
-      if (hhInput.value.length >= 2) { mmInput.focus(); mmInput.select(); }
-    });
-    mmInput.addEventListener('input', () => {
-      mmInput.value = mmInput.value.replace(/\D/g, '').slice(0, 2);
-    });
-
-    let closed = false;
-    const close = () => {
-      if (closed) return;
-      closed = true;
-      pop.remove();
-      document.removeEventListener('pointerdown', onDocClick, true);
-    };
-    const save = () => {
-      const h = Math.max(0, Math.min(23, parseInt(hhInput.value, 10) || 0));
-      const m = Math.max(0, Math.min(59, parseInt(mmInput.value, 10) || 0));
-      const v = `${Util.pad2(h)}:${Util.pad2(m)}`;
-      const d = getHoursPersonData();
-      const r = d.days[key] || {};
-      r[field] = v;
-      d.days[key] = r;
-      saveHoursState();
-      anchorBtn.textContent = v;
-      close();
-      refreshHoursCalc();
-    };
-
-    pop.querySelector('.h-tp-cancel').onclick = close;
-    pop.querySelector('.h-tp-confirm').onclick = save;
-    pop.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); save(); }
-      else if (e.key === 'Escape') { e.preventDefault(); close(); }
-    });
-
-    // 点击外部 = 关闭(不保存)
-    const onDocClick = ev => {
-      if (pop.contains(ev.target) || ev.target === anchorBtn) return;
-      close();
-    };
-    // 延迟绑定,避免触发本次 click 立即关闭
-    setTimeout(() => document.addEventListener('pointerdown', onDocClick, true), 0);
-  }
-
   function getPersonAnnualLeave(personRef) {
     const list = Store.get().people[personRef.deptId] || [];
     const p = list.find(pp => pp.id === personRef.personId);
@@ -4603,36 +4399,67 @@ const Pages = (() => {
   function bindHoursEvents() {
     const daysHost = document.getElementById('h-days');
 
-    // focusin:仅 PC 端用(用 input + 原生 picker);手机端走自定义弹层不依赖 focus
+    // focusin:打开 session,记录原值。仅手机端用于 iOS picker 完成/放弃判定
     daysHost.addEventListener('focusin', e => {
       const inp = e.target.closest('.h-time');
-      if (!inp || inp.tagName !== 'INPUT') return;
-      // 占位:PC 端不需要 session,这里保留以兼容旧代码路径
+      if (!inp || !HOURS_IS_MOBILE) return;
+      hoursActivePicker = inp;
+      hoursTouchedOutside = false;
+      hoursPickerSessions.set(inp, { original: inp.value });
     });
-    // 手机端:tap 时间按钮 → 打开自定义时间选择器(我们自己画箭头 + 完全控制位置)
-    if (HOURS_IS_MOBILE) {
-      daysHost.addEventListener('click', e => {
-        const btn = e.target.closest('.h-time-btn');
-        if (!btn || btn.disabled) return;
-        openHoursTimePopover(btn);
-      });
-    }
-    // PC 端:原生 <input type="time"> 走 change → 保存;focusout → 延迟重渲
     daysHost.addEventListener('change', e => {
       const inp = e.target.closest('.h-time');
-      if (!inp || inp.tagName !== 'INPUT') return;
+      if (!inp) return;
+      // 手机端:用户碰过外部 → 视为放弃,本次 change 不写入(focusout 阶段统一还原)
+      if (HOURS_IS_MOBILE && hoursPickerSessions.has(inp) && hoursTouchedOutside) return;
       const key = inp.dataset.key, field = inp.dataset.field;
       const data = getHoursPersonData();
       const rec = data.days[key] || {};
       rec[field] = inp.value;
       data.days[key] = rec;
       saveHoursState();
+      // 不立刻重渲 — 否则正在编辑的 input 会被销毁,PC 上输入第二位数字时焦点丢失
     });
+    // 焦点离开:手机端按 touchedOutside 还原或保存;PC 端只触发延迟重渲
     daysHost.addEventListener('focusout', e => {
       const inp = e.target.closest('.h-time');
-      if (!inp || inp.tagName !== 'INPUT') return;
+      if (!inp) return;
+      const key = inp.dataset.key, field = inp.dataset.field;
+      const sess = hoursPickerSessions.get(inp);
+
+      if (HOURS_IS_MOBILE && sess && hoursTouchedOutside) {
+        // 还原 DOM 与 state 到 picker 打开之前
+        inp.value = sess.original;
+        const data = getHoursPersonData();
+        const rec = data.days[key];
+        if (rec) {
+          if (sess.original) rec[field] = sess.original;
+          else delete rec[field];
+          // 整条记录已空 → 移除
+          if (!rec.in && !rec.out && !rec.tag) delete data.days[key];
+          saveHoursState();
+        }
+      } else if (HOURS_IS_MOBILE && sess) {
+        // 手机端「完成」按钮分支:change 可能未触发,兜底写入 inp.value
+        const data = getHoursPersonData();
+        const rec = data.days[key] || {};
+        if (rec[field] !== inp.value) {
+          rec[field] = inp.value;
+          data.days[key] = rec;
+          saveHoursState();
+        }
+      }
+      // PC 端不做特殊处理,change 已经保存过
+
+      hoursPickerSessions.delete(inp);
+      hoursActivePicker = null;
+      hoursTouchedOutside = false;
       setTimeout(() => {
-        if (!daysHost.contains(document.activeElement)) renderHoursDays();
+        if (daysHost.contains(document.activeElement)) return;
+        // 手机端:原地更新数字 + 统计,不破坏 DOM 结构
+        // PC 端:维持原有完整重建逻辑
+        if (HOURS_IS_MOBILE) refreshHoursCalc();
+        else renderHoursDays();
       }, 0);
     });
 
