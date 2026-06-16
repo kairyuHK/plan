@@ -929,6 +929,16 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 }
 #page-hours .h-config input[type="number"] { width: 30px; }
 #page-hours .h-config input[list] { width: 120px; text-align: left; }
+/* 仅手机端:iOS Safari 给 input[list] 渲染的原生下拉箭头默认是 iOS 蓝,与暗色主题冲突。
+   把指示器去色 + 压低不透明度 → 变成暗灰小箭头。PC 端浏览器自身样式不动。 */
+@media (max-width: 640px) {
+  #page-hours .h-config input[list]::-webkit-calendar-picker-indicator,
+  #page-hours .h-config input[list]::-webkit-list-button {
+    filter: brightness(0) invert(0.55);
+    opacity: 0.55;
+    cursor: pointer;
+  }
+}
 #page-hours .h-config input:focus { color: var(--h-accent); }
 #page-hours .h-stats {
   display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
