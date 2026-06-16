@@ -928,29 +928,46 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   color-scheme: dark;
 }
 #page-hours .h-config input[type="number"] { width: 30px; }
-#page-hours .h-config input.h-person-input { width: 120px; text-align: left; }
-/* 人员名自定义下拉(替代 datalist,避免 iOS Safari 把建议气泡渲染到离输入框很远的地方) */
-#page-hours .h-person-wrap { position: relative; display: inline-flex; align-items: center; }
-#page-hours .h-person-chev {
-  margin-left: 4px; color: var(--h-text-faint); font-size: 9px;
-  pointer-events: none; user-select: none;
+/* 人员名:输入框与弹层共享一个 wrap,弹层 left:0 / right:0 → 宽度严格等于 wrap(输入框)宽度 */
+#page-hours .h-config input.h-person-input { width: 100%; text-align: left; }
+#page-hours .h-person-wrap {
+  position: relative;
+  display: inline-flex; align-items: center;
+  width: 200px; /* PC 上的固定输入栏宽度 */
 }
+#page-hours .h-person-chev {
+  position: absolute; right: 0; top: 50%;
+  transform: translateY(-50%);
+  color: var(--h-text-faint); font-size: 9px;
+  pointer-events: none; user-select: none;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+#page-hours .h-person-wrap:focus-within .h-person-chev {
+  color: var(--h-accent);
+  transform: translateY(-50%) rotate(180deg);
+}
+#page-hours .h-person-input { padding-right: 14px !important; }
 #page-hours .h-person-pop {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  min-width: 180px;
-  max-height: 260px;
-  overflow: auto;
-  background: var(--h-surface-2);
-  border: 1px solid var(--h-border);
-  border-radius: var(--h-radius-sm);
-  box-shadow: var(--h-shadow-lg);
+  /* 不设 min-width / max-width → 严格匹配 wrap 宽度 */
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: linear-gradient(180deg, var(--h-surface-2) 0%, var(--h-surface) 100%);
+  border: 1px solid color-mix(in srgb, var(--h-accent) 18%, var(--h-border));
+  border-radius: 10px;
+  box-shadow:
+    0 16px 36px rgba(0,0,0,0.55),
+    0 2px 6px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(255,255,255,0.02) inset;
   z-index: 250;
-  padding: 4px;
+  padding: 5px;
   display: none;
-  /* 暗色滚动条 — 与 .schedule-wrap 一致 */
+  transform-origin: top center;
+  /* 暗色滚动条 — 细 8px 银灰滑块 */
   scrollbar-width: thin;
   scrollbar-color: #3a3a40 transparent;
 }
@@ -958,25 +975,64 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 #page-hours .h-person-pop::-webkit-scrollbar-track { background: transparent; }
 #page-hours .h-person-pop::-webkit-scrollbar-thumb { background: #3a3a40; border-radius: 4px; }
 #page-hours .h-person-pop::-webkit-scrollbar-thumb:hover { background: #4a4a52; }
-#page-hours .h-person-pop.open { display: block; }
+#page-hours .h-person-pop.open {
+  display: block;
+  animation: hPopIn 0.16s cubic-bezier(0.2,0.7,0.2,1);
+}
+@keyframes hPopIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 #page-hours .h-person-pop .h-person-item {
-  display: flex; align-items: baseline; gap: 6px;
+  display: flex; align-items: center; gap: 8px;
   width: 100%; padding: 8px 10px;
   background: transparent; border: none;
   color: var(--h-text);
-  font-size: 13px; font-family: var(--h-font-body);
-  cursor: pointer; border-radius: 5px;
+  font-size: 12.5px; font-family: var(--h-font-body); font-weight: 500;
+  cursor: pointer; border-radius: 7px;
   text-align: left;
+  position: relative;
+  transition: background 0.14s ease, color 0.14s ease, padding-left 0.14s ease;
 }
-#page-hours .h-person-pop .h-person-item:hover,
+#page-hours .h-person-pop .h-person-item + .h-person-item { margin-top: 1px; }
+#page-hours .h-person-pop .h-person-item:hover {
+  background: color-mix(in srgb, var(--h-accent) 10%, var(--h-surface-3));
+  color: var(--h-text);
+  padding-left: 14px;
+}
 #page-hours .h-person-pop .h-person-item.h-active {
-  background: var(--h-surface-3);
+  background: color-mix(in srgb, var(--h-accent) 16%, transparent);
+  color: var(--h-accent);
+}
+#page-hours .h-person-pop .h-person-item.h-active::before {
+  content: '';
+  position: absolute;
+  left: 3px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 60%;
+  background: var(--h-accent); border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--h-accent);
+}
+#page-hours .h-person-pop .h-person-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 #page-hours .h-person-pop .h-person-dept {
-  color: var(--h-text-faint); font-size: 11px;
+  flex-shrink: 0;
+  padding: 2px 7px;
+  background: color-mix(in srgb, var(--h-text-dim) 16%, transparent);
+  border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  color: var(--h-text-dim);
+  letter-spacing: 0.02em;
+}
+#page-hours .h-person-pop .h-person-item.h-active .h-person-dept {
+  background: color-mix(in srgb, var(--h-accent) 22%, transparent);
+  color: var(--h-accent);
 }
 #page-hours .h-person-pop .h-empty {
-  padding: 10px 12px; color: var(--h-text-faint); font-size: 12px;
+  padding: 12px 14px;
+  color: var(--h-text-faint); font-size: 11.5px;
+  text-align: center; line-height: 1.5;
 }
 #page-hours .h-config input:focus { color: var(--h-accent); }
 #page-hours .h-stats {
@@ -1239,13 +1295,16 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-config label{flex:1 1 0;min-width:0;padding:6px 6px;font-size:10px;gap:3px;justify-content:center}
   #page-hours .h-config label > span{font-size:9px}
   #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
-  #page-hours .h-config input.h-person-input{width:auto;flex:1 1 0;min-width:0;font-size:11px;text-align:left}
-  #page-hours .h-person-wrap{flex:1 1 0;min-width:0;display:inline-flex;align-items:center}
-  /* 手机端弹层:更紧凑 + 锚定输入框右边沿(避免向右溢出屏幕),字号缩小但完整可见 */
-  #page-hours .h-person-pop{min-width:150px;max-width:220px;max-height:240px;padding:2px;left:auto;right:0}
-  #page-hours .h-person-pop .h-person-item{padding:5px 8px;font-size:11.5px;gap:4px;line-height:1.25}
-  #page-hours .h-person-pop .h-person-dept{font-size:9.5px}
-  #page-hours .h-person-pop .h-empty{padding:7px 9px;font-size:10.5px}
+  #page-hours .h-config input.h-person-input{width:100%;font-size:11px;text-align:left}
+  /* wrap 沿用 flex 拉伸 → 弹层 left:0/right:0 等于输入栏宽度 = 垂直对齐 */
+  #page-hours .h-person-wrap{width:auto;flex:1 1 0;min-width:0;display:inline-flex;align-items:center}
+  #page-hours .h-person-pop{max-height:240px;padding:3px;border-radius:8px}
+  #page-hours .h-person-pop .h-person-item{padding:6px 8px;font-size:11px;gap:4px;line-height:1.3;border-radius:5px}
+  #page-hours .h-person-pop .h-person-item:hover{padding-left:10px}
+  /* 窄宽度允许名字换行,保证完整可见 */
+  #page-hours .h-person-pop .h-person-name{white-space:normal;word-break:break-all}
+  #page-hours .h-person-pop .h-person-dept{font-size:9px;padding:1.5px 5px}
+  #page-hours .h-person-pop .h-empty{padding:8px 9px;font-size:10px}
   #page-hours .h-wrap{padding:10px 10px 60px}
 }
 @media print {
@@ -4043,16 +4102,20 @@ const Pages = (() => {
     const all = collectAllPeople();
     const f = (filter || '').trim().toLowerCase();
     const matched = f ? all.filter(p => p.name.toLowerCase().includes(f)) : all;
+    const current = (hoursState.selectedPersonName || '').trim();
     if (matched.length === 0) {
-      pop.innerHTML = `<div class="h-empty">无匹配人员 — 当前输入将作为手动名称使用</div>`;
+      pop.innerHTML = `<div class="h-empty">无匹配人员<br/>当前输入将作为手动名称使用</div>`;
       return;
     }
-    pop.innerHTML = matched.map(p => `
-      <button type="button" class="h-person-item" data-name="${p.name.replace(/"/g, '&quot;')}">
-        <span>${p.name}</span>
-        <span class="h-person-dept">${p.deptName}</span>
-      </button>
-    `).join('');
+    pop.innerHTML = matched.map(p => {
+      const active = p.name === current ? ' h-active' : '';
+      return `
+        <button type="button" class="h-person-item${active}" data-name="${p.name.replace(/"/g, '&quot;')}">
+          <span class="h-person-name">${p.name}</span>
+          <span class="h-person-dept">${p.deptName}</span>
+        </button>
+      `;
+    }).join('');
   }
 
   let hoursDocListenersBound = false;
