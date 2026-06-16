@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>月度总出勤表</title>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- 月度工时模块字体:Bricolage Grotesque (展示) + Geist (正文) + JetBrains Mono (等宽) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@300..500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0a0a0b; --card:#161618; --border:#26262a;
@@ -773,6 +777,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   --h-radius-xs: 6px;
   --h-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.4);
   --h-shadow-lg: 0 24px 56px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+  --h-font-display: 'Bricolage Grotesque', -apple-system, 'PingFang SC', sans-serif;
   --h-font-body: 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --h-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   background:
@@ -802,7 +807,10 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   box-shadow: 0 0 0 1px rgba(94,234,212,0.3), 0 8px 28px var(--h-accent-glow);
 }
 #page-hours .h-brand h1 {
+  font-family: var(--h-font-display);
+  font-variation-settings: "wdth" 100, "opsz" 24;
   font-size: 17px; font-weight: 500; color: var(--h-text); margin: 0;
+  letter-spacing: -0.012em;
 }
 #page-hours .h-brand h1 em {
   font-style: normal; color: var(--h-text-dim); font-weight: 400; margin-left: 4px;
@@ -853,8 +861,10 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   display: inline-flex; align-items: baseline; gap: 4px; line-height: 1;
 }
 #page-hours .h-m-num {
+  font-family: var(--h-font-display);
+  font-variation-settings: "opsz" 96, "wdth" 100;
   font-weight: 500; font-size: 46px; color: var(--h-text);
-  font-feature-settings: "tnum"; letter-spacing: -0.045em;
+  font-feature-settings: "tnum", "lnum"; letter-spacing: -0.045em;
 }
 #page-hours .h-m-unit {
   font-size: 17px; color: var(--h-text-dim); margin-left: 2px;
@@ -1076,6 +1086,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   box-shadow: 0 0 10px var(--h-stat-color, var(--h-accent));
 }
 #page-hours .h-stat .h-value {
+  font-family: var(--h-font-display);
+  font-variation-settings: "opsz" 96, "wdth" 100;
   font-weight: 500; font-size: 32px; line-height: 1;
   letter-spacing: -0.035em; color: var(--h-text);
   font-feature-settings: "tnum"; margin-top: auto;
@@ -1138,6 +1150,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   align-items: center; text-align: center; gap: 3px;
 }
 #page-hours .h-date .h-d {
+  font-family: var(--h-font-display);
+  font-variation-settings: "opsz" 48, "wdth" 100;
   font-weight: 500; font-size: 26px; line-height: 1;
   letter-spacing: -0.025em; font-feature-settings: "tnum";
 }
@@ -2742,14 +2756,21 @@ const Pages = (() => {
     const winEnd = new Date(startYear + 1, resetMonth - 1, 0);
     return { winStart, winEnd, resetMonth, startYear };
   }
+  // 有休制度起算年:2025 年度(覆盖 2025 重置月 → 2026 重置月前一日)。
+  // 之前的窗口不视为「上一年度」→ 不结转。这意味着 2025 年度的 carryover = 0,
+  // 2026 年度才能继承 2025 的残留(若有)。
+  const LEAVE_START_YEAR = 2025;
   function computeAnnualLeave(deptId, person, asOf) {
     const baseQuota = Number(person.annualLeave) || 0;
     const { winStart, winEnd, resetMonth, startYear } = annualLeaveWindow(person, asOf);
-    // 单层前年残留(典型日本有休规则只允许 1 年带过去 — 再往前自然失效)
-    const prevWinStart = new Date(startYear - 1, resetMonth - 1, 1);
-    const prevWinEnd = new Date(startYear, resetMonth - 1, 0);
-    const prevUsed = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(prevWinStart), Util.ymd(prevWinEnd));
-    const carryover = Math.max(0, baseQuota - prevUsed);
+    // 仅当上一窗口属于 LEAVE_START_YEAR 及之后时才结转
+    let carryover = 0;
+    if (startYear > LEAVE_START_YEAR) {
+      const prevWinStart = new Date(startYear - 1, resetMonth - 1, 1);
+      const prevWinEnd = new Date(startYear, resetMonth - 1, 0);
+      const prevUsed = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(prevWinStart), Util.ymd(prevWinEnd));
+      carryover = Math.max(0, baseQuota - prevUsed);
+    }
     const totalQuota = baseQuota + carryover;
     const cutoffDate = asOf < winEnd ? asOf : winEnd;
     const used = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(winStart), Util.ymd(cutoffDate));
@@ -3733,6 +3754,25 @@ const Pages = (() => {
       dataByPerson: {}
     }, parsed || {});
     if (!hoursState.dataByPerson) hoursState.dataByPerson = {};
+    // 一次性迁移:把所有已填入的日期/工时数据合并到「白 海竜」名下
+    if (!hoursState._migratedToBaiHairyu) {
+      const target = '白 海竜';
+      const targetDays = (hoursState.dataByPerson[target] && hoursState.dataByPerson[target].days) || {};
+      const mergedDays = {};
+      // 1) 先填入其他桶里的所有 days(同一天若多桶都有,后处理的覆盖前者 — 实际不会有冲突)
+      for (const k in hoursState.dataByPerson) {
+        if (k === target) continue;
+        const days = (hoursState.dataByPerson[k] && hoursState.dataByPerson[k].days) || {};
+        for (const ymd in days) mergedDays[ymd] = days[ymd];
+      }
+      // 2) 再用目标桶已有数据覆盖 — 目标桶里的入手记录优先级最高
+      for (const ymd in targetDays) mergedDays[ymd] = targetDays[ymd];
+      // 3) 仅保留 target,删掉所有源桶
+      hoursState.dataByPerson = { [target]: { days: mergedDays } };
+      hoursState.selectedPersonName = target;
+      hoursState._migratedToBaiHairyu = true;
+      try { localStorage.setItem(HOURS_LS_KEY, JSON.stringify(hoursState)); } catch (_) {}
+    }
     return hoursState;
   }
   function saveHoursState() {
