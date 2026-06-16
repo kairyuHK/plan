@@ -4196,6 +4196,121 @@ const Pages = (() => {
     renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!person });
   }
 
+  // 原地刷新工时计算 + 统计卡(不重建 DOM)— 用于手机端 focusout,避免破坏正在编辑/即将编辑的输入框
+  function refreshHoursCalc() {
+    const s = loadHoursState();
+    const personData = getHoursPersonData();
+    const person = findPersonByName(s.selectedPersonName);
+    const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
+    const daysHost = document.getElementById('h-days');
+    if (!daysHost) return;
+    const rows = daysHost.children;
+    // 行数对不上 → 走完整重建兜底(避免视图错位)
+    let expectedRows = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) expectedRows++;
+    if (rows.length !== expectedRows) { renderHoursDays(); return; }
+
+    let totalNormal=0, totalOT=0, totalHoliday=0, attendedCount=0, leaveCount=0, absentCount=0;
+    let i = 0;
+    const iter = new Date(start);
+    while (iter <= end) {
+      const yy = iter.getFullYear(), mm = iter.getMonth(), d = iter.getDate();
+      const key = hoursYmdKey(yy, mm, d);
+      const rec = personData.days[key];
+      const derived = deriveHoursTag(person, key);
+
+      const prevDate = new Date(yy, mm, d - 1);
+      const prevKey = hoursYmdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+      const prevRec = personData.days[prevKey];
+      let prevCarryOut = null;
+      if (prevRec?.in && prevRec?.out) {
+        const pIn = hoursTimeToMin(prevRec.in), pOut = hoursTimeToMin(prevRec.out);
+        if (pOut < pIn) prevCarryOut = pOut;
+      }
+      const calc = calcHoursDay(rec, derived, prevCarryOut);
+      totalNormal += calc.normal;
+      totalOT += calc.ot;
+      totalHoliday += calc.holidayHrs;
+      if (calc.attended) attendedCount++;
+      if (calc.paidLeave) leaveCount++;
+      if (calc.absent) absentCount++;
+
+      const row = rows[i++];
+      if (!row) continue;
+      // 工时数字 + zero class
+      const workEl = row.querySelector('.h-num.work');
+      const otEl = row.querySelector('.h-num.ot');
+      const hasWork = !!(calc.normal + calc.ot);
+      if (workEl) {
+        workEl.classList.toggle('zero', !hasWork);
+        workEl.textContent = hoursFmt(calc.work || calc.normal);
+      }
+      if (otEl) {
+        otEl.classList.toggle('zero', !calc.ot);
+        otEl.textContent = calc.ot ? '+' + hoursFmt(calc.ot) : '—';
+      }
+      // 翌日 / 前日跨夜 badge 原地增删
+      const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
+      const outCell = row.querySelector('.h-out-cell');
+      if (outCell) {
+        const overnight = showTimes && rec?.in && rec?.out && hoursTimeToMin(rec.out) < hoursTimeToMin(rec.in);
+        const existing = outCell.querySelector('.h-next-day');
+        if (overnight && !existing) {
+          const badge = document.createElement('span');
+          badge.className = 'h-next-day';
+          badge.textContent = '翌日';
+          outCell.appendChild(badge);
+        } else if (!overnight && existing) {
+          existing.remove();
+        }
+      }
+      const inCell = row.querySelector('.h-in-cell');
+      if (inCell) {
+        const existing = inCell.querySelector('.h-carry-prev');
+        if (prevCarryOut != null && showTimes && !existing) {
+          const span = document.createElement('span');
+          span.className = 'h-carry-prev';
+          span.textContent = `← ${hoursMinToTime(prevCarryOut)}`;
+          inCell.insertBefore(span, inCell.firstElementChild);
+        } else if ((prevCarryOut == null || !showTimes) && existing) {
+          existing.remove();
+        }
+      }
+
+      iter.setDate(iter.getDate() + 1);
+    }
+
+    // 统计卡 — 原地更新 .h-value
+    let leaveInfo = null;
+    if (person) {
+      const asOf = end;
+      leaveInfo = computeAnnualLeave(person.deptId, { id: person.personId, annualLeave: getPersonAnnualLeave(person), leaveResetMonth: getPersonResetMonth(person) }, asOf);
+    }
+    const cards = document.querySelectorAll('#h-stats .h-stat');
+    if (cards.length !== 6) {
+      // 卡片数量不对 → 完整重渲兜底
+      renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!person });
+      return;
+    }
+    const data = [
+      { value: totalNormal + totalOT, unit: 'h' },
+      { value: totalNormal, unit: 'h' },
+      { value: totalOT, unit: 'h' },
+      { value: totalHoliday, unit: 'h' },
+      { value: `${attendedCount}`, unit: `/ ${leaveCount} / ${absentCount}` },
+      (person && leaveInfo)
+        ? { value: leaveInfo.remaining, unit: `天 / ${leaveInfo.totalQuota}` }
+        : { value: '—', unit: '' }
+    ];
+    cards.forEach((card, idx) => {
+      const dd = data[idx];
+      const valueEl = card.querySelector('.h-value');
+      if (valueEl) {
+        valueEl.innerHTML = `${typeof dd.value === 'number' ? hoursFmtStat(dd.value) : dd.value}<span class="h-unit">${dd.unit}</span>`;
+      }
+    });
+  }
+
   function getPersonAnnualLeave(personRef) {
     const list = Store.get().people[personRef.deptId] || [];
     const p = list.find(pp => pp.id === personRef.personId);
@@ -4340,7 +4455,11 @@ const Pages = (() => {
       hoursActivePicker = null;
       hoursTouchedOutside = false;
       setTimeout(() => {
-        if (!daysHost.contains(document.activeElement)) renderHoursDays();
+        if (daysHost.contains(document.activeElement)) return;
+        // 手机端:原地更新数字 + 统计,不破坏 DOM 结构(避免下一个 picker 目标 input 被替换)
+        // PC 端:维持原有完整重建逻辑
+        if (HOURS_IS_MOBILE) refreshHoursCalc();
+        else renderHoursDays();
       }, 0);
     });
 
