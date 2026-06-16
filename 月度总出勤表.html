@@ -23,6 +23,8 @@
 /* touch-action:manipulation = 允许平移 + 双指捏合缩放,禁用双击放大。
    touch-action 不继承,所以广播到所有元素才能覆盖任意位置的双击。 */
 *{touch-action:manipulation}
+/* color-scheme: dark — 让 iOS Safari 原生时间/日期选择器、滚动条等系统 UI 跟随暗色主题 */
+html{color-scheme:dark}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
@@ -4406,6 +4408,15 @@ const Pages = (() => {
       hoursActivePicker = inp;
       hoursTouchedOutside = false;
       hoursPickerSessions.set(inp, { original: inp.value });
+      // 把 input 滚到视口 65% 位置 → iOS picker 自然在上方弹出,带向下指示箭头(更美观)
+      // 仅当 input 在视口上半屏(< 55%)时才滚动,避免下半屏 input 被反向推开
+      setTimeout(() => {
+        const rect = inp.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 0.55) {
+          const delta = rect.top - window.innerHeight * 0.65;
+          window.scrollBy({ top: delta, behavior: 'smooth' });
+        }
+      }, 0);
     });
     daysHost.addEventListener('change', e => {
       const inp = e.target.closest('.h-time');
