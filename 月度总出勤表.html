@@ -74,6 +74,66 @@ input[type=number]{-moz-appearance:textfield}
 /* schedule page */
 .dept-tabs button{margin-right:4px}
 .dept-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+/* 自定义部门下拉(替代原生 select,与 hours person pop 风格统一) */
+.dept-dropdown{position:relative;display:inline-block}
+.dept-trigger{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#1f1f23;border:1px solid var(--border);color:var(--text);
+  font:inherit;font-size:13px;font-weight:500;
+  padding:6px 10px 6px 12px;border-radius:var(--r-btn);
+  cursor:pointer;transition:border-color .15s,background .15s;
+  min-width:88px;
+}
+.dept-trigger:hover{background:#26262a;border-color:#3a3a40}
+.dept-dropdown.open .dept-trigger{border-color:var(--accent);background:#23232a}
+.dept-trigger .dept-trigger-name{flex:1;text-align:left}
+.dept-trigger .dept-trigger-chev{
+  font-size:9px;color:var(--muted);
+  transition:transform .18s ease,color .18s ease;
+}
+.dept-dropdown.open .dept-trigger-chev{transform:rotate(180deg);color:var(--accent)}
+.dept-pop{
+  position:absolute;top:calc(100% + 6px);left:-1px;right:-1px;
+  background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);
+  border:1px solid rgba(124,92,255,0.18);
+  border-radius:10px;
+  box-shadow:0 16px 36px rgba(0,0,0,0.6),0 2px 6px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.02) inset;
+  padding:5px;z-index:200;display:none;
+  min-width:max-content;
+  max-height:60vh;overflow:auto;
+  scrollbar-width:thin;scrollbar-color:#3a3a40 transparent;
+}
+.dept-pop::-webkit-scrollbar{width:8px}
+.dept-pop::-webkit-scrollbar-track{background:transparent}
+.dept-pop::-webkit-scrollbar-thumb{background:#3a3a40;border-radius:4px}
+.dept-pop::-webkit-scrollbar-thumb:hover{background:#4a4a52}
+.dept-dropdown.open .dept-pop{display:block;animation:deptPopIn .16s cubic-bezier(0.2,0.7,0.2,1)}
+@keyframes deptPopIn{
+  from{opacity:0;transform:translateY(-6px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.dept-item{
+  display:flex;align-items:center;gap:8px;
+  width:100%;padding:8px 12px;
+  background:transparent;border:none;color:var(--text);
+  font:inherit;font-size:13px;font-weight:500;
+  cursor:pointer;border-radius:7px;text-align:left;
+  position:relative;
+  transition:background .14s ease,color .14s ease,padding-left .14s ease;
+}
+.dept-item + .dept-item{margin-top:1px}
+.dept-item:hover{background:rgba(124,92,255,0.10);color:var(--text);padding-left:16px}
+.dept-item.active{background:rgba(124,92,255,0.16);color:var(--accent)}
+.dept-item.active::before{
+  content:'';position:absolute;left:3px;top:50%;transform:translateY(-50%);
+  width:3px;height:60%;background:var(--accent);border-radius:0 2px 2px 0;
+  box-shadow:0 0 8px var(--accent);
+}
+/* 分隔线 — 虚拟视图(個人 / 月度工时)与真实部门分组 */
+.dept-pop .dept-sep{
+  height:1px;background:rgba(255,255,255,0.06);
+  margin:4px 6px;border-radius:1px;
+}
 .period-nav{display:inline-flex;gap:4px;align-items:center;font-family:var(--font-mono)}
 .period-nav button{padding:3px 9px;font-size:13px;color:var(--muted);border-color:transparent;background:#1c1c20}
 .period-nav button:hover{color:var(--accent);border-color:var(--border);background:#222227}
@@ -888,7 +948,16 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px; padding: 0 2px;
 }
-#page-hours .h-picker-year .y { font-size: 17px; font-weight: 500; }
+#page-hours .h-picker-year .y {
+  font-family: var(--h-font-display);
+  font-variation-settings: "opsz" 24;
+  font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
+}
+#page-hours .h-picker-grid button .h-m-num {
+  font-family: var(--h-font-mono);
+  font-variation-settings: normal;
+  letter-spacing: -0.01em;
+}
 #page-hours .h-picker-year button {
   width: 30px; height: 30px; border-radius: 7px;
   border: 1px solid var(--h-border); background: var(--h-surface-2);
@@ -2478,25 +2547,57 @@ const Pages = (() => {
       Store.setUi({ currentDept: cur });
       return; // setUi 会触发 listener 重新渲染整页
     }
-    const sel = Render.el('select.dept-select', {
-      onchange: (e) => {
-        const val = e.target.value;
-        // 切到「個人」「月度工时」虚拟视图时,如果当前在 设置/数据 页,自动跳回排班
-        if ((val === PERSONAL_VIEW || val === HOURS_VIEW) && location.hash && location.hash !== '#/schedule') {
-          history.replaceState(null, '', location.pathname + location.search);
-        }
-        Store.setUi({ currentDept: val });
-      }
+    // 自定义下拉:trigger 按钮 + 弹层
+    const allOptions = [
+      ...depts.map(d => ({ value: d.id, label: d.name })),
+      { sep: true },
+      { value: PERSONAL_VIEW, label: '個人' },
+      { value: HOURS_VIEW, label: '月度工时' }
+    ];
+    const curOpt = allOptions.find(o => !o.sep && o.value === cur) || allOptions[0];
+    const curLabel = curOpt && !curOpt.sep ? curOpt.label : '';
+
+    const dd = Render.el('div.dept-dropdown');
+    const trigger = Render.el('button.dept-trigger', { type: 'button' });
+    trigger.innerHTML = `<span class="dept-trigger-name">${curLabel}</span><span class="dept-trigger-chev">▾</span>`;
+    const pop = Render.el('div.dept-pop');
+    pop.innerHTML = allOptions.map(o => {
+      if (o.sep) return '<div class="dept-sep"></div>';
+      const active = o.value === cur ? ' active' : '';
+      return `<button type="button" class="dept-item${active}" data-val="${o.value}">${o.label}</button>`;
+    }).join('');
+    dd.appendChild(trigger);
+    dd.appendChild(pop);
+    host.appendChild(dd);
+
+    const close = () => dd.classList.remove('open');
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opening = !dd.classList.contains('open');
+      // 关掉同级其他弹层
+      document.querySelectorAll('.dept-dropdown.open').forEach(d => d.classList.remove('open'));
+      if (opening) dd.classList.add('open');
     });
-    for (const d of depts) {
-      sel.appendChild(Render.el('option', { value: d.id }, d.name));
+    pop.addEventListener('click', (e) => {
+      const btn = e.target.closest('.dept-item');
+      if (!btn) return;
+      e.stopPropagation();
+      const val = btn.dataset.val;
+      close();
+      if ((val === PERSONAL_VIEW || val === HOURS_VIEW) && location.hash && location.hash !== '#/schedule') {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+      Store.setUi({ currentDept: val });
+    });
+    // 点击外部 → 关闭(每次 renderDeptTabs 重新绑定也无所谓,旧 dd 被 clear 已从 DOM 移除)
+    if (!renderDeptTabs._docBound) {
+      document.addEventListener('mousedown', (ev) => {
+        if (!ev.target.closest('.dept-dropdown')) {
+          document.querySelectorAll('.dept-dropdown.open').forEach(d => d.classList.remove('open'));
+        }
+      });
+      renderDeptTabs._docBound = true;
     }
-    // 「個人」视图选项 — 切到此处会显示由两个固定人员组成的排班表
-    sel.appendChild(Render.el('option', { value: PERSONAL_VIEW }, '個人'));
-    // 「月度工时」视图选项 — 切到此处会显示月度工时系统
-    sel.appendChild(Render.el('option', { value: HOURS_VIEW }, '月度工时'));
-    sel.value = cur || '';
-    host.appendChild(sel);
   }
 
   function renderPeriodNav() {
@@ -3738,6 +3839,13 @@ const Pages = (() => {
 
   let hoursState = null;
   let hoursPickerYear = null;
+  // iOS time picker 完成/放弃判定:仅手机端启用
+  // iOS 系统 picker「完成」按钮在系统 UI 层 → 不派发 pointerdown 到页面
+  // 用 hoursTouchedOutside 标志区分:碰过外部 → 视为放弃(还原),否则视为完成(保存)
+  const HOURS_IS_MOBILE = window.matchMedia('(max-width: 880px)').matches;
+  const hoursPickerSessions = new WeakMap();
+  let hoursActivePicker = null;
+  let hoursTouchedOutside = false;
 
   function loadHoursState() {
     if (hoursState) return hoursState;
@@ -4176,16 +4284,64 @@ const Pages = (() => {
   function bindHoursEvents() {
     const daysHost = document.getElementById('h-days');
 
+    // focusin:打开 session,记录原值。仅手机端用于 picker 完成/放弃判定
+    daysHost.addEventListener('focusin', e => {
+      const inp = e.target.closest('.h-time');
+      if (!inp || !HOURS_IS_MOBILE) return;
+      hoursActivePicker = inp;
+      hoursTouchedOutside = false;
+      hoursPickerSessions.set(inp, { original: inp.value });
+    });
     daysHost.addEventListener('change', e => {
       const inp = e.target.closest('.h-time');
       if (!inp) return;
+      // 手机端:用户碰过外部 → 视为放弃,本次 change 不写入(focusout 阶段统一还原)
+      if (HOURS_IS_MOBILE && hoursPickerSessions.has(inp) && hoursTouchedOutside) return;
       const key = inp.dataset.key, field = inp.dataset.field;
       const data = getHoursPersonData();
       const rec = data.days[key] || {};
       rec[field] = inp.value;
       data.days[key] = rec;
       saveHoursState();
-      renderHoursDays();
+      // 不立刻重渲 — 否则正在编辑的 input 会被销毁,PC 上输入第二位数字时焦点丢失
+    });
+    // 焦点离开:手机端按 touchedOutside 还原或保存;PC 端只触发延迟重渲
+    daysHost.addEventListener('focusout', e => {
+      const inp = e.target.closest('.h-time');
+      if (!inp) return;
+      const key = inp.dataset.key, field = inp.dataset.field;
+      const sess = hoursPickerSessions.get(inp);
+
+      if (HOURS_IS_MOBILE && sess && hoursTouchedOutside) {
+        // 还原 DOM 与 state 到 picker 打开之前
+        inp.value = sess.original;
+        const data = getHoursPersonData();
+        const rec = data.days[key];
+        if (rec) {
+          if (sess.original) rec[field] = sess.original;
+          else delete rec[field];
+          // 整条记录已空 → 移除
+          if (!rec.in && !rec.out && !rec.tag) delete data.days[key];
+          saveHoursState();
+        }
+      } else if (HOURS_IS_MOBILE && sess) {
+        // 手机端「完成」按钮分支:change 可能未触发,兜底写入 inp.value
+        const data = getHoursPersonData();
+        const rec = data.days[key] || {};
+        if (rec[field] !== inp.value) {
+          rec[field] = inp.value;
+          data.days[key] = rec;
+          saveHoursState();
+        }
+      }
+      // PC 端不做特殊处理,change 已经保存过
+
+      hoursPickerSessions.delete(inp);
+      hoursActivePicker = null;
+      hoursTouchedOutside = false;
+      setTimeout(() => {
+        if (!daysHost.contains(document.activeElement)) renderHoursDays();
+      }, 0);
     });
 
     if (!hoursDocListenersBound) {
@@ -4201,6 +4357,17 @@ const Pages = (() => {
           document.getElementById('h-personPop')?.classList.remove('open');
         }
       });
+      // 手机端:picker 打开期间监听任何外部触碰 → 标记为放弃
+      // (iOS「完成」按钮在系统 UI 层,不会派发 pointerdown,所以不会被标记)
+      if (HOURS_IS_MOBILE) {
+        const markOutside = ev => {
+          if (hoursActivePicker && !hoursActivePicker.contains(ev.target)) {
+            hoursTouchedOutside = true;
+          }
+        };
+        document.addEventListener('pointerdown', markOutside, true);
+        document.addEventListener('touchstart', markOutside, { capture: true, passive: true });
+      }
       hoursDocListenersBound = true;
     }
 
@@ -4294,16 +4461,29 @@ const Pages = (() => {
       renderHoursDays();
     });
 
-    document.getElementById('h-clearBtn').onclick = () => {
-      if (!confirm('清空当前周期所选人员的录入数据?')) return;
+    document.getElementById('h-clearBtn').onclick = (e) => {
       const data = getHoursPersonData();
       const { start, end } = hoursPeriodRange(hoursState.cursor, hoursState.cycleStart);
+      let nToClear = 0;
       Object.keys(data.days).forEach(k => {
         const [yy,mm,dd] = k.split('-').map(Number);
         const dt = new Date(yy, mm-1, dd);
-        if (dt >= start && dt <= end) delete data.days[k];
+        if (dt >= start && dt <= end) nToClear++;
       });
-      saveHoursState(); renderHoursDays();
+      showConfirmPopover(e.currentTarget, {
+        text: `清空当前周期 ${nToClear} 项数据?`,
+        sub: `${hoursState.selectedPersonName || '未选人员'} · ${hoursFmtYmd(start)} – ${hoursFmtYmd(end)}`,
+        confirmText: '清空',
+        danger: true,
+        onConfirm: () => {
+          Object.keys(data.days).forEach(k => {
+            const [yy,mm,dd] = k.split('-').map(Number);
+            const dt = new Date(yy, mm-1, dd);
+            if (dt >= start && dt <= end) delete data.days[k];
+          });
+          saveHoursState(); renderHoursDays();
+        }
+      });
     };
     document.getElementById('h-exportBtn').onclick = () => {
       const blob = new Blob([JSON.stringify(hoursState, null, 2)], { type: 'application/json' });
@@ -4315,7 +4495,8 @@ const Pages = (() => {
       URL.revokeObjectURL(url);
     };
     const importFile = document.getElementById('h-importFile');
-    document.getElementById('h-importBtn').onclick = () => importFile.click();
+    const importBtn = document.getElementById('h-importBtn');
+    importBtn.onclick = () => importFile.click();
     importFile.addEventListener('change', e => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -4324,22 +4505,35 @@ const Pages = (() => {
         try {
           const data = JSON.parse(reader.result);
           if (!data || typeof data !== 'object') throw new Error('文件格式不正确');
-          if (!confirm('导入将覆盖月度工时所有数据,确定继续?')) return;
+          // 统计要导入的天数
+          let nDays = 0;
           if (data.dataByPerson) {
-            // 新格式
-            Object.assign(hoursState, data);
+            for (const k in data.dataByPerson) nDays += Object.keys(data.dataByPerson[k]?.days || {}).length;
           } else if (data.days) {
-            // 旧版 hours-ledger-v1 格式 — 归入 __none__ 桶
-            hoursState.dataByPerson = hoursState.dataByPerson || {};
-            hoursState.dataByPerson['__none__'] = { days: data.days };
-            if (data.cursor) hoursState.cursor = data.cursor;
-            if (Number(data.stdHours) > 0) hoursState.stdHours = Number(data.stdHours);
-            if (Number.isFinite(Number(data.lunchHours))) hoursState.lunchHours = Number(data.lunchHours);
-            if (Number(data.cycleStart) >= 1) hoursState.cycleStart = Math.floor(Number(data.cycleStart));
+            nDays = Object.keys(data.days).length;
           }
-          saveHoursState(); renderHoursAll();
-          alert('导入成功');
-        } catch (err) { alert('导入失败:' + err.message); }
+          showConfirmPopover(importBtn, {
+            text: `导入 ${nDays} 项数据?`,
+            sub: '将覆盖当前所有数据,建议先点「导出」备份',
+            confirmText: '继续导入',
+            danger: true,
+            onConfirm: () => {
+              if (data.dataByPerson) {
+                Object.assign(hoursState, data);
+              } else if (data.days) {
+                // 旧版 hours-ledger-v1 格式 — 归入「白 海竜」桶,保持迁移一致
+                hoursState.dataByPerson = hoursState.dataByPerson || {};
+                hoursState.dataByPerson['白 海竜'] = { days: data.days };
+                if (data.cursor) hoursState.cursor = data.cursor;
+                if (Number(data.stdHours) > 0) hoursState.stdHours = Number(data.stdHours);
+                if (Number.isFinite(Number(data.lunchHours))) hoursState.lunchHours = Number(data.lunchHours);
+                if (Number(data.cycleStart) >= 1) hoursState.cycleStart = Math.floor(Number(data.cycleStart));
+              }
+              saveHoursState(); renderHoursAll();
+              showToast('导入成功', 'success');
+            }
+          });
+        } catch (err) { showToast('导入失败:' + err.message, 'error'); }
         finally { e.target.value = ''; }
       };
       reader.readAsText(file);
