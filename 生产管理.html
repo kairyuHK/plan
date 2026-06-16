@@ -6333,9 +6333,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .edit-toolbar input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:18px}
   .edit-toolbar button{background:transparent;border:1px solid var(--line);color:var(--fg);padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
   .edit-toolbar .done{background:var(--accent);color:#000;border-color:var(--accent)}
-  /* 美化原生 <select> —— 自定义箭头 + 聚焦光晕 + 悬停高亮 */
+  /* 美化原生 <select> —— 自定义箭头 + 聚焦光晕 + 悬停高亮
+     color-scheme:dark 让 iOS Safari / Android Chrome 用深色模式渲染展开的原生下拉列表,
+     避免白底浅色弹框跟深色界面格格不入 */
   .pretty-select{
     appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    color-scheme:dark;
     background:linear-gradient(180deg,#1f242c 0%,#171b21 100%);
     border:1px solid var(--line);
     color:var(--fg);
