@@ -735,6 +735,448 @@ body:not(.personal-mode) #btn-personal-export { display: none !important; }
 @media print {
   body.personal-mode #page-personal { display: none !important; }
 }
+/* hours 视图:隐藏与之无关的导航按钮(锁定/打印/出力PNG/数据) */
+body.hours-mode #btn-edit-toggle,
+body.hours-mode #btn-print,
+body.hours-mode #btn-personal-export,
+body.hours-mode .nav button[data-route="#/data"]{display:none!important}
+
+/* ============================================================
+   月度工时系统 (page-hours) — 移植自 月度工时统计.html,全部 scoped */
+/* ============================================================ */
+#page-hours {
+  padding: 0; max-width: 100%;
+  /* hours 模块自有变量 — 不污染主表 */
+  --h-bg: #0a0b0e;
+  --h-surface: #14161d;
+  --h-surface-2: #1a1d26;
+  --h-surface-3: #232631;
+  --h-border: #262936;
+  --h-border-soft: #1d2029;
+  --h-text: #ececf1;
+  --h-text-dim: #8a8d99;
+  --h-text-faint: #5a5d6a;
+  --h-accent: #5eead4;
+  --h-accent-dim: #2dd4bf;
+  --h-accent-deep: #0d9488;
+  --h-accent-glow: rgba(94, 234, 212, 0.18);
+  --h-c-normal: #60a5fa;
+  --h-c-ot: #fbbf24;
+  --h-c-holiday: #fb923c;
+  --h-c-leave: #f87171;
+  --h-c-absent: #71717a;
+  --h-c-weekend: #a78bfa;
+  --h-c-sun: #f87171;
+  --h-c-sat: #60a5fa;
+  --h-radius: 12px;
+  --h-radius-sm: 8px;
+  --h-radius-xs: 6px;
+  --h-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.4);
+  --h-shadow-lg: 0 24px 56px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+  --h-font-body: 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --h-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -10%, var(--h-accent-glow), transparent 70%),
+    var(--h-bg);
+  color: var(--h-text);
+  font-family: var(--h-font-body);
+  min-height: calc(100vh - var(--sticky-nav, 50px));
+  -webkit-font-smoothing: antialiased;
+}
+#page-hours .h-wrap { max-width: 1200px; margin: 0 auto; padding: 14px 32px 60px; }
+#page-hours .h-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--h-border-soft);
+  flex-wrap: wrap;
+}
+#page-hours .h-brand {
+  display: flex; align-items: center; gap: 12px;
+}
+#page-hours .h-brand-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--h-accent), var(--h-accent-deep));
+  display: grid; place-items: center;
+  font-weight: 600; font-size: 16px; color: #07120f;
+  box-shadow: 0 0 0 1px rgba(94,234,212,0.3), 0 8px 28px var(--h-accent-glow);
+}
+#page-hours .h-brand h1 {
+  font-size: 17px; font-weight: 500; color: var(--h-text); margin: 0;
+}
+#page-hours .h-brand h1 em {
+  font-style: normal; color: var(--h-text-dim); font-weight: 400; margin-left: 4px;
+}
+#page-hours .h-subt {
+  font-family: var(--h-font-mono); font-size: 10px; letter-spacing: 0.1em;
+  color: var(--h-text-faint); text-transform: uppercase;
+}
+#page-hours .h-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+#page-hours .h-btn {
+  background: var(--h-surface); border: 1px solid var(--h-border);
+  color: var(--h-text-dim); font-family: var(--h-font-body);
+  font-size: 12.5px; font-weight: 500;
+  padding: 7px 12px; border-radius: var(--h-radius-sm);
+  cursor: pointer; transition: all 0.16s ease;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+#page-hours .h-btn:hover {
+  color: var(--h-text);
+  border-color: rgba(94,234,212,0.45);
+  background: var(--h-surface-2);
+}
+#page-hours .h-month-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+}
+#page-hours .h-month-pick { display: flex; align-items: center; gap: 6px; }
+#page-hours .h-nav {
+  width: 36px; height: 36px; border-radius: 9px;
+  border: 1px solid var(--h-border); background: var(--h-surface);
+  color: var(--h-text-dim); cursor: pointer; font-size: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+}
+#page-hours .h-nav:hover {
+  color: var(--h-accent);
+  border-color: rgba(94,234,212,0.55);
+  background: var(--h-surface-2);
+}
+#page-hours .h-month-title {
+  min-width: 220px; text-align: center;
+  cursor: pointer; position: relative;
+  padding: 6px 18px; border-radius: 10px;
+  transition: background 0.15s; font-weight: 500;
+}
+#page-hours .h-month-title:hover { background: var(--h-surface); }
+#page-hours .h-month-label {
+  display: inline-flex; align-items: baseline; gap: 4px; line-height: 1;
+}
+#page-hours .h-m-num {
+  font-weight: 500; font-size: 46px; color: var(--h-text);
+  font-feature-settings: "tnum"; letter-spacing: -0.045em;
+}
+#page-hours .h-m-unit {
+  font-size: 17px; color: var(--h-text-dim); margin-left: 2px;
+  transform: translateY(-4px);
+}
+#page-hours .h-yr {
+  font-family: var(--h-font-mono); font-size: 11.5px;
+  color: var(--h-text-faint); letter-spacing: 0.14em;
+  display: block; margin-top: 6px;
+}
+#page-hours .h-picker {
+  position: absolute; top: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--h-surface); border: 1px solid var(--h-border);
+  border-radius: var(--h-radius); box-shadow: var(--h-shadow-lg);
+  padding: 12px; z-index: 300; width: 280px;
+  display: none; text-align: left; cursor: default;
+}
+#page-hours .h-picker.open { display: block; }
+#page-hours .h-picker-year {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; padding: 0 2px;
+}
+#page-hours .h-picker-year .y { font-size: 17px; font-weight: 500; }
+#page-hours .h-picker-year button {
+  width: 30px; height: 30px; border-radius: 7px;
+  border: 1px solid var(--h-border); background: var(--h-surface-2);
+  color: var(--h-text-dim); cursor: pointer;
+}
+#page-hours .h-picker-year button:hover {
+  color: var(--h-accent); border-color: rgba(94,234,212,0.55);
+  background: var(--h-surface-3);
+}
+#page-hours .h-picker-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+}
+#page-hours .h-picker-grid button {
+  padding: 10px 0; border: 1px solid transparent;
+  background: var(--h-surface-2); color: var(--h-text);
+  border-radius: 7px; cursor: pointer;
+  display: inline-flex; align-items: baseline; justify-content: center; gap: 2px;
+  font-family: var(--h-font-mono); font-weight: 600;
+}
+#page-hours .h-picker-grid button:hover {
+  background: var(--h-surface-3); border-color: var(--h-border);
+}
+#page-hours .h-picker-grid button.current {
+  background: var(--h-accent); border-color: var(--h-accent); color: #07120f;
+}
+#page-hours .h-picker-grid button.today {
+  border-color: rgba(94,234,212,0.55);
+}
+#page-hours .h-picker-grid button.today { color: var(--h-accent); }
+#page-hours .h-picker-grid button.current { color: #07120f; }
+#page-hours .h-config {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--h-text-dim); flex-wrap: wrap;
+}
+#page-hours .h-config label {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: var(--h-surface);
+  border: 1px solid var(--h-border); border-radius: var(--h-radius-sm);
+}
+#page-hours .h-config label:focus-within {
+  border-color: rgba(94,234,212,0.6);
+}
+#page-hours .h-config input {
+  background: transparent; border: none; color: var(--h-text);
+  font-family: var(--h-font-mono); font-size: 12px; font-weight: 500;
+  padding: 0; text-align: center; outline: none;
+  color-scheme: dark;
+}
+#page-hours .h-config input[type="number"] { width: 30px; }
+#page-hours .h-config input[list] { width: 120px; text-align: left; }
+#page-hours .h-config input:focus { color: var(--h-accent); }
+#page-hours .h-stats {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 10px; margin-bottom: 28px;
+}
+#page-hours .h-stat {
+  background: var(--h-surface); border: 1px solid var(--h-border);
+  padding: 20px 22px 18px; border-radius: var(--h-radius);
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: 14px;
+  min-height: 120px;
+}
+#page-hours .h-stat:first-child {
+  grid-row: 1 / span 2; grid-column: 1;
+  background:
+    radial-gradient(circle at 100% 0%, var(--h-accent-glow), transparent 55%),
+    var(--h-surface);
+  border-color: rgba(94,234,212,0.28);
+  padding: 26px 28px 24px;
+}
+#page-hours .h-stat:first-child .h-value { font-size: 56px; }
+#page-hours .h-stat .h-label {
+  font-size: 11.5px; font-weight: 500; color: var(--h-text-dim);
+  display: flex; align-items: center; gap: 8px;
+}
+#page-hours .h-stat .h-label::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--h-stat-color, var(--h-accent));
+  box-shadow: 0 0 10px var(--h-stat-color, var(--h-accent));
+}
+#page-hours .h-stat .h-value {
+  font-weight: 500; font-size: 32px; line-height: 1;
+  letter-spacing: -0.035em; color: var(--h-text);
+  font-feature-settings: "tnum"; margin-top: auto;
+}
+#page-hours .h-stat .h-value .h-unit {
+  font-family: var(--h-font-mono); font-size: 12px;
+  color: var(--h-text-faint); margin-left: 5px;
+}
+#page-hours .h-stat .h-value .h-dec {
+  font-size: 0.55em; color: var(--h-text-dim);
+}
+#page-hours .h-stat .h-sub {
+  font-size: 11.5px; color: var(--h-text-faint); line-height: 1.4;
+}
+#page-hours .h-ledger {
+  background: var(--h-surface); border: 1px solid var(--h-border);
+  border-radius: var(--h-radius); overflow: visible;
+}
+#page-hours .h-ledger-head {
+  display: grid;
+  grid-template-columns: 96px 140px 1fr 1fr 110px 110px;
+  gap: 12px; padding: 13px 24px;
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--h-text-dim);
+  border-bottom: 1px solid var(--h-border-soft);
+  background: var(--h-surface-2);
+}
+#page-hours .h-ledger-head > div { text-align: center; }
+#page-hours .h-day {
+  display: grid;
+  grid-template-columns: 96px 140px 1fr 1fr 110px 110px;
+  padding: 12px 24px; align-items: center;
+  border-bottom: 1px solid var(--h-border-soft);
+  gap: 12px; position: relative;
+  transition: background 0.16s ease;
+}
+#page-hours .h-day:last-child { border-bottom: none; }
+#page-hours .h-day:hover { background: var(--h-surface-2); }
+#page-hours .h-day.today { background: linear-gradient(90deg, var(--h-accent-glow), transparent 45%); }
+#page-hours .h-day.today::before {
+  content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 2px 2px 0;
+  background: var(--h-accent); box-shadow: 0 0 14px var(--h-accent);
+}
+#page-hours .h-day.dow-sun .h-date .h-d,
+#page-hours .h-day.dow-sun .h-date .h-wd,
+#page-hours .h-day.is-jp-holiday .h-date .h-d,
+#page-hours .h-day.is-jp-holiday .h-date .h-wd { color: var(--h-c-sun); }
+#page-hours .h-day.dow-sat .h-date .h-d,
+#page-hours .h-day.dow-sat .h-date .h-wd { color: var(--h-c-sat); }
+#page-hours .h-day .h-jpname {
+  font-size: 10px; color: var(--h-c-sun);
+  margin-top: 3px; line-height: 1.2; max-width: 88px;
+  word-break: break-all;
+}
+#page-hours .h-day.has-tag-absent { opacity: 0.5; }
+#page-hours .h-date {
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 3px;
+}
+#page-hours .h-date .h-d {
+  font-weight: 500; font-size: 26px; line-height: 1;
+  letter-spacing: -0.025em; font-feature-settings: "tnum";
+}
+#page-hours .h-date .h-wd {
+  font-family: var(--h-font-mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--h-text-faint);
+}
+#page-hours .h-tag-cell {
+  position: relative; display: flex;
+  justify-content: center; align-items: center;
+}
+#page-hours .h-tag-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px 7px 11px;
+  background: color-mix(in srgb, var(--h-tag-color, var(--h-text-dim)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--h-tag-color, var(--h-border)) 28%, var(--h-border));
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  color: var(--h-tag-color, var(--h-text));
+  cursor: pointer; transition: all 0.16s ease;
+  width: 100%; max-width: 130px;
+  justify-content: flex-start;
+}
+#page-hours .h-tag-pill:hover {
+  background: color-mix(in srgb, var(--h-tag-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--h-tag-color) 55%, var(--h-border));
+}
+#page-hours .h-tag-pill-static {
+  cursor: default; pointer-events: none; user-select: none;
+}
+#page-hours .h-tag-pill-static:hover {
+  background: color-mix(in srgb, var(--h-tag-color) 12%, transparent);
+  border-color: color-mix(in srgb, var(--h-tag-color) 28%, var(--h-border));
+}
+#page-hours .h-tag-pill .h-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--h-tag-color, var(--h-text-dim));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-tag-color) 20%, transparent);
+  flex-shrink: 0;
+}
+#page-hours .h-tag-pill .h-chev {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--h-tag-color) 55%, var(--h-text-faint));
+  font-size: 9px;
+}
+#page-hours .h-tag-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  background: var(--h-surface-2); border: 1px solid var(--h-border);
+  border-radius: var(--h-radius-sm); box-shadow: var(--h-shadow-lg);
+  z-index: 200; min-width: 150px; padding: 5px; display: none;
+}
+#page-hours .h-tag-menu.open { display: block; }
+#page-hours .h-tag-menu.up { top: auto; bottom: calc(100% + 6px); }
+#page-hours .h-tag-menu button {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; background: transparent; border: none;
+  color: var(--h-text); padding: 8px 10px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer;
+  border-radius: 5px; text-align: left;
+}
+#page-hours .h-tag-menu button:hover { background: var(--h-surface-3); }
+#page-hours .h-tag-menu button .h-dot { width: 9px; height: 9px; border-radius: 50%; }
+#page-hours .h-time {
+  background: var(--h-surface-2); border: 1px solid transparent;
+  color: var(--h-text); font-family: var(--h-font-mono);
+  font-size: 13.5px; font-weight: 500;
+  padding: 7px 10px; width: 96px;
+  border-radius: var(--h-radius-xs); letter-spacing: 0.02em;
+  color-scheme: dark; transition: all 0.15s ease;
+  text-align: center; justify-self: center;
+}
+#page-hours .h-time:hover { background: var(--h-surface-3); border-color: var(--h-border); }
+#page-hours .h-time:focus {
+  outline: none; border-color: var(--h-accent);
+  background: var(--h-surface-3);
+  box-shadow: 0 0 0 3px rgba(94,234,212,0.15);
+}
+#page-hours .h-time::-webkit-calendar-picker-indicator {
+  filter: invert(0.55); opacity: 0.55; cursor: pointer;
+}
+#page-hours .h-time:disabled { background: transparent; color: var(--h-text-faint); cursor: not-allowed; }
+#page-hours .h-num {
+  font-family: var(--h-font-mono); font-size: 13.5px; font-weight: 500;
+  font-feature-settings: "tnum"; text-align: center; letter-spacing: 0.01em;
+}
+#page-hours .h-num.work { color: var(--h-c-normal); }
+#page-hours .h-num.ot { color: var(--h-c-ot); }
+#page-hours .h-num.zero { color: var(--h-text-faint); font-weight: 400; }
+#page-hours .h-day.has-tag-holiday .h-num.ot,
+#page-hours .h-day.has-tag-restday .h-num.ot { color: var(--h-c-holiday); }
+#page-hours .h-in-cell, #page-hours .h-out-cell {
+  display: inline-flex; align-items: center; gap: 6px;
+  justify-self: center; position: relative;
+}
+#page-hours .h-next-day, #page-hours .h-carry-prev {
+  font-family: var(--h-font-mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.06em; color: var(--h-c-sun);
+  border: 1px solid currentColor; border-radius: 3px;
+  padding: 1px 4px; white-space: nowrap; opacity: 0.85;
+}
+#page-hours .h-carry-prev { color: var(--h-text-dim); }
+#page-hours .h-foot {
+  margin-top: 28px; font-size: 11.5px;
+  color: var(--h-text-faint); text-align: center; line-height: 1.7;
+}
+#page-hours .h-empty {
+  padding: 60px 20px; text-align: center;
+  color: var(--h-text-dim); font-size: 14px;
+  background: var(--h-surface); border: 1.5px dashed var(--h-border);
+  border-radius: var(--h-radius); margin-top: 20px;
+}
+#page-hours .h-empty strong { color: var(--h-accent); font-weight: 700; }
+@media (max-width: 880px) {
+  #page-hours .h-wrap { padding: 14px 16px 60px; }
+  #page-hours .h-stats { grid-template-columns: 1fr 1fr; }
+  #page-hours .h-stat:first-child { grid-row: auto; grid-column: 1 / -1; }
+  #page-hours .h-stat:first-child .h-value { font-size: 42px; }
+  #page-hours .h-stat .h-value { font-size: 26px; }
+  #page-hours .h-ledger-head { display: none; }
+  #page-hours .h-day {
+    grid-template-columns: 80px 1fr;
+    grid-template-areas: "date tag" "date times" "date nums";
+    padding: 14px 16px; gap: 10px 14px;
+  }
+  #page-hours .h-day .h-date { grid-area: date; align-self: flex-start; }
+  #page-hours .h-day .h-tag-cell { grid-area: tag; justify-content: flex-start; }
+  #page-hours .h-day .h-times {
+    grid-area: times; display: grid;
+    grid-template-columns: 1fr 24px 1fr; align-items: center;
+  }
+  #page-hours .h-day .h-times .h-in-cell { justify-self: end; }
+  #page-hours .h-day .h-times .h-sep {
+    justify-self: center; color: var(--h-text-faint);
+    font-family: var(--h-font-mono); font-size: 12px;
+  }
+  #page-hours .h-day .h-times .h-out-cell { justify-self: start; }
+  #page-hours .h-day .h-nums {
+    grid-area: nums; display: grid;
+    grid-template-columns: 1fr 24px 1fr; align-items: center;
+    font-family: var(--h-font-mono); font-size: 12px;
+  }
+  #page-hours .h-month-title { min-width: 180px; padding: 4px 12px; }
+  #page-hours .h-m-num { font-size: 36px; }
+  #page-hours .h-m-unit { font-size: 14px; transform: translateY(-3px); }
+}
+@media (min-width: 881px) {
+  #page-hours .h-day .h-times-wrap { display: contents; }
+  #page-hours .h-day .h-times { display: contents; }
+  #page-hours .h-day .h-nums { display: contents; }
+  #page-hours .h-day .h-times .h-sep { display: none; }
+}
+@media print {
+  body.hours-mode #page-hours { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -754,6 +1196,7 @@ body:not(.personal-mode) #btn-personal-export { display: none !important; }
 <section id="page-settings" class="page hidden"></section>
 <section id="page-data" class="page hidden"></section>
 <section id="page-personal" class="page hidden"></section>
+<section id="page-hours" class="page hidden"></section>
 <div id="modal-host"></div>
 <div id="test-results" class="hidden"></div>
 <script>
@@ -905,8 +1348,9 @@ const Store = (() => {
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
       // 用户「选」首项时 onchange 不触发 → 看起来部门下拉无反应。
       if (parsed.ui && Array.isArray(parsed.departments) && parsed.departments.length > 0) {
-        // '__personal__' 是合法的虚拟视图 id (個人排班),不强制改回真实部门
-        if (parsed.ui.currentDept !== '__personal__' && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
+        // '__personal__' / '__hours__' 是合法的虚拟视图 id,不强制改回真实部门
+        const _virtualIds = ['__personal__', '__hours__'];
+        if (!_virtualIds.includes(parsed.ui.currentDept) && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
           parsed.ui.currentDept = parsed.departments[0].id;
         }
       }
@@ -1209,7 +1653,7 @@ const Store = (() => {
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
-    if (parsed.ui.currentDept !== '__personal__' && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
+    if (!['__personal__', '__hours__'].includes(parsed.ui.currentDept) && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
       parsed.ui.currentDept = parsed.departments[0]?.id || null;
     }
     if (!parsed.ui.currentPeriod) parsed.ui.currentPeriod = Period.todayKey();
@@ -1279,9 +1723,10 @@ const App = (() => {
     for (const [r, id] of Object.entries(routes)) {
       document.getElementById(id).classList.toggle('hidden', r !== hash);
     }
-    // 非 schedule 路由要主动隐藏 page-personal(routes 映射里没有它,默认不会被切换)
+    // 非 schedule 路由要主动隐藏 page-personal / page-hours(routes 映射里没有它们,默认不会被切换)
     if (hash !== '#/schedule') {
       document.getElementById('page-personal').classList.add('hidden');
+      document.getElementById('page-hours').classList.add('hidden');
     }
     if (hash === '#/schedule') Pages.renderSchedule();
     else if (hash === '#/settings') Pages.renderSettings();
@@ -1337,8 +1782,10 @@ const App = (() => {
   function updateEditUI() {
     const editing = !!Store.get().ui.editMode;
     const isPersonal = Store.get().ui.currentDept === '__personal__';
-    document.body.classList.toggle('editing', editing && !isPersonal);
+    const isHours = Store.get().ui.currentDept === '__hours__';
+    document.body.classList.toggle('editing', editing && !isPersonal && !isHours);
     document.body.classList.toggle('personal-mode', isPersonal);
+    document.body.classList.toggle('hours-mode', isHours);
     const btn = document.getElementById('btn-edit-toggle');
     btn.textContent = editing ? '✏ 编辑中' : '🔒 锁定';
     btn.classList.toggle('primary', editing);
@@ -1451,6 +1898,7 @@ const Pages = (() => {
   // 出勤A = 「夕盛」部门「白 海竜」、出勤B = 「払出」部门「ビョウ セイイ」。
   // 「出」= cellStatus === 'work'(或文字标记为班次「早/晚」);其他状态(〇/有/欠/✲)= 「休」。
   const PERSONAL_VIEW = '__personal__';
+  const HOURS_VIEW = '__hours__';
   const PERSONAL_A = { deptName: '夕盛', personName: '白 海竜' };
   const PERSONAL_B = { deptName: '払出', personName: 'ビョウ セイイ' };
   // 算作出勤的特殊文字(班次标记)— 与 computeLineTotal 保持一致
@@ -1670,15 +2118,28 @@ const Pages = (() => {
   function renderSchedule() {
     // 「個人」虚拟视图:绕过整张排班表,渲染由两个固定人员组成的个人排班页
     const isPersonal = Store.get().ui.currentDept === PERSONAL_VIEW;
+    const isHours = Store.get().ui.currentDept === HOURS_VIEW;
+    if (isHours) {
+      document.getElementById('page-schedule').classList.add('hidden');
+      document.getElementById('page-personal').classList.add('hidden');
+      document.getElementById('page-hours').classList.remove('hidden');
+      renderDeptTabs();
+      // hours 视图不需要主表的期间导航 — 它自己有月份选择器
+      document.getElementById('period-nav').replaceChildren();
+      renderHours();
+      return;
+    }
     if (isPersonal) {
       document.getElementById('page-schedule').classList.add('hidden');
       document.getElementById('page-personal').classList.remove('hidden');
+      document.getElementById('page-hours').classList.add('hidden');
       renderDeptTabs();
       renderPeriodNav();
       renderPersonal();
       return;
     }
     document.getElementById('page-personal').classList.add('hidden');
+    document.getElementById('page-hours').classList.add('hidden');
     document.getElementById('page-schedule').classList.remove('hidden');
     const host = document.getElementById('page-schedule');
     // 保存滚动位置:点 day-cell 等任何 store 操作都触发整页重渲(DOM rebuild),
@@ -1805,8 +2266,8 @@ const Pages = (() => {
     const depts = Store.get().departments;
     let cur = Store.get().ui.currentDept;
     // 运行时保险:cur 指向已删除部门时立即同步,避免 select 显示与 state 脱节。
-    // '__personal__' 是合法的虚拟视图 id,不修正。
-    if (depts.length > 0 && cur !== PERSONAL_VIEW && !depts.find(d => d.id === cur)) {
+    // '__personal__' / '__hours__' 是合法的虚拟视图 id,不修正。
+    if (depts.length > 0 && cur !== PERSONAL_VIEW && cur !== HOURS_VIEW && !depts.find(d => d.id === cur)) {
       cur = depts[0].id;
       Store.setUi({ currentDept: cur });
       return; // setUi 会触发 listener 重新渲染整页
@@ -1814,8 +2275,8 @@ const Pages = (() => {
     const sel = Render.el('select.dept-select', {
       onchange: (e) => {
         const val = e.target.value;
-        // 切到「個人」视图时,如果当前在 设置/数据 页,自动跳回排班(個人排班)
-        if (val === PERSONAL_VIEW && location.hash && location.hash !== '#/schedule') {
+        // 切到「個人」「月度工时」虚拟视图时,如果当前在 设置/数据 页,自动跳回排班
+        if ((val === PERSONAL_VIEW || val === HOURS_VIEW) && location.hash && location.hash !== '#/schedule') {
           history.replaceState(null, '', location.pathname + location.search);
         }
         Store.setUi({ currentDept: val });
@@ -1826,6 +2287,8 @@ const Pages = (() => {
     }
     // 「個人」视图选项 — 切到此处会显示由两个固定人员组成的排班表
     sel.appendChild(Render.el('option', { value: PERSONAL_VIEW }, '個人'));
+    // 「月度工时」视图选项 — 切到此处会显示月度工时系统
+    sel.appendChild(Render.el('option', { value: HOURS_VIEW }, '月度工时'));
     sel.value = cur || '';
     host.appendChild(sel);
   }
@@ -3008,6 +3471,523 @@ const Pages = (() => {
     host.appendChild(wrap);
   }
 
+  // ============================================================
+  // 月度工时系统(渲染 + 数据同步)
+  // ============================================================
+  const HOURS_LS_KEY = 'hours-ledger-v2';
+  const HOURS_TAGS = {
+    workday:  { label: '出勤',     color: 'var(--h-c-normal)' },
+    restday:  { label: '休息',     color: 'var(--h-c-weekend)' },
+    holiday:  { label: '祝日出勤', color: 'var(--h-c-holiday)' },
+    leave:    { label: '有休',     color: 'var(--h-c-leave)' },
+    absent:   { label: '缺勤',     color: 'var(--h-c-absent)' },
+  };
+  const HOURS_WD_JP = ['日','月','火','水','木','金','土'];
+  const HOURS_MONTH_CN = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+  let hoursState = null;
+  let hoursPickerYear = null;
+
+  function loadHoursState() {
+    if (hoursState) return hoursState;
+    let parsed = null;
+    try { parsed = JSON.parse(localStorage.getItem(HOURS_LS_KEY)); } catch (_) {}
+    const today = new Date();
+    const cursor = `${today.getFullYear()}-${Util.pad2(today.getMonth()+1)}`;
+    hoursState = Object.assign({
+      cursor,
+      stdHours: 8,
+      lunchHours: 1,
+      cycleStart: 1,
+      selectedPersonName: '',
+      dataByPerson: {}
+    }, parsed || {});
+    if (!hoursState.dataByPerson) hoursState.dataByPerson = {};
+    return hoursState;
+  }
+  function saveHoursState() {
+    try { localStorage.setItem(HOURS_LS_KEY, JSON.stringify(hoursState)); } catch (_) {}
+  }
+  // 收集主表里所有人员(跨部门)— 用于 datalist 自动补全 + 出勤数据反查
+  function collectAllPeople() {
+    const out = [];
+    const seen = new Set();
+    for (const d of Store.get().departments) {
+      const ppl = Store.get().people[d.id] || [];
+      for (const p of ppl) {
+        if (!p.name) continue;
+        const k = p.name.trim();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ deptId: d.id, deptName: d.name, personId: p.id, name: p.name });
+      }
+    }
+    return out;
+  }
+  function findPersonByName(name) {
+    if (!name) return null;
+    const n = name.trim();
+    if (!n) return null;
+    return collectAllPeople().find(p => p.name.trim() === n) || null;
+  }
+  // 映射主表 cellStatus → hours 标签
+  // work + 节假日 → holiday;work + 平日 → workday
+  // contractRest → restday;paidLeave → leave;absent → absent
+  function deriveHoursTag(person, ymd) {
+    if (!person) return null;
+    const st = Store.cellStatus(person.deptId, person.personId, ymd);
+    if (st === 'retired') return null;
+    if (st === 'absent') return 'absent';
+    if (st === 'paidLeave') return 'leave';
+    if (st === 'contractRest') return 'restday';
+    // work
+    return Holidays.isHoliday(ymd) ? 'holiday' : 'workday';
+  }
+
+  function hoursParseYM(k) { const [y,m]=k.split('-').map(Number); return { y, m: m-1 }; }
+  function hoursYmdKey(y,m,d) { return `${y}-${Util.pad2(m+1)}-${Util.pad2(d)}`; }
+  function hoursDaysInMonth(y,m) { return new Date(y, m+1, 0).getDate(); }
+  function hoursTimeToMin(t) { if (!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function hoursMinToTime(min) { const h=Math.floor(min/60), m=min%60; return `${Util.pad2(h)}:${Util.pad2(m)}`; }
+  function hoursFmt(h) {
+    if (h == null || isNaN(h)) return '—';
+    if (h === 0) return '0';
+    return h.toFixed(1).replace(/\.0$/, '');
+  }
+  function hoursFmtStat(h) { return hoursFmt(h).replace(/\.(\d+)/, '<span class="h-dec">.$1</span>'); }
+
+  function hoursPeriodRange(cursor, cycleStart) {
+    const { y, m } = hoursParseYM(cursor);
+    if (cycleStart <= 1) {
+      return { start: new Date(y, m, 1), end: new Date(y, m, hoursDaysInMonth(y, m)) };
+    }
+    const prevY = m === 0 ? y - 1 : y;
+    const prevM = (m + 11) % 12;
+    const startDay = Math.min(cycleStart, hoursDaysInMonth(prevY, prevM));
+    const start = new Date(prevY, prevM, startDay);
+    const endDay = Math.min(cycleStart - 1, hoursDaysInMonth(y, m));
+    const end = new Date(y, m, endDay);
+    return { start, end };
+  }
+
+  function getHoursPersonData() {
+    const key = (hoursState.selectedPersonName || '').trim() || '__none__';
+    if (!hoursState.dataByPerson[key]) hoursState.dataByPerson[key] = { days: {} };
+    return hoursState.dataByPerson[key];
+  }
+
+  function calcHoursDay(rec, derivedTag, prevCarryOut) {
+    const tag = rec?.tag || derivedTag || 'workday';
+    const inMin = hoursTimeToMin(rec?.in);
+    const outMin = hoursTimeToMin(rec?.out);
+    let work=0, normal=0, ot=0, holidayHrs=0, attended=false, absent=false, paidLeave=false;
+    if (tag === 'absent') { absent = true; }
+    else if (tag === 'restday') {}
+    else if (tag === 'leave') { paidLeave = true; }
+    else if (inMin != null && outMin != null && outMin !== inMin) {
+      let effIn = inMin;
+      const isOvernight = outMin < inMin;
+      if (prevCarryOut != null && !isOvernight && inMin < prevCarryOut) effIn = prevCarryOut;
+      if (!isOvernight && outMin <= effIn) {} else {
+        let span = outMin > effIn ? (outMin - effIn) / 60 : (outMin + 24*60 - effIn) / 60;
+        if (span > 6) span -= hoursState.lunchHours;
+        work = Math.max(0, span);
+        attended = work > 0;
+        if (tag === 'workday') {
+          normal = Math.min(work, hoursState.stdHours);
+          ot = Math.max(0, work - hoursState.stdHours);
+        } else if (tag === 'holiday') {
+          normal = Math.min(work, hoursState.stdHours);
+          ot = Math.max(0, work - hoursState.stdHours);
+          holidayHrs = work;
+        }
+      }
+    }
+    return { tag, work, normal, ot, holidayHrs, attended, absent, paidLeave };
+  }
+
+  // ─── UI 构建 ───
+  function buildHoursPage() {
+    const host = document.getElementById('page-hours');
+    Render.clear(host);
+    const wrap = Render.el('div.h-wrap');
+    wrap.innerHTML = `
+      <div class="h-top">
+        <div class="h-brand">
+          <div class="h-brand-mark">時</div>
+          <div>
+            <h1>月度工时 <em>统计</em></h1>
+            <div class="h-subt">Hours · Monthly</div>
+          </div>
+        </div>
+        <div class="h-actions">
+          <button class="h-btn" id="h-todayBtn">今天</button>
+          <button class="h-btn" id="h-importBtn">导入</button>
+          <input type="file" id="h-importFile" accept="application/json,.json" hidden />
+          <button class="h-btn" id="h-exportBtn">导出</button>
+          <button class="h-btn" id="h-clearBtn">清空</button>
+        </div>
+      </div>
+      <div class="h-month-row">
+        <div class="h-month-pick">
+          <button class="h-nav" id="h-prevBtn">‹</button>
+          <div class="h-month-title" id="h-monthTitle">
+            <span class="h-month-label" id="h-monthLabel"></span>
+            <span class="h-yr" id="h-yearLabel"></span>
+            <div class="h-picker" id="h-picker">
+              <div class="h-picker-year">
+                <button id="h-mpPrevYear">‹</button>
+                <div class="y" id="h-mpYearLabel"></div>
+                <button id="h-mpNextYear">›</button>
+              </div>
+              <div class="h-picker-grid" id="h-mpGrid"></div>
+            </div>
+          </div>
+          <button class="h-nav" id="h-nextBtn">›</button>
+        </div>
+        <div class="h-config">
+          <label>标准工时
+            <input type="number" id="h-stdHours" min="1" max="24" step="0.5" />
+            <span>h</span>
+          </label>
+          <label>午休扣除
+            <input type="number" id="h-lunchHours" min="0" max="4" step="0.5" />
+            <span>h</span>
+          </label>
+          <label title="周期起始日">起始日
+            <input type="number" id="h-cycleStart" min="1" max="28" step="1" />
+          </label>
+          <label title="人员名(可手动输入或从下拉选择)">人员名
+            <input type="text" list="h-people-list" id="h-personName" placeholder="选择或输入" />
+            <datalist id="h-people-list"></datalist>
+          </label>
+        </div>
+      </div>
+      <section class="h-stats" id="h-stats"></section>
+      <section class="h-ledger">
+        <div class="h-ledger-head">
+          <div>日期</div>
+          <div>标签</div>
+          <div>上班</div>
+          <div>下班</div>
+          <div>实际工时</div>
+          <div>加班</div>
+        </div>
+        <div id="h-days"></div>
+      </section>
+      <p class="h-foot">数据保存于本地浏览器 · 人员名匹配出勤表时,标签自动按出勤数据生成<br/>未匹配时按工作日/节假日默认</p>
+    `;
+    host.appendChild(wrap);
+    bindHoursEvents();
+    renderHoursAll();
+  }
+
+  function renderHoursAll() {
+    const s = loadHoursState();
+    document.getElementById('h-stdHours').value = s.stdHours;
+    document.getElementById('h-lunchHours').value = s.lunchHours;
+    document.getElementById('h-cycleStart').value = s.cycleStart;
+    document.getElementById('h-personName').value = s.selectedPersonName || '';
+
+    // 填充 datalist
+    const dl = document.getElementById('h-people-list');
+    dl.innerHTML = '';
+    for (const p of collectAllPeople()) {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      opt.label = p.deptName;
+      dl.appendChild(opt);
+    }
+
+    const { y, m } = hoursParseYM(s.cursor);
+    const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
+    document.getElementById('h-monthLabel').innerHTML =
+      `<span class="h-m-num">${m+1}</span><span class="h-m-unit">月</span>`;
+    if (s.cycleStart > 1) {
+      const fmt = dt => `${dt.getMonth()+1}/${dt.getDate()}`;
+      document.getElementById('h-yearLabel').textContent = `${fmt(start)} – ${fmt(end)}`;
+    } else {
+      document.getElementById('h-yearLabel').textContent = `${y}`;
+    }
+    if (document.getElementById('h-picker').classList.contains('open')) {
+      hoursPickerYear = hoursParseYM(s.cursor).y;
+      renderHoursPicker();
+    }
+    renderHoursDays();
+  }
+
+  function renderHoursPicker() {
+    document.getElementById('h-mpYearLabel').textContent = hoursPickerYear;
+    const { y: curY, m: curM } = hoursParseYM(hoursState.cursor);
+    const today = new Date();
+    const grid = document.getElementById('h-mpGrid');
+    grid.innerHTML = HOURS_MONTH_CN.map((_, i) => {
+      const isCurrent = hoursPickerYear === curY && i === curM;
+      const isToday = hoursPickerYear === today.getFullYear() && i === today.getMonth();
+      const cls = [isCurrent && 'current', isToday && !isCurrent && 'today'].filter(Boolean).join(' ');
+      return `<button data-month="${i}" class="${cls}"><span class="h-m-num" style="font-size:13.5px">${i+1}</span><span class="h-m-unit" style="font-size:10.5px;transform:none">月</span></button>`;
+    }).join('');
+  }
+
+  function renderHoursDays() {
+    const s = loadHoursState();
+    const personData = getHoursPersonData();
+    const person = findPersonByName(s.selectedPersonName);
+    const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
+
+    const today = new Date();
+    const todayKey = hoursYmdKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+    let totalNormal=0, totalOT=0, totalHoliday=0, attendedCount=0, leaveCount=0, absentCount=0;
+    const frag = document.createDocumentFragment();
+    const iter = new Date(start);
+    while (iter <= end) {
+      const yy = iter.getFullYear(), mm = iter.getMonth(), d = iter.getDate();
+      const key = hoursYmdKey(yy, mm, d);
+      const wd = iter.getDay();
+      const rec = personData.days[key];
+      const derived = deriveHoursTag(person, key);
+
+      // 前日跨夜
+      const prevDate = new Date(yy, mm, d-1);
+      const prevKey = hoursYmdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+      const prevRec = personData.days[prevKey];
+      let prevCarryOut = null;
+      if (prevRec?.in && prevRec?.out) {
+        const pIn = hoursTimeToMin(prevRec.in), pOut = hoursTimeToMin(prevRec.out);
+        if (pOut < pIn) prevCarryOut = pOut;
+      }
+      const calc = calcHoursDay(rec, derived, prevCarryOut);
+      totalNormal += calc.normal;
+      totalOT += calc.ot;
+      totalHoliday += calc.holidayHrs;
+      if (calc.attended) attendedCount++;
+      if (calc.paidLeave) leaveCount++;
+      if (calc.absent) absentCount++;
+
+      const jpHoliday = Holidays.isHoliday(key);
+      const tag = HOURS_TAGS[calc.tag];
+      const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
+      const overnight = showTimes && rec?.in && rec?.out && hoursTimeToMin(rec.out) < hoursTimeToMin(rec.in);
+
+      const row = document.createElement('div');
+      row.className = `h-day has-tag-${calc.tag}`;
+      if (wd === 0) row.classList.add('dow-sun');
+      else if (wd === 6) row.classList.add('dow-sat');
+      if (jpHoliday) row.classList.add('is-jp-holiday');
+      if (key === todayKey) row.classList.add('today');
+
+      row.innerHTML = `
+        <div class="h-date">
+          <div class="h-d">${Util.pad2(d)}</div>
+          <div class="h-wd">${HOURS_WD_JP[wd]}</div>
+          ${jpHoliday ? '<div class="h-jpname">祝</div>' : ''}
+        </div>
+        <div class="h-tag-cell">
+          <span class="h-tag-pill h-tag-pill-static" style="--h-tag-color:${tag.color}">
+            <span class="h-dot"></span>
+            <span>${tag.label}</span>
+          </span>
+        </div>
+        <div class="h-times-wrap">
+          <div class="h-times">
+            <span class="h-in-cell">
+              ${prevCarryOut != null && showTimes ? `<span class="h-carry-prev">← ${hoursMinToTime(prevCarryOut)}</span>` : ''}
+              <input type="time" class="h-time" data-field="in" data-key="${key}" value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
+            </span>
+            <span class="h-sep">→</span>
+            <span class="h-out-cell">
+              <input type="time" class="h-time" data-field="out" data-key="${key}" value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
+              ${overnight ? '<span class="h-next-day">翌日</span>' : ''}
+            </span>
+          </div>
+        </div>
+        <div class="h-nums">
+          <div class="h-num work ${calc.normal+calc.ot ? '' : 'zero'}">${hoursFmt(calc.work || calc.normal)}</div>
+          <div class="h-num ot ${calc.ot ? '' : 'zero'}">${calc.ot ? '+'+hoursFmt(calc.ot) : '—'}</div>
+        </div>
+      `;
+      frag.appendChild(row);
+      iter.setDate(iter.getDate() + 1);
+    }
+    const daysHost = document.getElementById('h-days');
+    daysHost.innerHTML = '';
+    daysHost.appendChild(frag);
+
+    renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount });
+  }
+
+  function renderHoursStats(s) {
+    const cards = [
+      { label: '上班总计', value: s.totalNormal + s.totalOT, unit: 'h', color: 'var(--h-accent)', sub: '正常 + 加班 全部到岗时长' },
+      { label: '正常工时', value: s.totalNormal, unit: 'h', color: 'var(--h-c-normal)', sub: '工作日 + 节假日上班' },
+      { label: '加班总计', value: s.totalOT, unit: 'h', color: 'var(--h-c-ot)', sub: '工作日 + 节假日上班溢出' },
+      { label: '节假日工时', value: s.totalHoliday, unit: 'h', color: 'var(--h-c-holiday)', sub: '节假日上班时长' },
+      { label: '出勤 / 有休 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.leaveCount} / ${s.absentCount}`, color: 'var(--h-c-normal)', sub: '天数' },
+    ];
+    document.getElementById('h-stats').innerHTML = cards.map(c => `
+      <div class="h-stat" style="--h-stat-color:${c.color}">
+        <div class="h-label">${c.label}</div>
+        <div class="h-value">${typeof c.value === 'number' ? hoursFmtStat(c.value) : c.value}<span class="h-unit">${c.unit}</span></div>
+        <div class="h-sub">${c.sub}</div>
+      </div>
+    `).join('');
+  }
+
+  function closeAllHoursMenus() {
+    document.querySelectorAll('#page-hours .h-tag-menu.open').forEach(m => m.classList.remove('open'));
+  }
+
+  let hoursDocListenersBound = false;
+  function bindHoursEvents() {
+    const daysHost = document.getElementById('h-days');
+
+    daysHost.addEventListener('change', e => {
+      const inp = e.target.closest('.h-time');
+      if (!inp) return;
+      const key = inp.dataset.key, field = inp.dataset.field;
+      const data = getHoursPersonData();
+      const rec = data.days[key] || {};
+      rec[field] = inp.value;
+      data.days[key] = rec;
+      saveHoursState();
+      renderHoursDays();
+    });
+
+    if (!hoursDocListenersBound) {
+      document.addEventListener('mousedown', e => {
+        const mt = document.getElementById('h-monthTitle');
+        if (mt && !mt.contains(e.target)) {
+          document.getElementById('h-picker')?.classList.remove('open');
+        }
+      });
+      hoursDocListenersBound = true;
+    }
+
+    document.getElementById('h-prevBtn').onclick = () => {
+      const { y, m } = hoursParseYM(hoursState.cursor);
+      const nd = new Date(y, m - 1, 1);
+      hoursState.cursor = `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`;
+      saveHoursState(); renderHoursAll();
+    };
+    document.getElementById('h-nextBtn').onclick = () => {
+      const { y, m } = hoursParseYM(hoursState.cursor);
+      const nd = new Date(y, m + 1, 1);
+      hoursState.cursor = `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`;
+      saveHoursState(); renderHoursAll();
+    };
+    document.getElementById('h-todayBtn').onclick = () => {
+      const t = new Date();
+      hoursState.cursor = `${t.getFullYear()}-${Util.pad2(t.getMonth()+1)}`;
+      saveHoursState(); renderHoursAll();
+    };
+
+    document.getElementById('h-monthTitle').addEventListener('mousedown', e => {
+      if (e.target.closest('.h-picker')) return;
+      e.preventDefault();
+      const picker = document.getElementById('h-picker');
+      if (picker.classList.contains('open')) {
+        picker.classList.remove('open');
+      } else {
+        hoursPickerYear = hoursParseYM(hoursState.cursor).y;
+        renderHoursPicker();
+        picker.classList.add('open');
+      }
+    });
+    document.getElementById('h-mpPrevYear').addEventListener('click', e => {
+      e.stopPropagation(); hoursPickerYear--; renderHoursPicker();
+    });
+    document.getElementById('h-mpNextYear').addEventListener('click', e => {
+      e.stopPropagation(); hoursPickerYear++; renderHoursPicker();
+    });
+    document.getElementById('h-mpGrid').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-month]');
+      if (!btn) return;
+      e.stopPropagation();
+      const m = parseInt(btn.dataset.month, 10);
+      hoursState.cursor = `${hoursPickerYear}-${Util.pad2(m+1)}`;
+      document.getElementById('h-picker').classList.remove('open');
+      saveHoursState(); renderHoursAll();
+    });
+
+    document.getElementById('h-stdHours').addEventListener('change', e => {
+      hoursState.stdHours = Math.max(1, parseFloat(e.target.value) || 8);
+      saveHoursState(); renderHoursDays();
+    });
+    document.getElementById('h-lunchHours').addEventListener('change', e => {
+      hoursState.lunchHours = Math.max(0, parseFloat(e.target.value) || 0);
+      saveHoursState(); renderHoursDays();
+    });
+    document.getElementById('h-cycleStart').addEventListener('change', e => {
+      const v = parseInt(e.target.value, 10);
+      hoursState.cycleStart = Math.max(1, Math.min(28, Number.isFinite(v) ? v : 1));
+      saveHoursState(); renderHoursAll();
+    });
+    const personInput = document.getElementById('h-personName');
+    const onPersonChange = () => {
+      hoursState.selectedPersonName = personInput.value || '';
+      saveHoursState(); renderHoursDays();
+    };
+    personInput.addEventListener('change', onPersonChange);
+    personInput.addEventListener('input', onPersonChange);
+
+    document.getElementById('h-clearBtn').onclick = () => {
+      if (!confirm('清空当前周期所选人员的录入数据?')) return;
+      const data = getHoursPersonData();
+      const { start, end } = hoursPeriodRange(hoursState.cursor, hoursState.cycleStart);
+      Object.keys(data.days).forEach(k => {
+        const [yy,mm,dd] = k.split('-').map(Number);
+        const dt = new Date(yy, mm-1, dd);
+        if (dt >= start && dt <= end) delete data.days[k];
+      });
+      saveHoursState(); renderHoursDays();
+    };
+    document.getElementById('h-exportBtn').onclick = () => {
+      const blob = new Blob([JSON.stringify(hoursState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `月度工时${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    };
+    const importFile = document.getElementById('h-importFile');
+    document.getElementById('h-importBtn').onclick = () => importFile.click();
+    importFile.addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data || typeof data !== 'object') throw new Error('文件格式不正确');
+          if (!confirm('导入将覆盖月度工时所有数据,确定继续?')) return;
+          if (data.dataByPerson) {
+            // 新格式
+            Object.assign(hoursState, data);
+          } else if (data.days) {
+            // 旧版 hours-ledger-v1 格式 — 归入 __none__ 桶
+            hoursState.dataByPerson = hoursState.dataByPerson || {};
+            hoursState.dataByPerson['__none__'] = { days: data.days };
+            if (data.cursor) hoursState.cursor = data.cursor;
+            if (Number(data.stdHours) > 0) hoursState.stdHours = Number(data.stdHours);
+            if (Number.isFinite(Number(data.lunchHours))) hoursState.lunchHours = Number(data.lunchHours);
+            if (Number(data.cycleStart) >= 1) hoursState.cycleStart = Math.floor(Number(data.cycleStart));
+          }
+          saveHoursState(); renderHoursAll();
+          alert('导入成功');
+        } catch (err) { alert('导入失败:' + err.message); }
+        finally { e.target.value = ''; }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function renderHours() {
+    loadHoursState();
+    buildHoursPage();
+  }
+
   async function exportPersonalPNG(btn) {
     if (typeof html2canvas === 'undefined') {
       showToast('html2canvas が読み込めません', 'error');
@@ -3041,7 +4021,7 @@ const Pages = (() => {
     }
   }
 
-  return { renderSchedule, renderSettings, renderData, renderPersonal, exportPersonalPNG };
+  return { renderSchedule, renderSettings, renderData, renderPersonal, renderHours, exportPersonalPNG };
 })();
 
 const Tests = (() => {
