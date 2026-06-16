@@ -928,16 +928,48 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   color-scheme: dark;
 }
 #page-hours .h-config input[type="number"] { width: 30px; }
-#page-hours .h-config input[list] { width: 120px; text-align: left; }
-/* 仅手机端:iOS Safari 给 input[list] 渲染的原生下拉箭头默认是 iOS 蓝,与暗色主题冲突。
-   把指示器去色 + 压低不透明度 → 变成暗灰小箭头。PC 端浏览器自身样式不动。 */
-@media (max-width: 640px) {
-  #page-hours .h-config input[list]::-webkit-calendar-picker-indicator,
-  #page-hours .h-config input[list]::-webkit-list-button {
-    filter: brightness(0) invert(0.55);
-    opacity: 0.55;
-    cursor: pointer;
-  }
+#page-hours .h-config input.h-person-input { width: 120px; text-align: left; }
+/* 人员名自定义下拉(替代 datalist,避免 iOS Safari 把建议气泡渲染到离输入框很远的地方) */
+#page-hours .h-person-wrap { position: relative; display: inline-flex; align-items: center; }
+#page-hours .h-person-chev {
+  margin-left: 4px; color: var(--h-text-faint); font-size: 9px;
+  pointer-events: none; user-select: none;
+}
+#page-hours .h-person-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 180px;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--h-surface-2);
+  border: 1px solid var(--h-border);
+  border-radius: var(--h-radius-sm);
+  box-shadow: var(--h-shadow-lg);
+  z-index: 250;
+  padding: 4px;
+  display: none;
+}
+#page-hours .h-person-pop.open { display: block; }
+#page-hours .h-person-pop .h-person-item {
+  display: flex; align-items: baseline; gap: 6px;
+  width: 100%; padding: 8px 10px;
+  background: transparent; border: none;
+  color: var(--h-text);
+  font-size: 13px; font-family: var(--h-font-body);
+  cursor: pointer; border-radius: 5px;
+  text-align: left;
+}
+#page-hours .h-person-pop .h-person-item:hover,
+#page-hours .h-person-pop .h-person-item.h-active {
+  background: var(--h-surface-3);
+}
+#page-hours .h-person-pop .h-person-dept {
+  color: var(--h-text-faint); font-size: 11px;
+}
+#page-hours .h-person-pop .h-empty {
+  padding: 10px 12px; color: var(--h-text-faint); font-size: 12px;
 }
 #page-hours .h-config input:focus { color: var(--h-accent); }
 #page-hours .h-stats {
@@ -1200,7 +1232,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-config label{flex:1 1 0;min-width:0;padding:6px 6px;font-size:10px;gap:3px;justify-content:center}
   #page-hours .h-config label > span{font-size:9px}
   #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
-  #page-hours .h-config input[list]{width:auto;flex:1 1 0;min-width:0;font-size:11px;text-align:left}
+  #page-hours .h-config input.h-person-input{width:auto;flex:1 1 0;min-width:0;font-size:11px;text-align:left}
+  #page-hours .h-person-wrap{flex:1 1 0;min-width:0;display:inline-flex;align-items:center}
   #page-hours .h-wrap{padding:10px 10px 60px}
 }
 @media print {
@@ -3768,8 +3801,12 @@ const Pages = (() => {
             <input type="number" id="h-cycleStart" min="1" max="28" step="1" />
           </label>
           <label title="人员名(可手动输入或从下拉选择)">人员名
-            <input type="text" list="h-people-list" id="h-personName" />
-            <datalist id="h-people-list"></datalist>
+            <span class="h-person-wrap">
+              <input type="text" class="h-person-input" id="h-personName"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <span class="h-person-chev">▾</span>
+              <div class="h-person-pop" id="h-personPop"></div>
+            </span>
           </label>
         </div>
       </div>
@@ -3799,15 +3836,8 @@ const Pages = (() => {
     document.getElementById('h-cycleStart').value = s.cycleStart;
     document.getElementById('h-personName').value = s.selectedPersonName || '';
 
-    // 填充 datalist
-    const dl = document.getElementById('h-people-list');
-    dl.innerHTML = '';
-    for (const p of collectAllPeople()) {
-      const opt = document.createElement('option');
-      opt.value = p.name;
-      opt.label = p.deptName;
-      dl.appendChild(opt);
-    }
+    // 自定义弹层:首次渲染时填充全部人员;之后由 input 事件过滤
+    renderPersonPop('');
 
     const { y, m } = hoursParseYM(s.cursor);
     const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
@@ -3994,6 +4024,25 @@ const Pages = (() => {
     document.querySelectorAll('#page-hours .h-tag-menu.open').forEach(m => m.classList.remove('open'));
   }
 
+  // 自定义人员名弹层渲染:filter 为当前输入的过滤词(子串匹配,大小写不敏感)
+  function renderPersonPop(filter) {
+    const pop = document.getElementById('h-personPop');
+    if (!pop) return;
+    const all = collectAllPeople();
+    const f = (filter || '').trim().toLowerCase();
+    const matched = f ? all.filter(p => p.name.toLowerCase().includes(f)) : all;
+    if (matched.length === 0) {
+      pop.innerHTML = `<div class="h-empty">无匹配人员 — 当前输入将作为手动名称使用</div>`;
+      return;
+    }
+    pop.innerHTML = matched.map(p => `
+      <button type="button" class="h-person-item" data-name="${p.name.replace(/"/g, '&quot;')}">
+        <span>${p.name}</span>
+        <span class="h-person-dept">${p.deptName}</span>
+      </button>
+    `).join('');
+  }
+
   let hoursDocListenersBound = false;
   function bindHoursEvents() {
     const daysHost = document.getElementById('h-days');
@@ -4015,6 +4064,12 @@ const Pages = (() => {
         const mt = document.getElementById('h-monthTitle');
         if (mt && !mt.contains(e.target)) {
           document.getElementById('h-picker')?.classList.remove('open');
+        }
+      });
+      // 点击 人员名 wrap 外部 → 关闭弹层
+      document.addEventListener('mousedown', e => {
+        if (!e.target.closest('.h-person-wrap')) {
+          document.getElementById('h-personPop')?.classList.remove('open');
         }
       });
       hoursDocListenersBound = true;
@@ -4080,12 +4135,35 @@ const Pages = (() => {
       saveHoursState(); renderHoursAll();
     });
     const personInput = document.getElementById('h-personName');
+    const personPop = document.getElementById('h-personPop');
     const onPersonChange = () => {
       hoursState.selectedPersonName = personInput.value || '';
       saveHoursState(); renderHoursDays();
+      renderPersonPop(personInput.value || '');
     };
     personInput.addEventListener('change', onPersonChange);
     personInput.addEventListener('input', onPersonChange);
+    // 聚焦 / 点击输入框 → 打开弹层(每次重渲列表用最新人员)
+    personInput.addEventListener('focus', () => {
+      renderPersonPop(personInput.value || '');
+      personPop.classList.add('open');
+    });
+    personInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderPersonPop(personInput.value || '');
+      personPop.classList.add('open');
+    });
+    // 点击弹层条目 → 写入输入框 + 关闭
+    personPop.addEventListener('mousedown', (e) => {
+      const btn = e.target.closest('.h-person-item');
+      if (!btn) return;
+      e.preventDefault(); // 阻止 input 失焦后弹层立刻被关
+      personInput.value = btn.dataset.name || '';
+      hoursState.selectedPersonName = personInput.value;
+      saveHoursState();
+      personPop.classList.remove('open');
+      renderHoursDays();
+    });
 
     document.getElementById('h-clearBtn').onclick = () => {
       if (!confirm('清空当前周期所选人员的录入数据?')) return;
