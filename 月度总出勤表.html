@@ -1375,8 +1375,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 }
 /* 手机端 hours 视图 — 隐藏「已暂存」「设置」,配置 4 项强制一排 */
 @media (max-width: 640px) {
-  body.hours-mode #dirty-indicator,
-  body.hours-mode .nav button[data-route="#/settings"]{display:none!important}
+  body.hours-mode #dirty-indicator{display:none!important}
   #page-hours .h-config{flex-wrap:nowrap;width:100%;gap:3px}
   /* 3 个数字 label 紧凑:padding 缩到 4px,nowrap 防止 "标准工时" 拆字 */
   #page-hours .h-config label{
@@ -1405,6 +1404,12 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-person-pop .h-person-dept{font-size:9px;padding:1.5px 5px}
   #page-hours .h-person-pop .h-empty{padding:8px 9px;font-size:10px}
   #page-hours .h-wrap{padding:10px 10px 60px}
+  /* hours 视图手机端:设置 按钮挪到第一行最右(与「月度总出勤表 + 部门下拉」同行) */
+  body.hours-mode .nav button[data-route="#/settings"]{
+    display:inline-flex!important;
+    order:1;
+    margin-left:auto;
+  }
 }
 @media print {
   body.hours-mode #page-hours { display: none !important; }
