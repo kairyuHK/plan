@@ -950,7 +950,14 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   z-index: 250;
   padding: 4px;
   display: none;
+  /* 暗色滚动条 — 与 .schedule-wrap 一致 */
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a40 transparent;
 }
+#page-hours .h-person-pop::-webkit-scrollbar { width: 8px; }
+#page-hours .h-person-pop::-webkit-scrollbar-track { background: transparent; }
+#page-hours .h-person-pop::-webkit-scrollbar-thumb { background: #3a3a40; border-radius: 4px; }
+#page-hours .h-person-pop::-webkit-scrollbar-thumb:hover { background: #4a4a52; }
 #page-hours .h-person-pop.open { display: block; }
 #page-hours .h-person-pop .h-person-item {
   display: flex; align-items: baseline; gap: 6px;
@@ -1234,6 +1241,11 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
   #page-hours .h-config input.h-person-input{width:auto;flex:1 1 0;min-width:0;font-size:11px;text-align:left}
   #page-hours .h-person-wrap{flex:1 1 0;min-width:0;display:inline-flex;align-items:center}
+  /* 手机端弹层:更紧凑 + 锚定输入框右边沿(避免向右溢出屏幕),字号缩小但完整可见 */
+  #page-hours .h-person-pop{min-width:150px;max-width:220px;max-height:240px;padding:2px;left:auto;right:0}
+  #page-hours .h-person-pop .h-person-item{padding:5px 8px;font-size:11.5px;gap:4px;line-height:1.25}
+  #page-hours .h-person-pop .h-person-dept{font-size:9.5px}
+  #page-hours .h-person-pop .h-empty{padding:7px 9px;font-size:10.5px}
   #page-hours .h-wrap{padding:10px 10px 60px}
 }
 @media print {
