@@ -1174,6 +1174,17 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-day .h-nums { display: contents; }
   #page-hours .h-day .h-times .h-sep { display: none; }
 }
+/* 手机端 hours 视图 — 隐藏「已暂存」「设置」,配置 4 项强制一排 */
+@media (max-width: 640px) {
+  body.hours-mode #dirty-indicator,
+  body.hours-mode .nav button[data-route="#/settings"]{display:none!important}
+  #page-hours .h-config{flex-wrap:nowrap;width:100%;gap:4px}
+  #page-hours .h-config label{flex:1 1 0;min-width:0;padding:6px 6px;font-size:10px;gap:3px;justify-content:center}
+  #page-hours .h-config label > span{font-size:9px}
+  #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
+  #page-hours .h-config input[list]{width:auto;flex:1 1 0;min-width:0;font-size:11px;text-align:left}
+  #page-hours .h-wrap{padding:10px 10px 60px}
+}
 @media print {
   body.hours-mode #page-hours { display: none !important; }
 }
@@ -3658,7 +3669,7 @@ const Pages = (() => {
             <input type="number" id="h-cycleStart" min="1" max="28" step="1" />
           </label>
           <label title="人员名(可手动输入或从下拉选择)">人员名
-            <input type="text" list="h-people-list" id="h-personName" placeholder="选择或输入" />
+            <input type="text" list="h-people-list" id="h-personName" />
             <datalist id="h-people-list"></datalist>
           </label>
         </div>
