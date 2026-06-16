@@ -950,6 +950,14 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   padding: 26px 28px 24px;
 }
 #page-hours .h-stat:first-child .h-value { font-size: 56px; }
+#page-hours .h-stat.h-span-2 { grid-column: span 2; }
+#page-hours .h-stat.h-span-2 .h-value { font-size: 40px; }
+#page-hours .h-stat.h-low { border-color: color-mix(in srgb, var(--h-c-leave) 50%, var(--h-border)); }
+#page-hours .h-stat.h-low .h-value { color: var(--h-c-leave); }
+@media (max-width: 880px) {
+  #page-hours .h-stat.h-span-2 { grid-column: 1 / -1; }
+  #page-hours .h-stat.h-span-2 .h-value { font-size: 32px; }
+}
 #page-hours .h-stat .h-label {
   font-size: 11.5px; font-weight: 500; color: var(--h-text-dim);
   display: flex; align-items: center; gap: 8px;
@@ -1354,6 +1362,19 @@ const Store = (() => {
           if (d.printHeightMm == null) d.printHeightMm = 192;
         });
       }
+      // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 11)
+      if (parsed.people && typeof parsed.people === 'object') {
+        for (const did in parsed.people) {
+          const list = parsed.people[did];
+          if (!Array.isArray(list)) continue;
+          list.forEach(p => {
+            if (p.annualLeave == null) {
+              p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
+            }
+            if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
+          });
+        }
+      }
       if (!parsed.sizes) parsed.sizes = {};
       // 校正 ui.currentDept:如果指向已删除部门(或 null),改为第一个部门。
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
@@ -1408,6 +1429,18 @@ const Store = (() => {
     const person = people(deptId).find(p => p.id === personId);
     if (person && person.retiredOn && ymd >= person.retiredOn) return 'retired';
     return state.attendance[cellKey(deptId, personId, ymd)] || 'work';
+  };
+  // 统计某人员 [startYmd, endYmd] 区间内有休天数(扫 attendance 表,而非按天迭代,避免 O(N) 365 次)
+  const paidLeaveDaysInRange = (deptId, personId, startYmd, endYmd) => {
+    const prefix = `${deptId}|${personId}|`;
+    let n = 0;
+    for (const k in state.attendance) {
+      if (!k.startsWith(prefix)) continue;
+      if (state.attendance[k] !== 'paidLeave') continue;
+      const ymd = k.slice(prefix.length);
+      if (ymd >= startYmd && ymd <= endYmd) n++;
+    }
+    return n;
   };
 
   const DEFAULT_REQUIRED = 22;
@@ -1578,7 +1611,7 @@ const Store = (() => {
   function addPerson(deptId, person) {
     const { start } = Period.range(state.ui.currentPeriod);
     const defaultAddedOn = Util.ymd(start);
-    const p = { id: Util.newId('p'), name: '', role: '', annualLeaveInit: 0, retiredOn: null, addedOn: defaultAddedOn, ...person };
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 11, retiredOn: null, addedOn: defaultAddedOn, ...person };
     (state.people[deptId] = state.people[deptId] || []).push(p);
     commit('people');
     return p.id;
@@ -1660,6 +1693,16 @@ const Store = (() => {
     parsed.departments.forEach(d => {
       if (d.printHeightMm == null) d.printHeightMm = 192;
     });
+    if (parsed.people && typeof parsed.people === 'object') {
+      for (const did in parsed.people) {
+        const list = parsed.people[did];
+        if (!Array.isArray(list)) continue;
+        list.forEach(p => {
+          if (p.annualLeave == null) p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
+          if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
+        });
+      }
+    }
     if (!parsed.sizes) parsed.sizes = {};
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
@@ -1677,7 +1720,7 @@ const Store = (() => {
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   return {
-    get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount,
+    get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount, paidLeaveDaysInRange,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
     setSize, resetSize,
@@ -2548,6 +2591,33 @@ const Pages = (() => {
     return tbody;
   }
 
+  // 年度有休窗口 + 残量计算
+  // 窗口 = [resetMonth/1 of startYear, last day of (resetMonth-1)/next year]
+  // 残 = (本年度基数 + 前年残留) − 本窗口已用
+  // 前年残留 = max(0, 前年基数 − 前年使用),向上叠加(实质上把所有过去未用 quota 全计入)
+  function annualLeaveWindow(person, asOf) {
+    const resetMonth = Number(person.leaveResetMonth) || 11;
+    const m = asOf.getMonth() + 1;
+    const y = asOf.getFullYear();
+    const startYear = m >= resetMonth ? y : y - 1;
+    const winStart = new Date(startYear, resetMonth - 1, 1);
+    const winEnd = new Date(startYear + 1, resetMonth - 1, 0);
+    return { winStart, winEnd, resetMonth, startYear };
+  }
+  function computeAnnualLeave(deptId, person, asOf) {
+    const baseQuota = Number(person.annualLeave) || 0;
+    const { winStart, winEnd, resetMonth, startYear } = annualLeaveWindow(person, asOf);
+    // 单层前年残留(典型日本有休规则只允许 1 年带过去 — 再往前自然失效)
+    const prevWinStart = new Date(startYear - 1, resetMonth - 1, 1);
+    const prevWinEnd = new Date(startYear, resetMonth - 1, 0);
+    const prevUsed = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(prevWinStart), Util.ymd(prevWinEnd));
+    const carryover = Math.max(0, baseQuota - prevUsed);
+    const totalQuota = baseQuota + carryover;
+    const cutoffDate = asOf < winEnd ? asOf : winEnd;
+    const used = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(winStart), Util.ymd(cutoffDate));
+    const remaining = Math.max(0, totalQuota - used);
+    return { winStart, winEnd, baseQuota, carryover, totalQuota, used, remaining, asOf: cutoffDate };
+  }
   function computeSums(deptId, person, periodKey, days) {
     let paid = 0, restCount = 0;
     for (const d of days) {
@@ -2556,7 +2626,10 @@ const Pages = (() => {
       else if (st === 'contractRest') restCount++;
     }
     const contract = days.length >= 31 ? 9 : 8;
-    return { paid, contract, restCount, remaining: (person.annualLeaveInit || 0) - paid };
+    // 残:基于当前查看周期的截止日,按 年度有休 + 前年残留 − 已用 计算
+    const asOf = Util.parseYmd(days[days.length - 1].ymd);
+    const annual = computeAnnualLeave(deptId, person, asOf);
+    return { paid, contract, restCount, remaining: annual.remaining, annualInfo: annual };
   }
 
   function buildStatRows(deptId, days) {
@@ -3033,10 +3106,18 @@ const Pages = (() => {
       placeholder: '氏名', value: p.name || '',
       onchange: (e) => Store.updatePerson(deptId, p.id, { name: e.target.value })
     }));
-    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '有休残:'));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '年度有休:'));
     row.appendChild(Render.el('input.num', {
-      type: 'number', min: '0', value: String(p.annualLeaveInit || 0),
-      onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeaveInit: Number(e.target.value) || 0 })
+      type: 'number', min: '0', value: String(p.annualLeave != null ? p.annualLeave : 20),
+      onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeave: Number(e.target.value) || 0 })
+    }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '重置月:'));
+    row.appendChild(Render.el('input.num', {
+      type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 11),
+      onchange: (e) => {
+        const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 11));
+        Store.updatePerson(deptId, p.id, { leaveResetMonth: v });
+      }
     }));
     // 部门下拉:选其他部门即调部门(原部门保留历史,新部门从今天起入职)
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '部门:'));
@@ -3237,7 +3318,7 @@ const Pages = (() => {
         if (!name) { input.focus(); return; }
         // 保存滚动位置:整页重建后立即恢复,避免视觉跳动。
         const sy = window.scrollY;
-        Store.addPerson(deptId, { name, role: '', annualLeaveInit: 0 });
+        Store.addPerson(deptId, { name, role: '' });
         requestAnimationFrame(() => window.scrollTo(0, sy));
       };
       input.addEventListener('keydown', (e) => {
@@ -3825,7 +3906,30 @@ const Pages = (() => {
     daysHost.innerHTML = '';
     daysHost.appendChild(frag);
 
-    renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount });
+    // 有休残卡片 — 仅当 selectedPersonName 命中主表实际人员时显示有效数据
+    let leaveInfo = null;
+    if (person) {
+      const asOf = end;
+      leaveInfo = computeAnnualLeave(person.deptId, { id: person.personId, annualLeave: getPersonAnnualLeave(person), leaveResetMonth: getPersonResetMonth(person) }, asOf);
+    }
+    renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!person });
+  }
+
+  function getPersonAnnualLeave(personRef) {
+    const list = Store.get().people[personRef.deptId] || [];
+    const p = list.find(pp => pp.id === personRef.personId);
+    return p ? (p.annualLeave != null ? p.annualLeave : 20) : 20;
+  }
+  function getPersonResetMonth(personRef) {
+    const list = Store.get().people[personRef.deptId] || [];
+    const p = list.find(pp => pp.id === personRef.personId);
+    return p ? (p.leaveResetMonth || 11) : 11;
+  }
+  function hoursFmtYmd(d) {
+    return `${d.getFullYear()}/${Util.pad2(d.getMonth()+1)}/${Util.pad2(d.getDate())}`;
+  }
+  function hoursFmtYm(d) {
+    return `${d.getFullYear()}/${Util.pad2(d.getMonth()+1)}`;
   }
 
   function renderHoursStats(s) {
@@ -3836,8 +3940,31 @@ const Pages = (() => {
       { label: '节假日工时', value: s.totalHoliday, unit: 'h', color: 'var(--h-c-holiday)', sub: '节假日上班时长' },
       { label: '出勤 / 有休 / 缺勤', value: `${s.attendedCount}`, unit: `/ ${s.leaveCount} / ${s.absentCount}`, color: 'var(--h-c-normal)', sub: '天数' },
     ];
+    // 有休残:命中真实人员时按 年度有休 + 前年残留 计算;否则提示选择人员
+    if (s.personMatched && s.leaveInfo) {
+      const li = s.leaveInfo;
+      const lowLeave = li.remaining <= 5;
+      const carryNote = li.carryover > 0 ? ` · 前年残留 ${li.carryover}` : '';
+      cards.push({
+        label: '有休残',
+        value: li.remaining,
+        unit: `天 / ${li.totalQuota}`,
+        color: 'var(--h-c-leave)',
+        sub: `截至 ${hoursFmtYmd(li.asOf)} 已用 ${li.used} 天 · 周期 ${hoursFmtYm(li.winStart)} – ${hoursFmtYm(li.winEnd)}${carryNote}`,
+        cls: `h-span-2${lowLeave ? ' h-low' : ''}`,
+      });
+    } else {
+      cards.push({
+        label: '有休残',
+        value: '—',
+        unit: '',
+        color: 'var(--h-c-leave)',
+        sub: '请选择主表中存在的人员名',
+        cls: 'h-span-2',
+      });
+    }
     document.getElementById('h-stats').innerHTML = cards.map(c => `
-      <div class="h-stat" style="--h-stat-color:${c.color}">
+      <div class="h-stat ${c.cls || ''}" style="--h-stat-color:${c.color}">
         <div class="h-label">${c.label}</div>
         <div class="h-value">${typeof c.value === 'number' ? hoursFmtStat(c.value) : c.value}<span class="h-unit">${c.unit}</span></div>
         <div class="h-sub">${c.sub}</div>
@@ -4057,7 +4184,7 @@ const Tests = (() => {
     // Store
     Store.reset();
     eq('Store default depts', Store.get().departments.length, 3);
-    const pid = Store.addPerson('dept1', { name: '王 ギョウセイ', role: 'リーダー', annualLeaveInit: 14 });
+    const pid = Store.addPerson('dept1', { name: '王 ギョウセイ', role: 'リーダー', annualLeave: 14, leaveResetMonth: 11 });
     eq('Store addPerson', Store.people('dept1').length, 1);
     Store.setCell('dept1', pid, '2026-05-17', 'contractRest');
     eq('Store cell contractRest', Store.cellStatus('dept1', pid, '2026-05-17'), 'contractRest');
