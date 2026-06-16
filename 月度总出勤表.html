@@ -1311,6 +1311,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-config label.h-person-label{
     flex:1.7 1 0; min-width:0;
     padding:6px 7px;
+    overflow:visible; /* 关键:其他 label 的 overflow:hidden 会裁掉 popup,这里必须放行 */
   }
   #page-hours .h-person-chev{right:6px}
   #page-hours .h-person-pop{max-height:240px;padding:3px;border-radius:8px}
