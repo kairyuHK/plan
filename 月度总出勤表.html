@@ -282,6 +282,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 .settings-row .role-input{min-width:120px}
+.settings-row input.date-input{width:140px;font-family:var(--font-mono);padding:6px 8px}
 /* 单元格尺寸输入:左对齐 + 足够宽,iOS Safari 上窄+center 文本框光标定位会异常 */
 .settings-row input.size-input{width:80px;font-family:var(--font-mono);text-align:left;padding:6px 10px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
@@ -307,11 +308,12 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 @media (max-width:640px){
   .settings-sub-people .settings-row{
     display:flex;
-    flex-wrap:nowrap;
+    flex-wrap:wrap;
     gap:4px;
     align-items:center;
     padding:6px 0
   }
+  .settings-sub-people .settings-row>input.date-input{flex:1 1 calc(50% - 4px);width:auto;min-width:0;font-size:11px;padding:5px 4px;font-family:var(--font-mono)}
   .settings-sub-people .settings-row>.role-input{min-width:0;width:60px;flex:0 0 60px;font-size:12px;padding:6px 4px}
   .settings-sub-people .settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 4px}
   /* 隐藏 label「有休残:」「部门:」(短缺空间,留下数字/下拉自身已经够明确) */
@@ -1846,10 +1848,14 @@ const Store = (() => {
     commit('people');
     return p.id;
   }
-  function updatePerson(deptId, personId, patch) {
+  function updatePerson(deptId, personId, patch, silent) {
     const list = state.people[deptId] || [];
     const i = list.findIndex(p => p.id === personId);
-    if (i >= 0) { list[i] = { ...list[i], ...patch }; commit('people'); }
+    if (i >= 0) {
+      list[i] = { ...list[i], ...patch };
+      if (silent) persistSilent();
+      else commit('people');
+    }
   }
   // soft-remove: keeps the person record + all historical attendance.
   // The person disappears from periods after `removedOn`, past periods still show them.
@@ -3390,6 +3396,20 @@ const Pages = (() => {
         const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 3));
         Store.updatePerson(deptId, p.id, { leaveResetMonth: v });
       }
+    }));
+    // 入职 / 离职日期 — 影响该人员在哪些周期显示(addedOn 之前、retiredOn 当天起隐藏)
+    // silent=true: 只持久化、不触发整页重渲染,避免日期输入框被销毁(焦点丢失 + 滚动跳)
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '入职:'));
+    row.appendChild(Render.el('input.date-input', {
+      type: 'date', value: p.addedOn || '',
+      title: '入职日(留空=一直存在)',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { addedOn: e.target.value || null }, true)
+    }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '离职:'));
+    row.appendChild(Render.el('input.date-input', {
+      type: 'date', value: p.retiredOn || '',
+      title: '离职日(留空=在职)',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { retiredOn: e.target.value || null }, true)
     }));
     // 部门下拉:选其他部门即调部门(原部门保留历史,新部门从今天起入职)
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '部门:'));
