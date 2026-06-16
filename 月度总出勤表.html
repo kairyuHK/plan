@@ -4166,11 +4166,11 @@ const Pages = (() => {
           <div class="h-times">
             <span class="h-in-cell">
               ${prevCarryOut != null && showTimes ? `<span class="h-carry-prev">← ${hoursMinToTime(prevCarryOut)}</span>` : ''}
-              <input type="time" class="h-time" data-field="in" data-key="${key}" value="${rec?.in || ''}" ${showTimes ? '' : 'disabled'} />
+              <input type="time" class="h-time" data-field="in" data-key="${key}" value="${showTimes ? (rec?.in || '') : ''}" ${showTimes ? '' : 'disabled'} />
             </span>
             <span class="h-sep">→</span>
             <span class="h-out-cell">
-              <input type="time" class="h-time" data-field="out" data-key="${key}" value="${rec?.out || ''}" ${showTimes ? '' : 'disabled'} />
+              <input type="time" class="h-time" data-field="out" data-key="${key}" value="${showTimes ? (rec?.out || '') : ''}" ${showTimes ? '' : 'disabled'} />
               ${overnight ? '<span class="h-next-day">翌日</span>' : ''}
             </span>
           </div>
