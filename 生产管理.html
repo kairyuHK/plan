@@ -6333,6 +6333,28 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .edit-toolbar input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:18px}
   .edit-toolbar button{background:transparent;border:1px solid var(--line);color:var(--fg);padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
   .edit-toolbar .done{background:var(--accent);color:#000;border-color:var(--accent)}
+  /* 美化原生 <select> —— 自定义箭头 + 聚焦光晕 + 悬停高亮 */
+  .pretty-select{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    background:linear-gradient(180deg,#1f242c 0%,#171b21 100%);
+    border:1px solid var(--line);
+    color:var(--fg);
+    padding:7px 32px 7px 12px;
+    border-radius:6px;
+    font:inherit;font-size:14px;
+    cursor:pointer;
+    outline:none;
+    transition:border-color .15s,box-shadow .15s,background .15s;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' stroke='%23bbb' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:10px 7px, auto;
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 1px 2px rgba(0,0,0,.25);
+  }
+  .pretty-select:hover{border-color:rgba(255,255,255,.18);background:linear-gradient(180deg,#242a33 0%,#1a1f26 100%)}
+  .pretty-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb,251,146,60),.22),0 1px 2px rgba(0,0,0,.25)}
+  .pretty-select:disabled{opacity:.5;cursor:not-allowed}
+  .pretty-select option{background:#15181d;color:var(--fg)}
   .line-grid .cell.clickable{cursor:pointer}
   .line-grid .cell.clickable:hover{border-color:var(--accent)}
   .picker{position:fixed;background:#0a0c10;border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:6px;z-index:20;max-height:300px;overflow:auto;min-width:200px}
@@ -8185,7 +8207,7 @@ function renderLine() {
 
   // 生产线选择器 —— 切换后编辑该线的模板
   const lineSel = document.createElement("select");
-  lineSel.style.cssText = "background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
+  lineSel.className = "pretty-select";
   if (!realLines.length) {
     const opt = document.createElement("option");
     opt.value = ""; opt.textContent = "(排班表没有生产线)";
@@ -8391,7 +8413,8 @@ function renderEdit() {
   };
   // 生产线下拉(来自排班表)。値付け(tsk)不允许在便当库里指派 —— 业务约定:値付け线不参与便当生产
   const lineSel = document.createElement("select");
-  lineSel.style.cssText = "flex:0 0 130px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit;font-size:14px";
+  lineSel.className = "pretty-select";
+  lineSel.style.cssText = "flex:0 0 150px";
   const emptyOpt = document.createElement("option"); emptyOpt.value = ""; emptyOpt.textContent = "（未选生产线）";
   lineSel.appendChild(emptyOpt);
   (scheduleData.lines || []).filter(ln => !ln.virtual && ln.id !== 'tsk').forEach(ln => {
