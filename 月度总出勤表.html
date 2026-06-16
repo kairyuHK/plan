@@ -1362,7 +1362,10 @@ const Store = (() => {
           if (d.printHeightMm == null) d.printHeightMm = 192;
         });
       }
-      // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 11)
+      // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 3)
+      // 一次性纠正:旧版默认 11 → 3(仅在 _resetMonthDefault3Applied 标志未设置时执行,
+      // 避免后续覆盖用户手动选择的 11)
+      const needResetMonthFix = !parsed._resetMonthDefault3Applied;
       if (parsed.people && typeof parsed.people === 'object') {
         for (const did in parsed.people) {
           const list = parsed.people[did];
@@ -1371,10 +1374,12 @@ const Store = (() => {
             if (p.annualLeave == null) {
               p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
             }
-            if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
+            if (p.leaveResetMonth == null) p.leaveResetMonth = 3;
+            else if (needResetMonthFix && p.leaveResetMonth === 11) p.leaveResetMonth = 3;
           });
         }
       }
+      parsed._resetMonthDefault3Applied = true;
       if (!parsed.sizes) parsed.sizes = {};
       // 校正 ui.currentDept:如果指向已删除部门(或 null),改为第一个部门。
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
@@ -1611,7 +1616,7 @@ const Store = (() => {
   function addPerson(deptId, person) {
     const { start } = Period.range(state.ui.currentPeriod);
     const defaultAddedOn = Util.ymd(start);
-    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 11, retiredOn: null, addedOn: defaultAddedOn, ...person };
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 3, retiredOn: null, addedOn: defaultAddedOn, ...person };
     (state.people[deptId] = state.people[deptId] || []).push(p);
     commit('people');
     return p.id;
@@ -1699,7 +1704,7 @@ const Store = (() => {
         if (!Array.isArray(list)) continue;
         list.forEach(p => {
           if (p.annualLeave == null) p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
-          if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
+          if (p.leaveResetMonth == null) p.leaveResetMonth = 3;
         });
       }
     }
@@ -2181,6 +2186,9 @@ const Pages = (() => {
       // hours 视图不需要主表的期间导航 — 它自己有月份选择器
       document.getElementById('period-nav').replaceChildren();
       renderHours();
+      // nav 高度变化(从 3 行排班 nav 切到 1 行 hours nav)→ 同步 sticky 占位,
+      // 否则手机端 body 仍保持旧的 padding-top,内容上方出现空白
+      requestAnimationFrame(syncStickyOffsets);
       return;
     }
     if (isPersonal) {
@@ -2596,7 +2604,7 @@ const Pages = (() => {
   // 残 = (本年度基数 + 前年残留) − 本窗口已用
   // 前年残留 = max(0, 前年基数 − 前年使用),向上叠加(实质上把所有过去未用 quota 全计入)
   function annualLeaveWindow(person, asOf) {
-    const resetMonth = Number(person.leaveResetMonth) || 11;
+    const resetMonth = Number(person.leaveResetMonth) || 3;
     const m = asOf.getMonth() + 1;
     const y = asOf.getFullYear();
     const startYear = m >= resetMonth ? y : y - 1;
@@ -3113,9 +3121,9 @@ const Pages = (() => {
     }));
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '重置月:'));
     row.appendChild(Render.el('input.num', {
-      type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 11),
+      type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 3),
       onchange: (e) => {
-        const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 11));
+        const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 3));
         Store.updatePerson(deptId, p.id, { leaveResetMonth: v });
       }
     }));
@@ -3923,7 +3931,7 @@ const Pages = (() => {
   function getPersonResetMonth(personRef) {
     const list = Store.get().people[personRef.deptId] || [];
     const p = list.find(pp => pp.id === personRef.personId);
-    return p ? (p.leaveResetMonth || 11) : 11;
+    return p ? (p.leaveResetMonth || 3) : 3;
   }
   function hoursFmtYmd(d) {
     return `${d.getFullYear()}/${Util.pad2(d.getMonth()+1)}/${Util.pad2(d.getDate())}`;
@@ -4184,7 +4192,7 @@ const Tests = (() => {
     // Store
     Store.reset();
     eq('Store default depts', Store.get().departments.length, 3);
-    const pid = Store.addPerson('dept1', { name: '王 ギョウセイ', role: 'リーダー', annualLeave: 14, leaveResetMonth: 11 });
+    const pid = Store.addPerson('dept1', { name: '王 ギョウセイ', role: 'リーダー', annualLeave: 14, leaveResetMonth: 3 });
     eq('Store addPerson', Store.people('dept1').length, 1);
     Store.setCell('dept1', pid, '2026-05-17', 'contractRest');
     eq('Store cell contractRest', Store.cellStatus('dept1', pid, '2026-05-17'), 'contractRest');
