@@ -1294,13 +1294,24 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 @media (max-width: 640px) {
   body.hours-mode #dirty-indicator,
   body.hours-mode .nav button[data-route="#/settings"]{display:none!important}
-  #page-hours .h-config{flex-wrap:nowrap;width:100%;gap:4px}
-  #page-hours .h-config label{flex:1 1 0;min-width:0;padding:6px 6px;font-size:10px;gap:3px;justify-content:center}
+  #page-hours .h-config{flex-wrap:nowrap;width:100%;gap:3px}
+  /* 3 个数字 label 紧凑:padding 缩到 4px,nowrap 防止 "标准工时" 拆字 */
+  #page-hours .h-config label{
+    flex:1 1 0; min-width:0;
+    padding:6px 4px; gap:2px;
+    font-size:10px;
+    white-space:nowrap;
+    overflow:hidden;
+    justify-content:center;
+  }
   #page-hours .h-config label > span{font-size:9px}
-  #page-hours .h-config input[type="number"]{width:30px;font-size:11px;text-align:center}
+  #page-hours .h-config input[type="number"]{width:26px;font-size:11px;text-align:center}
   #page-hours .h-config input.h-person-input{flex:1 1 auto;min-width:0;font-size:11px;text-align:left}
-  /* 手机端取消 PC 上的 220px min-width 限制,人员名 label 跟随 config 行 flex 拉伸 */
-  #page-hours .h-config label.h-person-label{min-width:0}
+  /* 人员名 label 单独占 1.7 倍宽度 — 给输入框 + chev 留位置 */
+  #page-hours .h-config label.h-person-label{
+    flex:1.7 1 0; min-width:0;
+    padding:6px 7px;
+  }
   #page-hours .h-person-chev{right:6px}
   #page-hours .h-person-pop{max-height:240px;padding:3px;border-radius:8px}
   #page-hours .h-person-pop .h-person-item{padding:6px 8px;font-size:11px;gap:4px;line-height:1.3;border-radius:5px}
