@@ -209,7 +209,7 @@ body:not(.editing) table.schedule td.dispatch input{cursor:default}
 body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
-.today-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11px;line-height:1}
+.today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11.5px;line-height:1;font-variant-numeric:tabular-nums;padding-top:1px;font-family:var(--font-mono)}
 /* row / column highlight (click name-col / date-th to toggle) */
 table.schedule td.name-col{cursor:pointer}
 table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-row th[data-ymd]{cursor:pointer}
@@ -283,6 +283,8 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 @keyframes toastOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-10px)}}
 .settings-row .role-input{min-width:120px}
 .settings-row input.date-input{width:140px;font-family:var(--font-mono);padding:6px 8px}
+.settings-row label.no-leave-cb{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:12px;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.settings-row label.no-leave-cb input[type=checkbox]{margin:0;cursor:pointer;width:auto}
 /* 单元格尺寸输入:左对齐 + 足够宽,iOS Safari 上窄+center 文本框光标定位会异常 */
 .settings-row input.size-input{width:80px;font-family:var(--font-mono);text-align:left;padding:6px 10px}
 .settings-row>span,.settings-row>button,.settings-row>select{white-space:nowrap;flex-shrink:0}
@@ -313,8 +315,9 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
     align-items:center;
     padding:6px 0
   }
-  /* 手机端隐藏入职/离职日期(改在桌面端编辑) */
+  /* 手机端隐藏入职/调岗/离职日期 + 无有休复选框(改在桌面端编辑) */
   .settings-sub-people .settings-row>input.date-input{display:none}
+  .settings-sub-people .settings-row>label.no-leave-cb{display:none}
   .settings-sub-people .settings-row>.role-input{min-width:0;width:60px;flex:0 0 60px;font-size:12px;padding:6px 4px}
   .settings-sub-people .settings-row>.name-input{min-width:0;flex:1 1 auto;width:auto;font-size:12px;padding:6px 4px}
   /* 隐藏 label「有休残:」「部门:」(短缺空间,留下数字/下拉自身已经够明确) */
@@ -1565,9 +1568,27 @@ const Store = (() => {
     cellTexts: {},
     requiredPerDay: {},
     dispatchPerDay: {},
-    ui: { currentDept: 'dept1', currentPeriod: Period.todayKey(), editMode: false },
+    ui: {
+      currentDept: 'dept1',
+      currentPeriod: Period.todayKey(),
+      editMode: false,
+      // 月度工时模块的全局设置 — 数据本身存在 person.hoursDays
+      hours: hoursDefaultUi()
+    },
     lastExportAt: null
   });
+
+  // 月度工时 UI 默认值。cursor 用自然月(与排班 16-15 周期语义不同)。
+  function hoursDefaultUi() {
+    const t = new Date();
+    return {
+      cursor: `${t.getFullYear()}-${Util.pad2(t.getMonth()+1)}`,
+      stdHours: 8,
+      lunchHours: 1,
+      cycleStart: 1,
+      selectedPersonId: null
+    };
+  }
 
   let state = load();
   const listeners = new Set();
@@ -1609,6 +1630,76 @@ const Store = (() => {
       }
       parsed._resetMonthDefault3Applied = true;
       if (!parsed.sizes) parsed.sizes = {};
+      // 每个 person 兜底 hoursDays
+      if (parsed.people && typeof parsed.people === 'object') {
+        for (const did in parsed.people) {
+          const list = parsed.people[did];
+          if (!Array.isArray(list)) continue;
+          list.forEach(p => { if (!p.hoursDays || typeof p.hoursDays !== 'object') p.hoursDays = {}; });
+        }
+      }
+      // ui.hours 兜底
+      if (parsed.ui) {
+        if (!parsed.ui.hours || typeof parsed.ui.hours !== 'object') parsed.ui.hours = hoursDefaultUi();
+        else {
+          const def = hoursDefaultUi();
+          for (const k in def) if (parsed.ui.hours[k] == null) parsed.ui.hours[k] = def[k];
+        }
+      }
+      // 一次性迁移:旧 hours-ledger-v2 LS key → 主 store
+      // 按姓名匹配 personId 把 days 搬进 person.hoursDays;匹配不上的留在
+      // parsed._hoursLegacyOrphans 不丢,旧 LS key 保留不删,可以人工对照
+      if (!parsed._hoursMigratedFromLegacy) {
+        try {
+          const rawLegacy = localStorage.getItem('hours-ledger-v2');
+          if (rawLegacy) {
+            const legacy = JSON.parse(rawLegacy);
+            const orphans = {};
+            if (legacy && legacy.dataByPerson && typeof legacy.dataByPerson === 'object') {
+              for (const name in legacy.dataByPerson) {
+                const bucket = legacy.dataByPerson[name];
+                const days = (bucket && bucket.days) || {};
+                if (!Object.keys(days).length) continue;
+                const trimmed = (name || '').trim();
+                let matched = null;
+                if (trimmed) {
+                  outer:
+                  for (const did in parsed.people) {
+                    for (const p of (parsed.people[did] || [])) {
+                      if ((p.name || '').trim() === trimmed) { matched = p; break outer; }
+                    }
+                  }
+                }
+                if (matched) {
+                  matched.hoursDays = matched.hoursDays || {};
+                  for (const ymd in days) matched.hoursDays[ymd] = days[ymd];
+                } else {
+                  orphans[name] = { days };
+                }
+              }
+            }
+            // 选中的人:旧 selectedPersonName → selectedPersonId
+            const sel = (legacy && legacy.selectedPersonName || '').trim();
+            if (sel && parsed.ui && parsed.ui.hours) {
+              outer2:
+              for (const did in parsed.people) {
+                for (const p of (parsed.people[did] || [])) {
+                  if ((p.name || '').trim() === sel) { parsed.ui.hours.selectedPersonId = p.id; break outer2; }
+                }
+              }
+            }
+            // 全局设置迁移(cursor/stdHours/lunchHours/cycleStart)
+            if (legacy && parsed.ui && parsed.ui.hours) {
+              if (legacy.cursor) parsed.ui.hours.cursor = legacy.cursor;
+              if (Number(legacy.stdHours) > 0) parsed.ui.hours.stdHours = Number(legacy.stdHours);
+              if (Number.isFinite(Number(legacy.lunchHours))) parsed.ui.hours.lunchHours = Number(legacy.lunchHours);
+              if (Number(legacy.cycleStart) >= 1) parsed.ui.hours.cycleStart = Math.floor(Number(legacy.cycleStart));
+            }
+            if (Object.keys(orphans).length) parsed._hoursLegacyOrphans = orphans;
+          }
+        } catch (_) {}
+        parsed._hoursMigratedFromLegacy = true;
+      }
       // 校正 ui.currentDept:如果指向已删除部门(或 null),改为第一个部门。
       // 否则 F5 后 select.value 设置失败,显示首项但 state 还是旧值,
       // 用户「选」首项时 onchange 不触发 → 看起来部门下拉无反应。
@@ -1618,6 +1709,14 @@ const Store = (() => {
         if (!_virtualIds.includes(parsed.ui.currentDept) && !parsed.departments.find(d => d.id === parsed.ui.currentDept)) {
           parsed.ui.currentDept = parsed.departments[0].id;
         }
+      }
+      // 校正 ui.hours.selectedPersonId:指向不存在的人 → null
+      if (parsed.ui && parsed.ui.hours && parsed.ui.hours.selectedPersonId) {
+        let found = false;
+        for (const did in parsed.people) {
+          if ((parsed.people[did] || []).some(p => p.id === parsed.ui.hours.selectedPersonId)) { found = true; break; }
+        }
+        if (!found) parsed.ui.hours.selectedPersonId = null;
       }
       return parsed;
     } catch (_) { return defaults(); }
@@ -1652,7 +1751,9 @@ const Store = (() => {
       const addedOk = !p.addedOn || p.addedOn <= endYmd;
       const retiredOk = !p.retiredOn || p.retiredOn >= startYmd;
       const removedOk = !p.removedOn || p.removedOn > endYmd;
-      return addedOk && retiredOk && removedOk;
+      // 调岗:本部门入职日(transferredOn 之前不归本部门)
+      const transferredOk = !p.transferredOn || p.transferredOn <= endYmd;
+      return addedOk && retiredOk && removedOk && transferredOk;
     });
   };
   const cellKey = (deptId, personId, ymd) => `${deptId}|${personId}|${ymd}`;
@@ -1844,7 +1945,8 @@ const Store = (() => {
   function addPerson(deptId, person) {
     const { start } = Period.range(state.ui.currentPeriod);
     const defaultAddedOn = Util.ymd(start);
-    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 3, retiredOn: null, addedOn: defaultAddedOn, ...person };
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 3, retiredOn: null, addedOn: defaultAddedOn, hoursDays: {}, noAnnualLeave: false, ...person };
+    if (!p.hoursDays) p.hoursDays = {};
     (state.people[deptId] = state.people[deptId] || []).push(p);
     commit('people');
     return p.id;
@@ -1890,7 +1992,8 @@ const Store = (() => {
     commit('people');
   }
   // transfer: 把人员从原部门调到新部门。原部门设 removedOn=今天(过去周期保留),
-  // 新部门添加一份(新 id,addedOn=今天,清空 retiredOn)。
+  // 新部门添加一份:保留原 addedOn(年度有休等以入职日为准),新增 transferredOn=今天
+  // (本部门可见性从该日起算),清空 retiredOn。
   // 不修改 attendance,原部门历史排班按原 personId 保留。
   function transferPerson(fromDeptId, personId, toDeptId) {
     if (fromDeptId === toDeptId) return;
@@ -1903,9 +2006,11 @@ const Store = (() => {
     (state.people[toDeptId] = state.people[toDeptId] || []).push({
       ...orig,
       id: Util.newId('p'),
-      addedOn: today,
+      transferredOn: today,
       removedOn: null,
-      retiredOn: null
+      retiredOn: null,
+      // 新部门的工时记录从空开始,不继承原部门的打卡数据
+      hoursDays: {}
     });
     commit('people');
   }
@@ -1956,12 +2061,64 @@ const Store = (() => {
 
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
+  // ---- hours API ----
+  // 跨部门按 id 找人。返回 { dept, person } 或 null。
+  function findPersonById(personId) {
+    if (!personId) return null;
+    for (const d of state.departments) {
+      const p = (state.people[d.id] || []).find(pp => pp.id === personId);
+      if (p) return { dept: d, person: p };
+    }
+    return null;
+  }
+  function getHoursDays(personId) {
+    const found = findPersonById(personId);
+    if (!found) return {};
+    if (!found.person.hoursDays) found.person.hoursDays = {};
+    return found.person.hoursDays;
+  }
+  // 写一天工时。rec = { in, out, tag } 或 null/空 → 删除该天。silent=不重渲。
+  function setHoursDay(personId, ymd, rec, silent) {
+    const found = findPersonById(personId);
+    if (!found) return;
+    if (!found.person.hoursDays) found.person.hoursDays = {};
+    const days = found.person.hoursDays;
+    const isEmpty = !rec || (!rec.in && !rec.out && !rec.tag);
+    if (isEmpty) delete days[ymd];
+    else days[ymd] = rec;
+    if (silent) persistSilent();
+    else commit('hours');
+  }
+  // 清空一人某区间的所有 days(用于"清空当前周期"按钮)
+  function clearHoursDaysInRange(personId, startYmd, endYmd, silent) {
+    const found = findPersonById(personId);
+    if (!found || !found.person.hoursDays) return 0;
+    const days = found.person.hoursDays;
+    let n = 0;
+    for (const k of Object.keys(days)) {
+      if (k >= startYmd && k <= endYmd) { delete days[k]; n++; }
+    }
+    if (n) {
+      if (silent) persistSilent();
+      else commit('hours');
+    }
+    return n;
+  }
+  // 更新 ui.hours 单个字段。selectedPersonId 切人时通常想重渲 → 默认非 silent。
+  function setHoursSetting(key, val, silent) {
+    if (!state.ui.hours) state.ui.hours = hoursDefaultUi();
+    state.ui.hours[key] = val;
+    if (silent) persistSilent();
+    else commit('hours');
+  }
+
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount, paidLeaveDaysInRange,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
     setSize, resetSize,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
+    findPersonById, getHoursDays, setHoursDay, clearHoursDaysInRange, setHoursSetting,
     exportJson, importJson, reset, subscribe
   };
 })();
@@ -2253,7 +2410,7 @@ const Pages = (() => {
         else if (sums.restCount < sums.contract) contractEl.classList.add('under');
       }
       const remainEl = row.querySelector('td.sum-col[data-sum="remain"]');
-      if (remainEl) remainEl.textContent = String(sums.remaining);
+      if (remainEl) remainEl.textContent = sums.remaining == null ? '—' : String(sums.remaining);
     }
     // 3) 当天的 ライン合計 + 過不足
     const lineTotal = computeLineTotal(deptId, ymd);
@@ -2817,7 +2974,7 @@ const Pages = (() => {
       if (sums.restCount > sums.contract) contractTd.classList.add('over');
       else if (sums.restCount < sums.contract) contractTd.classList.add('under');
       tr.appendChild(contractTd);
-      tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'remain' } }, String(sums.remaining)));
+      tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'remain' } }, sums.remaining == null ? '—' : String(sums.remaining)));
 
       for (const d of days) {
         const st = Store.cellStatus(deptId, p.id, d.ymd);
@@ -2876,20 +3033,50 @@ const Pages = (() => {
     const winEnd = new Date(startYear + 1, resetMonth - 1, 0);
     return { winStart, winEnd, resetMonth, startYear };
   }
+  // 自动按入职日 + 重置月计算年度有休基数(日本有给法定简化版)。
+  // 规则:
+  //   - 入职后未满 6 个月 → 0 天(无有休)
+  //   - 满 6 个月 → 10 天
+  //   - 之后每过 1 个「重置月 1 日」+1,上限 20 天
+  // 没有 addedOn 时回退到 person.annualLeave 字段(向后兼容旧数据)。
+  function effectiveAnnualLeave(person, asOf) {
+    // 标记为无有休 → null(区别于 0「不满 6 个月」)
+    if (person.noAnnualLeave) return null;
+    const resetMonth = Number(person.leaveResetMonth) || 3;
+    if (!person.addedOn) return Number(person.annualLeave) || 20;
+    const added = Util.parseYmd(person.addedOn);
+    if (!added || isNaN(added)) return Number(person.annualLeave) || 20;
+    // 6 个月生效起点(JS Date 自动处理月份溢出)
+    const effectiveStart = new Date(added.getFullYear(), added.getMonth() + 6, added.getDate());
+    if (asOf < effectiveStart) return 0;
+    const m = resetMonth - 1; // 0-indexed
+    // 从 effectiveStart 严格之后的第一个重置月 1 日开始计数
+    let firstY = effectiveStart.getFullYear();
+    if (new Date(firstY, m, 1) <= effectiveStart) firstY++;
+    let count = 0;
+    for (let Y = firstY; new Date(Y, m, 1) <= asOf; Y++) count++;
+    return Math.min(10 + count, 20);
+  }
   // 有休制度起算年:2025 年度(覆盖 2025 重置月 → 2026 重置月前一日)。
   // 之前的窗口不视为「上一年度」→ 不结转。这意味着 2025 年度的 carryover = 0,
   // 2026 年度才能继承 2025 的残留(若有)。
   const LEAVE_START_YEAR = 2025;
   function computeAnnualLeave(deptId, person, asOf) {
-    const baseQuota = Number(person.annualLeave) || 0;
+    const baseQuota = effectiveAnnualLeave(person, asOf);
     const { winStart, winEnd, resetMonth, startYear } = annualLeaveWindow(person, asOf);
+    // 无有休资格 → 直接返回 null 标记
+    if (baseQuota === null) {
+      return { winStart, winEnd, baseQuota: null, carryover: 0, totalQuota: null, used: 0, remaining: null, noLeave: true, asOf };
+    }
     // 仅当上一窗口属于 LEAVE_START_YEAR 及之后时才结转
     let carryover = 0;
     if (startYear > LEAVE_START_YEAR) {
       const prevWinStart = new Date(startYear - 1, resetMonth - 1, 1);
       const prevWinEnd = new Date(startYear, resetMonth - 1, 0);
+      const prevBaseQuota = effectiveAnnualLeave(person, prevWinEnd);
+      // 上年也无有休 → 0 结转
       const prevUsed = Store.paidLeaveDaysInRange(deptId, person.id, Util.ymd(prevWinStart), Util.ymd(prevWinEnd));
-      carryover = Math.max(0, baseQuota - prevUsed);
+      carryover = prevBaseQuota === null ? 0 : Math.max(0, prevBaseQuota - prevUsed);
     }
     const totalQuota = baseQuota + carryover;
     const cutoffDate = asOf < winEnd ? asOf : winEnd;
@@ -3385,11 +3572,35 @@ const Pages = (() => {
       placeholder: '氏名', value: p.name || '',
       onchange: (e) => Store.updatePerson(deptId, p.id, { name: e.target.value })
     }));
+    // 年度有休 — 自动按入职日 + 重置月计算;noAnnualLeave 勾上则显示「—」
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '年度有休:'));
-    row.appendChild(Render.el('input.num', {
-      type: 'number', min: '0', value: String(p.annualLeave != null ? p.annualLeave : 20),
-      onchange: (e) => Store.updatePerson(deptId, p.id, { annualLeave: Number(e.target.value) || 0 })
-    }));
+    const autoLeave = effectiveAnnualLeave(p, new Date());
+    const leaveDisplay = Render.el('input.num.leave-display', {
+      type: 'text',
+      value: autoLeave == null ? '—' : String(autoLeave),
+      readonly: 'readonly', disabled: 'disabled',
+      title: '自动按入职日 + 重置月计算:起点 10 天,每过 1 个重置月 +1,上限 20 天。勾选「无有休」则显示 —',
+      style: { opacity: '0.7', cursor: 'not-allowed', textAlign: 'center' }
+    });
+    row.appendChild(leaveDisplay);
+    // 无有休 复选框 — silent 持久化,避免触发整页重渲(checkbox 焦点丢失 + 滚动跳)
+    const noLeaveLabel = Render.el('label.no-leave-cb', { title: '勾选 = 该人员无年度有休资格,主表「残」和工时「有休残」显示 —' });
+    const noLeaveCb = Render.el('input', {
+      type: 'checkbox',
+      checked: !!p.noAnnualLeave,
+      onchange: (e) => {
+        Store.updatePerson(deptId, p.id, { noAnnualLeave: !!e.target.checked }, true);
+        // 手动同步旁边的「年度有休」只读显示(因为 silent 不会重渲)
+        const updated = Store.findPersonById(p.id)?.person;
+        if (updated) {
+          const v = effectiveAnnualLeave(updated, new Date());
+          leaveDisplay.value = v == null ? '—' : String(v);
+        }
+      }
+    });
+    noLeaveLabel.appendChild(noLeaveCb);
+    noLeaveLabel.appendChild(Render.el('span', '无有休'));
+    row.appendChild(noLeaveLabel);
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '重置月:'));
     row.appendChild(Render.el('input.num', {
       type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 3),
@@ -3398,13 +3609,22 @@ const Pages = (() => {
         Store.updatePerson(deptId, p.id, { leaveResetMonth: v });
       }
     }));
-    // 入职 / 离职日期 — 影响该人员在哪些周期显示(addedOn 之前、retiredOn 当天起隐藏)
+    // 入职 / 调岗 / 离职日期 — 影响该人员在哪些周期显示
+    //   入职(addedOn):公司层面的入职日,不随调岗变化,用于年度有休计算
+    //   调岗(transferredOn):本部门入职日,该日之前不在本部门列表里显示
+    //   离职(retiredOn):离职日,该日当天起不显示
     // silent=true: 只持久化、不触发整页重渲染,避免日期输入框被销毁(焦点丢失 + 滚动跳)
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '入职:'));
     row.appendChild(Render.el('input.date-input', {
       type: 'date', value: p.addedOn || '',
-      title: '入职日(留空=一直存在)',
+      title: '入职日(公司层面,不随调岗变化)',
       onchange: (e) => Store.updatePerson(deptId, p.id, { addedOn: e.target.value || null }, true)
+    }));
+    row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '调岗:'));
+    row.appendChild(Render.el('input.date-input', {
+      type: 'date', value: p.transferredOn || '',
+      title: '调岗日(本部门入职日。留空=自始在本部门)',
+      onchange: (e) => Store.updatePerson(deptId, p.id, { transferredOn: e.target.value || null }, true)
     }));
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '离职:'));
     row.appendChild(Render.el('input.date-input', {
@@ -3859,7 +4079,6 @@ const Pages = (() => {
   // ============================================================
   // 月度工时系统(渲染 + 数据同步)
   // ============================================================
-  const HOURS_LS_KEY = 'hours-ledger-v2';
   const HOURS_TAGS = {
     workday:  { label: '出勤',     color: 'var(--h-c-normal)' },
     restday:  { label: '休息',     color: 'var(--h-c-weekend)' },
@@ -3870,7 +4089,6 @@ const Pages = (() => {
   const HOURS_WD_JP = ['日','月','火','水','木','金','土'];
   const HOURS_MONTH_CN = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
-  let hoursState = null;
   let hoursPickerYear = null;
   // iOS time picker 完成/放弃判定:仅手机端启用
   // iOS 系统 picker「完成」按钮在系统 UI 层 → 不派发 pointerdown 到页面
@@ -3880,78 +4098,33 @@ const Pages = (() => {
   let hoursActivePicker = null;
   let hoursTouchedOutside = false;
 
-  function loadHoursState() {
-    if (hoursState) return hoursState;
-    let parsed = null;
-    try { parsed = JSON.parse(localStorage.getItem(HOURS_LS_KEY)); } catch (_) {}
-    const today = new Date();
-    const cursor = `${today.getFullYear()}-${Util.pad2(today.getMonth()+1)}`;
-    hoursState = Object.assign({
-      cursor,
-      stdHours: 8,
-      lunchHours: 1,
-      cycleStart: 1,
-      selectedPersonName: '',
-      dataByPerson: {}
-    }, parsed || {});
-    if (!hoursState.dataByPerson) hoursState.dataByPerson = {};
-    // 一次性迁移:把所有已填入的日期/工时数据合并到「白 海竜」名下
-    if (!hoursState._migratedToBaiHairyu) {
-      const target = '白 海竜';
-      const targetDays = (hoursState.dataByPerson[target] && hoursState.dataByPerson[target].days) || {};
-      const mergedDays = {};
-      // 1) 先填入其他桶里的所有 days(同一天若多桶都有,后处理的覆盖前者 — 实际不会有冲突)
-      for (const k in hoursState.dataByPerson) {
-        if (k === target) continue;
-        const days = (hoursState.dataByPerson[k] && hoursState.dataByPerson[k].days) || {};
-        for (const ymd in days) mergedDays[ymd] = days[ymd];
-      }
-      // 2) 再用目标桶已有数据覆盖 — 目标桶里的入手记录优先级最高
-      for (const ymd in targetDays) mergedDays[ymd] = targetDays[ymd];
-      // 3) 仅保留 target,删掉所有源桶
-      hoursState.dataByPerson = { [target]: { days: mergedDays } };
-      hoursState.selectedPersonName = target;
-      hoursState._migratedToBaiHairyu = true;
-      try { localStorage.setItem(HOURS_LS_KEY, JSON.stringify(hoursState)); } catch (_) {}
-    }
-    return hoursState;
+  // ─── 数据访问层(走 Store)───
+  const hoursUi = () => Store.get().ui.hours;
+  // 当前选中的人员。返回 { dept, person } 或 null
+  function hoursCurrentPerson() {
+    const id = hoursUi().selectedPersonId;
+    return id ? Store.findPersonById(id) : null;
   }
-  function saveHoursState() {
-    try { localStorage.setItem(HOURS_LS_KEY, JSON.stringify(hoursState)); } catch (_) {}
-  }
-  // 收集主表里所有人员(跨部门)— 用于 datalist 自动补全 + 出勤数据反查
-  function collectAllPeople() {
+  // 全部可选人员(跨部门,过滤掉已软删除的)
+  function hoursAllPeople() {
     const out = [];
-    const seen = new Set();
     for (const d of Store.get().departments) {
-      const ppl = Store.get().people[d.id] || [];
-      for (const p of ppl) {
+      for (const p of (Store.get().people[d.id] || [])) {
+        if (p.removedOn) continue;
         if (!p.name) continue;
-        const k = p.name.trim();
-        if (seen.has(k)) continue;
-        seen.add(k);
-        out.push({ deptId: d.id, deptName: d.name, personId: p.id, name: p.name });
+        out.push({ dept: d, person: p });
       }
     }
     return out;
   }
-  function findPersonByName(name) {
-    if (!name) return null;
-    const n = name.trim();
-    if (!n) return null;
-    return collectAllPeople().find(p => p.name.trim() === n) || null;
-  }
-  // 映射主表 cellStatus → hours 标签
-  // work + 节假日 → holiday;work + 平日 → workday
-  // contractRest → restday;paidLeave → leave;absent → absent
-  function deriveHoursTag(person, ymd) {
-    if (!person) return null;
-    const st = Store.cellStatus(person.deptId, person.personId, ymd);
+  // 映射主表 cellStatus → hours 标签。found = { dept, person } 或 null
+  function deriveHoursTag(found, ymd) {
+    if (!found) return null;
+    const st = Store.cellStatus(found.dept.id, found.person.id, ymd);
     if (st === 'retired') return null;
     if (st === 'absent') return 'absent';
     if (st === 'paidLeave') return 'leave';
     if (st === 'contractRest') return 'restday';
-    // work
     return Holidays.isHoliday(ymd) ? 'holiday' : 'workday';
   }
 
@@ -3981,13 +4154,10 @@ const Pages = (() => {
     return { start, end };
   }
 
-  function getHoursPersonData() {
-    const key = (hoursState.selectedPersonName || '').trim() || '__none__';
-    if (!hoursState.dataByPerson[key]) hoursState.dataByPerson[key] = { days: {} };
-    return hoursState.dataByPerson[key];
-  }
-
+  // stdHours / lunchHours 从 ui.hours 读
   function calcHoursDay(rec, derivedTag, prevCarryOut) {
+    const u = hoursUi();
+    const stdHours = u.stdHours, lunchHours = u.lunchHours;
     const tag = rec?.tag || derivedTag || 'workday';
     const inMin = hoursTimeToMin(rec?.in);
     const outMin = hoursTimeToMin(rec?.out);
@@ -4001,15 +4171,15 @@ const Pages = (() => {
       if (prevCarryOut != null && !isOvernight && inMin < prevCarryOut) effIn = prevCarryOut;
       if (!isOvernight && outMin <= effIn) {} else {
         let span = outMin > effIn ? (outMin - effIn) / 60 : (outMin + 24*60 - effIn) / 60;
-        if (span > 6) span -= hoursState.lunchHours;
+        if (span > 6) span -= lunchHours;
         work = Math.max(0, span);
         attended = work > 0;
         if (tag === 'workday') {
-          normal = Math.min(work, hoursState.stdHours);
-          ot = Math.max(0, work - hoursState.stdHours);
+          normal = Math.min(work, stdHours);
+          ot = Math.max(0, work - stdHours);
         } else if (tag === 'holiday') {
-          normal = Math.min(work, hoursState.stdHours);
-          ot = Math.max(0, work - hoursState.stdHours);
+          normal = Math.min(work, stdHours);
+          ot = Math.max(0, work - stdHours);
           holidayHrs = work;
         }
       }
@@ -4096,11 +4266,12 @@ const Pages = (() => {
   }
 
   function renderHoursAll() {
-    const s = loadHoursState();
+    const s = hoursUi();
+    const found = hoursCurrentPerson();
     document.getElementById('h-stdHours').value = s.stdHours;
     document.getElementById('h-lunchHours').value = s.lunchHours;
     document.getElementById('h-cycleStart').value = s.cycleStart;
-    document.getElementById('h-personName').value = s.selectedPersonName || '';
+    document.getElementById('h-personName').value = found ? found.person.name : '';
 
     // 自定义弹层:首次渲染时填充全部人员;之后由 input 事件过滤
     renderPersonPop('');
@@ -4124,7 +4295,7 @@ const Pages = (() => {
 
   function renderHoursPicker() {
     document.getElementById('h-mpYearLabel').textContent = hoursPickerYear;
-    const { y: curY, m: curM } = hoursParseYM(hoursState.cursor);
+    const { y: curY, m: curM } = hoursParseYM(hoursUi().cursor);
     const today = new Date();
     const grid = document.getElementById('h-mpGrid');
     grid.innerHTML = HOURS_MONTH_CN.map((_, i) => {
@@ -4136,9 +4307,9 @@ const Pages = (() => {
   }
 
   function renderHoursDays() {
-    const s = loadHoursState();
-    const personData = getHoursPersonData();
-    const person = findPersonByName(s.selectedPersonName);
+    const s = hoursUi();
+    const found = hoursCurrentPerson();
+    const days = found ? (found.person.hoursDays || {}) : {};
     const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
 
     const today = new Date();
@@ -4151,13 +4322,13 @@ const Pages = (() => {
       const yy = iter.getFullYear(), mm = iter.getMonth(), d = iter.getDate();
       const key = hoursYmdKey(yy, mm, d);
       const wd = iter.getDay();
-      const rec = personData.days[key];
-      const derived = deriveHoursTag(person, key);
+      const rec = days[key];
+      const derived = deriveHoursTag(found, key);
 
       // 前日跨夜
       const prevDate = new Date(yy, mm, d-1);
       const prevKey = hoursYmdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
-      const prevRec = personData.days[prevKey];
+      const prevRec = days[prevKey];
       let prevCarryOut = null;
       if (prevRec?.in && prevRec?.out) {
         const pIn = hoursTimeToMin(prevRec.in), pOut = hoursTimeToMin(prevRec.out);
@@ -4220,20 +4391,20 @@ const Pages = (() => {
     daysHost.innerHTML = '';
     daysHost.appendChild(frag);
 
-    // 有休残卡片 — 仅当 selectedPersonName 命中主表实际人员时显示有效数据
+    // 有休残卡片 — 仅当选中了主表实际人员时显示有效数据
     let leaveInfo = null;
-    if (person) {
+    if (found) {
       const asOf = end;
-      leaveInfo = computeAnnualLeave(person.deptId, { id: person.personId, annualLeave: getPersonAnnualLeave(person), leaveResetMonth: getPersonResetMonth(person) }, asOf);
+      leaveInfo = computeAnnualLeave(found.dept.id, found.person, asOf);
     }
-    renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!person });
+    renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!found });
   }
 
   // 原地刷新工时计算 + 统计卡(不重建 DOM)— 用于手机端 focusout,避免破坏正在编辑/即将编辑的输入框
   function refreshHoursCalc() {
-    const s = loadHoursState();
-    const personData = getHoursPersonData();
-    const person = findPersonByName(s.selectedPersonName);
+    const s = hoursUi();
+    const found = hoursCurrentPerson();
+    const days = found ? (found.person.hoursDays || {}) : {};
     const { start, end } = hoursPeriodRange(s.cursor, s.cycleStart);
     const daysHost = document.getElementById('h-days');
     if (!daysHost) return;
@@ -4249,12 +4420,12 @@ const Pages = (() => {
     while (iter <= end) {
       const yy = iter.getFullYear(), mm = iter.getMonth(), d = iter.getDate();
       const key = hoursYmdKey(yy, mm, d);
-      const rec = personData.days[key];
-      const derived = deriveHoursTag(person, key);
+      const rec = days[key];
+      const derived = deriveHoursTag(found, key);
 
       const prevDate = new Date(yy, mm, d - 1);
       const prevKey = hoursYmdKey(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
-      const prevRec = personData.days[prevKey];
+      const prevRec = days[prevKey];
       let prevCarryOut = null;
       if (prevRec?.in && prevRec?.out) {
         const pIn = hoursTimeToMin(prevRec.in), pOut = hoursTimeToMin(prevRec.out);
@@ -4315,14 +4486,14 @@ const Pages = (() => {
 
     // 统计卡 — 原地更新 .h-value
     let leaveInfo = null;
-    if (person) {
+    if (found) {
       const asOf = end;
-      leaveInfo = computeAnnualLeave(person.deptId, { id: person.personId, annualLeave: getPersonAnnualLeave(person), leaveResetMonth: getPersonResetMonth(person) }, asOf);
+      leaveInfo = computeAnnualLeave(found.dept.id, found.person, asOf);
     }
     const cards = document.querySelectorAll('#h-stats .h-stat');
     if (cards.length !== 6) {
       // 卡片数量不对 → 完整重渲兜底
-      renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!person });
+      renderHoursStats({ totalNormal, totalOT, totalHoliday, attendedCount, leaveCount, absentCount, leaveInfo, personMatched: !!found });
       return;
     }
     const data = [
@@ -4331,7 +4502,7 @@ const Pages = (() => {
       { value: totalOT, unit: 'h' },
       { value: totalHoliday, unit: 'h' },
       { value: `${attendedCount}`, unit: `/ ${leaveCount} / ${absentCount}` },
-      (person && leaveInfo)
+      (found && leaveInfo && !leaveInfo.noLeave)
         ? { value: leaveInfo.remaining, unit: `天 / ${leaveInfo.totalQuota}` }
         : { value: '—', unit: '' }
     ];
@@ -4344,16 +4515,6 @@ const Pages = (() => {
     });
   }
 
-  function getPersonAnnualLeave(personRef) {
-    const list = Store.get().people[personRef.deptId] || [];
-    const p = list.find(pp => pp.id === personRef.personId);
-    return p ? (p.annualLeave != null ? p.annualLeave : 20) : 20;
-  }
-  function getPersonResetMonth(personRef) {
-    const list = Store.get().people[personRef.deptId] || [];
-    const p = list.find(pp => pp.id === personRef.personId);
-    return p ? (p.leaveResetMonth || 3) : 3;
-  }
   function hoursFmtYmd(d) {
     return `${d.getFullYear()}/${Util.pad2(d.getMonth()+1)}/${Util.pad2(d.getDate())}`;
   }
@@ -4372,16 +4533,27 @@ const Pages = (() => {
     // 有休残:命中真实人员时按 年度有休 + 前年残留 计算;否则提示选择人员
     if (s.personMatched && s.leaveInfo) {
       const li = s.leaveInfo;
-      const lowLeave = li.remaining <= 5;
-      const carryNote = li.carryover > 0 ? ` · 前年残留 ${li.carryover}` : '';
-      cards.push({
-        label: '有休残',
-        value: li.remaining,
-        unit: `天 / ${li.totalQuota}`,
-        color: 'var(--h-c-leave)',
-        sub: `截至 ${hoursFmtYmd(li.asOf)} 已用 ${li.used} 天 · 周期 ${hoursFmtYm(li.winStart)} – ${hoursFmtYm(li.winEnd)}${carryNote}`,
-        cls: `h-span-2${lowLeave ? ' h-low' : ''}`,
-      });
+      if (li.noLeave) {
+        cards.push({
+          label: '有休残',
+          value: '—',
+          unit: '',
+          color: 'var(--h-c-leave)',
+          sub: '该人员无有休资格',
+          cls: 'h-span-2',
+        });
+      } else {
+        const lowLeave = li.remaining <= 5;
+        const carryNote = li.carryover > 0 ? ` · 前年残留 ${li.carryover}` : '';
+        cards.push({
+          label: '有休残',
+          value: li.remaining,
+          unit: `天 / ${li.totalQuota}`,
+          color: 'var(--h-c-leave)',
+          sub: `截至 ${hoursFmtYmd(li.asOf)} 已用 ${li.used} 天 · 周期 ${hoursFmtYm(li.winStart)} – ${hoursFmtYm(li.winEnd)}${carryNote}`,
+          cls: `h-span-2${lowLeave ? ' h-low' : ''}`,
+        });
+      }
     } else {
       cards.push({
         label: '有休残',
@@ -4409,20 +4581,21 @@ const Pages = (() => {
   function renderPersonPop(filter) {
     const pop = document.getElementById('h-personPop');
     if (!pop) return;
-    const all = collectAllPeople();
+    const all = hoursAllPeople(); // [{dept, person}]
     const f = (filter || '').trim().toLowerCase();
-    const matched = f ? all.filter(p => p.name.toLowerCase().includes(f)) : all;
-    const current = (hoursState.selectedPersonName || '').trim();
+    const matched = f ? all.filter(r => r.person.name.toLowerCase().includes(f)) : all;
+    const currentId = hoursUi().selectedPersonId;
     if (matched.length === 0) {
-      pop.innerHTML = `<div class="h-empty">无匹配人员<br/>当前输入将作为手动名称使用</div>`;
+      pop.innerHTML = `<div class="h-empty">无匹配人员</div>`;
       return;
     }
-    pop.innerHTML = matched.map(p => {
-      const active = p.name === current ? ' h-active' : '';
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    pop.innerHTML = matched.map(r => {
+      const active = r.person.id === currentId ? ' h-active' : '';
       return `
-        <button type="button" class="h-person-item${active}" data-name="${p.name.replace(/"/g, '&quot;')}">
-          <span class="h-person-name">${p.name}</span>
-          <span class="h-person-dept">${p.deptName}</span>
+        <button type="button" class="h-person-item${active}" data-pid="${esc(r.person.id)}">
+          <span class="h-person-name">${esc(r.person.name)}</span>
+          <span class="h-person-dept">${esc(r.dept.name)}</span>
         </button>
       `;
     }).join('');
@@ -4446,11 +4619,12 @@ const Pages = (() => {
       // 手机端:用户碰过外部 → 视为放弃,本次 change 不写入(focusout 阶段统一还原)
       if (HOURS_IS_MOBILE && hoursPickerSessions.has(inp) && hoursTouchedOutside) return;
       const key = inp.dataset.key, field = inp.dataset.field;
-      const data = getHoursPersonData();
-      const rec = data.days[key] || {};
+      const found = hoursCurrentPerson();
+      if (!found) return;
+      const days = found.person.hoursDays || (found.person.hoursDays = {});
+      const rec = { ...(days[key] || {}) };
       rec[field] = inp.value;
-      data.days[key] = rec;
-      saveHoursState();
+      Store.setHoursDay(found.person.id, key, rec, true);
       // 不立刻重渲 — 否则正在编辑的 input 会被销毁,PC 上输入第二位数字时焦点丢失
     });
     // 焦点离开:手机端按 touchedOutside 还原或保存;PC 端只触发延迟重渲
@@ -4459,27 +4633,26 @@ const Pages = (() => {
       if (!inp) return;
       const key = inp.dataset.key, field = inp.dataset.field;
       const sess = hoursPickerSessions.get(inp);
+      const found = hoursCurrentPerson();
 
-      if (HOURS_IS_MOBILE && sess && hoursTouchedOutside) {
+      if (found && HOURS_IS_MOBILE && sess && hoursTouchedOutside) {
         // 还原 DOM 与 state 到 picker 打开之前
         inp.value = sess.original;
-        const data = getHoursPersonData();
-        const rec = data.days[key];
-        if (rec) {
+        const days = found.person.hoursDays || {};
+        const cur = days[key];
+        if (cur) {
+          const rec = { ...cur };
           if (sess.original) rec[field] = sess.original;
           else delete rec[field];
-          // 整条记录已空 → 移除
-          if (!rec.in && !rec.out && !rec.tag) delete data.days[key];
-          saveHoursState();
+          Store.setHoursDay(found.person.id, key, rec, true);
         }
-      } else if (HOURS_IS_MOBILE && sess) {
+      } else if (found && HOURS_IS_MOBILE && sess) {
         // 手机端「完成」按钮分支:change 可能未触发,兜底写入 inp.value
-        const data = getHoursPersonData();
-        const rec = data.days[key] || {};
-        if (rec[field] !== inp.value) {
-          rec[field] = inp.value;
-          data.days[key] = rec;
-          saveHoursState();
+        const days = found.person.hoursDays || {};
+        const cur = days[key] || {};
+        if (cur[field] !== inp.value) {
+          const rec = { ...cur, [field]: inp.value };
+          Store.setHoursDay(found.person.id, key, rec, true);
         }
       }
       // PC 端不做特殊处理,change 已经保存过
@@ -4524,21 +4697,21 @@ const Pages = (() => {
     }
 
     document.getElementById('h-prevBtn').onclick = () => {
-      const { y, m } = hoursParseYM(hoursState.cursor);
+      const { y, m } = hoursParseYM(hoursUi().cursor);
       const nd = new Date(y, m - 1, 1);
-      hoursState.cursor = `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`;
-      saveHoursState(); renderHoursAll();
+      Store.setHoursSetting('cursor', `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`, true);
+      renderHoursAll();
     };
     document.getElementById('h-nextBtn').onclick = () => {
-      const { y, m } = hoursParseYM(hoursState.cursor);
+      const { y, m } = hoursParseYM(hoursUi().cursor);
       const nd = new Date(y, m + 1, 1);
-      hoursState.cursor = `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`;
-      saveHoursState(); renderHoursAll();
+      Store.setHoursSetting('cursor', `${nd.getFullYear()}-${Util.pad2(nd.getMonth()+1)}`, true);
+      renderHoursAll();
     };
     document.getElementById('h-todayBtn').onclick = () => {
       const t = new Date();
-      hoursState.cursor = `${t.getFullYear()}-${Util.pad2(t.getMonth()+1)}`;
-      saveHoursState(); renderHoursAll();
+      Store.setHoursSetting('cursor', `${t.getFullYear()}-${Util.pad2(t.getMonth()+1)}`, true);
+      renderHoursAll();
     };
 
     document.getElementById('h-monthTitle').addEventListener('mousedown', e => {
@@ -4548,7 +4721,7 @@ const Pages = (() => {
       if (picker.classList.contains('open')) {
         picker.classList.remove('open');
       } else {
-        hoursPickerYear = hoursParseYM(hoursState.cursor).y;
+        hoursPickerYear = hoursParseYM(hoursUi().cursor).y;
         renderHoursPicker();
         picker.classList.add('open');
       }
@@ -4564,81 +4737,103 @@ const Pages = (() => {
       if (!btn) return;
       e.stopPropagation();
       const m = parseInt(btn.dataset.month, 10);
-      hoursState.cursor = `${hoursPickerYear}-${Util.pad2(m+1)}`;
+      Store.setHoursSetting('cursor', `${hoursPickerYear}-${Util.pad2(m+1)}`, true);
       document.getElementById('h-picker').classList.remove('open');
-      saveHoursState(); renderHoursAll();
+      renderHoursAll();
     });
 
     document.getElementById('h-stdHours').addEventListener('change', e => {
-      hoursState.stdHours = Math.max(1, parseFloat(e.target.value) || 8);
-      saveHoursState(); renderHoursDays();
+      Store.setHoursSetting('stdHours', Math.max(1, parseFloat(e.target.value) || 8), true);
+      renderHoursDays();
     });
     document.getElementById('h-lunchHours').addEventListener('change', e => {
-      hoursState.lunchHours = Math.max(0, parseFloat(e.target.value) || 0);
-      saveHoursState(); renderHoursDays();
+      Store.setHoursSetting('lunchHours', Math.max(0, parseFloat(e.target.value) || 0), true);
+      renderHoursDays();
     });
     document.getElementById('h-cycleStart').addEventListener('change', e => {
       const v = parseInt(e.target.value, 10);
-      hoursState.cycleStart = Math.max(1, Math.min(28, Number.isFinite(v) ? v : 1));
-      saveHoursState(); renderHoursAll();
+      Store.setHoursSetting('cycleStart', Math.max(1, Math.min(28, Number.isFinite(v) ? v : 1)), true);
+      renderHoursAll();
     });
     const personInput = document.getElementById('h-personName');
     const personPop = document.getElementById('h-personPop');
-    const onPersonChange = () => {
-      hoursState.selectedPersonName = personInput.value || '';
-      saveHoursState(); renderHoursDays();
+    // 输入框现在只作为「显示当前人 + 输入过滤词」用,不再直接写入 selectedPerson。
+    // 唯一的写入路径是点击 pop 中的条目。
+    personInput.addEventListener('input', () => {
       renderPersonPop(personInput.value || '');
-    };
-    personInput.addEventListener('change', onPersonChange);
-    personInput.addEventListener('input', onPersonChange);
-    // 聚焦 / 点击输入框 → 打开弹层(每次重渲列表用最新人员)
+    });
     personInput.addEventListener('focus', () => {
-      renderPersonPop(personInput.value || '');
+      // 聚焦时清空显示让用户能直接输入过滤词
+      personInput.dataset.lastDisplay = personInput.value;
+      personInput.value = '';
+      renderPersonPop('');
       personPop.classList.add('open');
+    });
+    personInput.addEventListener('blur', () => {
+      // 失焦如果用户没选,恢复显示
+      setTimeout(() => {
+        if (!personPop.contains(document.activeElement)) {
+          personInput.value = personInput.dataset.lastDisplay || '';
+        }
+      }, 0);
     });
     personInput.addEventListener('click', (e) => {
       e.stopPropagation();
       renderPersonPop(personInput.value || '');
       personPop.classList.add('open');
     });
-    // 点击弹层条目 → 写入输入框 + 关闭
+    // 点击弹层条目 → 设置 selectedPersonId + 关闭
     personPop.addEventListener('mousedown', (e) => {
       const btn = e.target.closest('.h-person-item');
       if (!btn) return;
-      e.preventDefault(); // 阻止 input 失焦后弹层立刻被关
-      personInput.value = btn.dataset.name || '';
-      hoursState.selectedPersonName = personInput.value;
-      saveHoursState();
+      e.preventDefault();
+      const pid = btn.dataset.pid;
+      Store.setHoursSetting('selectedPersonId', pid || null, true);
+      const found = hoursCurrentPerson();
+      personInput.value = found ? found.person.name : '';
+      personInput.dataset.lastDisplay = personInput.value;
       personPop.classList.remove('open');
       renderHoursDays();
     });
 
     document.getElementById('h-clearBtn').onclick = (e) => {
-      const data = getHoursPersonData();
-      const { start, end } = hoursPeriodRange(hoursState.cursor, hoursState.cycleStart);
+      const found = hoursCurrentPerson();
+      if (!found) { showToast('请先选择人员', 'info'); return; }
+      const u = hoursUi();
+      const { start, end } = hoursPeriodRange(u.cursor, u.cycleStart);
+      const days = found.person.hoursDays || {};
+      const startYmd = Util.ymd(start), endYmd = Util.ymd(end);
       let nToClear = 0;
-      Object.keys(data.days).forEach(k => {
-        const [yy,mm,dd] = k.split('-').map(Number);
-        const dt = new Date(yy, mm-1, dd);
-        if (dt >= start && dt <= end) nToClear++;
-      });
+      Object.keys(days).forEach(k => { if (k >= startYmd && k <= endYmd) nToClear++; });
       showConfirmPopover(e.currentTarget, {
         text: `清空当前周期 ${nToClear} 项数据?`,
-        sub: `${hoursState.selectedPersonName || '未选人员'} · ${hoursFmtYmd(start)} – ${hoursFmtYmd(end)}`,
+        sub: `${found.person.name} · ${hoursFmtYmd(start)} – ${hoursFmtYmd(end)}`,
         confirmText: '清空',
         danger: true,
         onConfirm: () => {
-          Object.keys(data.days).forEach(k => {
-            const [yy,mm,dd] = k.split('-').map(Number);
-            const dt = new Date(yy, mm-1, dd);
-            if (dt >= start && dt <= end) delete data.days[k];
-          });
-          saveHoursState(); renderHoursDays();
+          Store.clearHoursDaysInRange(found.person.id, startYmd, endYmd, true);
+          renderHoursDays();
         }
       });
     };
     document.getElementById('h-exportBtn').onclick = () => {
-      const blob = new Blob([JSON.stringify(hoursState, null, 2)], { type: 'application/json' });
+      // 工时数据已经合并进主 store, 导出时只复制相关切片(便于人工查看/备份)
+      const slice = {
+        format: 'hours-export-v3',
+        exportedAt: new Date().toISOString(),
+        ui: hoursUi(),
+        people: []
+      };
+      for (const d of Store.get().departments) {
+        for (const p of (Store.get().people[d.id] || [])) {
+          if (!p.hoursDays || !Object.keys(p.hoursDays).length) continue;
+          slice.people.push({
+            personId: p.id, name: p.name, deptId: d.id, deptName: d.name,
+            hoursDays: p.hoursDays
+          });
+        }
+      }
+      const blob = new Blob([JSON.stringify(slice, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -4657,31 +4852,62 @@ const Pages = (() => {
         try {
           const data = JSON.parse(reader.result);
           if (!data || typeof data !== 'object') throw new Error('文件格式不正确');
-          // 统计要导入的天数
+          // 三种格式分别处理:
+          //   v3 (新): { format:'hours-export-v3', people:[{personId,name,deptId,hoursDays}] }
+          //   v2 (旧): { dataByPerson:{ name:{ days } } }  ← 按姓名匹配
+          //   v1 (更旧): { days } 单人 → 兼容白海竜
           let nDays = 0;
-          if (data.dataByPerson) {
-            for (const k in data.dataByPerson) nDays += Object.keys(data.dataByPerson[k]?.days || {}).length;
-          } else if (data.days) {
-            nDays = Object.keys(data.days).length;
-          }
+          const v3 = data.format === 'hours-export-v3' && Array.isArray(data.people);
+          const v2 = !v3 && data.dataByPerson;
+          if (v3) for (const r of data.people) nDays += Object.keys(r.hoursDays || {}).length;
+          else if (v2) for (const k in data.dataByPerson) nDays += Object.keys(data.dataByPerson[k]?.days || {}).length;
+          else if (data.days) nDays = Object.keys(data.days).length;
           showConfirmPopover(importBtn, {
             text: `导入 ${nDays} 项数据?`,
-            sub: '将覆盖当前所有数据,建议先点「导出」备份',
+            sub: '将合并到对应人员的工时记录里(同日覆盖)',
             confirmText: '继续导入',
             danger: true,
             onConfirm: () => {
-              if (data.dataByPerson) {
-                Object.assign(hoursState, data);
+              const apply = (personId, days) => {
+                if (!personId || !days) return;
+                for (const ymd in days) Store.setHoursDay(personId, ymd, days[ymd], true);
+              };
+              const matchByName = (name) => {
+                const trimmed = (name || '').trim();
+                if (!trimmed) return null;
+                for (const d of Store.get().departments) {
+                  for (const p of (Store.get().people[d.id] || [])) {
+                    if ((p.name || '').trim() === trimmed) return p.id;
+                  }
+                }
+                return null;
+              };
+              if (v3) {
+                for (const r of data.people) {
+                  // 先按 id 精确匹配, 没命中再按姓名匹配
+                  const found = r.personId && Store.findPersonById(r.personId);
+                  const pid = found ? r.personId : matchByName(r.name);
+                  apply(pid, r.hoursDays);
+                }
+                if (data.ui) {
+                  ['cursor','stdHours','lunchHours','cycleStart'].forEach(k => {
+                    if (data.ui[k] != null) Store.setHoursSetting(k, data.ui[k], true);
+                  });
+                }
+              } else if (v2) {
+                for (const name in data.dataByPerson) {
+                  const pid = matchByName(name);
+                  if (pid) apply(pid, data.dataByPerson[name]?.days);
+                }
+                if (data.cursor) Store.setHoursSetting('cursor', data.cursor, true);
+                if (Number(data.stdHours) > 0) Store.setHoursSetting('stdHours', Number(data.stdHours), true);
+                if (Number.isFinite(Number(data.lunchHours))) Store.setHoursSetting('lunchHours', Number(data.lunchHours), true);
+                if (Number(data.cycleStart) >= 1) Store.setHoursSetting('cycleStart', Math.floor(Number(data.cycleStart)), true);
               } else if (data.days) {
-                // 旧版 hours-ledger-v1 格式 — 归入「白 海竜」桶,保持迁移一致
-                hoursState.dataByPerson = hoursState.dataByPerson || {};
-                hoursState.dataByPerson['白 海竜'] = { days: data.days };
-                if (data.cursor) hoursState.cursor = data.cursor;
-                if (Number(data.stdHours) > 0) hoursState.stdHours = Number(data.stdHours);
-                if (Number.isFinite(Number(data.lunchHours))) hoursState.lunchHours = Number(data.lunchHours);
-                if (Number(data.cycleStart) >= 1) hoursState.cycleStart = Math.floor(Number(data.cycleStart));
+                const pid = matchByName('白 海竜');
+                if (pid) apply(pid, data.days);
               }
-              saveHoursState(); renderHoursAll();
+              renderHoursAll();
               showToast('导入成功', 'success');
             }
           });
@@ -4693,7 +4919,6 @@ const Pages = (() => {
   }
 
   function renderHours() {
-    loadHoursState();
     buildHoursPage();
   }
 
@@ -4761,6 +4986,8 @@ const Tests = (() => {
     eq('Store cell contractRest', Store.cellStatus('dept1', pid, '2026-05-17'), 'contractRest');
     Store.cycleCell('dept1', pid, '2026-05-17'); // → paidLeave
     eq('Store cycle to paid', Store.cellStatus('dept1', pid, '2026-05-17'), 'paidLeave');
+    Store.cycleCell('dept1', pid, '2026-05-17'); // → retired (✲)
+    eq('Store cycle to retired (✲)', Store.cellStatus('dept1', pid, '2026-05-17'), 'retired');
     Store.cycleCell('dept1', pid, '2026-05-17'); // → work
     eq('Store cycle to work', Store.cellStatus('dept1', pid, '2026-05-17'), 'work');
     Store.updatePerson('dept1', pid, { retiredOn: '2026-05-20' });
@@ -4769,6 +4996,41 @@ const Tests = (() => {
     Store.setRequired('dept1', '2026-05-16', 18);
     eq('Store required override', Store.requiredCount('dept1', '2026-05-16'), 18);
     Store.reset();
+
+    // ===== hours 模块新数据模型 =====
+    Store.reset();
+    const hpid = Store.addPerson('dept1', { name: '白 海竜' });
+    // 新建 person 自动带 hoursDays
+    assert('addPerson initializes hoursDays', Store.findPersonById(hpid).person.hoursDays != null);
+    // ui.hours 默认结构
+    const uih = Store.get().ui.hours;
+    assert('ui.hours has defaults', uih && uih.stdHours === 8 && uih.lunchHours === 1 && uih.cycleStart === 1);
+    // setHoursDay 写入
+    Store.setHoursDay(hpid, '2026-05-17', { in: '10:00', out: '19:30' });
+    eq('setHoursDay write', Store.getHoursDays(hpid)['2026-05-17']?.in, '10:00');
+    // setHoursDay 删除(空记录)
+    Store.setHoursDay(hpid, '2026-05-17', null);
+    eq('setHoursDay delete via null', Store.getHoursDays(hpid)['2026-05-17'], undefined);
+    // findPersonById 跨部门
+    const hpid2 = Store.addPerson('dept2', { name: '別人' });
+    assert('findPersonById cross-dept', Store.findPersonById(hpid2)?.dept.id === 'dept2');
+    assert('findPersonById missing → null', Store.findPersonById('p-nope') === null);
+    // clearHoursDaysInRange
+    Store.setHoursDay(hpid, '2026-05-01', { in: '09:00', out: '18:00' });
+    Store.setHoursDay(hpid, '2026-05-15', { in: '09:00', out: '18:00' });
+    Store.setHoursDay(hpid, '2026-06-01', { in: '09:00', out: '18:00' });
+    eq('clearHoursDaysInRange returns count',
+       Store.clearHoursDaysInRange(hpid, '2026-05-01', '2026-05-31'), 2);
+    assert('clearHoursDaysInRange preserved outside',
+           Store.getHoursDays(hpid)['2026-06-01']?.in === '09:00');
+    // setHoursSetting
+    Store.setHoursSetting('selectedPersonId', hpid);
+    eq('setHoursSetting selectedPersonId', Store.get().ui.hours.selectedPersonId, hpid);
+    Store.reset();
+
+    // 注: hours-ledger-v2 → Store 的迁移逻辑跑在 Store.load() 内,
+    // load 是模块私有,无法在测试里热重跑。迁移正确性靠浏览器刷新后人工核对
+    // (旧 LS key 保留作为 backup,可对照)。
     return results;
   };
 
