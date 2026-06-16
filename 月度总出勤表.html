@@ -1363,6 +1363,12 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
     grid-template-columns: 1fr 24px 1fr; align-items: center;
     font-family: var(--h-font-mono); font-size: 12px;
   }
+  #page-hours .h-day .h-nums .h-num.work { grid-column: 1; justify-self: end; }
+  #page-hours .h-day .h-nums .h-num.ot   { grid-column: 3; justify-self: start; }
+  #page-hours .h-day .h-nums .h-nlbl {
+    color: var(--h-text-faint); margin-right: 4px;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
   #page-hours .h-month-title { min-width: 180px; padding: 4px 12px; }
   #page-hours .h-m-num { font-size: 36px; }
   #page-hours .h-m-unit { font-size: 14px; transform: translateY(-3px); }
@@ -1372,6 +1378,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   #page-hours .h-day .h-times { display: contents; }
   #page-hours .h-day .h-nums { display: contents; }
   #page-hours .h-day .h-times .h-sep { display: none; }
+  #page-hours .h-day .h-nums .h-nlbl { display: none; }
 }
 /* 手机端 hours 视图 — 隐藏「已暂存」「设置」,配置 4 项强制一排 */
 @media (max-width: 640px) {
@@ -4181,8 +4188,8 @@ const Pages = (() => {
           </div>
         </div>
         <div class="h-nums">
-          <div class="h-num work ${calc.normal+calc.ot ? '' : 'zero'}">${hoursFmt(calc.work || calc.normal)}</div>
-          <div class="h-num ot ${calc.ot ? '' : 'zero'}">${calc.ot ? '+'+hoursFmt(calc.ot) : '—'}</div>
+          <div class="h-num work ${calc.normal+calc.ot ? '' : 'zero'}"><span class="h-nlbl">实际</span>${hoursFmt(calc.work || calc.normal)}</div>
+          <div class="h-num ot ${calc.ot ? '' : 'zero'}"><span class="h-nlbl">加班</span>${calc.ot ? '+'+hoursFmt(calc.ot) : '—'}</div>
         </div>
       `;
       frag.appendChild(row);
@@ -4248,11 +4255,11 @@ const Pages = (() => {
       const hasWork = !!(calc.normal + calc.ot);
       if (workEl) {
         workEl.classList.toggle('zero', !hasWork);
-        workEl.textContent = hoursFmt(calc.work || calc.normal);
+        workEl.innerHTML = `<span class="h-nlbl">实际</span>${hoursFmt(calc.work || calc.normal)}`;
       }
       if (otEl) {
         otEl.classList.toggle('zero', !calc.ot);
-        otEl.textContent = calc.ot ? '+' + hoursFmt(calc.ot) : '—';
+        otEl.innerHTML = `<span class="h-nlbl">加班</span>${calc.ot ? '+' + hoursFmt(calc.ot) : '—'}`;
       }
       // 翌日 / 前日跨夜 badge 原地增删
       const showTimes = calc.tag !== 'leave' && calc.tag !== 'absent' && calc.tag !== 'restday';
