@@ -1017,8 +1017,9 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 /* 人员名:input + chev + pop 都直接相对 label 定位 → pop 宽度严格 = label 外边框宽度 */
 #page-hours .h-config input.h-person-input {
   flex: 1 1 auto; min-width: 0;
-  text-align: left;
-  padding-right: 14px !important; /* 给右侧 chev 留位置 */
+  text-align: center;
+  padding-left: 14px !important;  /* 左右对称留 chev 同等空间,让文字真正居中 */
+  padding-right: 14px !important;
 }
 #page-hours .h-person-chev {
   position: absolute; right: 10px; top: 50%;
