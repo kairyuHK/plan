@@ -6253,9 +6253,18 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// 原生 time/date picker(起始/实结/休息固定时间/日期)打开期间,iOS 横屏下页面任何重排
+// 都会把锚定输入框的 picker popover 收起。最常见的连续重排源就是每秒走字的时钟 —— 用户拨轮选数字时,
+// 下一次秒针跳动改写 topbar DOM,picker 就被收掉。这里用 focusin/focusout 记录 picker 是否打开,
+// 打开期间暂停时钟与日期头的 DOM 写入。
+let nativePickerOpen = false;
+const _isPickerInput = el => el && (el.type === 'time' || el.type === 'date');
+document.addEventListener('focusin', e => { if (_isPickerInput(e.target)) nativePickerOpen = true; });
+document.addEventListener('focusout', e => { if (_isPickerInput(e.target)) nativePickerOpen = false; });
 // 手机竖屏宽度太挤,只显示 HH:MM(不带秒);PC / 横屏 仍显示 HH:MM:SS
 const _clockMq = window.matchMedia('(max-width: 900px) and (orientation: portrait)');
 function tick() {
+  if (nativePickerOpen) return; // picker 开着时不写时钟,避免重排收起 popover
   const d = new Date();
   const hh = String(d.getHours()).padStart(2,'0');
   const mm = String(d.getMinutes()).padStart(2,'0');
@@ -6470,7 +6479,7 @@ function switchDate(newDate) {
 }
 updateDateHeader();
 // 每分钟检查日期是否跨天(到第二天时,若选的是"昨天的今天"应该提醒,但不强切)
-setInterval(() => { if (currentDate === todayStr()) updateDateHeader(); }, 60000);
+setInterval(() => { if (nativePickerOpen) return; if (currentDate === todayStr()) updateDateHeader(); }, 60000);
 
 loadLibrary();
 // 统一处理便当库同步后的 UI/牌子刷新
