@@ -144,9 +144,6 @@ input[type=number]{-moz-appearance:textfield}
   margin-top:0;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
-  /* 高度由父级 flex 列分配(撑满 nav 下方剩余视口),不再用 --sticky-nav 计算值 */
-  flex:1 1 auto;
-  min-height:0;
   /* 仅右侧预留滚动条空间(8px)。配合页面左右各 8px 边距 → 左 8px,右 8px+滚动条 8px */
   scrollbar-gutter:stable;
   /* 细滚动条 + 深色主题(Firefox)。默认透明,滚动时(.is-scrolling)才显示 */
@@ -161,13 +158,19 @@ input[type=number]{-moz-appearance:textfield}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb{background:#3a3a40}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#4a4a52}
 /* 排班页表格区已自带滚动容器,去掉 body 外层多余滚动条(设置/数据页仍正常滚动) */
-/* 排班页:body 做成纵向 flex,nav 占顶部、表格容器 flex 撑满剩余视口 →
-   不依赖 --sticky-nav 测量值,无 fixed 定位错位风险。100dvh 跟随 iOS 地址栏开合。 */
-body:has(#page-schedule:not(.hidden)){overflow:hidden;display:flex;flex-direction:column;height:100vh;height:100dvh}
-body:has(#page-schedule:not(.hidden)) .nav{flex:0 0 auto;box-shadow:none}
+body:has(#page-schedule:not(.hidden)){overflow:hidden}
+/* 排班页屏幕布局:body 纵向 flex 撑满视口,nav 占顶部,表格容器 flex 填满剩余空间内部滚动。
+   只放在 @media screen —— 这些是屏幕布局值,绝不能泄漏进 @media print(打印有自己的 192mm 高度/flex 规则)。
+   注意 body:has(#id) 选择器优先级含 ID,会盖过打印里的 html,body 规则,所以必须 screen 隔离。 */
+@media screen {
+  body:has(#page-schedule:not(.hidden)){display:flex;flex-direction:column;height:100vh;height:100dvh}
+  body:has(#page-schedule:not(.hidden)) .nav{flex:0 0 auto;box-shadow:none}
+  #page-schedule.page{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+  .schedule-wrap{flex:1 1 auto;min-height:0}
+}
 /* 排班页:顶部收紧。左边距 8px;右边距 0,右侧那 8px 由 scrollbar-gutter 预留充当
    (= 滚动条位置)→ 左右视觉留白都是 8px,对称。设置/数据页不动。 */
-#page-schedule.page{padding:4px 0 14px 8px;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+#page-schedule.page{padding:4px 0 14px 8px}
 /* thead 吸附到滚动容器(.schedule-wrap)顶端 — 容器已在工具栏下方,故 top:0 */
 table.schedule thead{position:sticky;top:0;z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
