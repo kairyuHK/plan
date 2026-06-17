@@ -36,10 +36,9 @@ input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 .nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
-@media (max-width:768px){
-  .nav{position:fixed;top:0;left:0;right:0;width:100%}
-  body{padding-top:var(--sticky-nav,50px)}
-}
+/* 手机端 nav 不再用 position:fixed + body padding-top —
+   fixed 定位在 iOS Safari 上对页面缩放状态/异步排版时机敏感,会偶发盖住表头(部门名+月份行只露一半,
+   捏合缩放重置后才恢复)。改为保留 base 的 position:sticky(在流内),滚动页自然吸顶,排班页用 flex 撑满。 */
 /* 手机竖屏三行布局(用 flex order + 伪元素强制换行):
    行1:月度总出勤表 [部门▼]
    行2:◀ 日期 ▶ 今日 ✓已暂存 .......... ⬇⬆数据
@@ -145,8 +144,9 @@ input[type=number]{-moz-appearance:textfield}
   margin-top:0;
   overflow:auto;
   -webkit-overflow-scrolling:touch;
-  max-height:calc(100vh - var(--sticky-nav,50px) - 4px);
-  max-height:calc(100dvh - var(--sticky-nav,50px) - 4px);
+  /* 高度由父级 flex 列分配(撑满 nav 下方剩余视口),不再用 --sticky-nav 计算值 */
+  flex:1 1 auto;
+  min-height:0;
   /* 仅右侧预留滚动条空间(8px)。配合页面左右各 8px 边距 → 左 8px,右 8px+滚动条 8px */
   scrollbar-gutter:stable;
   /* 细滚动条 + 深色主题(Firefox)。默认透明,滚动时(.is-scrolling)才显示 */
@@ -161,10 +161,13 @@ input[type=number]{-moz-appearance:textfield}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb{background:#3a3a40}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#4a4a52}
 /* 排班页表格区已自带滚动容器,去掉 body 外层多余滚动条(设置/数据页仍正常滚动) */
-body:has(#page-schedule:not(.hidden)){overflow:hidden}
+/* 排班页:body 做成纵向 flex,nav 占顶部、表格容器 flex 撑满剩余视口 →
+   不依赖 --sticky-nav 测量值,无 fixed 定位错位风险。100dvh 跟随 iOS 地址栏开合。 */
+body:has(#page-schedule:not(.hidden)){overflow:hidden;display:flex;flex-direction:column;height:100vh;height:100dvh}
+body:has(#page-schedule:not(.hidden)) .nav{flex:0 0 auto;box-shadow:none}
 /* 排班页:顶部收紧。左边距 8px;右边距 0,右侧那 8px 由 scrollbar-gutter 预留充当
    (= 滚动条位置)→ 左右视觉留白都是 8px,对称。设置/数据页不动。 */
-#page-schedule.page{padding:4px 0 14px 8px}
+#page-schedule.page{padding:4px 0 14px 8px;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
 /* thead 吸附到滚动容器(.schedule-wrap)顶端 — 容器已在工具栏下方,故 top:0 */
 table.schedule thead{position:sticky;top:0;z-index:4;background:#1c1c20}
 table.schedule thead th{background:#1c1c20}
