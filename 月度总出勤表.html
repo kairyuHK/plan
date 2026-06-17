@@ -2594,10 +2594,6 @@ const Pages = (() => {
     document.getElementById('page-hours').classList.add('hidden');
     document.getElementById('page-schedule').classList.remove('hidden');
     const host = document.getElementById('page-schedule');
-    // 保存滚动位置:点 day-cell 等任何 store 操作都触发整页重渲(DOM rebuild),
-    // 浏览器丢失滚动状态会回到顶部。RAF 里 rebuild 完成后还原。
-    const savedScrollX = window.scrollX;
-    const savedScrollY = window.scrollY;
     Render.clear(host);
     renderDeptTabs();
     renderPeriodNav();
@@ -2614,10 +2610,10 @@ const Pages = (() => {
     });
     requestAnimationFrame(() => {
       syncStickyOffsets(); applyHighlight(); applyFocus();
-      // 还原滚动位置 — DOM rebuild 后浏览器会回到 (0,0),用保存值同步回去
-      if (window.scrollX !== savedScrollX || window.scrollY !== savedScrollY) {
-        window.scrollTo(savedScrollX, savedScrollY);
-      }
+      // 排班页 body 为 overflow:hidden(固定 100dvh,内部 .schedule-wrap 滚动),窗口本身不滚动。
+      // 从设置/数据页(已滚到底)切回时,需把文档滚动归零 —— 否则 iOS Safari 会停在旧滚动位置的
+      // 空白区导致黑屏(Chromium 会自动夹回 0 所以看不出)。
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
     });
   }
 
