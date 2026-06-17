@@ -2153,42 +2153,6 @@ const Pages = (() => {
   }
   .timeline-head:hover { background: #1a1f27; }
   /* 日式日历弹层 */
-  /* 自绘时间选择器(替代 iOS 原生 time picker,见下方 openTimePopover) */
-  .time-popover {
-    position: fixed; z-index: 1500;
-    background: var(--panel-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    padding: 10px;
-    width: 188px; max-width: calc(100vw - 16px);
-    user-select: none; -webkit-user-select: none;
-    font-family: inherit;
-    animation: popupIn 0.16s var(--ease);
-  }
-  .tp-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
-  .tp-heads > div { text-align: center; font-size: 10.5px; font-weight: 600; color: var(--text-mute); letter-spacing: .5px; }
-  .tp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .tp-col {
-    height: 168px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    border: 1px solid var(--border); border-radius: 8px; padding: 4px;
-  }
-  .tp-col::-webkit-scrollbar { width: 0; height: 0; }
-  .tp-cell {
-    height: 34px; width: 100%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 500; color: var(--text-dim);
-    background: transparent; border: 1px solid transparent; border-radius: 6px;
-    cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; padding: 0;
-    transition: background 0.12s var(--ease), color 0.12s var(--ease);
-  }
-  .tp-cell:hover { background: rgba(255,255,255,0.06); color: var(--text); }
-  .tp-cell.sel { background: var(--accent); color: #14181f; font-weight: 700; border-color: var(--accent); }
-  .tp-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .tp-btn { background: transparent; border: 1px solid var(--border-strong); color: var(--text-dim); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s var(--ease), color 0.15s var(--ease); }
-  .tp-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-  .tp-btn.primary { background: var(--accent); border-color: var(--accent); color: #14181f; }
   .cal-popover {
     position: fixed; z-index: 1500;
     background: var(--panel-elevated);
@@ -4705,7 +4669,7 @@ function buildLine(num) {
       <div class="line-config">
         <div class="cfg">
           <span class="cfg-label">起始</span>
-          <input class="cfg-input start-time time-field" type="text" readonly inputmode="none" value="08:00">
+          <input class="cfg-input start-time" type="time" value="08:00">
         </div>
         <div class="cfg">
           <span class="cfg-label">切换</span>
@@ -4732,7 +4696,7 @@ function buildLine(num) {
       <div class="foot-row">
         <span class="foot-label">实结</span>
         <label class="actual-finish-wrap" title="点击选择实际结束时间">
-          <input class="foot-val actual-finish time-field" type="text" readonly inputmode="none">
+          <input class="foot-val actual-finish" type="time">
         </label>
       </div>
     </div>
@@ -4742,15 +4706,9 @@ function buildLine(num) {
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
-  // 时间字段(起始/实结)改用自绘 picker:点击打开弹层,弹层提交时 dispatch change → recalc。
-  // 原生 <input type=time> 在「带 transform 的 iframe + body:fixed + 横屏」下定位 bug 会一交互就收起,无解,故弃用。
-  const stInput = line.querySelector('.start-time');
-  stInput.addEventListener('click', () => openTimePopover(stInput));
-  stInput.addEventListener('change', () => { recalc(line); scheduleSaveBoard(); });
+  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  const afInput = line.querySelector('.actual-finish');
-  afInput.addEventListener('click', () => openTimePopover(afInput));
-  afInput.addEventListener('change', () => scheduleSaveBoard());
+  line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -4909,7 +4867,7 @@ function addRestCard(grid, savedData) {
         </div>
         <div class="field">
           <span class="field-label">指定开始</span>
-          <input class="field-input rest-fixed time-field" type="text" readonly inputmode="none" value="${fixedVal}">
+          <input class="field-input rest-fixed" type="time" value="${fixedVal}">
         </div>
       </div>
       <div class="card-meta">
@@ -5066,17 +5024,12 @@ function wireCardEvents(node, type) {
     inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
   inputsToWatch.forEach(inp => {
-    if (!inp) return;
-    // rest-fixed 是时间字段:用自绘 picker(下方 openTimePopover),其值经弹层提交时 dispatch change 触发重算。
-    const evt = inp.classList.contains('rest-fixed') ? 'change' : 'input';
-    inp.addEventListener(evt, () => {
+    if (inp) inp.addEventListener('input', () => {
       if (inp.classList.contains('rest-name-input')) node.querySelector('.compact-name').textContent = inp.value || '休息';
       recalc(node.closest('.line'));
       scheduleSaveBoard();
     });
   });
-  const restFixedInp = node.querySelector('.rest-fixed');
-  if (restFixedInp) restFixedInp.addEventListener('click', () => openTimePopover(restFixedInp));
   const meterInp = node.querySelector('.meter-people');
   if (meterInp) {
     meterInp.addEventListener('change', () => {
@@ -6294,18 +6247,9 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// 原生 time/date picker(起始/实结/休息固定时间/日期)打开期间,iOS 横屏下页面任何重排
-// 都会把锚定输入框的 picker popover 收起。最常见的连续重排源就是每秒走字的时钟 —— 用户拨轮选数字时,
-// 下一次秒针跳动改写 topbar DOM,picker 就被收掉。这里用 focusin/focusout 记录 picker 是否打开,
-// 打开期间暂停时钟与日期头的 DOM 写入。
-let nativePickerOpen = false;
-const _isPickerInput = el => el && (el.type === 'time' || el.type === 'date');
-document.addEventListener('focusin', e => { if (_isPickerInput(e.target)) nativePickerOpen = true; });
-document.addEventListener('focusout', e => { if (_isPickerInput(e.target)) nativePickerOpen = false; });
 // 手机竖屏宽度太挤,只显示 HH:MM(不带秒);PC / 横屏 仍显示 HH:MM:SS
 const _clockMq = window.matchMedia('(max-width: 900px) and (orientation: portrait)');
 function tick() {
-  if (nativePickerOpen) return; // picker 开着时不写时钟,避免重排收起 popover
   const d = new Date();
   const hh = String(d.getHours()).padStart(2,'0');
   const mm = String(d.getMinutes()).padStart(2,'0');
@@ -6484,91 +6428,6 @@ document.getElementById('timelineHead').addEventListener('click', (e) => {
   if (e.target.closest('.date-back-today')) return;
   openCalendar(document.getElementById('timelineHead'));
 });
-
-// ============ 自绘时间选择器(替代 iOS 原生 <input type=time>) ============
-// 原生 time picker 在「父壳 iframe(带 transform) + 计划板 body:fixed + 横屏」下 iOS 会算错 popover 锚点,
-// 一交互(点正中行)就把浮层上抛并收起,无法用「少重排」绕开。改用本弹层,行为完全可控、跨平台一致。
-// 时间字段(.start-time/.actual-finish/.rest-fixed)已改为 readonly text,点击调用本函数。
-// 选中即写回 input.value 并 dispatch change → 复用各自原有的 change 监听做重算/存盘。
-let timePopover = null, timePopTarget = null;
-function _pad2(n){ return String(n).padStart(2,'0'); }
-function openTimePopover(input){
-  if (timePopover && timePopTarget === input){ closeTimePopover(); return; } // 再点同一个 = 收起
-  closeTimePopover();
-  timePopTarget = input;
-  const allowClear = input.classList.contains('actual-finish'); // 实结可清空
-  const m = /^(\d{1,2}):(\d{2})$/.exec((input.value || '').trim());
-  let selH = m ? Math.min(23, +m[1]) : 8;
-  let selM = m ? Math.min(59, +m[2]) : 0;
-  timePopover = document.createElement('div');
-  timePopover.className = 'time-popover';
-  const cells = (count, sel) => { let s = ''; for (let i = 0; i < count; i++) s += `<button type="button" class="tp-cell${i === sel ? ' sel' : ''}" data-v="${i}">${_pad2(i)}</button>`; return s; };
-  timePopover.innerHTML =
-    `<div class="tp-heads"><div>时</div><div>分</div></div>
-     <div class="tp-cols">
-       <div class="tp-col" data-unit="h">${cells(24, selH)}</div>
-       <div class="tp-col" data-unit="m">${cells(60, selM)}</div>
-     </div>
-     <div class="tp-foot">
-       ${allowClear ? '<button type="button" class="tp-btn" data-act="clear">清除</button>' : ''}
-       <button type="button" class="tp-btn primary" data-act="done">完成</button>
-     </div>`;
-  document.body.appendChild(timePopover);
-  const commit = () => { input.value = _pad2(selH) + ':' + _pad2(selM); input.dispatchEvent(new Event('change', { bubbles: true })); };
-  timePopover.addEventListener('click', (e) => {
-    const cell = e.target.closest('.tp-cell');
-    if (cell){
-      const col = cell.parentElement;
-      const sel = col.querySelector('.tp-cell.sel');
-      if (sel) sel.classList.remove('sel');
-      cell.classList.add('sel');
-      if (col.dataset.unit === 'h') selH = +cell.dataset.v; else selM = +cell.dataset.v;
-      commit(); // 选中即写回(本弹层是 fixed 普通 DOM,重排不会收起它)
-      return;
-    }
-    const act = e.target.dataset.act;
-    if (act === 'done') closeTimePopover();
-    else if (act === 'clear'){ input.value = ''; input.dispatchEvent(new Event('change', { bubbles: true })); closeTimePopover(); }
-  });
-  positionTimePopover(input);
-  // 选中项滚到列中间
-  timePopover.querySelectorAll('.tp-col').forEach(col => {
-    const sel = col.querySelector('.tp-cell.sel');
-    if (sel) col.scrollTop = sel.offsetTop - col.clientHeight / 2 + sel.offsetHeight / 2;
-  });
-  setTimeout(() => {
-    document.addEventListener('mousedown', timeOutside);
-    document.addEventListener('touchstart', timeOutside, { passive: true });
-    window.addEventListener('resize', closeTimePopover);
-  }, 0);
-}
-function closeTimePopover(){
-  if (timePopover){ timePopover.remove(); timePopover = null; }
-  timePopTarget = null;
-  document.removeEventListener('mousedown', timeOutside);
-  document.removeEventListener('touchstart', timeOutside);
-  window.removeEventListener('resize', closeTimePopover);
-}
-function timeOutside(e){
-  if (!timePopover) return;
-  if (timePopover.contains(e.target)) return;
-  if (e.target.closest && e.target.closest('.time-field')) return; // 点另一个时间框:交给它自己的 click 切换
-  closeTimePopover(); // 选中已实时写回,外点直接关
-}
-function positionTimePopover(anchor){
-  if (!timePopover) return;
-  const r = anchor.getBoundingClientRect();
-  const pop = timePopover.getBoundingClientRect();
-  const margin = 8;
-  let left = r.left + r.width / 2 - pop.width / 2;
-  let top = r.bottom + 6;
-  if (left + pop.width > window.innerWidth - margin) left = window.innerWidth - pop.width - margin;
-  if (left < margin) left = margin;
-  if (top + pop.height > window.innerHeight - margin) top = Math.max(margin, r.top - pop.height - 6); // 下方放不下就翻到上方
-  if (top < margin) top = margin;
-  timePopover.style.left = left + 'px';
-  timePopover.style.top = top + 'px';
-}
 let _suppressDateBroadcast = false;
 function broadcastPlanDate() {
   if (_suppressDateBroadcast) return;
@@ -6605,7 +6464,7 @@ function switchDate(newDate) {
 }
 updateDateHeader();
 // 每分钟检查日期是否跨天(到第二天时,若选的是"昨天的今天"应该提醒,但不强切)
-setInterval(() => { if (nativePickerOpen) return; if (currentDate === todayStr()) updateDateHeader(); }, 60000);
+setInterval(() => { if (currentDate === todayStr()) updateDateHeader(); }, 60000);
 
 loadLibrary();
 // 统一处理便当库同步后的 UI/牌子刷新
@@ -6667,10 +6526,7 @@ for (let i = 1; i <= LINE_COUNT; i++) board.appendChild(buildLine(i));
 (function syncFootH() {
   const foot = document.querySelector('.line-foot');
   if (!foot) return;
-  const apply = () => {
-    if (nativePickerOpen) return; // picker 开着时不写 --foot-h,避免重排收起原生 popover(blur 后会自愈)
-    document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
-  };
+  const apply = () => document.documentElement.style.setProperty('--foot-h', foot.offsetHeight + 'px');
   apply();
   // ResizeObserver 持续监听 .line-foot 高度变化(CSS hot reload / 字体加载 / DPR 切换都会触发)
   // 之前只在启动测一次,改 line-foot CSS 后 --foot-h 还停在旧值 → timeline-foot 比实际 line-foot 高,
