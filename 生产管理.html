@@ -4706,9 +4706,12 @@ function buildLine(num) {
   renderGridLines(grid);
   line.querySelector('.add-job').addEventListener('click', () => openPicker(line));
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
-  line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
+  // type=time 用 change 而非 input:iOS 横屏下原生时间轮盘是锚定在输入框上的 popover,
+  // 拨轮时 input 每格都触发一次,recalc 的重排会让 iOS 把 popover 判定为锚点变化而收起。
+  // change 只在拨轮提交(点完成/收起)时触发一次,picker 不再被关掉。gap 是 number(键盘),保持 input 实时重算。
+  line.querySelector('.start-time').addEventListener('change', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
+  line.querySelector('.actual-finish').addEventListener('change', () => scheduleSaveBoard());
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -5024,7 +5027,10 @@ function wireCardEvents(node, type) {
     inputsToWatch = [node.querySelector('.rest-min'), node.querySelector('.rest-fixed'), node.querySelector('.rest-name-input')];
   }
   inputsToWatch.forEach(inp => {
-    if (inp) inp.addEventListener('input', () => {
+    if (!inp) return;
+    // rest-fixed 是 type=time:用 change 避免 iOS 拨轮时 recalc 重排收起原生 popover(同 start-time)。
+    const evt = inp.classList.contains('rest-fixed') ? 'change' : 'input';
+    inp.addEventListener(evt, () => {
       if (inp.classList.contains('rest-name-input')) node.querySelector('.compact-name').textContent = inp.value || '休息';
       recalc(node.closest('.line'));
       scheduleSaveBoard();
