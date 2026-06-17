@@ -1016,10 +1016,12 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 #page-hours .h-config input[type="number"] { width: 30px; }
 /* 人员名:input + chev + pop 都直接相对 label 定位 → pop 宽度严格 = label 外边框宽度 */
 #page-hours .h-config input.h-person-input {
-  flex: 1 1 auto; min-width: 0;
+  /* PC: 不拉伸,固定 120px 容纳 5–7 字姓名;长姓名截断到 ellipsis,完整名鼠标 hover 可见 */
+  flex: 0 0 auto; width: 120px; min-width: 0;
   text-align: center;
-  padding-left: 14px !important;  /* 左右对称留 chev 同等空间,让文字真正居中 */
-  padding-right: 14px !important;
+  padding-left: 2px !important;   /* 左 padding 小一点,视觉上把文字往左推 */
+  padding-right: 34px !important; /* 右 padding 加大 → 文字在内容区居中,但整体再左移 10px */
+  text-overflow: ellipsis;
 }
 #page-hours .h-person-chev {
   position: absolute; right: 10px; top: 50%;
@@ -1032,8 +1034,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   color: var(--h-accent);
   transform: translateY(-50%) rotate(180deg);
 }
-/* 给 PC 上人员名 label 一个合理的最小宽度,避免过于挤压 */
-#page-hours .h-config label.h-person-label { min-width: 220px; }
+/* 人员名 label 按内容自适应宽度(标签 + 140px input + chev) */
+#page-hours .h-config label.h-person-label { min-width: 0; }
 #page-hours .h-person-pop {
   position: absolute;
   top: calc(100% + 6px);
@@ -1612,10 +1614,7 @@ const Store = (() => {
           if (d.printHeightMm == null) d.printHeightMm = 192;
         });
       }
-      // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 3)
-      // 一次性纠正:旧版默认 11 → 3(仅在 _resetMonthDefault3Applied 标志未设置时执行,
-      // 避免后续覆盖用户手动选择的 11)
-      const needResetMonthFix = !parsed._resetMonthDefault3Applied;
+      // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 11)
       if (parsed.people && typeof parsed.people === 'object') {
         for (const did in parsed.people) {
           const list = parsed.people[did];
@@ -1624,12 +1623,10 @@ const Store = (() => {
             if (p.annualLeave == null) {
               p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
             }
-            if (p.leaveResetMonth == null) p.leaveResetMonth = 3;
-            else if (needResetMonthFix && p.leaveResetMonth === 11) p.leaveResetMonth = 3;
+            if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
           });
         }
       }
-      parsed._resetMonthDefault3Applied = true;
       if (!parsed.sizes) parsed.sizes = {};
       // 每个 person 兜底 hoursDays
       if (parsed.people && typeof parsed.people === 'object') {
@@ -2042,7 +2039,7 @@ const Store = (() => {
         if (!Array.isArray(list)) continue;
         list.forEach(p => {
           if (p.annualLeave == null) p.annualLeave = (p.annualLeaveInit != null) ? Number(p.annualLeaveInit) : 20;
-          if (p.leaveResetMonth == null) p.leaveResetMonth = 3;
+          if (p.leaveResetMonth == null) p.leaveResetMonth = 11;
         });
       }
     }
@@ -2681,6 +2678,15 @@ const Pages = (() => {
     resizeT = setTimeout(syncStickyOffsets, 60);
   });
 
+  // 持续监听 nav 真实高度 — nav 内容(部门下拉/日期导航)是 JS 渲染后才填入,
+  // 竖屏 flex-wrap 换行高度也会变。仅靠一次 RAF 测量会有时序竞态:测早了高度偏小,
+  // body padding-top 不够 → fixed nav 盖住表格顶部(部门名+月份行只露一半)。
+  // ResizeObserver 在 nav 任何高度变化(字体加载/换行/旋屏)时自动校正 --sticky-nav。
+  if (typeof ResizeObserver !== 'undefined') {
+    const navEl = document.querySelector('.nav');
+    if (navEl) new ResizeObserver(syncStickyOffsets).observe(navEl);
+  }
+
 
   // global keyboard speed entry
   document.addEventListener('keydown', (e) => {
@@ -3026,7 +3032,7 @@ const Pages = (() => {
   // 残 = (本年度基数 + 前年残留) − 本窗口已用
   // 前年残留 = max(0, 前年基数 − 前年使用),向上叠加(实质上把所有过去未用 quota 全计入)
   function annualLeaveWindow(person, asOf) {
-    const resetMonth = Number(person.leaveResetMonth) || 3;
+    const resetMonth = Number(person.leaveResetMonth) || 11;
     const m = asOf.getMonth() + 1;
     const y = asOf.getFullYear();
     const startYear = m >= resetMonth ? y : y - 1;
@@ -3043,7 +3049,7 @@ const Pages = (() => {
   function effectiveAnnualLeave(person, asOf) {
     // 标记为无有休 → null(区别于 0「不满 6 个月」)
     if (person.noAnnualLeave) return null;
-    const resetMonth = Number(person.leaveResetMonth) || 3;
+    const resetMonth = Number(person.leaveResetMonth) || 11;
     if (!person.addedOn) return Number(person.annualLeave) || 20;
     const added = Util.parseYmd(person.addedOn);
     if (!added || isNaN(added)) return Number(person.annualLeave) || 20;
@@ -3058,10 +3064,10 @@ const Pages = (() => {
     for (let Y = firstY; new Date(Y, m, 1) <= asOf; Y++) count++;
     return Math.min(10 + count, 20);
   }
-  // 有休制度起算年:2025 年度(覆盖 2025 重置月 → 2026 重置月前一日)。
-  // 之前的窗口不视为「上一年度」→ 不结转。这意味着 2025 年度的 carryover = 0,
-  // 2026 年度才能继承 2025 的残留(若有)。
-  const LEAVE_START_YEAR = 2025;
+  // 有休制度起算年:2023 年度(默认 11 月起,即覆盖 2023-11 → 2024-10 末)。
+  // 之前的窗口不视为「上一年度」→ 不结转。这意味着 2023 年度的 carryover = 0,
+  // 2024 年度才能继承 2023 的残留(若有)。
+  const LEAVE_START_YEAR = 2023;
   function computeAnnualLeave(deptId, person, asOf) {
     const baseQuota = effectiveAnnualLeave(person, asOf);
     const { winStart, winEnd, resetMonth, startYear } = annualLeaveWindow(person, asOf);
@@ -3604,9 +3610,9 @@ const Pages = (() => {
     row.appendChild(noLeaveLabel);
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '重置月:'));
     row.appendChild(Render.el('input.num', {
-      type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 3),
+      type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 11),
       onchange: (e) => {
-        const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 3));
+        const v = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 11));
         Store.updatePerson(deptId, p.id, { leaveResetMonth: v });
       }
     }));
