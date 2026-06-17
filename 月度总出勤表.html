@@ -2285,13 +2285,13 @@ const App = (() => {
       // 应用当前部门的打印高度(每个部门可独立设置,默认 192mm)
       const curDept = Store.dept();
       const bodyH = (curDept && curDept.printHeightMm) || 192;
-      // 只有「手机端 + 夕盛部门」组合才触发特殊缩放。
-      // 原因:夕盛部门人员最多(~28 人),手机 Safari 打印 A4 横向时实际可用区比 PC 小
+      // 「手机端 + 夕盛/払出部门」组合才触发特殊缩放。
+      // 原因:这两个部门人员多,手机 Safari 打印 A4 横向时实际可用区比 PC 小
       // (Safari 最小边距 + URL/页码占用 30-50mm),默认 192mm body 会溢出到第 2 页。
       // 其他部门人少,bodyH 同 PC(192mm)就能塞 1 页,不需要缩放。PC 端任何部门都不动。
       // 试过但无效的方案:zoom 0.84 — Safari 打印模式按声明尺寸分页,不看 zoom。
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
-      const isHaraidashiYousei = !!(curDept && curDept.name === '夕盛');
+      const isHaraidashiYousei = !!(curDept && (curDept.name === '夕盛' || curDept.name === '払出'));
       // 0.78:Safari iOS 实际可用 ≈ 160-180mm。192 × 0.78 = 150mm 稳塞 1 页;
       // 156mm 最大上限防止用户改大 printHeightMm 后又溢出。
       const MOBILE_BODY_SCALE = 0.78;
