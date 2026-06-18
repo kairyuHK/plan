@@ -3716,7 +3716,7 @@ button:active{transform:scale(.97)}
         <input type="number" id="libSpeed" min="0" step="0.01" placeholder="品名速度★" inputmode="decimal">
         <input type="number" id="libLineSpeed" min="0" step="0.01" placeholder="流水线速度" inputmode="decimal">
         <input type="text" id="libPeople" placeholder="人数 (可输入?)" maxlength="6">
-        <input type="number" id="libMeterPeople" min="1" step="1" placeholder="计量人数★" inputmode="numeric">
+        <input type="number" id="libMeterPeople" min="0.5" step="0.5" placeholder="计量人数★" inputmode="decimal">
         <div class="color-picker" id="libColorPicker"></div>
         <button class="lib-add-btn" id="libAddBtn">添加</button>
       </div>
@@ -4023,6 +4023,21 @@ function boardKey(date) { return STORAGE_BOARD_PREFIX + (date || currentDate); }
   if (!localStorage.getItem(todayKey)) localStorage.setItem(todayKey, legacy);
   localStorage.removeItem(STORAGE_BOARD_LEGACY);
 })();
+// 自动清理超过 365 天的旧计划板数据
+(function pruneOldBoards() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_BOARD_PREFIX)) {
+      const date = k.slice(STORAGE_BOARD_PREFIX.length);
+      if (date < cutoffStr) toRemove.push(k);
+    }
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+})();
 const TIME_START_HOUR = 8;
 const TIME_END_HOUR = 22;
 const TIME_TICK_MIN = 10;
@@ -4264,7 +4279,7 @@ function getDaySnapshotForLib(libId) {
     if (card.dataset.libId !== libId) return;
     const s = parseFloat(card.dataset.speed) || 0;
     const meterInp = popupQ(card, '.meter-people');
-    const m = Math.max(1, parseInt(meterInp && meterInp.value) || 1);
+    const m = Math.max(1, parseFloat(meterInp && meterInp.value) || 1);
     const lid = getLineIdFromNode(card);
     if (lid) lineIds.add(lid);
     if (count === 0) { speed = s; mp = m; }
@@ -4489,7 +4504,7 @@ libAddBtn.addEventListener('click', () => {
   const speed = parseFloat(libSpeedInput.value);
   const lineSpeed = parseFloat(libLineSpeedInput.value) || 0;
   const people = parsePeople(libPeopleInput.value);
-  const meterPeople = Math.max(1, parseInt(libMeterPeopleInput.value) || 1);
+  const meterPeople = Math.max(1, parseFloat(libMeterPeopleInput.value) || 1);
   if (!name) { libNameInput.focus(); return; }
   if (!speed || speed <= 0) { libSpeedInput.focus(); return; }
   if (editingLibId) {
@@ -4752,7 +4767,7 @@ function addJobCard(grid, libItem, savedData) {
   node.style.borderLeftColor = libItem.color;
   // 计量人数同理:历史卡优先快照,新增卡取库默认值。
   const meterPeopleVal = (savedData && savedData.meterPeople != null && savedData.meterPeople !== '')
-    ? (Math.max(1, parseInt(savedData.meterPeople) || 1))
+    ? (Math.max(1, parseFloat(savedData.meterPeople) || 1))
     : (libItem.meterPeople > 0 ? libItem.meterPeople : 1);
   // 流水线速度也按线解析:lineSpeedByLine[lineId] 优先,否则 item.lineSpeed 默认值
   const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
@@ -4775,7 +4790,7 @@ function addJobCard(grid, libItem, savedData) {
       <div class="card-fields">
         <div class="field name-spd">
           <span class="field-label">计量人数★</span>
-          <input class="field-input meter-people" type="number" min="1" step="1" value="${meterPeopleVal}" inputmode="numeric">
+          <input class="field-input meter-people" type="number" min="0.5" step="0.5" value="${meterPeopleVal}" inputmode="decimal">
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
@@ -5353,7 +5368,7 @@ function recalc(line) {
       const peopleIsQ = (peopleRaw === '?' || peopleRaw === '？');
       const people = peopleIsQ ? 0 : (parseFloat(peopleRaw) || 0);
       const meterPeopleInp = popupQ(card, '.meter-people');
-      let meterPeople = Math.max(1, parseInt(meterPeopleInp && meterPeopleInp.value) || 1);
+      let meterPeople = Math.max(1, parseFloat(meterPeopleInp && meterPeopleInp.value) || 1);
       // 单卡修改计量人数不再回写品名库,避免影响其它卡片(尤其是之前日期的快照)。
       if (speed > 0 && qty > 0 && meterPeople > 0) duration = (qty / (speed * meterPeople)) * 60;
       popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
@@ -5456,7 +5471,7 @@ function recalcGlobal() {
       const _cardSpeed = parseFloat(card.dataset.speed);
       const speed = (_cardSpeed > 0) ? _cardSpeed : ((libItem && libItem.speed > 0) ? libItem.speed : 0);
       const qty = parseFloat(popupQ(card, '.qty').value) || 0;
-      const mp = Math.max(1, parseInt(popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
+      const mp = Math.max(1, parseFloat(popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
       cnt++; q += qty;
       if (speed > 0 && qty > 0) s += (qty / (speed * mp)) * 60;
     });
