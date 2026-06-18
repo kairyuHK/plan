@@ -6481,6 +6481,16 @@ updateDateHeader();
 // 每分钟检查日期是否跨天(到第二天时,若选的是"昨天的今天"应该提醒,但不强切)
 setInterval(() => { if (currentDate === todayStr()) updateDateHeader(); }, 60000);
 
+// 手机端：输入框获焦后等键盘弹出，再把品名卡滚到可视区中央，修复底部卡片跳位问题
+document.addEventListener('focusin', function(e) {
+  if (!e.target.matches('.field-input, .rest-min, .rest-name-input, .actual-finish')) return;
+  const card = e.target.closest('.card');
+  if (!card) return;
+  setTimeout(() => {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 350);
+}, true);
+
 loadLibrary();
 // 统一处理便当库同步后的 UI/牌子刷新
 function onBentoSynced(affected) {
