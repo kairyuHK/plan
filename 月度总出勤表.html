@@ -3799,10 +3799,14 @@ const Pages = (() => {
     };
     const onDocClick = (e) => { if (!pop.contains(e.target)) close(); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
+    // 「滚动即关闭」仅用于桌面(滚动表格=放弃输入)。触摸设备上,聚焦输入框弹出虚拟键盘时
+    // iOS Safari 会自动滚动页面把输入框露出来,这个滚动会误触发 close → 弹框秒关无法输入。
+    // 故触摸设备不挂 scroll 关闭,改由点击外部 / 取消 / Esc 关闭(均已注册)。
+    const closeOnScroll = !window.matchMedia('(pointer: coarse)').matches;
     setTimeout(() => {
       document.addEventListener('click', onDocClick, true);
       document.addEventListener('keydown', onKey, true);
-      window.addEventListener('scroll', close, true);
+      if (closeOnScroll) window.addEventListener('scroll', close, true);
       if (inputEl) inputEl.focus();
     }, 0);
   }
