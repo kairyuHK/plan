@@ -4964,6 +4964,21 @@ function hideCardBackdrop() {
 }
 
 function setActiveCard(card) {
+  // 关闭/切换弹窗时,若弹窗内有聚焦的输入框(如「数量」),先让它失焦收起键盘,并把文档滚动归零。
+  // iOS Safari 在 position:fixed 弹窗里聚焦输入框、键盘弹起时会偷偷滚动文档把输入框顶上来,
+  // 关闭后这个滚动不会自动归位 → 整页触摸坐标错位、卡片点不动(表现:关闭弹框后卡顿、品名卡无法点击)。
+  if (activeCard && activeCard !== card) {
+    const ae = document.activeElement;
+    if (ae && ae.blur && ae.closest && ae.closest('.card-expanded')) {
+      ae.blur();
+      try { window.scrollTo(0, 0); } catch (_) {}
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      // 计划板在 iframe 内,iOS 聚焦时常滚动的是最外层父窗口,这里一并归零(同源可访问)
+      try { if (window.parent && window.parent !== window) window.parent.scrollTo(0, 0); } catch (_) {}
+    }
+  }
   if (activeCard && activeCard !== card) {
     activeCard.classList.remove('active');
     reattachPopup(activeCard);
