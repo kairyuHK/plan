@@ -3627,6 +3627,13 @@ body.printing .line-num{
 /* 输入框(卡片字段)— 聚焦光晕 */
 .field-input,.actual-finish{transition:border-color .15s,box-shadow .15s,background .15s}
 .field-input:focus,.actual-finish:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18)!important}
+/* 用户反馈:编辑卡片字段时不要聚焦边框/光晕(尤其 iOS 上 accent-color:auto 取系统色显示的绿色高亮)。
+   固定 accent-color 为橙色压掉系统绿,并去掉 outline / box-shadow / 彩色边框。覆盖上面的橙色光晕。 */
+.field-input,.actual-finish,.rest-name-input,.card-name-display,.card-expanded input{accent-color:var(--accent);-webkit-tap-highlight-color:transparent}
+.field-input:focus,.actual-finish:focus,.rest-name-input:focus,.card-name-display:focus,.card-expanded input:focus,
+.field-input:focus-visible,.actual-finish:focus-visible,.rest-name-input:focus-visible,.card-name-display:focus-visible,.card-expanded input:focus-visible{
+  outline:none!important;box-shadow:none!important;border-color:transparent!important;
+}
 /* 按钮 — 通用微动效 */
 button{transition:transform .12s,background .15s,border-color .15s,box-shadow .15s}
 button:active{transform:scale(.97)}
