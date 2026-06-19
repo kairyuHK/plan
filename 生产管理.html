@@ -2574,6 +2574,8 @@ const Pages = (() => {
   .card-expanded.popup-detached { border-top: 2px solid var(--accent); }
   .card-expanded.popup-detached.is-rest { border-top-color: var(--rest); }
   .card-expanded.popup-detached.is-error { border-top-color: var(--red); }
+  /* 手机端弹窗背景点击层:透明,只负责接住「弹窗外」的点击以关闭弹窗回到主界面 */
+  .card-backdrop { position: fixed; inset: 0; z-index: 999; background: transparent; }
   .card.dragging { opacity: 0.45; outline: 2px dashed var(--accent); outline-offset: -2px; cursor: grabbing; transform: scale(1.02); transition: transform 0.1s; }
   .drop-indicator {
     position: absolute; left: 4px; right: 4px; height: 4px;
@@ -4624,7 +4626,8 @@ const pickModal = document.getElementById('pickModal');
 const pickList = document.getElementById('pickList');
 const pickSub = document.getElementById('pickSub');
 function openPicker(line) {
-  cleanupDetachedPopups(); // 保证「选品名」弹窗不被任何残留孤儿浮层(z-index:1000)盖住而点不动
+  setActiveCard(null);     // 收起任何已打开的卡片弹窗+背景层(背景层 z-index:999 高于选品名弹窗,不收起会挡住点击)
+  cleanupDetachedPopups(); // 兜底:清掉任何残留孤儿浮层(z-index:1000)
   currentPickTargetLine = line;
   pickSub.textContent = `添加到 ${line.querySelector('.line-num').textContent} 号线`;
   if (library.length === 0) {
@@ -4942,6 +4945,24 @@ function cleanupDetachedPopups() {
   });
 }
 
+// 手机端:卡片弹窗(z-index:1000,宽 288px)会横跨好几条线列、加上键盘几乎盖住整块板,
+// 用户填完数量后很难找到空白处关闭它(表现为「卡住 / 点不到品名卡」)。
+// 这里在弹窗打开时垫一层透明点击层(z-index:999,在卡片之上、弹窗之下):
+// 点屏幕任意处即被它接住,冒泡到 document 的全局 handler 关闭弹窗 → 直接回到主界面。
+// 桌面端弹窗相对屏幕很小、可直接点其它卡片切换,不需要这层,故仅在窄屏启用。
+let cardBackdrop = null;
+function showCardBackdrop() {
+  if (window.innerWidth > 900) return;
+  if (!cardBackdrop) {
+    cardBackdrop = document.createElement('div');
+    cardBackdrop.className = 'card-backdrop';
+  }
+  if (!cardBackdrop.parentElement) document.body.appendChild(cardBackdrop);
+}
+function hideCardBackdrop() {
+  if (cardBackdrop && cardBackdrop.parentElement) cardBackdrop.parentElement.removeChild(cardBackdrop);
+}
+
 function setActiveCard(card) {
   if (activeCard && activeCard !== card) {
     activeCard.classList.remove('active');
@@ -4951,10 +4972,13 @@ function setActiveCard(card) {
   if (card) {
     card.classList.add('active');
     detachPopup(card);
+    showCardBackdrop();
     requestAnimationFrame(() => {
       ensureRoomForPopup(card);
       positionCardPopup(card);
     });
+  } else {
+    hideCardBackdrop();
   }
 }
 
