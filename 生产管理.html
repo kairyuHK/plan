@@ -8,6 +8,10 @@
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
+/* iOS 修复:把父壳 body 钉成 position:fixed,使整页无法被滚动 —— 否则 iOS Safari 在 iframe 内
+   输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
+   导致「没父壳」+ 触摸坐标错位、起始/切换框点不动。钉死后键盘只会覆盖底部,布局不再位移。 */
+body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .tabs{display:flex;height:48px;background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
 .tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8e8}
