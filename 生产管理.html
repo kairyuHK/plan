@@ -4624,6 +4624,7 @@ const pickModal = document.getElementById('pickModal');
 const pickList = document.getElementById('pickList');
 const pickSub = document.getElementById('pickSub');
 function openPicker(line) {
+  cleanupDetachedPopups(); // 保证「选品名」弹窗不被任何残留孤儿浮层(z-index:1000)盖住而点不动
   currentPickTargetLine = line;
   pickSub.textContent = `添加到 ${line.querySelector('.line-num').textContent} 号线`;
   if (library.length === 0) {
@@ -4929,6 +4930,16 @@ function syncPopupState(card) {
   if (!card._popup) return;
   card._popup.classList.toggle('is-rest', card.classList.contains('rest'));
   card._popup.classList.toggle('is-error', card.classList.contains('error'));
+}
+
+// 兜底清理:卡片弹窗被 detach 到 body 后,若其归属卡片被直接 remove(切日期/撤销/清空等),
+// 弹窗会变成孤儿浮层(position:fixed; z-index:1000),透明地盖住整块板拦截所有点击 ——
+// 表现为「点卡片没反应」「选品名点不动」。这里清掉除当前激活卡片外的所有 body 级孤儿弹窗。
+function cleanupDetachedPopups() {
+  const keep = activeCard && activeCard._popup;
+  document.querySelectorAll('body > .card-expanded.popup-detached').forEach(p => {
+    if (p !== keep) p.remove();
+  });
 }
 
 function setActiveCard(card) {
@@ -5684,7 +5695,9 @@ function applyState(state) {
     hiddenLines = new Set(state.hiddenLines.map(Number));
     updateBoardLayout();
   }
+  setActiveCard(null); // 先把激活卡片的弹窗收回卡片内,避免下面删卡后弹窗孤儿化
   document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
+  cleanupDetachedPopups(); // 兜底清掉任何残留的孤儿弹窗
   activeCard = null;
   const lineEls = document.querySelectorAll('.line');
   state.lines.forEach((lineData, idx) => {
@@ -5769,8 +5782,9 @@ document.getElementById('clearAll').addEventListener('click', (e) => {
     confirmText: '清空',
     danger: true,
     onConfirm: () => {
+      setActiveCard(null); // 收回激活弹窗,避免删卡后孤儿化
       document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
-      activeCard = null;
+      cleanupDetachedPopups();
       document.querySelectorAll('.line').forEach(l => { l.querySelector('.start-time').value = '08:00'; l.querySelector('.gap').value = '0'; l.querySelector('.actual-finish').value = ''; recalc(l); });
       saveBoard();
       clearUnsaved();
