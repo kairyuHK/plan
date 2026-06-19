@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <title>生产管理</title>
 <style>
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
@@ -1935,7 +1935,7 @@ const Pages = (() => {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>流水线生产计划板</title>
 <script>
 // 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
@@ -9882,6 +9882,37 @@ function activate(app, instant){
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
 document.getElementById('exportAllBtn').addEventListener('click', exportAll);
 document.getElementById('importAllBtn').addEventListener('click', importAll);
+
+// iOS 修复:键盘弹起会把「可视视口」顶偏(visualViewport.offsetTop>0),而 position:fixed 的内容
+// 仍按布局视口定位 → 与触摸坐标错位(键盘收起后点不动,要连点几次或刷新才复位)。
+// 这里用 visualViewport 把整个父壳钉到「可视视口」上:高度贴合 + 按 offsetTop 平移,
+// 使「看到的位置」与「能点的位置」始终一致。静止时(offsetTop=0)不加 transform,零副作用。
+// 与 viewport 的 interactive-widget=resizes-content 互补:后者生效时 offsetTop 恒为 0,此段自动不介入。
+(function(){
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const sync = () => {
+    const ot = Math.max(0, Math.round(vv.offsetTop));
+    document.body.style.height = Math.round(vv.height) + 'px';
+    document.body.style.transform = ot ? ('translateY(' + ot + 'px)') : '';
+  };
+  vv.addEventListener('resize', sync);
+  vv.addEventListener('scroll', sync);
+  window.addEventListener('orientationchange', () => setTimeout(sync, 300));
+  sync();
+})();
+
+// 诊断:网址末尾加 #vvdebug 时,右上角实时显示视口数值;若仍点不动,卡住时截图发来即可定位。平时不显示、零影响。
+if (location.hash.indexOf('vvdebug') >= 0 && window.visualViewport) {
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;top:50px;right:6px;z-index:99999;background:rgba(0,0,0,.82);color:#3f3;font:11px ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.4';
+  document.body.appendChild(dbg);
+  const upd = () => { const vv = window.visualViewport; dbg.textContent = `vvTop:${Math.round(vv.offsetTop)} vvH:${Math.round(vv.height)}\ninnerH:${window.innerHeight} scrollY:${Math.round(window.scrollY)}\nbodyTf:${getComputedStyle(document.body).transform.slice(0,20)}`; };
+  window.visualViewport.addEventListener('resize', upd);
+  window.visualViewport.addEventListener('scroll', upd);
+  document.addEventListener('touchend', upd);
+  setInterval(upd, 500); upd();
+}
 
 // === 主题色系统 ===
 // 把任意 #RRGGBB 转 "r,g,b" 字符串
