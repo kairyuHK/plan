@@ -5380,6 +5380,26 @@ document.addEventListener('touchstart', (e) => {
   if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 }, { passive: true });
 
+// iOS 修复(横屏尤甚):聚焦输入框(起始/切换/数量/时间等)时 Safari 会滚动文档/父窗口把输入框顶上来,
+// 失焦后不自动归位 → 整页触摸坐标错位(典型表现:点击起始/切换框要点到框「上方」才命中)。
+// 任一输入框失焦、且焦点没有转到另一个输入框时,统一把文档与父窗口滚动归零。
+function resetIOSScrollOffset() {
+  try { window.scrollTo(0, 0); } catch (_) {}
+  if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  try { if (window.parent && window.parent !== window) window.parent.scrollTo(0, 0); } catch (_) {}
+}
+document.addEventListener('focusout', () => {
+  const run = () => {
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return; // 焦点转到了另一个输入框,先不归零
+    resetIOSScrollOffset();
+  };
+  requestAnimationFrame(run);
+  setTimeout(run, 300); // iOS 键盘/时间选择器收起有动画,延迟再归零一次更稳
+});
+
 function fitCardCompact(card, height) {
   // 短卡片时减小上下 padding，给圆圈更多空间
   card.style.paddingTop = height < 32 ? '1px' : '';
