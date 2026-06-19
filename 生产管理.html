@@ -9891,15 +9891,21 @@ document.getElementById('importAllBtn').addEventListener('click', importAll);
 (function(){
   const vv = window.visualViewport;
   if (!vv) return;
-  const sync = () => {
-    const ot = Math.max(0, Math.round(vv.offsetTop));
-    document.body.style.height = Math.round(vv.height) + 'px';
-    document.body.style.transform = ot ? ('translateY(' + ot + 'px)') : '';
+  // 诊断证实:iOS 键盘弹起会把父壳「窗口」真实滚动若干像素(scrollY>0),键盘收起后不归位 →
+  // 整页触摸坐标按这个 scrollY 偏移(看着对、点不中,要连点几次或刷新才复位)。
+  // 父壳是固定布局、窗口本就不该滚动,这里在键盘状态变化(visualViewport resize)时强制把
+  // 文档滚动归零,直接消除偏移。用 setTimeout 兜底,等键盘收起动画结束后再归零一次。
+  const resetScroll = () => {
+    if (window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop) {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   };
-  vv.addEventListener('resize', sync);
-  vv.addEventListener('scroll', sync);
-  window.addEventListener('orientationchange', () => setTimeout(sync, 300));
-  sync();
+  vv.addEventListener('resize', () => { resetScroll(); setTimeout(resetScroll, 60); setTimeout(resetScroll, 320); });
+  // 键盘已关(视口高度基本恢复)却仍有残留滚动时,顺手归零;键盘打开时(高度差大)不动,以免把输入框滚出可视区
+  vv.addEventListener('scroll', () => { if (Math.abs(window.innerHeight - vv.height) < 80) resetScroll(); });
+  window.addEventListener('orientationchange', () => setTimeout(resetScroll, 350));
 })();
 
 // 诊断:网址末尾加 #vvdebug 时,右上角实时显示视口数值;若仍点不动,卡住时截图发来即可定位。平时不显示、零影响。
