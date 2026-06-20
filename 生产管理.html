@@ -5070,21 +5070,23 @@ function positionCardPopup(card) {
     && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
-  // 可用高度(限制 maxHeight)必须用「整屏高度」算,不能用可视视口高度 vh ——
-  // 否则键盘弹起 vh 变小时 availH 会接近 0,把弹框 maxHeight 压成 ~0、弹框消失。
-  const availH = window.innerHeight - minTop - margin;
+  // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
+  // 键盘弹起会让 innerHeight 也一起缩小到「键盘上方可视区」;若据此算高度/兜底线,弹框会被压扁或离键盘差一截。
+  const stableH = Math.max(window.innerHeight, (window.screen && window.screen.height) || 0);
+  // 可用高度(限制 maxHeight)用稳定整屏高度算,避免键盘弹起时把弹框压成 ~0 而消失。
+  const availH = stableH - minTop - margin;
   if (popupRect.height > availH) {
     popup.style.maxHeight = availH + 'px';
   }
   const ph = Math.min(popupRect.height, availH);
   let top;
   if (kbActive) {
-    // 弹框底边吸附键盘顶(≈可视视口底 vh),跟键盘同步上移。
-    // 用 innerHeight*0.8 兜底:聚焦瞬间键盘还没弹起、vh 仍是满屏时,弹框停在 0.8 线(偏下但仍在键盘之上);
-    // 键盘升起 vh 缩小到 0.8 以下后,弹框跟着 vh 一起上移、吸附键盘顶。
-    // 数学上弹框底边 = min(vh,0.8H) ≤ vh = 键盘顶,所以全程在键盘上方、绝不会被盖住消失。
-    const kbTop = Math.min(vh, window.innerHeight * 0.8);
-    top = Math.max(minTop, kbTop - ph - margin);
+    // 弹框底边对齐键盘顶(≈可视视口底 vh),跟键盘同步上移。
+    // 兜底线用 stableH*0.8(不随键盘缩小):聚焦瞬间键盘还没起、vh 仍满屏时,弹框停在 0.8 线(偏下但在键盘之上);
+    // 键盘起来 vh 缩到 0.8 线以下后,底边 = vh = 键盘顶(对齐贴合,不留空隙)。
+    // 数学上底边 = min(vh, 0.8·stableH) ≤ vh = 键盘顶,故全程在键盘上方、绝不被盖住消失。
+    const kbTop = Math.min(vh, stableH * 0.8);
+    top = Math.max(minTop, kbTop - ph); // 不减 margin → 底边贴齐键盘顶
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > window.innerHeight) {
