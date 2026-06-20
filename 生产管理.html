@@ -35,10 +35,27 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .theme-pop .row input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
 .theme-pop .row .reset{margin-left:auto;background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:4px 10px;border-radius:5px;font:inherit;font-size:11px;cursor:pointer}
 .theme-pop .row .reset:hover{color:#e8e8e8;border-color:#3a3f47}
+/* 转场风格选择器 */
+.anim-btn{width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.04);color:#9ca0a8;cursor:pointer;flex:0 0 auto;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,color .15s,border-color .15s}
+.anim-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08);color:#e8e8e8;border-color:rgba(255,255,255,.2)}
+.anim-pop{position:absolute;top:48px;right:12px;z-index:300;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px;box-shadow:0 24px 56px rgba(0,0,0,.7);display:none;min-width:150px;animation:confirmIn .18s cubic-bezier(.2,.8,.2,1)}
+.anim-pop.show{display:block}
+.anim-pop .opt{display:block;width:100%;padding:8px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#cfd2d8;font:inherit;font-size:13px;text-align:left;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.anim-pop .opt:hover{background:rgba(255,255,255,.06);color:#fff}
+.anim-pop .opt.active{background:rgba(var(--accent-rgb),.14);color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
 @media (max-width:600px){.tabs{padding:0 8px;height:44px}.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
-iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s cubic-bezier(.4,0,.2,1),filter .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform,opacity}
 iframe.active{pointer-events:auto}
+/* === 可切换转场风格:堆叠类(淡入/缩放/模糊)—— 所有 iframe 居中叠放,靠 opacity/scale/filter 切换 === */
+.frame-wrap[data-anim="fade"] iframe,.frame-wrap[data-anim="zoom"] iframe,.frame-wrap[data-anim="blur"] iframe{transform:translateX(0);opacity:0;z-index:1}
+.frame-wrap[data-anim="fade"] iframe.active,.frame-wrap[data-anim="zoom"] iframe.active,.frame-wrap[data-anim="blur"] iframe.active{opacity:1;z-index:2}
+.frame-wrap[data-anim="zoom"] iframe{transform:scale(.96)}
+.frame-wrap[data-anim="zoom"] iframe.active{transform:scale(1)}
+.frame-wrap[data-anim="blur"] iframe{filter:blur(10px)}
+.frame-wrap[data-anim="blur"] iframe.active{filter:blur(0)}
+/* iOS 推入:进场屏带边缘投影,强化"盖上来"的层次 */
+.frame-wrap[data-anim="push"] iframe.active{box-shadow:0 0 48px rgba(0,0,0,.5)}
 /* 导出提醒横幅 */
 #export-reminder{position:fixed;bottom:16px;right:16px;background:#f59e0b;color:#14181f;padding:10px 14px;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;font-size:13px;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);font-weight:500;animation:reminderIn .25s ease-out}
 @keyframes reminderIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -536,6 +553,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
+  <button class="anim-btn" id="animBtn" title="切换转场动画" aria-label="切换转场动画">⇄</button>
   <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"></button>
 </div>
 <div class="theme-pop" id="themePop">
@@ -546,6 +564,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     <button class="reset" id="themeReset" type="button">重置</button>
   </div>
 </div>
+<div class="anim-pop" id="animPop"></div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
   <iframe data-app="config"></iframe>
@@ -9674,6 +9693,33 @@ const btns = document.querySelectorAll('.tabs button[data-app]');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
 
+// === 可切换的 app 转场风格 ===
+const ANIM_KEY = 'workbench-app-anim';
+const ANIM_DEFAULT = 'slide-x';
+const ANIM_OPTIONS = [
+  { id: 'slide-x', label: '横向滑动' },
+  { id: 'slide-y', label: '纵向滑动' },
+  { id: 'fade',    label: '淡入淡出' },
+  { id: 'zoom',    label: '缩放淡入' },
+  { id: 'blur',    label: '模糊溶解' },
+  { id: 'push',    label: 'iOS 推入' },
+];
+const STACKED_ANIMS = new Set(['fade', 'zoom', 'blur']); // 居中叠放,非滑动
+const frameWrap = document.querySelector('.frame-wrap');
+function loadAnim() {
+  try { const v = localStorage.getItem(ANIM_KEY); return ANIM_OPTIONS.some(o => o.id === v) ? v : ANIM_DEFAULT; }
+  catch(_) { return ANIM_DEFAULT; }
+}
+let currentAnim = loadAnim();
+let pushPrevIdx = 0; // iOS 推入:记录上一个激活 app 的下标,用于判断推入方向
+function applyAnim(id, persist) {
+  currentAnim = id;
+  if (frameWrap) frameWrap.dataset.anim = id;
+  if (persist !== false) { try { localStorage.setItem(ANIM_KEY, id); } catch(_){} }
+  document.querySelectorAll('#animPop .opt').forEach(o => o.classList.toggle('active', o.dataset.anim === id));
+}
+applyAnim(currentAnim, false); // 尽早把 data-anim 落到 .frame-wrap,保证首屏定位用对模式
+
 // === 统一导入导出:覆盖三个 app 全部 localStorage 数据 ===
 const BUNDLE_KEYS_EXACT = [
   'shift-schedule-data-v1',     // 排班表
@@ -9929,20 +9975,69 @@ function activate(app, instant){
   const targetIdx = APP_ORDER.indexOf(app);
   if (targetIdx === -1) return;
   btns.forEach(b => b.classList.toggle('active', b.dataset.app === app));
+  if (currentAnim === 'push') {
+    activatePush(targetIdx, instant);
+  } else {
+    const stacked = STACKED_ANIMS.has(currentAnim);
+    const axis = currentAnim === 'slide-y' ? 'Y' : 'X';
+    frames.forEach(f => {
+      const idx = APP_ORDER.indexOf(f.dataset.app);
+      if (idx === -1) return;
+      if (instant) { f.style.transition = 'none'; void f.offsetHeight; }
+      f.style.zIndex = '';   // 清掉 push 模式留下的内联层级/滤镜
+      f.style.filter = '';
+      // 堆叠类(淡入/缩放/模糊):清掉内联 transform,交给 CSS 控制 opacity/scale/filter;
+      // 滑动类:按轴向把每个 app 排到左/中/右(当前=0,左侧=-100%,右侧=+100%)
+      if (stacked) f.style.transform = '';
+      else f.style.transform = `translate${axis}(${(idx - targetIdx) * 100}%)`;
+      f.classList.toggle('active', idx === targetIdx);
+      if (instant) {
+        void f.offsetHeight;
+        requestAnimationFrame(() => { f.style.transition = ''; });
+      }
+    });
+  }
+  pushPrevIdx = targetIdx;
+  // 不再把标签名写进网址 hash(用户不想看到 #plan)。标签状态仅用 localStorage 记忆。
+  try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
+}
+// iOS 推入:新屏从行进方向那侧置顶滑入,旧屏视差滞后 25% 并压暗沉底,其余无动画停到入场侧外
+function activatePush(targetIdx, instant) {
+  const dir = targetIdx >= pushPrevIdx ? 1 : -1; // 1=向右(新屏从右进),-1=向左
   frames.forEach(f => {
     const idx = APP_ORDER.indexOf(f.dataset.app);
     if (idx === -1) return;
-    // 当前 = translateX(0),左侧 app = -100%,右侧 app = +100%
-    if (instant) { f.style.transition = 'none'; void f.offsetHeight; }
-    f.style.transform = `translateX(${(idx - targetIdx) * 100}%)`;
     f.classList.toggle('active', idx === targetIdx);
-    if (instant) {
+    if (idx === targetIdx) {
+      f.style.zIndex = '3';
+      f.style.filter = 'none';
+      if (instant) {
+        f.style.transition = 'none';
+        f.style.transform = 'translateX(0)';
+        void f.offsetHeight;
+        requestAnimationFrame(() => { f.style.transition = ''; });
+      } else {
+        f.style.transition = 'none';
+        f.style.transform = `translateX(${dir * 100}%)`; // 先无动画落到入场边
+        void f.offsetHeight;
+        f.style.transition = '';
+        f.style.transform = 'translateX(0)';             // 再动画滑入到位
+      }
+    } else if (idx === pushPrevIdx) {
+      f.style.zIndex = '2';
+      if (instant) { f.style.transition = 'none'; }
+      f.style.transform = `translateX(${-dir * 25}%)`;   // 视差滞后
+      f.style.filter = 'brightness(.6)';                 // 压暗
+      if (instant) { void f.offsetHeight; requestAnimationFrame(() => { f.style.transition = ''; }); }
+    } else {
+      f.style.zIndex = '1';
+      f.style.transition = 'none';
+      f.style.transform = `translateX(${dir * 100}%)`;   // 停到入场侧外,藏底层
+      f.style.filter = 'none';
       void f.offsetHeight;
       requestAnimationFrame(() => { f.style.transition = ''; });
     }
   });
-  // 不再把标签名写进网址 hash(用户不想看到 #plan)。标签状态仅用 localStorage 记忆。
-  try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
 }
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
 document.getElementById('exportAllBtn').addEventListener('click', exportAll);
@@ -10066,6 +10161,42 @@ function initThemePicker(){
   setTheme(loadTheme(), false);
 }
 initThemePicker();
+
+// === 转场风格选择器 ===
+function getCurrentApp() {
+  const b = document.querySelector('.tabs button[data-app].active');
+  return b ? b.dataset.app : APP_ORDER[0];
+}
+function initAnimPicker() {
+  const pop = document.getElementById('animPop');
+  const btn = document.getElementById('animBtn');
+  if (!pop || !btn) return;
+  ANIM_OPTIONS.forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'opt';
+    b.dataset.anim = o.id;
+    b.textContent = o.label;
+    b.addEventListener('click', () => {
+      applyAnim(o.id, true);
+      activate(getCurrentApp(), true); // 立即按新模式重排,不做动画
+      pop.classList.remove('show');
+    });
+    pop.appendChild(b);
+  });
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const tp = document.getElementById('themePop');
+    if (tp) tp.classList.remove('show'); // 避免和主题弹窗叠在一起
+    pop.classList.toggle('show');
+  });
+  document.addEventListener('click', e => {
+    if (!pop.contains(e.target) && e.target !== btn) pop.classList.remove('show');
+  });
+  applyAnim(currentAnim, false); // 标记当前选中项
+}
+initAnimPicker();
+
 // 每个 iframe 加载完成后广播一次当前主题(确保 iframe 内拿到颜色)
 frames.forEach(f => {
   f.addEventListener('load', () => {
