@@ -2578,6 +2578,9 @@ const Pages = (() => {
   .card-expanded.popup-detached { border-top: 2px solid var(--accent); }
   .card-expanded.popup-detached.is-rest { border-top-color: var(--rest); }
   .card-expanded.popup-detached.is-error { border-top-color: var(--red); }
+  /* 点输入框时弹框要从「贴卡片」平滑移到「键盘上方」,加过渡避免生硬跳动晃眼。
+     仅在键盘移动时(kb-move)启用,弹框首次出现不受影响。 */
+  .card-expanded.popup-detached.kb-move { transition: top 0.22s var(--ease), left 0.22s var(--ease); }
   /* 手机端弹窗背景点击层:透明,只负责接住「弹窗外」的点击以关闭弹窗回到主界面 */
   .card-backdrop { position: fixed; inset: 0; z-index: 999; background: transparent; }
   .card.dragging { opacity: 0.45; outline: 2px dashed var(--accent); outline-offset: -2px; cursor: grabbing; transform: scale(1.02); transition: transform 0.1s; }
@@ -5054,10 +5057,10 @@ function positionCardPopup(card) {
   const vw = window.innerWidth;
   const vv = window.visualViewport;
   const vh = vv ? vv.height : window.innerHeight;
-  // 手机端:弹框里有输入框聚焦时(键盘已/将弹起),把弹框钉到屏幕顶部。
-  // 用「是否聚焦」判断,而不是 visualViewport 高度 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
-  // 聚焦是确定信号,不受视口飘移影响。聚焦的输入框(数量)在弹框上部,钉到顶部即能露在键盘上方。
-  const pinTop = window.innerWidth <= 900 && !!popup && !!document.activeElement
+  // 手机端:弹框里有输入框聚焦(键盘已/将弹起)时,把弹框贴到键盘上方。
+  // 用「是否聚焦」判断,而不是 visualViewport 高度差 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
+  // 聚焦是确定信号,不受视口飘移影响。
+  const kbActive = window.innerWidth <= 900 && !!popup && !!document.activeElement
     && popup.contains(document.activeElement)
     && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   const margin = 8;
@@ -5069,8 +5072,11 @@ function positionCardPopup(card) {
   }
   const ph = Math.min(popupRect.height, availH);
   let top;
-  if (pinTop) {
-    top = minTop;
+  if (kbActive) {
+    // 弹框底边贴到键盘上方。键盘顶 ≈ 可视视口高度,但 iOS 反复开合后该值可能飘大,
+    // 用 innerHeight*0.58 兜底,确保弹框不会掉到键盘下被遮(竖屏数字键盘约占下半屏)。
+    const kbTop = Math.min(vh, window.innerHeight * 0.58);
+    top = Math.max(minTop, kbTop - ph - margin);
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > vh) {
@@ -5107,13 +5113,21 @@ if (window.visualViewport) {
 // 而 visualViewport resize 在 iOS 上不一定稳定触发)。聚焦是确定信号,不受 iOS 视口飘移影响。
 document.addEventListener('focusin', (e) => {
   if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
+  activeCard._popup.classList.add('kb-move'); // 启用过渡,移到键盘上方时平滑不晃眼
   positionCardPopup(activeCard);
-  // 键盘弹出有动画,稍后再定位一次,确保稳定钉在顶部
+  // 键盘弹出有动画,稍后再定位一次,确保稳定贴在键盘上方
   setTimeout(() => { if (activeCard && activeCard._popup && activeCard._popup.contains(document.activeElement)) positionCardPopup(activeCard); }, 300);
 });
 document.addEventListener('focusout', (e) => {
   if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
-  setTimeout(() => { if (activeCard) positionCardPopup(activeCard); }, 50);
+  const pop = activeCard._popup;
+  setTimeout(() => {
+    // 焦点真的离开弹框(没有别的输入框接着聚焦)才平滑恢复贴卡片,并在过渡结束后去掉 kb-move
+    if (pop && !pop.contains(document.activeElement)) {
+      if (activeCard && activeCard._popup === pop) positionCardPopup(activeCard);
+      setTimeout(() => { pop.classList.remove('kb-move'); }, 280);
+    }
+  }, 60);
 });
 
 function wireCardEvents(node, type) {
