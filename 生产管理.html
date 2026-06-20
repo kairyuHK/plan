@@ -4938,7 +4938,12 @@ function detachPopup(card) {
 }
 function reattachPopup(card) {
   if (card._popup) {
-    card._popup.classList.remove('popup-detached', 'is-rest', 'is-error');
+    // 去掉过渡类并清空残留定位:否则下次重开这张卡时,弹框会带着上次「键盘上方」的 top
+    // 并因 kb-move 过渡从旧位置滑动到新位置(表现为弹框从 A 下滑)。
+    card._popup.classList.remove('popup-detached', 'is-rest', 'is-error', 'kb-move');
+    card._popup.style.top = '';
+    card._popup.style.left = '';
+    card._popup.style.maxHeight = '';
     card.appendChild(card._popup);
     card._popup = null;
   }
@@ -5426,12 +5431,19 @@ function attachCardInteraction(card) {
 }
 
 // 点击卡片之外（且不在弹窗内）关闭弹窗
+let _lastTouchT = 0;
 document.addEventListener('mousedown', (e) => {
+  // 触摸后 iOS 会在约 300ms 后合成一次「幽灵 mousedown」。点卡片激活弹框(背景层随之出现)后,
+  // 这个幽灵 mousedown 会命中背景层、被判为「点了弹窗外」→ 立刻关掉弹框 = 「点卡片闪一下就消失」。
+  // 触摸刚发生过就忽略本次 mousedown(触摸关闭由下面的 touchstart 处理)。
+  if (Date.now() - _lastTouchT < 700) return;
   if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 });
 document.addEventListener('touchstart', (e) => {
+  _lastTouchT = Date.now();
   if (!e.target.closest('.card') && !e.target.closest('.card-expanded')) setActiveCard(null);
 }, { passive: true });
+document.addEventListener('touchend', () => { _lastTouchT = Date.now(); }, { passive: true });
 
 // iOS 修复(横屏尤甚):聚焦输入框(起始/切换/数量/时间等)时 Safari 会滚动文档/父窗口把输入框顶上来,
 // 失焦后不自动归位 → 整页触摸坐标错位(典型表现:点击起始/切换框要点到框「上方」才命中)。
