@@ -5085,12 +5085,10 @@ function positionCardPopup(card) {
   const ph = Math.min(popupRect.height, availH);
   let top;
   if (kbActive) {
-    // 弹框底边对齐键盘顶(≈可视视口底 vh),跟键盘同步上移。
-    // 兜底线用 stableH*0.8(不随键盘缩小):聚焦瞬间键盘还没起、vh 仍满屏时,弹框停在 0.8 线(偏下但在键盘之上);
-    // 键盘起来 vh 缩到 0.8 线以下后,底边 = vh = 键盘顶(对齐贴合,不留空隙)。
-    // 数学上底边 = min(vh, 0.8·stableH) ≤ vh = 键盘顶,故全程在键盘上方、绝不被盖住消失。
-    const kbTop = Math.min(vh, stableH * 0.8);
-    top = Math.max(minTop, kbTop - ph); // 不减 margin → 底边贴齐键盘顶
+    // 稳定地把弹框放在键盘上方(不追求精确吸附 —— iOS 视口数值在不同状态下不一致,精确吸附会消失/弹回)。
+    // 兜底线用 stableH*0.58(稳定整屏高度,不随键盘缩小):聚焦时在键盘上方,键盘起来后也始终在键盘之上。
+    const kbTop = Math.min(vh, stableH * 0.58);
+    top = Math.max(minTop, kbTop - ph - margin);
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > window.innerHeight) {
@@ -5113,19 +5111,9 @@ function repositionActivePopup() {
   positionCardPopup(activeCard);
 }
 
-// 键盘升降时把弹框底边重新贴到当前键盘顶,弹框就跟着键盘移动。
-// 关键:viewport 带 interactive-widget=resizes-content 时,键盘改变的是「布局视口」→ 触发的是
-// window.resize 而非 visualViewport.resize;所以两个都要监听,否则键盘弹起后弹框不重定位、被盖住。
-const track = () => { if (activeCard) positionCardPopup(activeCard); };
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', track);
-  window.visualViewport.addEventListener('scroll', track);
-}
-window.addEventListener('resize', track);
-
-// 弹框内输入框聚焦/失焦时立即重定位:聚焦(键盘要弹起)→ 钉到屏幕顶部露在键盘上方;失焦 → 恢复贴卡片。
-// 这是 positionCardPopup 在「输入中」唯一可靠的触发入口(repositionActivePopup 聚焦时是冻结的,
-// 而 visualViewport resize 在 iOS 上不一定稳定触发)。聚焦是确定信号,不受 iOS 视口飘移影响。
+// 弹框内输入框聚焦/失焦时重定位:聚焦 → 移到键盘上方;失焦 → 恢复贴卡片。
+// 只在 focusin/focusout + 延时兜底里定位,不挂高频 visualViewport/window 跟踪 ——
+// iOS 视口数值在键盘动画过程中不稳定,挂跟踪会用到错误值把弹框弹回低位/盖住。聚焦是确定信号。
 document.addEventListener('focusin', (e) => {
   if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
   activeCard._popup.classList.add('kb-move'); // 启用过渡,平滑滑到键盘上方,不生硬跳动
@@ -9951,7 +9939,7 @@ function activate(app, instant){
       requestAnimationFrame(() => { f.style.transition = ''; });
     }
   });
-  if(location.hash !== '#'+app) location.hash = app;
+  // 不再把标签名写进网址 hash(用户不想看到 #plan)。标签状态仅用 localStorage 记忆。
   try{ localStorage.setItem('workbench-last-app', app); }catch(_){}
 }
 btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.app)));
@@ -10088,7 +10076,9 @@ frames.forEach(f => {
 // === 手机端左右滑屏切换 app ===
 const APP_ORDER = ['plan', 'config', 'schedule'];
 function switchAppByDirection(dir) {
-  const cur = (location.hash.slice(1)) || APP_ORDER[0];
+  // 当前标签从激活按钮读(原来靠 hash;已不再写 hash)
+  const activeBtn = document.querySelector('.tabs button[data-app].active');
+  const cur = activeBtn ? activeBtn.dataset.app : APP_ORDER[0];
   const i = APP_ORDER.indexOf(cur);
   if (i === -1) return;
   const next = dir === 'left' ? i + 1 : i - 1;
@@ -10145,6 +10135,8 @@ window.addEventListener('hashchange', () => {
       if(['schedule','plan','config'].includes(last)) firstApp = last;
     }catch(_){}
   }
+  // 清掉网址里残留的标签 hash(如旧版留下的 #plan),保持地址栏干净
+  if(location.hash){ try{ history.replaceState(null, '', location.pathname + location.search); }catch(_){} }
   activate(firstApp, true); // 首次定位无动画
   // 预加载其余 iframe(隐藏运行,后台广播数据让跨 app 同步生效)
   setTimeout(() => {
