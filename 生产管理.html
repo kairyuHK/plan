@@ -4856,7 +4856,8 @@ function addJobCard(grid, libItem, savedData) {
   if (!savedData) {
     scrollCardIntoView(node);
     setActiveCard(node);
-    setTimeout(() => node.querySelector('.qty').focus({ preventScroll: true }), 80);
+    // 仅桌面端自动聚焦数量框;手机端不自动聚焦,避免新增卡片就直接弹出键盘(由用户自己点数量再输入)
+    if (window.innerWidth > 900) setTimeout(() => node.querySelector('.qty').focus({ preventScroll: true }), 80);
   }
 }
 
@@ -5050,7 +5051,10 @@ function positionCardPopup(card) {
   popup.style.maxHeight = ''; // 重置后再算
   const cardRect = card.getBoundingClientRect();
   const popupRect = popup.getBoundingClientRect();
-  const vw = window.innerWidth, vh = window.innerHeight;
+  // 用「可视视口」高度作为底边:手机键盘弹起时 innerHeight 不变、但可视区被键盘压小,
+  // 用 visualViewport.height 才能把弹框顶到键盘上方,避免「点数量后弹框被键盘遮住」。
+  const vw = window.innerWidth;
+  const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
   // 限制 popup 高度,确保不会越过表头
@@ -5077,6 +5081,15 @@ function repositionActivePopup() {
   const popup = activeCard._popup;
   if (popup && popup.contains(document.activeElement)) return;
   positionCardPopup(activeCard);
+}
+
+// 键盘弹起/收起会触发 visualViewport resize:这时即使输入框聚焦也要重定位弹框,
+// 让它顶到键盘上方(修「点下方卡片的数量后,弹框被键盘遮住」)。等一帧布局稳定再算。
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    if (!activeCard) return;
+    requestAnimationFrame(() => { if (activeCard) positionCardPopup(activeCard); });
+  });
 }
 
 function wireCardEvents(node, type) {
