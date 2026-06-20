@@ -5109,18 +5109,15 @@ function repositionActivePopup() {
   positionCardPopup(activeCard);
 }
 
-// 键盘升降过程中 iOS 持续触发 visualViewport 的 resize/scroll:每次都把弹框底边重新贴到当前
-// 键盘顶(vh),弹框就跟着键盘同步上移/下移。已去掉 positionCardPopup 里的 top 重置,故不会闪动。
+// 键盘升降时把弹框底边重新贴到当前键盘顶,弹框就跟着键盘移动。
+// 关键:viewport 带 interactive-widget=resizes-content 时,键盘改变的是「布局视口」→ 触发的是
+// window.resize 而非 visualViewport.resize;所以两个都要监听,否则键盘弹起后弹框不重定位、被盖住。
+const track = () => { if (activeCard) positionCardPopup(activeCard); };
 if (window.visualViewport) {
-  const track = () => {
-    if (!activeCard) return;
-    // 键盘开始动后去掉过渡,让弹框实时跟随键盘(同速),不滞后;聚焦那一下的入场过渡已经播完。
-    if (activeCard._popup) activeCard._popup.classList.remove('kb-move');
-    positionCardPopup(activeCard);
-  };
   window.visualViewport.addEventListener('resize', track);
   window.visualViewport.addEventListener('scroll', track);
 }
+window.addEventListener('resize', track);
 
 // 弹框内输入框聚焦/失焦时立即重定位:聚焦(键盘要弹起)→ 钉到屏幕顶部露在键盘上方;失焦 → 恢复贴卡片。
 // 这是 positionCardPopup 在「输入中」唯一可靠的触发入口(repositionActivePopup 聚焦时是冻结的,
@@ -5129,6 +5126,10 @@ document.addEventListener('focusin', (e) => {
   if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
   activeCard._popup.classList.add('kb-move'); // 启用过渡,平滑滑到键盘上方,不生硬跳动
   positionCardPopup(activeCard);
+  // 键盘弹起动画(及随之的 innerHeight/视口变化)需要时间;多次兜底重定位,确保最终贴到键盘顶,
+  // 避免只在「键盘还没起」时定位一次、之后停在原位被键盘盖住。
+  setTimeout(() => { if (activeCard && activeCard._popup && activeCard._popup.contains(document.activeElement)) positionCardPopup(activeCard); }, 120);
+  setTimeout(() => { if (activeCard && activeCard._popup && activeCard._popup.contains(document.activeElement)) positionCardPopup(activeCard); }, 350);
 });
 document.addEventListener('focusout', (e) => {
   if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
