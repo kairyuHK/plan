@@ -5062,8 +5062,9 @@ function positionCardPopup(card) {
     && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
-  // 限制 popup 高度,确保不会越过表头
-  const availH = vh - minTop - margin;
+  // 可用高度(限制 maxHeight)必须用「整屏高度」算,不能用可视视口高度 vh ——
+  // 否则键盘弹起 vh 变小时 availH 会接近 0,把弹框 maxHeight 压成 ~0、弹框消失。
+  const availH = window.innerHeight - minTop - margin;
   if (popupRect.height > availH) {
     popup.style.maxHeight = availH + 'px';
   }
@@ -5076,8 +5077,8 @@ function positionCardPopup(card) {
     top = Math.max(minTop, kbTop - ph - margin);
   } else {
     top = cardRect.bottom + 6;
-    if (top + ph + margin > vh) {
-      top = Math.max(minTop, vh - ph - margin);
+    if (top + ph + margin > window.innerHeight) {
+      top = Math.max(minTop, window.innerHeight - ph - margin);
     }
     if (top < minTop) top = minTop;
   }
