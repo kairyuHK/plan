@@ -5069,9 +5069,11 @@ function positionCardPopup(card) {
   // 手机端:弹框里有输入框聚焦(键盘已/将弹起)时,把弹框贴到键盘上方。
   // 用「是否聚焦」判断,而不是 visualViewport 高度差 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
   // 聚焦是确定信号,不受视口飘移影响。
-  const kbActive = window.innerWidth <= 900 && !!popup && !!document.activeElement
-    && popup.contains(document.activeElement)
-    && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+  const _ae = document.activeElement;
+  const kbActive = window.innerWidth <= 900 && !!popup && !!_ae
+    && popup.contains(_ae)
+    && /^(INPUT|SELECT|TEXTAREA)$/.test(_ae.tagName)
+    && !_ae.readOnly && !_ae.disabled; // 只读/禁用字段(流水线速度、人数)点了不弹键盘,弹框不要上移
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
   // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
