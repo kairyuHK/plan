@@ -5054,8 +5054,12 @@ function positionCardPopup(card) {
   const vw = window.innerWidth;
   const vv = window.visualViewport;
   const vh = vv ? vv.height : window.innerHeight;
-  // 手机键盘弹起时 innerHeight 不变、可视区被键盘压小 → 用这个差判断键盘是否弹起
-  const keyboardUp = !!vv && (window.innerHeight - vv.height) > 150;
+  // 手机端:弹框里有输入框聚焦时(键盘已/将弹起),把弹框钉到屏幕顶部。
+  // 用「是否聚焦」判断,而不是 visualViewport 高度 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
+  // 聚焦是确定信号,不受视口飘移影响。聚焦的输入框(数量)在弹框上部,钉到顶部即能露在键盘上方。
+  const pinTop = window.innerWidth <= 900 && !!popup && !!document.activeElement
+    && popup.contains(document.activeElement)
+    && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
   // 限制 popup 高度,确保不会越过表头
@@ -5065,9 +5069,7 @@ function positionCardPopup(card) {
   }
   const ph = Math.min(popupRect.height, availH);
   let top;
-  if (keyboardUp) {
-    // 键盘弹起时直接把弹框钉到表头下方(锚定屏幕顶部),确保完整露在键盘上方;
-    // 不再贴着可能很靠下的卡片定位,避免 iOS 下坐标不可靠导致弹框被键盘遮住。
+  if (pinTop) {
     top = minTop;
   } else {
     top = cardRect.bottom + 6;
@@ -5099,6 +5101,20 @@ if (window.visualViewport) {
     requestAnimationFrame(() => { if (activeCard) positionCardPopup(activeCard); });
   });
 }
+
+// 弹框内输入框聚焦/失焦时立即重定位:聚焦(键盘要弹起)→ 钉到屏幕顶部露在键盘上方;失焦 → 恢复贴卡片。
+// 这是 positionCardPopup 在「输入中」唯一可靠的触发入口(repositionActivePopup 聚焦时是冻结的,
+// 而 visualViewport resize 在 iOS 上不一定稳定触发)。聚焦是确定信号,不受 iOS 视口飘移影响。
+document.addEventListener('focusin', (e) => {
+  if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
+  positionCardPopup(activeCard);
+  // 键盘弹出有动画,稍后再定位一次,确保稳定钉在顶部
+  setTimeout(() => { if (activeCard && activeCard._popup && activeCard._popup.contains(document.activeElement)) positionCardPopup(activeCard); }, 300);
+});
+document.addEventListener('focusout', (e) => {
+  if (!activeCard || !activeCard._popup || !activeCard._popup.contains(e.target)) return;
+  setTimeout(() => { if (activeCard) positionCardPopup(activeCard); }, 50);
+});
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
