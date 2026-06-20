@@ -5051,10 +5051,11 @@ function positionCardPopup(card) {
   popup.style.maxHeight = ''; // 重置后再算
   const cardRect = card.getBoundingClientRect();
   const popupRect = popup.getBoundingClientRect();
-  // 用「可视视口」高度作为底边:手机键盘弹起时 innerHeight 不变、但可视区被键盘压小,
-  // 用 visualViewport.height 才能把弹框顶到键盘上方,避免「点数量后弹框被键盘遮住」。
   const vw = window.innerWidth;
-  const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  const vv = window.visualViewport;
+  const vh = vv ? vv.height : window.innerHeight;
+  // 手机键盘弹起时 innerHeight 不变、可视区被键盘压小 → 用这个差判断键盘是否弹起
+  const keyboardUp = !!vv && (window.innerHeight - vv.height) > 150;
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
   // 限制 popup 高度,确保不会越过表头
@@ -5063,11 +5064,18 @@ function positionCardPopup(card) {
     popup.style.maxHeight = availH + 'px';
   }
   const ph = Math.min(popupRect.height, availH);
-  let top = cardRect.bottom + 6;
-  if (top + ph + margin > vh) {
-    top = Math.max(minTop, vh - ph - margin);
+  let top;
+  if (keyboardUp) {
+    // 键盘弹起时直接把弹框钉到表头下方(锚定屏幕顶部),确保完整露在键盘上方;
+    // 不再贴着可能很靠下的卡片定位,避免 iOS 下坐标不可靠导致弹框被键盘遮住。
+    top = minTop;
+  } else {
+    top = cardRect.bottom + 6;
+    if (top + ph + margin > vh) {
+      top = Math.max(minTop, vh - ph - margin);
+    }
+    if (top < minTop) top = minTop;
   }
-  if (top < minTop) top = minTop;
   let left = cardRect.left;
   if (left + popupRect.width + margin > vw) left = vw - popupRect.width - margin;
   if (left < margin) left = margin;
