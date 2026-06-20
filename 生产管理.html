@@ -5061,7 +5061,11 @@ function positionCardPopup(card) {
   const popupRect = popup.getBoundingClientRect();
   const vw = window.innerWidth;
   const vv = window.visualViewport;
-  const vh = vv ? vv.height : window.innerHeight;
+  // 键盘顶 = 可视区底。两种 iOS 行为都要兼容并取较小值:
+  //   resizes-visual:innerHeight 不变、visualViewport.height 缩小;
+  //   resizes-content:innerHeight 缩小、visualViewport.height 可能仍报满屏(导致弹框被算回低位被盖住)。
+  // 取 min 才是真正的键盘顶,避免「先顶上去又瞬间弹回低位」。
+  const vh = Math.min(window.innerHeight, vv ? vv.height : window.innerHeight);
   // 手机端:弹框里有输入框聚焦(键盘已/将弹起)时,把弹框贴到键盘上方。
   // 用「是否聚焦」判断,而不是 visualViewport 高度差 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
   // 聚焦是确定信号,不受视口飘移影响。
