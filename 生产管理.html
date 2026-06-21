@@ -690,9 +690,9 @@ input:focus,select:focus{border-color:var(--accent)}
   .line-card{display:none}
   .line-card.mobile-active{display:block}
   .assign-btn{min-width:0;flex:0 0 50%;min-height:44px}
-  /* 手机端:日期 + 生产线切换栏固定在视口顶部,滑动排班内容时不滚走 */
+  /* 手机端:日期 + 生产线切换栏钉在 .nav(排班/人员/设置)下方,两条都不滚走、互不遮挡 */
   .sched-header{
-    position:sticky;top:0;z-index:20;
+    position:sticky;top:var(--nav-h,0);z-index:20;
     background:var(--bg);
     margin:-16px -16px 8px;
     padding:12px 16px 6px;
@@ -1944,6 +1944,11 @@ const Pages = (() => {
   }));
   window.addEventListener('hashchange', () => route((location.hash.match(/^#\/(\w+)/)||[])[1]));
   Store.subscribe(() => renderers[current]());
+  // 手机端:实测 .nav 高度写进 --nav-h,让 .sched-header 钉在它下方而非盖住它
+  const navEl = document.querySelector('.nav');
+  function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
+  setNavH();
+  window.addEventListener('resize', setNavH);
   route((location.hash.match(/^#\/(\w+)/)||[])[1]);
 })();
 <\/script>
