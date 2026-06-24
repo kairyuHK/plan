@@ -43,6 +43,26 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .anim-pop .opt{display:block;width:100%;padding:8px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#cfd2d8;font:inherit;font-size:13px;text-align:left;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .anim-pop .opt:hover{background:rgba(255,255,255,.06);color:#fff}
 .anim-pop .opt.active{background:rgba(var(--accent-rgb),.14);color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
+/* 白天/夜间切换按钮 */
+.mode-btn{width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.04);color:#9ca0a8;cursor:pointer;flex:0 0 auto;font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,color .15s,border-color .15s}
+.mode-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08);color:#e8e8e8;border-color:rgba(255,255,255,.2)}
+/* === 白天模式(父壳:这里多为写死深色,逐一覆盖) === */
+:root[data-theme="light"]{color-scheme:light}
+html[data-theme="light"],html[data-theme="light"] body{background:#e9ecf2;color:#1b1e26}
+html[data-theme="light"] .tabs{background:linear-gradient(180deg,#ffffff 0%,#eef1f5 100%);border-bottom-color:#dde2ea;box-shadow:0 1px 0 rgba(0,0,0,.02) inset,0 4px 16px rgba(20,24,33,.08)}
+html[data-theme="light"] .tabs button{color:#5b6270}
+html[data-theme="light"] .tabs button:hover{background:rgba(20,24,33,.05);color:#11141a}
+html[data-theme="light"] .tabs .io-btn{color:#5b6270}
+html[data-theme="light"] .tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.10)}
+html[data-theme="light"] .frame-wrap,html[data-theme="light"] iframe{background:#e9ecf2}
+html[data-theme="light"] .theme-pop,html[data-theme="light"] .anim-pop{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%);border-color:#dde2ea;box-shadow:0 24px 56px rgba(20,24,33,.18)}
+html[data-theme="light"] .theme-pop .row{color:#5b6270}
+html[data-theme="light"] .anim-pop .opt{color:#3a3f4a}
+html[data-theme="light"] .anim-pop .opt:hover{background:rgba(20,24,33,.05);color:#11141a}
+html[data-theme="light"] .anim-btn,html[data-theme="light"] .mode-btn{background:rgba(20,24,33,.04);border-color:rgba(20,24,33,.12);color:#5b6270}
+html[data-theme="light"] .anim-btn:hover,html[data-theme="light"] .mode-btn:hover{background:rgba(20,24,33,.08);color:#11141a;border-color:rgba(20,24,33,.2)}
+html[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f3f5f8);border-color:#dde2ea;color:#1b1e26;box-shadow:0 12px 32px rgba(20,24,33,.18)}
+html[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f3f5f8);border-color:#dde2ea;color:#1b1e26}
 @media (max-width:600px){.tabs{padding:0 8px;height:44px}.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s cubic-bezier(.4,0,.2,1),filter .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform,opacity}
@@ -554,6 +574,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
   <button class="anim-btn" id="animBtn" title="切换转场动画" aria-label="切换转场动画">⇄</button>
+  <button class="mode-btn" id="modeBtn" title="白天/夜间模式" aria-label="切换白天/夜间模式">🌙</button>
   <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"></button>
 </div>
 <div class="theme-pop" id="themePop">
@@ -584,8 +605,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
   }
   window.addEventListener('message', e => {
-    if(!e.data || e.data.type !== 'theme-changed') return;
-    apply(e.data.accent, e.data.accentRgb);
+    if(!e.data) return;
+    if(e.data.type === 'theme-changed') apply(e.data.accent, e.data.accentRgb);
+    else if(e.data.type === 'theme-mode' && e.data.mode) document.documentElement.dataset.theme = e.data.mode;
   });
   // 加载完成后主动向父壳要一次当前主题(防 iframe 比广播晚到)
   try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
@@ -604,6 +626,21 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   --font: -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
   --font-mono: ui-monospace,Consolas,monospace;
 }
+/* === 白天模式:覆盖变量(由父壳广播 theme-mode 设置 <html data-theme>) === */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#e9ecf2; --card:#ffffff; --border:#d6dbe4;
+  --text:#1b1e26; --muted:#5b6270;
+}
+/* 白天模式:写死深色的组件逐一覆盖 */
+:root[data-theme="light"] .nav{background:linear-gradient(180deg,#ffffff 0%,#eef1f5 100%);border-bottom-color:#dde2ea;box-shadow:0 1px 0 rgba(0,0,0,.02) inset,0 4px 16px rgba(20,24,33,.08)}
+:root[data-theme="light"] .nav .brand{background:none!important;-webkit-text-fill-color:#1b1e26!important;color:#1b1e26!important}
+:root[data-theme="light"] .card{background:#ffffff;border-color:#dde2ea;box-shadow:0 1px 2px rgba(20,24,33,.06),0 8px 24px rgba(20,24,33,.08)}
+:root[data-theme="light"] .date-trigger{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%);box-shadow:0 1px 3px rgba(20,24,33,.10)}
+:root[data-theme="light"] .copy-modal .item{background:#f3f5f8}
+:root[data-theme="light"] .assign-btn{background:#f3f5f8}
+:root[data-theme="light"] .sched-header{box-shadow:0 4px 12px rgba(20,24,33,.10)}
+:root[data-theme="light"] .stat-big{background:none;-webkit-text-fill-color:#1b1e26;color:#1b1e26}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -1969,8 +2006,9 @@ const Pages = (() => {
     if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
   }
   window.addEventListener('message', e => {
-    if(!e.data || e.data.type !== 'theme-changed') return;
-    apply(e.data.accent, e.data.accentRgb);
+    if(!e.data) return;
+    if(e.data.type === 'theme-changed') apply(e.data.accent, e.data.accentRgb);
+    else if(e.data.type === 'theme-mode' && e.data.mode) document.documentElement.dataset.theme = e.data.mode;
   });
   try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
 })();
@@ -2019,6 +2057,23 @@ const Pages = (() => {
     --shadow-lg: 0 8px 28px rgba(0,0,0,0.5);
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
   }
+  /* === 白天模式:覆盖变量 === */
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --bg:#e9ecf2; --bg-2:#e0e4ec; --line-bg:#eef1f6;
+    --panel:#ffffff; --panel-solid:#ffffff; --panel-2:#f1f4f8; --panel-elevated:#ffffff;
+    --border:#d6dbe4; --border-strong:#c2c9d5; --border-line:#e1e5ec;
+    --text:#1b1e26; --text-dim:#5b6270; --text-mute:#868d9a;
+    --shadow-sm:0 1px 2px rgba(20,24,33,.08); --shadow-md:0 2px 8px rgba(20,24,33,.10); --shadow-lg:0 8px 28px rgba(20,24,33,.16);
+  }
+  /* 白天模式:写死深色的组件逐一覆盖 */
+  :root[data-theme="light"] .card{background:#ffffff}
+  :root[data-theme="light"] .card:hover{background:#f3f5f8;border-color:var(--border-strong)}
+  :root[data-theme="light"] .card.error{background:#fdecec}
+  :root[data-theme="light"] .card.rest{background:#f1eefc}
+  :root[data-theme="light"] .card.rest:hover{background:#e9e4fb}
+  :root[data-theme="light"] .timeline-head:hover{background:#e9edf3}
+  :root[data-theme="light"] .line-head,:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-foot{background:#ffffff}
 
   html, body {
     height: 100%;
@@ -3629,6 +3684,20 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 .timeline-head:hover{
   background:linear-gradient(180deg,rgba(28,28,32,.95) 0%,rgba(16,16,18,.98) 100%)!important;
 }
+/* === 白天模式:压过上面 !important 的深色精修(二级工具栏 / 头尾栏 / 分隔 / 阴影) === */
+:root[data-theme="light"] .topbar{background:linear-gradient(180deg,#ffffff 0%,#eef1f5 100%)!important;border-bottom-color:#dde2ea!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 16px rgba(20,24,33,.08)!important}
+:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-body,:root[data-theme="light"] .line-head{background:#ffffff!important}
+:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot{border-top-color:#dde2ea!important;box-shadow:0 -1px 0 rgba(255,255,255,.6) inset,0 -6px 14px rgba(20,24,33,.06)}
+:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .line-head{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 14px rgba(20,24,33,.06)}
+:root[data-theme="light"] .line-head{border-bottom-color:#dde2ea!important}
+:root[data-theme="light"] .timeline-head:hover{background:#eef1f5!important}
+:root[data-theme="light"] .board{background:#e4e8ee!important}
+:root[data-theme="light"] .top-btn:hover{background:rgba(20,24,33,.05)!important;border-color:rgba(20,24,33,.1)!important;color:var(--text)!important}
+/* 白天:金属渐变裁切文字(线名/总计/01-05)在浅底会隐形,且 WebKit 切主题常不重绘 →
+   改成实色深字:清晰、不受 background-clip:text 重绘 bug 影响、更现代。仅 light,夜间渐变不动。 */
+:root[data-theme="light"] .line-name,:root[data-theme="light"] .line-num{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:#1b1e26!important;color:#1b1e26!important}
+:root[data-theme="light"] #totalAll,:root[data-theme="light"] #totalDur,:root[data-theme="light"] #totalFinish{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:#1b1e26!important;color:#1b1e26!important}
+:root[data-theme="light"] .line-label{color:#5b6270!important}
 /* 线头数字「夕盛/01-05」— 微金属感渐变文字 + 字距,质感更高级 */
 .line-name,.line-num{
   background:linear-gradient(180deg,#f5f6f8 0%,#a6abb3 100%);
@@ -6804,14 +6873,29 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     if(rgb) document.documentElement.style.setProperty('--accent-rgb', rgb);
   }
   window.addEventListener('message', e => {
-    if(!e.data || e.data.type !== 'theme-changed') return;
-    apply(e.data.accent, e.data.accentRgb);
+    if(!e.data) return;
+    if(e.data.type === 'theme-changed') apply(e.data.accent, e.data.accentRgb);
+    else if(e.data.type === 'theme-mode' && e.data.mode) document.documentElement.dataset.theme = e.data.mode;
   });
   try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
 })();
 <\/script>
 <style>
   :root { --bg:#0a0b0e; --fg:#ececf1; --line:#262936; --accent:#fb923c; --accent-rgb:251,146,60; --accent-dark:color-mix(in srgb,var(--accent),#000 15%); --accent-light:color-mix(in srgb,var(--accent),#fff 18%); --accent-glow:rgba(var(--accent-rgb),.18); --soft:#14161d; --muted:#8a8d99; }
+  /* === 白天模式:覆盖变量 === */
+  :root[data-theme="light"]{ color-scheme:light; --bg:#e9ecf2; --fg:#1b1e26; --line:#d6dbe4; --soft:#ffffff; --muted:#5b6270; }
+  /* 白天模式:写死深色的组件逐一覆盖 */
+  :root[data-theme="light"] header input,:root[data-theme="light"] header button,:root[data-theme="light"] header select{background:#f3f5f8;color:var(--fg)}
+  :root[data-theme="light"] header button:hover{background:#e9edf3;color:var(--fg)}
+  :root[data-theme="light"] .line-grid .cell{background:#ffffff;border-color:#dde2ea;box-shadow:0 1px 2px rgba(20,24,33,.06)}
+  :root[data-theme="light"] .chip{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%)}
+  :root[data-theme="light"] .belt{background:#e4e8ee}
+  :root[data-theme="light"] .drawer{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%)!important}
+  :root[data-theme="light"] .drawer .add input,:root[data-theme="light"] .bentos-screen .toolbar input,:root[data-theme="light"] .edit-toolbar input,:root[data-theme="light"] .line-screen td input,:root[data-theme="light"] .modal input{background:#f3f5f8;color:var(--fg)}
+  :root[data-theme="light"] .autocomplete{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%)}
+  :root[data-theme="light"] .autocomplete .opt:hover,:root[data-theme="light"] .autocomplete .opt.sel{background:#eef1f5}
+  :root[data-theme="light"] .pretty-select option{background:#ffffff;color:var(--fg)}
+  :root[data-theme="light"] .picker-modal,:root[data-theme="light"] #libModal .modal-card{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%)!important}
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
@@ -7192,6 +7276,28 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 .font-pop .reset{background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:5px 12px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
 .font-pop .reset:hover{color:#e8e8e8;border-color:#3a3f47}
 #btn-font{font-weight:600;letter-spacing:.5px}
+/* === 白天模式:压过本表 !important 深色精修(置于样式表末尾) === */
+:root[data-theme="light"] header{background:linear-gradient(180deg,#ffffff 0%,#eef1f5 100%)!important;border-bottom:1px solid #dde2ea!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 16px rgba(20,24,33,.08)!important}
+:root[data-theme="light"] header input,:root[data-theme="light"] header button,:root[data-theme="light"] header select{background:#f3f5f8!important;border-color:#dde2ea!important;color:var(--fg)}
+:root[data-theme="light"] header input:focus{background:#ffffff!important}
+:root[data-theme="light"] header button:hover{background:#e9edf3!important;border-color:#cdd3dd!important;color:var(--fg)}
+/* 上一行的通用 header button 浅色覆盖会把「选中标签」的橙色高亮也盖成灰白 → 选中态消失。
+   这里用更高优先级把选中标签的橙色高亮补回来,让操作屏/便当库等标签的当前项清晰可辨。 */
+:root[data-theme="light"] header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%)!important;border-color:transparent!important;color:#1b1e26!important;font-weight:600;box-shadow:0 2px 10px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.4) inset!important}
+:root[data-theme="light"] header .btn-tab.active:hover{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%)!important;color:#1b1e26!important}
+:root[data-theme="light"] .line-grid .cell.empty{background:rgba(20,24,33,.03)}
+:root[data-theme="light"] .belt{background:#e4e8ee;box-shadow:0 1px 2px rgba(20,24,33,.12) inset}
+:root[data-theme="light"] .chip{box-shadow:0 1px 3px rgba(20,24,33,.12),0 1px 0 rgba(255,255,255,.7) inset}
+:root[data-theme="light"] .bento-title{color:#1b1e26;-webkit-text-fill-color:#1b1e26;text-shadow:none}
+:root[data-theme="light"] .bento-title .muted{color:#868d9a;-webkit-text-fill-color:#868d9a}
+:root[data-theme="light"] .field-input,:root[data-theme="light"] .lib-add-form input,:root[data-theme="light"] .lib-add-form select{background:#f3f5f8;color:var(--fg);border-color:#dde2ea}
+:root[data-theme="light"] .font-pop{background:linear-gradient(180deg,#ffffff 0%,#f3f5f8 100%);border-color:#dde2ea;box-shadow:0 24px 56px rgba(20,24,33,.18)}
+:root[data-theme="light"] .font-pop .reset{color:#5b6270;border-color:#dde2ea}
+:root[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f3f5f8)!important;border-color:#dde2ea!important;color:#1b1e26!important;box-shadow:0 12px 32px rgba(20,24,33,.18)!important}
+:root[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f3f5f8);border-color:#dde2ea;color:#1b1e26}
+:root[data-theme="light"] .confirm-popover button{color:#1b1e26;border-color:#dde2ea}
+:root[data-theme="light"] .confirm-popover button:hover{background:#eef1f5}
+:root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f3f5f8;color:#1b1e26;border-color:#dde2ea}
 </style>
 </head>
 <body>
@@ -9947,6 +10053,7 @@ window.addEventListener('message', (e) => {
       const cur = (typeof loadTheme === 'function') ? loadTheme() : '#fb923c';
       const rgb = (typeof hexToRgb === 'function') ? hexToRgb(cur) : '251,146,60';
       e.source && e.source.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*');
+      e.source && e.source.postMessage({type:'theme-mode', mode: (typeof loadMode === 'function' ? loadMode() : 'dark')}, '*');
     } catch(_){}
   }
 });
@@ -10202,12 +10309,42 @@ function initAnimPicker() {
 }
 initAnimPicker();
 
+// === 白天/夜间模式:父壳设 <html data-theme>,并广播给三个 iframe ===
+const MODE_KEY = 'workbench-theme-mode';
+function loadMode(){
+  try { return localStorage.getItem(MODE_KEY) === 'light' ? 'light' : 'dark'; }
+  catch(_) { return 'dark'; }
+}
+function broadcastMode(mode){
+  document.querySelectorAll('iframe').forEach(f => {
+    try { f.contentWindow && f.contentWindow.postMessage({type:'theme-mode', mode}, '*'); } catch(_){}
+  });
+}
+function applyMode(mode, persist){
+  document.documentElement.dataset.theme = mode;
+  broadcastMode(mode);
+  if (persist !== false) { try { localStorage.setItem(MODE_KEY, mode); } catch(_){} }
+  const b = document.getElementById('modeBtn');
+  if (b) {
+    b.textContent = mode === 'light' ? '☀️' : '🌙';
+    b.title = mode === 'light' ? '当前白天模式,点切夜间' : '当前夜间模式,点切白天';
+  }
+}
+(function initModeToggle(){
+  const b = document.getElementById('modeBtn');
+  if (b) b.addEventListener('click', () => {
+    applyMode(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light', true);
+  });
+  applyMode(loadMode(), false);
+})();
+
 // 每个 iframe 加载完成后广播一次当前主题(确保 iframe 内拿到颜色)
 frames.forEach(f => {
   f.addEventListener('load', () => {
     const cur = loadTheme();
     const rgb = hexToRgb(cur);
     try { f.contentWindow.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*'); } catch(_){}
+    try { f.contentWindow.postMessage({type:'theme-mode', mode: loadMode()}, '*'); } catch(_){}
   });
 });
 
