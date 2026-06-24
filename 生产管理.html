@@ -641,6 +641,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 :root[data-theme="light"] .assign-btn{background:#f3f5f8}
 :root[data-theme="light"] .sched-header{box-shadow:0 4px 12px rgba(20,24,33,.10)}
 :root[data-theme="light"] .stat-big{background:none;-webkit-text-fill-color:#1b1e26;color:#1b1e26}
+/* 选人弹窗:夜间深色 hover(#1f1f23)在手机点按后会变黑条 —— 白天换柔色;搜索框也浅色 */
+:root[data-theme="light"] .picker .person-row:hover{background:#eef1f6}
+:root[data-theme="light"] .picker .person-row.selected{background:rgba(124,92,255,.14)}
+:root[data-theme="light"] .picker .ph-search input,:root[data-theme="light"] .picker input{background:#f1f4f8;color:var(--text);border-color:#d6dbe4}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -7298,6 +7302,9 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] .confirm-popover button{color:#1b1e26;border-color:#dde2ea}
 :root[data-theme="light"] .confirm-popover button:hover{background:#eef1f5}
 :root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f3f5f8;color:#1b1e26;border-color:#dde2ea}
+/* 传送带/流水线条:夜间深色渐变 + 伪元素,白天换成柔灰(橙色箭头保留) */
+:root[data-theme="light"] .belt{background:linear-gradient(90deg,#cdd4de 0,#aab2c0 50%,#cdd4de 100%)!important}
+:root[data-theme="light"] .line-grid.vertical::before{background:linear-gradient(180deg,#cdd4de 0,#aab2c0 50%,#cdd4de 100%)!important}
 </style>
 </head>
 <body>
@@ -10053,7 +10060,7 @@ window.addEventListener('message', (e) => {
       const cur = (typeof loadTheme === 'function') ? loadTheme() : '#fb923c';
       const rgb = (typeof hexToRgb === 'function') ? hexToRgb(cur) : '251,146,60';
       e.source && e.source.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*');
-      e.source && e.source.postMessage({type:'theme-mode', mode: (typeof loadMode === 'function' ? loadMode() : 'dark')}, '*');
+      e.source && e.source.postMessage({type:'theme-mode', mode: (typeof loadMode === 'function' ? effectiveMode(loadMode()) : 'dark')}, '*');
     } catch(_){}
   }
 });
@@ -10311,31 +10318,47 @@ initAnimPicker();
 
 // === 白天/夜间模式:父壳设 <html data-theme>,并广播给三个 iframe ===
 const MODE_KEY = 'workbench-theme-mode';
+// 偏好(pref)三态:light / dark / system。system 时按系统 prefers-color-scheme 解析出「生效值」。
+const MODES = ['light', 'dark', 'system'];
+const systemDarkMql = window.matchMedia('(prefers-color-scheme: dark)');
 function loadMode(){
-  try { return localStorage.getItem(MODE_KEY) === 'light' ? 'light' : 'dark'; }
+  try { const v = localStorage.getItem(MODE_KEY); return MODES.indexOf(v) >= 0 ? v : 'dark'; }
   catch(_) { return 'dark'; }
+}
+// 把偏好解析成实际生效主题(只会是 light / dark) —— iframe 只认 light/dark
+function effectiveMode(pref){
+  return pref === 'system' ? (systemDarkMql.matches ? 'dark' : 'light') : pref;
 }
 function broadcastMode(mode){
   document.querySelectorAll('iframe').forEach(f => {
     try { f.contentWindow && f.contentWindow.postMessage({type:'theme-mode', mode}, '*'); } catch(_){}
   });
 }
-function applyMode(mode, persist){
-  document.documentElement.dataset.theme = mode;
-  broadcastMode(mode);
-  if (persist !== false) { try { localStorage.setItem(MODE_KEY, mode); } catch(_){} }
+function applyMode(pref, persist){
+  const eff = effectiveMode(pref);
+  document.documentElement.dataset.theme = eff;
+  broadcastMode(eff);
+  if (persist !== false) { try { localStorage.setItem(MODE_KEY, pref); } catch(_){} }
   const b = document.getElementById('modeBtn');
   if (b) {
-    b.textContent = mode === 'light' ? '☀️' : '🌙';
-    b.title = mode === 'light' ? '当前白天模式,点切夜间' : '当前夜间模式,点切白天';
+    b.textContent = pref === 'light' ? '☀️' : pref === 'dark' ? '🌙' : '🖥️';
+    b.title = pref === 'light' ? '白天模式 · 点击切夜间'
+            : pref === 'dark'  ? '夜间模式 · 点击切「跟随系统」'
+            :                    '跟随系统 · 点击切白天';
   }
 }
 (function initModeToggle(){
   const b = document.getElementById('modeBtn');
   if (b) b.addEventListener('click', () => {
-    applyMode(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light', true);
+    const cur = loadMode();                                  // 三态循环:白天→夜间→跟随系统→白天
+    const next = cur === 'light' ? 'dark' : cur === 'dark' ? 'system' : 'light';
+    applyMode(next, true);
   });
   applyMode(loadMode(), false);
+  // 「跟随系统」时,OS 深/浅色切换 → 实时更新生效主题(偏好仍是 system,不覆盖持久化值)
+  const onSysChange = () => { if (loadMode() === 'system') applyMode('system', false); };
+  if (systemDarkMql.addEventListener) systemDarkMql.addEventListener('change', onSysChange);
+  else if (systemDarkMql.addListener) systemDarkMql.addListener(onSysChange); // 旧 Safari 回退
 })();
 
 // 每个 iframe 加载完成后广播一次当前主题(确保 iframe 内拿到颜色)
@@ -10344,7 +10367,7 @@ frames.forEach(f => {
     const cur = loadTheme();
     const rgb = hexToRgb(cur);
     try { f.contentWindow.postMessage({type:'theme-changed', accent: cur, accentRgb: rgb}, '*'); } catch(_){}
-    try { f.contentWindow.postMessage({type:'theme-mode', mode: loadMode()}, '*'); } catch(_){}
+    try { f.contentWindow.postMessage({type:'theme-mode', mode: effectiveMode(loadMode())}, '*'); } catch(_){}
   });
 });
 
