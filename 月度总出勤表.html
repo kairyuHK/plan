@@ -1546,7 +1546,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light .personal-empty-notice small{color:#6a6e76}
 }
 </style>
-<script>try{if(localStorage.getItem('app-theme')==='light')document.documentElement.classList.add('theme-light')}catch(e){}</script>
+<script>try{var _p=localStorage.getItem('app-theme')||'dark';if(_p==='light'||(_p==='system'&&!matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('theme-light')}catch(e){}</script>
 </head>
 <body>
 <nav class="nav">
@@ -2325,17 +2325,31 @@ const App = (() => {
     document.getElementById('btn-edit-toggle').addEventListener('click', () => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
     });
-    // 主题切换:深 <-> 浅。class 加在 <html> 上,选择 localStorage 记忆(早期内联脚本已应用)。
+    // 主题切换:三态偏好 浅/深/跟随系统(light/dark/system)。.theme-light 类加在 <html> 上(深色=无类)。
+    // system 时按 prefers-color-scheme 解析出生效值,并监听系统深浅变化实时更新。
     const themeBtn = document.getElementById('btn-theme');
-    const syncThemeIcon = () => {
-      themeBtn.textContent = document.documentElement.classList.contains('theme-light') ? '☀️' : '🌙';
+    const themeMql = window.matchMedia('(prefers-color-scheme: dark)');
+    const loadThemePref = () => {
+      try { const v = localStorage.getItem('app-theme'); return (v === 'light' || v === 'dark' || v === 'system') ? v : 'dark'; }
+      catch (e) { return 'dark'; }
     };
-    syncThemeIcon();
+    const effLight = (pref) => pref === 'system' ? !themeMql.matches : pref === 'light';
+    const applyThemePref = (pref, persist) => {
+      document.documentElement.classList.toggle('theme-light', effLight(pref));
+      if (persist) { try { localStorage.setItem('app-theme', pref); } catch (e) {} }
+      themeBtn.textContent = pref === 'light' ? '☀️' : pref === 'dark' ? '🌙' : '🖥️';
+      themeBtn.title = pref === 'light' ? '白天 · 点击切夜间'
+                     : pref === 'dark'  ? '夜间 · 点击切「跟随系统」'
+                     :                    '跟随系统 · 点击切白天';
+    };
+    applyThemePref(loadThemePref(), false);
     themeBtn.addEventListener('click', () => {
-      const isLight = document.documentElement.classList.toggle('theme-light');
-      try { localStorage.setItem('app-theme', isLight ? 'light' : 'dark'); } catch (e) {}
-      syncThemeIcon();
+      const cur = loadThemePref();                                  // 三态循环
+      applyThemePref(cur === 'light' ? 'dark' : cur === 'dark' ? 'system' : 'light', true);
     });
+    const onThemeSys = () => { if (loadThemePref() === 'system') applyThemePref('system', false); };
+    if (themeMql.addEventListener) themeMql.addEventListener('change', onThemeSys);
+    else if (themeMql.addListener) themeMql.addListener(onThemeSys); // 旧 Safari 回退
     window.addEventListener('hashchange', showRoute);
     // 窗口宽度变化时重排 schedule。但**只在宽度变化时**重渲 —— iOS Safari 滚动时
     // URL 栏隐藏/显示会触发 resize 事件,但 innerWidth 不变(只 innerHeight 变),
