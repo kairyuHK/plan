@@ -3696,6 +3696,8 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 :root[data-theme="light"] .line-head{border-bottom-color:#dde2ea!important}
 :root[data-theme="light"] .timeline-head:hover{background:#eef1f5!important}
 :root[data-theme="light"] .board{background:#e4e8ee!important}
+/* .line 的暗渐变在 100vh(约15:20)处硬切断,浅底上会出现一条水平分界线 —— 白天改纯色平铺 + 柔化列分隔 */
+:root[data-theme="light"] .line{background:var(--line-bg)!important;box-shadow:1px 0 0 rgba(255,255,255,.5) inset,-1px 0 0 rgba(20,24,33,.06) inset!important}
 :root[data-theme="light"] .top-btn:hover{background:rgba(20,24,33,.05)!important;border-color:rgba(20,24,33,.1)!important;color:var(--text)!important}
 /* 白天:金属渐变裁切文字(线名/总计/01-05)在浅底会隐形,且 WebKit 切主题常不重绘 →
    改成实色深字:清晰、不受 background-clip:text 重绘 bug 影响、更现代。仅 light,夜间渐变不动。 */
