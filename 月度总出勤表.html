@@ -1519,6 +1519,29 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   }
   html.theme-light #page-hours .h-person-pop::-webkit-scrollbar-thumb{background:#c4c7cd}
   html.theme-light #page-hours .h-person-pop::-webkit-scrollbar-thumb:hover{background:#a8abb2}
+  /* 工时统计卡 · 白天模式精修:每张卡按自身类别色(--h-stat-color)淡染 + 同色细顶条 + 柔和同色投影,
+     告别清一色白卡,形成有层次的现代仪表盘。配色随各卡圆点色自动适配,无需逐卡写。 */
+  html.theme-light #page-hours .h-stat{
+    background:linear-gradient(180deg,
+      color-mix(in srgb, var(--h-stat-color, var(--h-accent)) 8%, #ffffff) 0%,
+      color-mix(in srgb, var(--h-stat-color, var(--h-accent)) 3%, #ffffff) 100%);
+    border-color:color-mix(in srgb, var(--h-stat-color, var(--h-accent)) 24%, var(--h-border));
+    box-shadow:0 1px 2px rgba(20,30,50,.05), 0 8px 22px color-mix(in srgb, var(--h-stat-color, var(--h-accent)) 13%, transparent);
+  }
+  html.theme-light #page-hours .h-stat::after{
+    content:''; position:absolute; left:0; right:0; top:0; height:3px;
+    border-radius:var(--h-radius) var(--h-radius) 0 0;
+    background:linear-gradient(90deg, var(--h-stat-color, var(--h-accent)), color-mix(in srgb, var(--h-stat-color, var(--h-accent)) 55%, #ffffff));
+    opacity:.9; pointer-events:none;
+  }
+  /* 主卡(上班总计):青色辉光更明显 + hero 数字用青色,作为视觉焦点 */
+  html.theme-light #page-hours .h-stat:first-child{
+    background:
+      radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--h-accent) 20%, #ffffff), transparent 62%),
+      linear-gradient(180deg, #ffffff, color-mix(in srgb, var(--h-accent) 5%, #ffffff));
+    border-color:color-mix(in srgb, var(--h-accent) 32%, var(--h-border));
+  }
+  html.theme-light #page-hours .h-stat:first-child .h-value{color:var(--h-accent)}
   /* 个人页 — 深色卡片/班次配色翻成浅色 */
   html.theme-light .personal-period-badge,
   html.theme-light .personal-day-list .month-col-head,
@@ -1556,8 +1579,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   <span id="period-nav"></span>
   <span id="dirty-indicator" class="dirty">✓ 已暂存</span>
   <button id="btn-edit-toggle">🔒 锁定</button>
-  <button id="btn-theme" title="切换深色 / 浅色" aria-label="切换主题">🌙</button>
   <button data-route="#/settings">⚙ 设置</button>
+  <button id="btn-theme" title="切换深色 / 浅色" aria-label="切换主题">🌙</button>
   <button data-route="#/data">⬇⬆ 数据</button>
   <button class="primary" id="btn-personal-export">📷 出力 PNG</button>
   <button class="primary" id="btn-print">🖨 打印</button>
