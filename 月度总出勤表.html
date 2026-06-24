@@ -1504,6 +1504,20 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light table.schedule td.name-col{background:#ffffff!important}
   html.theme-light table.schedule tr.hl-row td.role-col,
   html.theme-light table.schedule tr.hl-row td.name-col{background:#dbe9e1!important}
+  /* === 排班主表 · 白天模式精修:给密集网格补层次与节奏 === */
+  /* 部门名标题:淡紫底,呼应紫色强调色,标题更醒目 */
+  html.theme-light table.schedule thead th.dept-name{background:linear-gradient(180deg,#f7f5ff 0%,#efeafe 100%)}
+  /* 表头与表体之间一道干净分隔线(粘性表头下沿),层次更清晰 */
+  html.theme-light table.schedule thead tr.weekday-row th{box-shadow:inset 0 -2px 0 #d0d4dc}
+  /* 冻结的役職/氏名列:微冷调,与纯白数据区形成「冻结窗格」分区感 */
+  html.theme-light table.schedule td.role-col,
+  html.theme-light table.schedule td.name-col{background:#f4f6fa!important}
+  /* 统计 4 行(必要/合計/派遣/不足):统一冷灰底(含冻结列),与人员行分区 */
+  html.theme-light table.schedule tr.stat-row td,
+  html.theme-light table.schedule tr.stat-row td.role-col,
+  html.theme-light table.schedule tr.stat-row td.name-col{background:#e9ecf2!important}
+  /* 契約休「〇」减噪为中性灰 → 让红色的「有/欠」更突出,网格更清爽 */
+  html.theme-light table.schedule td.day-cell.contractRest{color:#8b9099}
   /* 工时页(全变量驱动) */
   html.theme-light #page-hours{
     --h-bg:#f4f5f7; --h-surface:#ffffff; --h-surface-2:#f1f2f5; --h-surface-3:#e8eaee;
@@ -1552,21 +1566,26 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light .personal-day-list .day-cell{background:#eef0f3;border-right-color:rgba(0,0,0,0.06)}
   html.theme-light .personal-day-list .day-cell .dnum{color:#1b1c20}
   html.theme-light .personal-day-list .day-cell .dow{color:#6a6e76}
-  html.theme-light .personal-day-list .shift.work{background:#e0ebf8;color:#1d4ed8}
-  html.theme-light .personal-day-list .shifts .shift + .shift.work{background:#dcefe3;color:#137a52}
+  /* 班次三色组:统一明度/饱和度的现代淡彩(出勤A=蓝、出勤B=绿、休=琥珀),更协调清爽 */
+  html.theme-light .personal-day-list .shift.work{background:#e8f0fd;color:#2563eb}
+  html.theme-light .personal-day-list .shifts .shift + .shift.work{background:#e2f4ec;color:#0d8a5b}
   html.theme-light .personal-day-list .shift.rest,
   html.theme-light .personal-day-list .day-row.both-rest,
-  html.theme-light .personal-day-list .day-row.both-rest .shift.rest{background:#f5e7d6;color:#9a6a2e}
-  html.theme-light .personal-day-list .shifts .shift + .shift{border-left-color:#e2e4e9}
-  html.theme-light .personal-day-list .both-rest-tag{background:rgba(255,255,255,0.78);color:#9a6a2e;border-color:rgba(154,106,46,0.30)}
+  html.theme-light .personal-day-list .day-row.both-rest .shift.rest{background:#fbeedb;color:#a8690f}
+  html.theme-light .personal-day-list .shifts .shift + .shift{border-left-color:#eceef2}
+  html.theme-light .personal-day-list .both-rest-tag{background:#fff6e9;color:#a8690f;border-color:rgba(168,105,15,0.26)}
   html.theme-light .personal-legend-card .legend-title,
   html.theme-light .personal-legend-card .legend-list{color:#6a6e76}
   html.theme-light .personal-legend-card .legend-dot{border-color:rgba(0,0,0,0.12)}
-  html.theme-light .personal-legend-card .legend-dot.ld-work{background:#e0ebf8}
-  html.theme-light .personal-legend-card .legend-dot.ld-workb{background:#dcefe3}
-  html.theme-light .personal-legend-card .legend-dot.ld-rest{background:#f5e7d6}
-  html.theme-light .personal-empty-notice strong{color:#9a6a2e}
+  html.theme-light .personal-legend-card .legend-dot.ld-work{background:#cfe0fb}
+  html.theme-light .personal-legend-card .legend-dot.ld-workb{background:#c7ebd8}
+  html.theme-light .personal-legend-card .legend-dot.ld-rest{background:#f6dcb4}
+  html.theme-light .personal-empty-notice strong{color:#a8690f}
   html.theme-light .personal-empty-notice small{color:#6a6e76}
+  /* 卡片层次:日期行轻投影、周期徽章微渐变,告别纯平白卡 */
+  html.theme-light .personal-day-list .day-row{box-shadow:0 1px 2px rgba(20,30,50,0.05)}
+  html.theme-light .personal-period-badge{background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);box-shadow:0 1px 2px rgba(20,30,50,0.05)}
+  html.theme-light .personal-day-list .month-col-head{background:linear-gradient(180deg,#ffffff 0%,#f6f8fb 100%)}
 }
 </style>
 <script>try{var _p=localStorage.getItem('app-theme')||'dark';if(_p==='light'||(_p==='system'&&!matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('theme-light')}catch(e){}</script>
