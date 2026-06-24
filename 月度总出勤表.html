@@ -48,6 +48,8 @@ input[type=number]{-moz-appearance:textfield}
   .nav .spacer{display:none}
   .nav .brand{order:0}
   .nav #dept-tabs{order:1}
+  /* 主题切换按钮放第一行最右(不挤占第三行的锁定/设置/打印) */
+  .nav button#btn-theme{order:1;margin-left:auto}
   .nav::before{content:'';flex-basis:100%;height:0;order:2}
   .nav #period-nav{order:3}
   .nav #dirty-indicator{order:4}
@@ -773,6 +775,11 @@ body.resizing.resizing-row{cursor:row-resize!important}
   width: 14px; height: 14px; border-radius: 4px;
   flex-shrink: 0; border: 1px solid rgba(255,255,255,0.12);
 }
+/* 图例色块 — 与班次色块同源,改用 class 以便跟随主题(深色为默认值) */
+.personal-legend-card .legend-dot.ld-work{background:#233148}
+.personal-legend-card .legend-dot.ld-workb{background:#243c30}
+.personal-legend-card .legend-dot.ld-rest{background:#3a2a1c}
+.personal-legend-card .legend-dot.ld-today{background:#f0b878}
 
 .personal-empty-notice {
   padding: 40px 16px;
@@ -1441,7 +1448,105 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 @media print {
   body.hours-mode #page-hours { display: none !important; }
 }
+/* ============================================================
+   浅色主题(白天模式)。仅 @media screen,绝不影响打印(打印恒白底)。
+   切换方式:在 <html> 上加/去 .theme-light。深色规则完全不动,本块为纯追加覆盖。
+   ============================================================ */
+@media screen {
+  html.theme-light{
+    --bg:#f4f5f7; --card:#ffffff; --border:#d9dbe0;
+    --text:#1b1c20; --muted:#6a6e76;
+    --accent:#6d4dff; --ok:#0f9d6e; --warn:#c8780a; --danger:#dc2626;
+    --sat:#2563eb; --sun:#dc2626; --today:#dbe6ff; --retired:#9a9da6;
+  }
+  /* 主表硬编码灰阶覆盖 */
+  html.theme-light button:hover{background:#ececf0}
+  html.theme-light button.primary:hover{background:#5a3df0}
+  html.theme-light input,html.theme-light select{background:#f1f2f5}
+  html.theme-light .dept-trigger{background:#f1f2f5}
+  html.theme-light .dept-trigger:hover{background:#e7e8ec;border-color:#c7cad1}
+  html.theme-light .dept-dropdown.open .dept-trigger{background:#eceaff}
+  html.theme-light .dept-pop{background:linear-gradient(180deg,#ffffff 0%,#f4f5f7 100%);scrollbar-color:#c4c7cd transparent}
+  html.theme-light .dept-pop::-webkit-scrollbar-thumb{background:#c4c7cd}
+  html.theme-light .dept-pop::-webkit-scrollbar-thumb:hover{background:#a8abb2}
+  html.theme-light .period-nav button{background:#eef0f3}
+  html.theme-light .period-nav button:hover{background:#e4e6ea}
+  html.theme-light .schedule-wrap.is-scrolling{scrollbar-color:#c4c7cd transparent}
+  html.theme-light .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb{background:#c4c7cd}
+  html.theme-light .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#a8abb2}
+  html.theme-light table.schedule thead,
+  html.theme-light table.schedule thead th,
+  html.theme-light table.schedule th,
+  html.theme-light table.schedule th.month-label,
+  html.theme-light table.schedule th.name-col,
+  html.theme-light table.schedule td.name-col{background:#eef0f3}
+  html.theme-light table.schedule thead th.dept-name{background:#ffffff}
+  html.theme-light table.schedule tr.stat-row td{background:#f1f2f5}
+  html.theme-light table.schedule td.day-cell:hover{background:#f0f1f4}
+  html.theme-light table.schedule td.day-cell.retired{background:#ededf0}
+  html.theme-light table.schedule tr.hl-row td,
+  html.theme-light table.schedule tr.hl-row th{background:rgba(109,77,255,0.10)}
+  html.theme-light table.schedule tr.hl-row td.hl-col,
+  html.theme-light table.schedule tr.hl-row th.hl-col{background:#bcd3f5}
+  html.theme-light .entry-hint kbd{background:#eef0f3}
+  html.theme-light table.schedule td.required input:hover,
+  html.theme-light table.schedule td.required input:focus,
+  html.theme-light table.schedule td.dispatch input:hover,
+  html.theme-light table.schedule td.dispatch input:focus{background:#eef0f3}
+  html.theme-light .settings-row{border-bottom-color:#e6e7eb}
+  html.theme-light .confirm-popover,
+  html.theme-light .toast{background:linear-gradient(180deg,#ffffff 0%,#f4f5f7 100%);border-color:rgba(0,0,0,0.10);color:var(--text)}
+  html.theme-light .confirm-popover button.primary:hover{background:#5a3df0}
+  /* 手机端 sticky 列在深色用 !important,这里同等 !important 覆盖 */
+  html.theme-light table.schedule th.role-col,
+  html.theme-light table.schedule th.name-col{background:#eef0f3!important}
+  html.theme-light table.schedule td.role-col,
+  html.theme-light table.schedule td.name-col{background:#ffffff!important}
+  html.theme-light table.schedule tr.hl-row td.role-col,
+  html.theme-light table.schedule tr.hl-row td.name-col{background:#dbe9e1!important}
+  /* 工时页(全变量驱动) */
+  html.theme-light #page-hours{
+    --h-bg:#f4f5f7; --h-surface:#ffffff; --h-surface-2:#f1f2f5; --h-surface-3:#e8eaee;
+    --h-border:#d9dbe0; --h-border-soft:#e6e7eb;
+    --h-text:#1b1c20; --h-text-dim:#6a6e76; --h-text-faint:#9a9da6;
+    --h-accent:#0d9488; --h-accent-dim:#14b8a6; --h-accent-deep:#0a7468;
+    --h-accent-glow:rgba(13,148,136,0.12);
+    --h-c-normal:#2563eb; --h-c-ot:#c8780a; --h-c-holiday:#ea580c;
+    --h-c-leave:#dc2626; --h-c-absent:#71717a; --h-c-weekend:#7c3aed;
+    --h-c-sun:#dc2626; --h-c-sat:#2563eb;
+    --h-shadow:0 4px 20px rgba(20,30,50,0.10),0 1px 3px rgba(20,30,50,0.08);
+    --h-shadow-lg:0 20px 48px rgba(20,30,50,0.16),0 2px 8px rgba(20,30,50,0.10);
+  }
+  html.theme-light #page-hours .h-person-pop::-webkit-scrollbar-thumb{background:#c4c7cd}
+  html.theme-light #page-hours .h-person-pop::-webkit-scrollbar-thumb:hover{background:#a8abb2}
+  /* 个人页 — 深色卡片/班次配色翻成浅色 */
+  html.theme-light .personal-period-badge,
+  html.theme-light .personal-day-list .month-col-head,
+  html.theme-light .personal-day-list .day-row,
+  html.theme-light .personal-legend-card,
+  html.theme-light .personal-empty-notice{background:#ffffff;border-color:#e2e4e9;color:#1b1c20}
+  html.theme-light .personal-day-list .day-row:hover{border-color:#c7cad1}
+  html.theme-light .personal-day-list .day-cell{background:#eef0f3;border-right-color:rgba(0,0,0,0.06)}
+  html.theme-light .personal-day-list .day-cell .dnum{color:#1b1c20}
+  html.theme-light .personal-day-list .day-cell .dow{color:#6a6e76}
+  html.theme-light .personal-day-list .shift.work{background:#e0ebf8;color:#1d4ed8}
+  html.theme-light .personal-day-list .shifts .shift + .shift.work{background:#dcefe3;color:#137a52}
+  html.theme-light .personal-day-list .shift.rest,
+  html.theme-light .personal-day-list .day-row.both-rest,
+  html.theme-light .personal-day-list .day-row.both-rest .shift.rest{background:#f5e7d6;color:#9a6a2e}
+  html.theme-light .personal-day-list .shifts .shift + .shift{border-left-color:#e2e4e9}
+  html.theme-light .personal-day-list .both-rest-tag{background:rgba(255,255,255,0.78);color:#9a6a2e;border-color:rgba(154,106,46,0.30)}
+  html.theme-light .personal-legend-card .legend-title,
+  html.theme-light .personal-legend-card .legend-list{color:#6a6e76}
+  html.theme-light .personal-legend-card .legend-dot{border-color:rgba(0,0,0,0.12)}
+  html.theme-light .personal-legend-card .legend-dot.ld-work{background:#e0ebf8}
+  html.theme-light .personal-legend-card .legend-dot.ld-workb{background:#dcefe3}
+  html.theme-light .personal-legend-card .legend-dot.ld-rest{background:#f5e7d6}
+  html.theme-light .personal-empty-notice strong{color:#9a6a2e}
+  html.theme-light .personal-empty-notice small{color:#6a6e76}
+}
 </style>
+<script>try{if(localStorage.getItem('app-theme')==='light')document.documentElement.classList.add('theme-light')}catch(e){}</script>
 </head>
 <body>
 <nav class="nav">
@@ -1451,6 +1556,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   <span id="period-nav"></span>
   <span id="dirty-indicator" class="dirty">✓ 已暂存</span>
   <button id="btn-edit-toggle">🔒 锁定</button>
+  <button id="btn-theme" title="切换深色 / 浅色" aria-label="切换主题">🌙</button>
   <button data-route="#/settings">⚙ 设置</button>
   <button data-route="#/data">⬇⬆ 数据</button>
   <button class="primary" id="btn-personal-export">📷 出力 PNG</button>
@@ -2218,6 +2324,17 @@ const App = (() => {
     });
     document.getElementById('btn-edit-toggle').addEventListener('click', () => {
       Store.setUi({ editMode: !Store.get().ui.editMode });
+    });
+    // 主题切换:深 <-> 浅。class 加在 <html> 上,选择 localStorage 记忆(早期内联脚本已应用)。
+    const themeBtn = document.getElementById('btn-theme');
+    const syncThemeIcon = () => {
+      themeBtn.textContent = document.documentElement.classList.contains('theme-light') ? '☀️' : '🌙';
+    };
+    syncThemeIcon();
+    themeBtn.addEventListener('click', () => {
+      const isLight = document.documentElement.classList.toggle('theme-light');
+      try { localStorage.setItem('app-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+      syncThemeIcon();
     });
     window.addEventListener('hashchange', showRoute);
     // 窗口宽度变化时重排 schedule。但**只在宽度变化时**重渲 —— iOS Safari 滚动时
@@ -4081,10 +4198,10 @@ const Pages = (() => {
     legend.innerHTML = `
       <div class="legend-title">凡例</div>
       <div class="legend-list">
-        <div class="legend-item"><span class="legend-dot" style="background:#233148"></span>出勤A</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#243c30"></span>出勤B</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#3a2a1c"></span>休み</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#f0b878;border-radius:50%"></span>今日</div>
+        <div class="legend-item"><span class="legend-dot ld-work"></span>出勤A</div>
+        <div class="legend-item"><span class="legend-dot ld-workb"></span>出勤B</div>
+        <div class="legend-item"><span class="legend-dot ld-rest"></span>休み</div>
+        <div class="legend-item"><span class="legend-dot ld-today" style="border-radius:50%"></span>今日</div>
         <div class="legend-item" style="color:#60a5fa;font-weight:700">土</div>
         <div class="legend-item" style="color:#f87171;font-weight:700">日・祝</div>
       </div>
