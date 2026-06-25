@@ -816,7 +816,8 @@ input:focus,select:focus{border-color:var(--accent)}
 .cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:8px;min-height:14px;font-weight:600}
 .cal-host .holiday-label:empty{display:none}
 @media (max-width: 1023px){
-  .cal-host{position:fixed;top:auto;bottom:0;left:0;right:0;width:auto;border-radius:var(--r-card) var(--r-card) 0 0}
+  /* 手机端日历贴在日期按钮下方弹出(不再跳到屏幕底部抽屉,避免和触发点割裂) */
+  .cal-host{position:absolute;top:calc(100% + 6px);bottom:auto;left:0;right:auto;width:280px;max-width:calc(100vw - 16px);border-radius:10px}
 }
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
 .stat-big{font-size:24px;font-weight:600;font-family:var(--font-mono)}
