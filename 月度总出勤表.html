@@ -182,7 +182,10 @@ table.schedule thead th.dept-name{background:#161618}
 /* border-collapse:separate — 边框属于各单元格(而非表格),sticky 列冻结时边框跟着冻结,
    横向滚动不再出现"边框线滚走露出后面"的缝。每格只画 右+下 边框(避免相邻格双线);
    首列(役職)补左边框、表格补上边框,闭合网格。打印时被 @media print 覆盖回 collapse。 */
-table.schedule{border-collapse:separate;border-spacing:0;border-top:1px solid var(--border);font-size:11px;background:var(--card);width:auto;table-layout:fixed}
+table.schedule{border-collapse:separate;border-spacing:0;font-size:11px;background:var(--card);width:auto;table-layout:fixed}
+/* 上边框画在吸顶首行的单元格上(不画在 table 上)。separate 模型下只有单元格边框会随 sticky 冻结,
+   画在 table 上的 border-top 不会 → 下滑时会随内容上移再消失。移到 th 上即跟着吸顶,PC/手机一致。 */
+table.schedule thead tr.month-row th{border-top:1px solid var(--border)}
 table.schedule th,table.schedule td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:2px 4px;text-align:center;white-space:nowrap;box-sizing:border-box}
 table.schedule col.col-role{width:var(--col-role-w, 60px)}
 table.schedule col.col-name{width:var(--col-name-w, 130px)}
@@ -1509,8 +1512,6 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light table.schedule tr.hl-row td.role-col,
   html.theme-light table.schedule tr.hl-row td.name-col{background:#f0edff!important}
   /* === 排班主表 · 白天模式精修:给密集网格补层次与节奏 === */
-  /* 部门名标题:淡紫底,呼应紫色强调色,标题更醒目 */
-  html.theme-light table.schedule thead th.dept-name{background:linear-gradient(180deg,#f7f5ff 0%,#efeafe 100%)}
   /* 冻结的役職/氏名列:微冷调,与纯白数据区形成「冻结窗格」分区感 */
   html.theme-light table.schedule td.role-col,
   html.theme-light table.schedule td.name-col{background:#f4f6fa!important}
