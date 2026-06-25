@@ -649,6 +649,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 :root[data-theme="light"] input,:root[data-theme="light"] select,:root[data-theme="light"] textarea{background:#f4f1ec;border-color:#e3ded7;color:var(--text)}
 :root[data-theme="light"] input:focus,:root[data-theme="light"] select:focus,:root[data-theme="light"] textarea:focus{background:#ffffff;border-color:var(--accent)}
 :root[data-theme="light"] .people-list li,:root[data-theme="light"] .pos-list li,:root[data-theme="light"] .assign-list li{border-bottom-color:#ece8e2}
+/* 简易日历:写死深色 .cal-host/.cal-popover —— 白天改暖白 */
+:root[data-theme="light"] .cal-host,:root[data-theme="light"] .cal-popover{background:#ffffff!important;border-color:#e3ded7!important;box-shadow:0 16px 48px rgba(43,37,30,.18)!important}
+:root[data-theme="light"] .cal-nav{border-color:#e3ded7;color:#6f6a62}
+:root[data-theme="light"] .cal-nav:hover{background:#f1ede7;color:#22201d}
+:root[data-theme="light"] .cal-dows{color:#9a958c}
+:root[data-theme="light"] .cal-day{color:#22201d}
+:root[data-theme="light"] .cal-day:hover{background:#f1ede7;color:#22201d}
+:root[data-theme="light"] .cal-day.other{color:#9a958c}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -7324,6 +7332,14 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] .menu{background:#ffffff;border-color:#e3ded7;box-shadow:0 8px 24px rgba(43,37,30,.16)}
 :root[data-theme="light"] .menu-item{color:var(--fg)}
 :root[data-theme="light"] .menu-item:hover{background:#f4f1ec;color:var(--accent)}
+/* 简易日历:写死深色 .cal-popover —— 白天改暖白 */
+:root[data-theme="light"] .cal-popover,:root[data-theme="light"] .cal-host{background:#ffffff!important;border-color:#e3ded7!important;box-shadow:0 16px 48px rgba(43,37,30,.18)!important}
+:root[data-theme="light"] .cal-nav{border-color:#e3ded7;color:#6f6a62}
+:root[data-theme="light"] .cal-nav:hover{background:#f1ede7;color:#22201d}
+:root[data-theme="light"] .cal-dows{color:#9a958c}
+:root[data-theme="light"] .cal-day{color:#22201d}
+:root[data-theme="light"] .cal-day:hover{background:#f1ede7;color:#22201d}
+:root[data-theme="light"] .cal-day.other{color:#9a958c}
 </style>
 </head>
 <body>
