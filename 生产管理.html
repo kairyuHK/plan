@@ -2568,10 +2568,10 @@ const Pages = (() => {
     font-family: inherit; display: inline-flex; align-items: center; gap: 3px;
   }
   .head-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); border-color: rgba(255,255,255,0.16); }
-  .head-btn.add-job { border-color: rgba(249,115,22,0.30); color: var(--accent); background: transparent; }
+  .head-btn.add-job { border-color: rgba(var(--accent-rgb),0.30); color: var(--accent); background: transparent; }
   .head-btn.add-job:hover {
     background: var(--accent-soft);
-    border-color: rgba(249,115,22,0.55);
+    border-color: rgba(var(--accent-rgb),0.55);
     color: var(--accent);
   }
   .head-btn.rest { border-color: rgba(167,139,250,0.30); color: var(--rest); background: transparent; }
@@ -7073,7 +7073,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     background-size:10px 7px, auto;
     box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 1px 2px rgba(0,0,0,.25);
   }
-  .pretty-select:hover{border-color:rgba(255,255,255,.18);background:linear-gradient(180deg,#242a33 0%,#1a1f26 100%)}
+  .pretty-select:hover{border-color:rgba(255,255,255,.18);background-color:#242a33}
   .pretty-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb,251,146,60),.22),0 1px 2px rgba(0,0,0,.25)}
   .pretty-select:disabled{opacity:.5;cursor:not-allowed}
   .pretty-select option{background:#15181d;color:var(--fg)}
@@ -7312,6 +7312,11 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] .field-input,:root[data-theme="light"] .lib-add-form input,:root[data-theme="light"] .lib-add-form select{background:#f6f3ef;color:var(--fg);border-color:#e3ded7}
 :root[data-theme="light"] .font-pop{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%);border-color:#e3ded7;box-shadow:0 24px 56px rgba(43,37,30,.18)}
 :root[data-theme="light"] .font-pop .reset{color:#6f6a62;border-color:#e3ded7}
+/* 字号/粗细滑块:accent-color 原生滑块在白天轨道仍发黑且改不动 —— 白天自定义为「浅灰轨道 + 橙色圆点」 */
+:root[data-theme="light"] .font-pop .row input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) 0 var(--_fill,50%),#ddd7ce var(--_fill,50%) 100%);cursor:pointer}
+:root[data-theme="light"] .font-pop .row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid #ffffff;box-shadow:0 1px 3px rgba(43,37,30,.3);margin-top:-5px}
+:root[data-theme="light"] .font-pop .row input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--accent) 0 var(--_fill,50%),#ddd7ce var(--_fill,50%) 100%)}
+:root[data-theme="light"] .font-pop .row input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid #ffffff;box-shadow:0 1px 3px rgba(43,37,30,.3)}
 :root[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f6f3ef)!important;border-color:#e3ded7!important;color:#22201d!important;box-shadow:0 12px 32px rgba(43,37,30,.18)!important}
 :root[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f6f3ef);border-color:#e3ded7;color:#22201d}
 :root[data-theme="light"] .confirm-popover button{color:#22201d;border-color:#e3ded7}
@@ -7420,7 +7425,12 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     r.setProperty('--mats-weight', String(s.matsWeight));
   }
   function syncUI(s){
-    const setRange = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+    const setRange = (id, val) => {
+      const el = document.getElementById(id); if(!el) return;
+      el.value = val;
+      const mn = parseFloat(el.min)||0, mx = parseFloat(el.max)||100;
+      el.style.setProperty('--_fill', (mx>mn ? ((parseFloat(el.value)-mn)/(mx-mn))*100 : 0) + '%');
+    };
     const setText  = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     setRange('fp-bento-size', s.bentoSize);     setText('fp-bento-size-v', s.bentoSize + 'px');
     setRange('fp-bento-weight', s.bentoWeight); setText('fp-bento-weight-v', s.bentoWeight);
