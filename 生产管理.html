@@ -10140,6 +10140,14 @@ function activate(app, instant){
   const targetIdx = APP_ORDER.indexOf(app);
   if (targetIdx === -1) return;
   btns.forEach(b => b.classList.toggle('active', b.dataset.app === app));
+  // iOS Safari 修复:加 .active 后,选中标签的橙色渐变背景(含 color-mix)偶尔延迟到
+  // 下次触摸才重绘,白天模式下表现为"点了标签却不高亮"。强制同步重排 + 触发一次重绘。
+  const activeTab = document.querySelector('.tabs button[data-app].active');
+  if (activeTab) {
+    void activeTab.offsetWidth;
+    activeTab.style.opacity = '0.999';
+    requestAnimationFrame(() => { activeTab.style.opacity = ''; });
+  }
   if (currentAnim === 'push') {
     activatePush(targetIdx, instant);
   } else {
