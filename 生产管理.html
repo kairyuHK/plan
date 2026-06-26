@@ -52,11 +52,11 @@ html[data-theme="light"],html[data-theme="light"] body{background:#efece7;color:
 html[data-theme="light"] .tabs{background:linear-gradient(180deg,#ffffff 0%,#efece7 100%);border-bottom-color:#e3ded7;box-shadow:0 1px 0 rgba(0,0,0,.02) inset,0 4px 16px rgba(43,37,30,.08)}
 html[data-theme="light"] .tabs button{color:#6f6a62}
 html[data-theme="light"] .tabs button:hover{background:rgba(43,37,30,.05);color:#1a1612}
-/* iOS Safari 在渐变里绘制 color-mix 解析出的 color(srgb …) 色标会失败,导致选中标签
-   只剩 box-shadow 辉光、橙色填充不显示。白天模式改用「纯 var(--accent) 底 + 黑色叠加渐变」:
-   与 color-mix(--accent,#000 15%) 亮度像素级相等(都 = accent×0.85),但不含 color(),iOS 能正常绘制,
-   且和配置表内部导航等其它渐变 active 亮度一致。*/
-html[data-theme="light"] .tabs button.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.15) 100%),var(--accent);color:#22201d}
+/* 白天选中标签:橙底渐变 + 紧致橙色光晕(0 0 10px,白底上也看得见"发光")+ 自然描边。
+   iOS 安全:黑色叠加代替 color-mix(不含 color())。
+   hover:整体提亮 + 光晕增强,配 transition = 明显"闪一下",与黑夜一致。*/
+html[data-theme="light"] .tabs button.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 100%),var(--accent);color:#14181f;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.5),0 0 10px rgba(var(--accent-rgb),.45),0 3px 10px rgba(var(--accent-rgb),.3)}
+html[data-theme="light"] .tabs button.active:hover{background:var(--accent);box-shadow:0 0 0 1px rgba(var(--accent-rgb),.6),0 0 18px rgba(var(--accent-rgb),.65),0 4px 14px rgba(var(--accent-rgb),.4)}
 html[data-theme="light"] .tabs .io-btn{color:#6f6a62}
 html[data-theme="light"] .tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.10)}
 html[data-theme="light"] .frame-wrap,html[data-theme="light"] iframe{background:#efece7}
@@ -865,6 +865,9 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 .nav button{padding:6px 12px;transition:all .2s cubic-bezier(.4,0,.2,1)}
 .nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
 .nav button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
+/* 白天模式:选中高亮提亮一档(与父壳标签、配置表内部导航统一),不含 color-mix,iOS 安全 */
+:root[data-theme="light"] .nav button.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 100%),var(--accent);color:#14181f;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.5),0 0 10px rgba(var(--accent-rgb),.45),0 3px 10px rgba(var(--accent-rgb),.3)}
+:root[data-theme="light"] .nav button.active:hover{background:var(--accent);box-shadow:0 0 0 1px rgba(var(--accent-rgb),.6),0 0 18px rgba(var(--accent-rgb),.65),0 4px 14px rgba(var(--accent-rgb),.4)}
 .card{background:linear-gradient(180deg,#1d2027 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 2px 6px rgba(0,0,0,.25),0 12px 28px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
 .card-head{border-top-color:rgba(255,255,255,.05);letter-spacing:.2px}
 .pos-list li,.people-list li,.assign-list li{border-bottom-color:rgba(255,255,255,.05)}
@@ -7307,8 +7310,8 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] header button:hover{background:#ece6df!important;border-color:#d4cec4!important;color:var(--fg)}
 /* 上一行的通用 header button 浅色覆盖会把「选中标签」的橙色高亮也盖成灰白 → 选中态消失。
    这里用更高优先级把选中标签的橙色高亮补回来,让操作屏/便当库等标签的当前项清晰可辨。 */
-:root[data-theme="light"] header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%)!important;border-color:transparent!important;color:#22201d!important;font-weight:600;box-shadow:0 2px 10px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.4) inset!important}
-:root[data-theme="light"] header .btn-tab.active:hover{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%)!important;color:#22201d!important}
+:root[data-theme="light"] header .btn-tab.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 100%),var(--accent)!important;border-color:transparent!important;color:#14181f!important;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.5),0 0 10px rgba(var(--accent-rgb),.45),0 3px 10px rgba(var(--accent-rgb),.3)!important}
+:root[data-theme="light"] header .btn-tab.active:hover{background:var(--accent)!important;color:#14181f!important;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.6),0 0 18px rgba(var(--accent-rgb),.65),0 4px 14px rgba(var(--accent-rgb),.4)!important}
 :root[data-theme="light"] .line-grid .cell.empty{background:rgba(43,37,30,.03)}
 :root[data-theme="light"] .belt{background:#e7e2db;box-shadow:0 1px 2px rgba(43,37,30,.12) inset}
 :root[data-theme="light"] .chip{box-shadow:0 1px 3px rgba(43,37,30,.12),0 1px 0 rgba(255,255,255,.7) inset}
