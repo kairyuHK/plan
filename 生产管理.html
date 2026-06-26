@@ -52,6 +52,9 @@ html[data-theme="light"],html[data-theme="light"] body{background:#efece7;color:
 html[data-theme="light"] .tabs{background:linear-gradient(180deg,#ffffff 0%,#efece7 100%);border-bottom-color:#e3ded7;box-shadow:0 1px 0 rgba(0,0,0,.02) inset,0 4px 16px rgba(43,37,30,.08)}
 html[data-theme="light"] .tabs button{color:#6f6a62}
 html[data-theme="light"] .tabs button:hover{background:rgba(43,37,30,.05);color:#1a1612}
+/* iOS Safari 在渐变里绘制 color-mix 解析出的 color(srgb …) 色标会失败,导致选中标签
+   只剩 box-shadow 辉光、橙色填充不显示。白天模式改用纯 var(--accent) 实色(与 +品名 一致)。*/
+html[data-theme="light"] .tabs button.active{background:var(--accent);color:#22201d}
 html[data-theme="light"] .tabs .io-btn{color:#6f6a62}
 html[data-theme="light"] .tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.10)}
 html[data-theme="light"] .frame-wrap,html[data-theme="light"] iframe{background:#efece7}
@@ -10140,14 +10143,6 @@ function activate(app, instant){
   const targetIdx = APP_ORDER.indexOf(app);
   if (targetIdx === -1) return;
   btns.forEach(b => b.classList.toggle('active', b.dataset.app === app));
-  // iOS Safari 修复:加 .active 后,选中标签的橙色渐变背景(含 color-mix)偶尔延迟到
-  // 下次触摸才重绘,白天模式下表现为"点了标签却不高亮"。强制同步重排 + 触发一次重绘。
-  const activeTab = document.querySelector('.tabs button[data-app].active');
-  if (activeTab) {
-    void activeTab.offsetWidth;
-    activeTab.style.opacity = '0.999';
-    requestAnimationFrame(() => { activeTab.style.opacity = ''; });
-  }
   if (currentAnim === 'push') {
     activatePush(targetIdx, instant);
   } else {
