@@ -53,8 +53,10 @@ html[data-theme="light"] .tabs{background:linear-gradient(180deg,#ffffff 0%,#efe
 html[data-theme="light"] .tabs button{color:#6f6a62}
 html[data-theme="light"] .tabs button:hover{background:rgba(43,37,30,.05);color:#1a1612}
 /* iOS Safari 在渐变里绘制 color-mix 解析出的 color(srgb …) 色标会失败,导致选中标签
-   只剩 box-shadow 辉光、橙色填充不显示。白天模式改用纯 var(--accent) 实色(与 +品名 一致)。*/
-html[data-theme="light"] .tabs button.active{background:var(--accent);color:#22201d}
+   只剩 box-shadow 辉光、橙色填充不显示。白天模式改用「纯 var(--accent) 底 + 黑色叠加渐变」:
+   与 color-mix(--accent,#000 15%) 亮度像素级相等(都 = accent×0.85),但不含 color(),iOS 能正常绘制,
+   且和配置表内部导航等其它渐变 active 亮度一致。*/
+html[data-theme="light"] .tabs button.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.15) 100%),var(--accent);color:#22201d}
 html[data-theme="light"] .tabs .io-btn{color:#6f6a62}
 html[data-theme="light"] .tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.10)}
 html[data-theme="light"] .frame-wrap,html[data-theme="light"] iframe{background:#efece7}
