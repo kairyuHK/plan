@@ -10427,6 +10427,19 @@ frames.forEach(f => {
   });
 });
 
+// iOS Safari 修复:从别的 app/标签切回时,恢复的标签偶尔残留合成残影(残线,plan 重屏尤其,
+// 它有 sticky 时间列/表头/统计栏)。页面重新可见时,强制当前 iframe 内容重绘一次
+// (等价于手动刷新/缩放那一下),清掉残影。用 iframe 的 body transform,不碰转场用的 iframe transform。
+function repaintActiveFrame() {
+  const f = document.querySelector('iframe[data-app].active');
+  const b = f && f.contentDocument && f.contentDocument.body;
+  if (!b) return;
+  b.style.transform = 'translateZ(0)';
+  requestAnimationFrame(() => { requestAnimationFrame(() => { b.style.transform = ''; }); });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') repaintActiveFrame(); });
+window.addEventListener('pageshow', repaintActiveFrame);
+
 // === 手机端左右滑屏切换 app ===
 const APP_ORDER = ['plan', 'config', 'schedule'];
 function switchAppByDirection(dir) {
