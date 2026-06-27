@@ -12,7 +12,7 @@ html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -a
    输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
    导致「没父壳」+ 触摸坐标错位、起始/切换框点不动。钉死后键盘只会覆盖底部,布局不再位移。 */
 body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
-.tabs{display:flex;height:48px;background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
+.tabs{display:flex;height:48px;background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:0 12px;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
 .tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8e8}
 .tabs button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.4),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
@@ -3678,7 +3678,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 /* 顶栏 — 玻璃质感 */
 /* 顶栏跟 line-head/timeline-head 用同一组梯度,从 tab 栏一路衔接到内容区,层级清晰不再颠倒。
    保留 backdrop blur 让身后的 body 辐射光晕能淡淡透上来,质感不死。 */
-.topbar{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)!important}
+.topbar{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)!important}
 .brand{letter-spacing:.3px}
 .brand .dot{box-shadow:0 0 12px rgba(var(--accent-rgb),.55)}
 .top-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
@@ -7260,7 +7260,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 *::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
 /* 顶部 header —— 跟计划板顶栏/统计栏同款蓝色梯度,三端统一 */
-header{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
+header{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 header input,header button,header select{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);transition:all .18s cubic-bezier(.4,0,.2,1)}
 header input:hover{border-color:rgba(255,255,255,.12)}
 header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18);background:rgba(0,0,0,.36)}
