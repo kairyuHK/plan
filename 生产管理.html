@@ -68,6 +68,10 @@ html[data-theme="light"] .anim-btn,html[data-theme="light"] .mode-btn{background
 html[data-theme="light"] .anim-btn:hover,html[data-theme="light"] .mode-btn:hover{background:rgba(43,37,30,.08);color:#1a1612;border-color:rgba(43,37,30,.2)}
 html[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f6f3ef);border-color:#e3ded7;color:#22201d;box-shadow:0 12px 32px rgba(43,37,30,.18)}
 html[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f6f3ef);border-color:#e3ded7;color:#22201d}
+/* 白天:纯「取消」按钮原本是白字深边(写死深色),浅底上看不见;改深字浅边。只改非主/非危险按钮,
+   避免误伤红色「继续导入」(.danger)和主色按钮(.primary)。*/
+html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
+html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
 @media (max-width:600px){.tabs{padding:0 8px;height:44px}.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}}
 .frame-wrap{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s cubic-bezier(.4,0,.2,1),filter .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform,opacity}
@@ -837,6 +841,11 @@ input:focus,select:focus{border-color:var(--accent)}
 .confirm-popover button{font:inherit;padding:7px 14px;font-size:12px;font-weight:500;line-height:1;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:transform .12s,background .15s,box-shadow .15s;letter-spacing:.01em}
 .confirm-popover button:hover{background:#1f1f23}
 .confirm-popover button:active{transform:scale(0.97)}
+/* 白天:确认弹框跟随浅色主题(原本容器写死深色,出现在浅界面里不协调) */
+:root[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f6f3ef)!important;border-color:#e3ded7!important;color:#22201d}
+:root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
+:root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
+:root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7}
 .confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
 .confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
@@ -3646,6 +3655,11 @@ const Pages = (() => {
   body.printing .foot-val.actual-finish::-webkit-datetime-edit-ampm-field { color: #000 !important; }
 /* === 现代化弹层 / Toast === */
 .confirm-popover{position:fixed;z-index:10000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;box-shadow:0 24px 56px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.03) inset,0 1px 0 rgba(255,255,255,0.06) inset;min-width:220px;max-width:300px;font-size:13px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:confirmIn .2s cubic-bezier(0.2,0.8,0.2,1);font-family:inherit;color:#e8e8e8}
+/* 白天:确认弹框跟随浅色主题(原本容器写死深色,出现在浅界面里不协调);取消按钮改深字浅边,主/危险按钮不动 */
+:root[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f6f3ef)!important;border-color:#e3ded7!important;color:#22201d}
+:root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
+:root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
+:root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7}
 .confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
 .confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
 .confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
@@ -10439,6 +10453,8 @@ function repaintActiveFrame() {
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') repaintActiveFrame(); });
 window.addEventListener('pageshow', repaintActiveFrame);
+window.addEventListener('focus', repaintActiveFrame);                                  // 窗口重新聚焦
+window.addEventListener('orientationchange', () => { requestAnimationFrame(repaintActiveFrame); }); // 旋转屏幕
 
 // === 手机端左右滑屏切换 app ===
 const APP_ORDER = ['plan', 'config', 'schedule'];
