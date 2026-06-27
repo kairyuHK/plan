@@ -7273,7 +7273,9 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 .line-grid .cell.empty{background:rgba(255,255,255,.015);border-color:rgba(255,255,255,.06)}
 .line-grid .cell .lbl{letter-spacing:.4px;font-weight:600;text-transform:uppercase;font-size:10px;opacity:.6}
 /* drawer 抽屉 — 边缘渐变,更柔和 */
-.drawer{background:linear-gradient(180deg,#13161b 0%,#0c0e12 100%)!important;border-left-color:rgba(255,255,255,.06)!important;box-shadow:-12px 0 32px rgba(0,0,0,.5)}
+.drawer{background:linear-gradient(180deg,#13161b 0%,#0c0e12 100%)!important;border-left-color:rgba(255,255,255,.06)!important}
+/* 投影只在抽屉打开时加;关闭(滑出屏外)时不加,否则朝左的黑投影会渗到可见区右边缘(白天尤其明显) */
+.drawer.show{box-shadow:-12px 0 32px rgba(0,0,0,.5)}
 .drawer header{background:transparent!important;border-bottom-color:rgba(255,255,255,.05)!important;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
 .drawer .row{background:transparent!important;border-bottom-color:rgba(255,255,255,.04)}
 .drawer .row .swatch{transition:transform .15s,box-shadow .15s}
