@@ -5288,31 +5288,36 @@ window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); 
   function removeRoom(){ if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer); spacer = null; }
   function resetPush(){ if (pushed){ pushed.style.marginTop = ''; pushed = null; } }
   function cleanup(){ removeRoom(); resetPush(); }
-  // 把输入框弄到「刚好在键盘上方」。关键:用 visualViewport 拿真实键盘高度。
-  // 键盘还没弹起时(vh≈全屏高)先不动,交给 vv resize 再来一次 —— 否则按全屏高算会滚过头/滚飞。
+  // 把正在编辑的输入框对到「键盘顶上方 GAP」,并让它下方的行一直填到键盘 —— 不留空白。
+  // 用 visualViewport 拿真实键盘高度;键盘没弹起时(vh≈全屏高)先不动,交给 vv resize 再来一次。
   function reveal(el){
     if (document.activeElement !== el) return;
     var vv = window.visualViewport;
-    var vh = vv ? vv.height : window.innerHeight;
-    if (vh > window.innerHeight * 0.85) return;                      // 键盘没真正弹起 → 等 vv resize
+    if (!vv || vv.height > window.innerHeight * 0.85) return;        // 键盘没真正弹起 → 等 vv resize
+    var vh = vv.height;                                              // 键盘顶
     var wrap = el.closest('.schedule-wrap');                         // 排班页内滚容器;否则随窗口滚
     cleanup();                                                       // 先撤掉上一次的占位/下移,基于自然位置重算
-    var delta = el.getBoundingClientRect().bottom - (vh - GAP);      // >0:被键盘挡,需上滚;<0:上方有富余
-    if (delta > 0) {
-      // 被键盘挡住 → 上滚 delta(只撑出刚好够的空间;iOS 已滚过则 delta 自然变小)
+    var overflow = wrap ? (wrap.scrollHeight > wrap.clientHeight + 2)
+                        : (document.documentElement.scrollHeight > window.innerHeight + 2);
+    var delta = el.getBoundingClientRect().bottom - (vh - GAP);      // 要把输入框底边对到键盘上方 GAP,需滚的量(可正可负)
+    if (!overflow && wrap && delta < -2) {
+      // 排班页「短表」无纵向溢出 → 滚不动 → 把整张表下移,让编辑行贴住键盘,消除下方空白
+      var tbl = el.closest('table.schedule') || wrap.querySelector('table');
+      if (tbl) { pushed = tbl; tbl.style.marginTop = Math.round(-delta) + 'px'; }
+      return;
+    }
+    if (delta > 0) {                                                 // 输入框在键盘下方,可能是最后内容 → 撑出上滚空间
       spacer = document.createElement('div');
       spacer.style.cssText = 'width:1px;flex:0 0 auto;pointer-events:none;height:' + Math.ceil(delta + 8) + 'px';
       (wrap || document.body).appendChild(spacer);
+    }
+    if (Math.abs(delta) > 2) {
+      // delta>0:上滚把输入露到键盘上方;delta<0:下滚把输入下方的行填到键盘,消除空白(长表滚到底时正是这种)
       requestAnimationFrame(function(){
         if (document.activeElement !== el) return;
         if (wrap) wrap.scrollBy({ top: delta, behavior:'smooth' });
         else window.scrollBy({ top: delta, behavior:'smooth' });
       });
-    } else if (wrap && delta < -2 && wrap.scrollHeight <= wrap.clientHeight + 2) {
-      // 排班页「短表」:整张表都在键盘上方、容器比表高 → 下方那片固有空白靠滚动消不掉。
-      // 把表格整体下移,让正在编辑的行贴住键盘,消除下方空白(长表有溢出时不走这里,正常滚动)。
-      var tbl = el.closest('table.schedule') || wrap.querySelector('table');
-      if (tbl) { pushed = tbl; tbl.style.marginTop = Math.round(-delta) + 'px'; }
     }
   }
   document.addEventListener('focusin', function(e){
