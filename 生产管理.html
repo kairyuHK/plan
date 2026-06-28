@@ -2030,7 +2030,8 @@ const Pages = (() => {
     if (!el.matches || !el.matches('input,textarea,select')) return;
     if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
     document.body.style.paddingBottom = '50vh';  // 给最后一张卡的输入框留出上滚空间
-    setTimeout(() => { try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
+    // 不等键盘弹完(iOS 键盘不改变布局视口,聚焦瞬间按整屏居中即可避开键盘)→ 滚动与键盘同时上移,不再「键盘先弹再滚」
+    requestAnimationFrame(() => { try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} });
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
