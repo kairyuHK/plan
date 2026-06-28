@@ -8490,6 +8490,22 @@ document.getElementById("materials-name").addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("materials-add").click();
 });
 
+// 手机端:页面内(非固定弹层)输入框聚焦时滚到键盘上方,避免被软键盘挡住(iOS Safari 不支持 interactive-widget)。
+// 固定弹层里的输入(改名模态 / 选色 popover / 材料库抽屉等)滚 body 顶不动,跳过以免背景乱滚——它们本就居中/锚定不挡。
+(function(){
+  function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (!el.matches || !el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),textarea,select')) return;
+    if (inFixed(el)) return;
+    document.body.style.paddingBottom = '50vh';
+    requestAnimationFrame(() => { try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} });
+  });
+  document.addEventListener('focusout', e => {
+    if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
+  });
+})();
+
 function moveOrSwap(line, posId, targetSlot, targetRow) {
   const pos = line.find(p => p.id === posId);
   if (!pos) return;
