@@ -3355,7 +3355,9 @@ const Pages = (() => {
     // 否则浏览器会把新 input 滚到视野中导致整个表格跳动,用户以为"没跳"。
     const focusWithoutScroll = (el) => {
       if (!el) return;
+      window.__kbJumpSuppress = true;   // 跨列跳焦期间抑制键盘避让滚动(见文件末尾 focusin),保持表格静止不跳动
       el.focus({ preventScroll: true });
+      window.__kbJumpSuppress = false;
       try { el.select(); } catch (_) {}
     };
     // 静默更新 excess td(数据由 input 内 value 直接读,不依赖 Store 同步状态)
@@ -5250,22 +5252,32 @@ const Tests = (() => {
 window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); });
 </script>
 <script>
-// 手机端:设置/数据等页里「新建/改名」文本输入框聚焦时滚到键盘上方(iOS Safari 不支持 interactive-widget)。
-// 仅作用于文本输入框 —— 出勤表数字框(自带 preventScroll 跳焦)、工时 .h-time(iOS 时间 picker)、日期框、固定弹层都天然排除,互不干扰。
-// 排班页(#page-schedule)body:overflow:hidden、内部 .schedule-wrap 自滚,不在此处理。
+// 手机端:输入框聚焦时滚到键盘上方,避免被软键盘挡住(iOS Safari 不支持 interactive-widget=resizes-content)。
+// 覆盖文本框 + 数字框(派遣短期 / 必要数 / 人员数 / 姓名等);排班页表格在 .schedule-wrap 内滚、其余页随 body 滚 —— 自动选对滚动容器。
+// 排除:日期/时间 picker(.h-time 等弹滚轮、自带逻辑)、固定弹层(滚容器顶不动);
+//       表格「跨列跳焦」期间(window.__kbJumpSuppress)不滚,保留原有「表格不跳动」行为;
+//       只处理落在屏幕下半部、真会被键盘挡到的输入,上半部不动以免多余晃动。
 (function(){
   function inFixed(el){ for (var n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
+  function editable(el){
+    return el && el.matches && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=date]):not([type=time]):not([type=month]):not([type=week]):not([type=datetime-local]),textarea') && !el.classList.contains('h-time');
+  }
+  var padded = null;
+  function clearPad(){ if (padded){ padded.style.paddingBottom = ''; padded = null; } }
   document.addEventListener('focusin', function(e){
+    if (window.__kbJumpSuppress) return;                              // 跨列跳焦:不滚,保持表格静止
     var el = e.target;
-    if (!el.matches || !el.matches('input[type=text],input:not([type]),textarea')) return;
-    var sched = document.getElementById('page-schedule');
-    if (sched && !sched.classList.contains('hidden') && sched.contains(el)) return;
-    if (inFixed(el)) return;
-    document.body.style.paddingBottom = '50vh';
-    requestAnimationFrame(function(){ try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} });
+    if (!editable(el) || inFixed(el)) return;
+    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    if (el.getBoundingClientRect().bottom <= vh * 0.5) return;        // 已在屏幕上半部,键盘挡不到 → 不滚
+    var scroller = el.closest('.schedule-wrap') || document.body;     // 排班页用内滚容器,其余页用 body
+    clearPad();
+    scroller.style.paddingBottom = '50vh';                            // 给底部输入留出上滚空间
+    padded = scroller;
+    requestAnimationFrame(function(){ try { el.scrollIntoView({ block:'center', inline:'nearest', behavior:'smooth' }); } catch(_){} });
   });
-  document.addEventListener('focusout', function(e){
-    if (e.target.matches && e.target.matches('input,textarea')) document.body.style.paddingBottom = '';
+  document.addEventListener('focusout', function(){
+    setTimeout(function(){ if (!editable(document.activeElement)) clearPad(); }, 0);   // 焦点真正离开所有输入后才还原(跨列跳焦不闪)
   });
 })();
 </script>
