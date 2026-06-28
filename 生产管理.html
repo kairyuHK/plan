@@ -2023,6 +2023,18 @@ const Pages = (() => {
   function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   setNavH();
   window.addEventListener('resize', setNavH);
+  // 手机端:页面内输入框聚焦时临时撑高底部、把它滚到视口中部,避免被软键盘挡住
+  // (iOS Safari 不支持 interactive-widget=resizes-content,键盘直接盖在布局上 → 底部「新岗位名」等输入框够不到)
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (!el.matches || !el.matches('input,textarea,select')) return;
+    if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
+    document.body.style.paddingBottom = '50vh';  // 给最后一张卡的输入框留出上滚空间
+    setTimeout(() => { try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
+  });
+  document.addEventListener('focusout', e => {
+    if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
+  });
   route((location.hash.match(/^#\/(\w+)/)||[])[1]);
 })();
 <\/script>
