@@ -666,6 +666,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 :root[data-theme="light"] .cal-day{color:#22201d}
 :root[data-theme="light"] .cal-day:hover{background:#f1ede7;color:#22201d}
 :root[data-theme="light"] .cal-day.other{color:#9a958c}
+/* === 白天模式补漏:本表 toast 原先漏覆盖(黑框+深字);复制弹窗日期框写死深色 === */
+:root[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f6f3ef)!important;border-color:#e3ded7!important;color:#22201d!important;box-shadow:0 12px 32px rgba(43,37,30,.18)!important}
+:root[data-theme="light"] .copy-modal .row input[type=date]{background:#f4f1ec;color:var(--text);border-color:#e3ded7}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -3739,6 +3742,16 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 :root[data-theme="light"] .line-name,:root[data-theme="light"] .line-num{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:#574f45!important;color:#574f45!important}
 :root[data-theme="light"] #totalAll,:root[data-theme="light"] #totalDur,:root[data-theme="light"] #totalFinish{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:#22201d!important;color:#22201d!important}
 :root[data-theme="light"] .line-label{color:#6f6a62!important}
+/* === 白天模式补漏:二级弹层 / 激活态卡片(原先漏覆盖,白天会黑框或深字深底) === */
+:root[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f6f3ef)!important;border-color:#e3ded7!important;color:#22201d!important;box-shadow:0 12px 32px rgba(43,37,30,.18)!important}
+:root[data-theme="light"] .picker-modal,:root[data-theme="light"] #libModal .modal-card{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%)!important;border-color:#e3ded7!important;box-shadow:0 24px 64px rgba(43,37,30,.18),0 0 0 1px rgba(255,255,255,.6) inset!important}
+:root[data-theme="light"] .card.active{background:#fff3e8}
+:root[data-theme="light"] .card.rest.active{background:#e9e4fb}
+:root[data-theme="light"] .card.error.active{background:#fbdcdc}
+:root[data-theme="light"] .export-menu button:hover{background:#f4f1ec;color:var(--text)}
+:root[data-theme="light"] .modal-close:hover{background:#ece6df}
+:root[data-theme="light"] .lib-add-form input{background:#f6f3ef}
+:root[data-theme="light"] .lib-add-form input:hover,:root[data-theme="light"] .lib-add-form input:focus{background:#ffffff}
 /* 线头数字「夕盛/01-05」— 微金属感渐变文字 + 字距,质感更高级 */
 .line-name,.line-num{
   background:linear-gradient(180deg,#f5f6f8 0%,#a6abb3 100%);
@@ -7370,6 +7383,16 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] .cal-day{color:#22201d}
 :root[data-theme="light"] .cal-day:hover{background:#f1ede7;color:#22201d}
 :root[data-theme="light"] .cal-day.other{color:#9a958c}
+/* === 白天模式补漏:二级弹层(modal 盒子 / picker 下拉 / drawer 行 / 便当配色 popover) === */
+:root[data-theme="light"] .modal .box{background:#ffffff;border-color:#e3ded7;box-shadow:0 16px 48px rgba(43,37,30,.18)}
+:root[data-theme="light"] .picker{background:#ffffff;border-color:#e3ded7;box-shadow:0 8px 24px rgba(43,37,30,.16)}
+:root[data-theme="light"] .picker .opt:hover{background:#f4f1ec}
+:root[data-theme="light"] .drawer .row{background:#ffffff}
+:root[data-theme="light"] .bento-color-popover{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%);border-color:#e3ded7;box-shadow:0 16px 40px rgba(43,37,30,.18)}
+:root[data-theme="light"] .bcp-hex{background:#f6f3ef;border-color:#e3ded7;color:#22201d}
+:root[data-theme="light"] .bcp-btn{background:#f6f3ef;border-color:#e3ded7;color:#22201d}
+:root[data-theme="light"] .bcp-btn:hover{background:#ece6df;border-color:#d4cec4}
+:root[data-theme="light"] .drag-ghost{background:#ffffff}
 </style>
 </head>
 <body>
