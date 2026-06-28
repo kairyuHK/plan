@@ -5279,34 +5279,44 @@ window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); 
 //       表格「跨列跳焦」期间(window.__kbJumpSuppress)不滚,保留原有「表格不跳动」行为;
 //       只处理落在屏幕下半部、真会被键盘挡到的输入,上半部不动以免多余晃动。
 (function(){
-  // 只把输入框底边顶到屏幕 55%(刚好在键盘上方一点),且只滚「必要的量」,不过度上滚(45% 会在底部留一大片空白显得夸张)。
-  var KB_FRAC = 0.55;
+  var GAP = 44;   // 输入框底边离键盘顶留的间隙(含 Safari 域名条余量);越小越贴键盘
   function inFixed(el){ for (var n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
   function editable(el){
     return el && el.matches && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=date]):not([type=time]):not([type=month]):not([type=week]):not([type=datetime-local]),textarea') && !el.classList.contains('h-time');
   }
-  // 用真实占位元素撑出可滚动空间 —— Safari 对 flex 内滚容器的 padding-bottom 常不计入 scrollHeight,导致最后一行顶不上去
   var spacer = null;
   function removeRoom(){ if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer); spacer = null; }
-  document.addEventListener('focusin', function(e){
-    if (window.__kbJumpSuppress) return;                              // 跨列跳焦:不滚,保持表格静止
-    var el = e.target;
-    if (!editable(el) || inFixed(el)) return;
-    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-    var delta = el.getBoundingClientRect().bottom - vh * KB_FRAC;     // 需要把内容上滚多少
-    if (delta <= 0) return;                                          // 已在安全区(屏幕上半部)→ 不滚
-    var wrap = el.closest('.schedule-wrap');                         // 排班页内滚容器;否则随 body/window 滚
-    removeRoom();                                                    // 只撑出「刚好够上滚 delta」的空间,避免底部留一大片空白
+  // 把输入框滚到「刚好在键盘上方」。关键:用 visualViewport 拿真实键盘高度。
+  // 键盘还没弹起时(vh≈全屏高)先不动,交给 vv resize 再来一次 —— 否则按全屏高算会滚过头/滚飞。
+  // 只滚差额 delta:若 iOS 自己已把输入滚到键盘上方(delta<=0)就不再多滚,既不留大空白也不滚出屏幕。
+  function reveal(el){
+    if (document.activeElement !== el) return;
+    var vv = window.visualViewport;
+    var vh = vv ? vv.height : window.innerHeight;
+    if (vh > window.innerHeight * 0.85) return;                      // 键盘没真正弹起 → 等 vv resize
+    var delta = el.getBoundingClientRect().bottom - (vh - GAP);      // 被键盘挡住的量(>0 才需要滚)
+    if (delta <= 0) return;
+    var wrap = el.closest('.schedule-wrap');                         // 排班页内滚容器;否则随窗口滚
+    removeRoom();                                                    // 只撑出刚好够上滚的空间,避免底部留一大片空白
     spacer = document.createElement('div');
-    spacer.style.cssText = 'width:1px;flex:0 0 auto;pointer-events:none;height:' + Math.ceil(delta + 2) + 'px';
+    spacer.style.cssText = 'width:1px;flex:0 0 auto;pointer-events:none;height:' + Math.ceil(delta + 8) + 'px';
     (wrap || document.body).appendChild(spacer);
     requestAnimationFrame(function(){
-      if (wrap) wrap.scrollTo({ top: wrap.scrollTop + delta, behavior:'smooth' });
-      else window.scrollTo({ top: window.scrollY + delta, behavior:'smooth' });
+      if (document.activeElement !== el) return;
+      if (wrap) wrap.scrollBy({ top: delta, behavior:'smooth' });
+      else window.scrollBy({ top: delta, behavior:'smooth' });
     });
+  }
+  document.addEventListener('focusin', function(e){
+    if (window.__kbJumpSuppress) return;                             // 跨列跳焦:不滚,保持表格静止
+    var el = e.target;
+    if (!editable(el) || inFixed(el)) return;
+    reveal(el);                                                      // 键盘已开(编辑/跳格时)→ 立即精确,贴着键盘
+    var vv = window.visualViewport;                                  // 键盘从无到有 → 弹起后再来一次
+    if (vv) { var once = function(){ vv.removeEventListener('resize', once); reveal(el); }; vv.addEventListener('resize', once); }
   });
   document.addEventListener('focusout', function(){
-    setTimeout(function(){ if (!editable(document.activeElement)) removeRoom(); }, 0);   // 焦点真正离开所有输入后才还原(跨列跳焦不闪)
+    setTimeout(function(){ if (!editable(document.activeElement)) removeRoom(); }, 0);
   });
 })();
 </script>
