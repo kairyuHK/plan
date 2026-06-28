@@ -5249,5 +5249,25 @@ const Tests = (() => {
 
 window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); });
 </script>
+<script>
+// 手机端:设置/数据等页里「新建/改名」文本输入框聚焦时滚到键盘上方(iOS Safari 不支持 interactive-widget)。
+// 仅作用于文本输入框 —— 出勤表数字框(自带 preventScroll 跳焦)、工时 .h-time(iOS 时间 picker)、日期框、固定弹层都天然排除,互不干扰。
+// 排班页(#page-schedule)body:overflow:hidden、内部 .schedule-wrap 自滚,不在此处理。
+(function(){
+  function inFixed(el){ for (var n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
+  document.addEventListener('focusin', function(e){
+    var el = e.target;
+    if (!el.matches || !el.matches('input[type=text],input:not([type]),textarea')) return;
+    var sched = document.getElementById('page-schedule');
+    if (sched && !sched.classList.contains('hidden') && sched.contains(el)) return;
+    if (inFixed(el)) return;
+    document.body.style.paddingBottom = '50vh';
+    requestAnimationFrame(function(){ try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} });
+  });
+  document.addEventListener('focusout', function(e){
+    if (e.target.matches && e.target.matches('input,textarea')) document.body.style.paddingBottom = '';
+  });
+})();
+</script>
 </body>
 </html>
