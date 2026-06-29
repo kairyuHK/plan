@@ -9288,24 +9288,8 @@ function renderEdit() {
   lineSel.onchange = () => {
     const newLineId = lineSel.value || null;
     if ((newLineId || null) === (b.lineId || null)) return;
-    // 新模型:每条线有自己的卡片布局/材料分配/速度,switchBentoToLine 做快照与还原
-    // 「未选生产线 → 第一次选线」时,把当前已编辑的 line/assignments 直接挪到该线,不弹模板覆盖确认
-    const wasUnset = !b.lineId;
-    if (wasUnset && newLineId) {
-      // 首次绑线:把现有 line/assignments 当作这条线的初始布局(不调用 switch 以免被模板冲掉)
-      b.lineId = newLineId;
-      b.layouts = b.layouts || {};
-      b.layouts[newLineId] = {
-        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
-        assignments: JSON.parse(JSON.stringify(b.assignments || {}))
-      };
-      const ss = (b.lineSpeeds || {})[newLineId];
-      if (ss != null && ss !== "") b.speed = ss;
-      saveState();
-      renderEdit();
-      return;
-    }
-    // 已绑过线 → 真正的「按线切换该便当布局」:旧线快照 + 加载新线缓存(没缓存就用该线模板)
+    // 新模型:每条线有自己的卡片布局/材料分配/速度,switchBentoToLine 做快照与还原。
+    // 选线(含首次绑线)统一走 switchBentoToLine:旧线快照 + 加载新线缓存,没缓存就套用该线模板。
     switchBentoToLine(b, newLineId);
     saveState();
     renderEdit();
