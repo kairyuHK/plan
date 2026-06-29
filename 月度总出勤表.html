@@ -5333,5 +5333,34 @@ window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); 
   });
 })();
 </script>
+<script>
+// 键盘避让调试:网址末尾加 #kbdebug,聚焦输入框时左上角实时显示真实数值,截图发回即可精确定位。平时不显示、零影响。
+if (location.hash.indexOf('kbdebug') >= 0) {
+  var _kd = document.createElement('div');
+  _kd.style.cssText = 'position:fixed;top:4px;left:4px;z-index:99999;background:rgba(0,0,0,.85);color:#0f0;font:11px/1.4 ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;max-width:70vw';
+  document.body.appendChild(_kd);
+  var _upd = function(){
+    var el = document.activeElement, vv = window.visualViewport, L = [];
+    L.push('innerH=' + window.innerHeight + '  vvH=' + (vv ? Math.round(vv.height) : '-') + '  vvTop=' + (vv ? Math.round(vv.offsetTop) : '-'));
+    if (el && el.matches && el.matches('input,textarea')) {
+      var r = el.getBoundingClientRect();
+      L.push('el.top=' + Math.round(r.top) + '  el.bottom=' + Math.round(r.bottom));
+      var w = el.closest('.schedule-wrap');
+      if (w) {
+        L.push('wrap.cH=' + w.clientHeight + '  wrap.sH=' + w.scrollHeight + '  wrap.sT=' + Math.round(w.scrollTop));
+        L.push('overflow=' + (w.scrollHeight > w.clientHeight + 2));
+      } else {
+        L.push('scroller=window  docSH=' + document.documentElement.scrollHeight + '  scrollY=' + Math.round(window.scrollY));
+      }
+      if (vv) L.push('delta(GAP44)=' + Math.round(r.bottom - (vv.height - 44)));
+    } else { L.push('(无输入框聚焦)'); }
+    _kd.textContent = L.join('\n');
+  };
+  document.addEventListener('focusin', _upd);
+  document.addEventListener('focusout', function(){ setTimeout(_upd, 50); });
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', _upd); window.visualViewport.addEventListener('scroll', _upd); }
+  setInterval(_upd, 300); _upd();
+}
+</script>
 </body>
 </html>
