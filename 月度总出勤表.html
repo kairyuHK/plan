@@ -5155,9 +5155,13 @@ const Pages = (() => {
     if (btn) { btn.disabled = true; btn.textContent = '出力中…'; }
     await new Promise(r => setTimeout(r, 50));
     try {
+      // 背景跟随当前主题:白天取浅底、夜间取原深底,避免白天导出图背景/间隙发黑
+      const exportBg = document.documentElement.classList.contains('theme-light')
+        ? getComputedStyle(document.body).backgroundColor
+        : '#0a0a0b';
       const canvas = await html2canvas(root, {
         scale: 2,
-        backgroundColor: '#0a0a0b',
+        backgroundColor: exportBg,
         useCORS: true,
         logging: false,
         windowWidth: root.scrollWidth,
