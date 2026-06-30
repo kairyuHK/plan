@@ -211,6 +211,11 @@ table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--mute
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
 table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
+/* 表头 3 行可独立调高(设置→单元格尺寸)。head/weekday 行沿用上一条的 :not 链 + 行 class 抬高特异性以覆盖其 25px;未设回退 25px */
+table.schedule thead tr.month-row th.dept-name,
+table.schedule thead tr.month-row th.month-label{height:var(--row-month-h, 25px)}
+table.schedule thead tr.head-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-date-h, 25px)}
+table.schedule thead tr.weekday-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-weekday-h, 25px)}
 table.schedule td.day-cell{height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
@@ -408,12 +413,12 @@ body.resizing.resizing-row{cursor:row-resize!important}
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
        row-h 加上限 7mm — 人多时铺满 A4 行高变小,人少时行高停在 7mm,
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
-    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
+    --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 198mm) / var(--total-rows, 30)), 7mm));
   }
   /* overflow:visible —— 行高(--row-*-h px)调大致表格超过 --print-body-h 时,不硬裁底部统计行;
      超出部分照常打印,用户据此把行高调到刚好铺满一页。 */
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: visible; }
-  #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 200mm); overflow: visible; }
+  #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 200mm); }
   /* 表格垂直居中于 body(A4 纸张内)。
      注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
      A4 可用区,浏览器看到表格上方空白后认为不能整张放进第 1 页,把整张推到第 2 页,第 1 页空白。
@@ -421,7 +426,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
      这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
   /* justify-content:flex-start —— 表格顶对齐,行高调大超出 --print-body-h 时只向下延伸进纸面空白,
      不会因居中而向上溢出被纸张上边/页边距裁掉。便于用行高微调从顶部往下铺满整页。 */
-  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: flex-start; }
+  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 200mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: flex-start; }
   .entry-hint { display: none !important; }
   .col-resize-handle, .row-resize-handle { display: none !important; }
   /* position:relative 在 border-collapse:collapse 的 table cell 上会让浏览器渲染时丢边框,
@@ -484,9 +489,10 @@ body.resizing.resizing-row{cursor:row-resize!important}
     font-size: min(calc(var(--row-h) * 0.65), 4.5mm) !important;
     width: auto !important;
     /* CJK 字体 ascent > descent,line-height:1 下字形视觉偏上,padding-top 下推到视觉中心。
-       PC 端 0.09 看起来居中,手机端浏览器/打印机字体度量不同,默认 0(不偏移)。
-       beforeprint 时 JS 按视口宽度切换 --day-cell-pad-ratio。 */
-    padding-top: calc(var(--row-h) * var(--day-cell-pad-ratio, 0.09)) !important;
+       按【实际行高】缩放(用户自定义 --row-person-h 优先,否则自动 --row-h):
+       这样调大行高时补偿同步变大,〇 始终居中(原来只按 --row-h 算,自定义行高时会偏上)。
+       PC 端系数 0.09;手机端字体度量不同,beforeprint 里设 0(不偏移)。 */
+    padding-top: calc(var(--row-person-h, var(--row-h)) * var(--day-cell-pad-ratio, 0.09)) !important;
   }
   /* 〇(契休) 大且笔画密,欠/有 是汉字笔画也密,统一压小一档 */
   table.schedule td.day-cell.contractRest,
@@ -509,8 +515,11 @@ body.resizing.resizing-row{cursor:row-resize!important}
     width: auto !important;
     font-size: min(calc(var(--row-h) * 0.5), 3.5mm) !important;
   }
-  table.schedule th.dept-name { font-size: min(calc(var(--row-h) * 0.65), 5mm) !important; height: var(--row-h) !important; }
-  table.schedule th.month-label { font-size: min(calc(var(--row-h) * 0.55), 4mm) !important; height: var(--row-h) !important; }
+  table.schedule th.dept-name { font-size: min(calc(var(--row-h) * 0.65), 5mm) !important; height: var(--row-month-h, var(--row-h)) !important; }
+  table.schedule th.month-label { font-size: min(calc(var(--row-h) * 0.55), 4mm) !important; height: var(--row-month-h, var(--row-h)) !important; }
+  /* 表头 日期行 / 星期行 打印行高:用户设过用之,否则回退自动 var(--row-h)。:not 链 + 行 class 抬高特异性以覆盖上面的通用表头行规则(line 503) */
+  table.schedule thead tr.head-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-date-h, var(--row-h))!important}
+  table.schedule thead tr.weekday-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-weekday-h, var(--row-h))!important}
   /* 必要人数/ライン合計/派遣短期/過不足 四行字号统一(input 和 td 同一个 cap) */
   table.schedule tr.stat-row td,
   table.schedule td.required input,
@@ -1730,9 +1739,9 @@ const Store = (() => {
   const defaults = () => ({
     version: VERSION,
     departments: [
-      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 192 },
-      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 192 },
-      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 192 }
+      { id: 'dept1', name: '部门 A', requiredCount: 22, printHeightMm: 200 },
+      { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 200 },
+      { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 200 }
     ],
     // 单元格尺寸覆盖。所有部门共享(用户调一次,所有部门生效)。
     // key 含义:
@@ -1789,7 +1798,7 @@ const Store = (() => {
       // 旧数据兼容:部门缺少新字段时补默认值
       if (Array.isArray(parsed.departments)) {
         parsed.departments.forEach(d => {
-          if (d.printHeightMm == null) d.printHeightMm = 192;
+          if (d.printHeightMm == null || d.printHeightMm === 192) d.printHeightMm = 200; // 旧默认 192 → 200,铺满 A4 横向(可用高≈202mm),无 UI 故统一升
         });
       }
       // 旧数据兼容:人员 annualLeaveInit → annualLeave(默认 20)+ leaveResetMonth(默认 11)
@@ -2055,7 +2064,7 @@ const Store = (() => {
   function addDepartment(name) {
     const id = Util.newId('d');
     // 新部门自动带打印高度默认值 192mm,与现有部门保持一致
-    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 192 });
+    state.departments.push({ id, name, requiredCount: 10, printHeightMm: 200 });
     state.people[id] = [];
     commit('dept');
     return id;
@@ -2072,7 +2081,7 @@ const Store = (() => {
     const d = state.departments.find(x => x.id === id);
     if (d) {
       // 限制在合理范围 100-210mm 之间(A4 横向高度 210mm)
-      d.printHeightMm = Math.max(100, Math.min(210, Number(mm) || 192));
+      d.printHeightMm = Math.max(100, Math.min(210, Number(mm) || 200));
       commit('dept');
     }
   }
@@ -2087,6 +2096,9 @@ const Store = (() => {
     'col-day':        [12, 80],
     'row-person':     [14, 80],
     'row-stat':       [14, 80],
+    'row-month':      [14, 80],
+    'row-date':       [14, 80],
+    'row-weekday':    [14, 80],
   };
   function setSize(key, px) {
     const limits = SIZE_LIMITS[key];
@@ -2210,7 +2222,7 @@ const Store = (() => {
     if (!parsed.cellColors) parsed.cellColors = {};
     if (!parsed.cellTexts) parsed.cellTexts = {};
     parsed.departments.forEach(d => {
-      if (d.printHeightMm == null) d.printHeightMm = 192;
+      if (d.printHeightMm == null || d.printHeightMm === 192) d.printHeightMm = 200; // 旧默认 192 → 200,铺满 A4 横向(可用高≈202mm),无 UI 故统一升
     });
     if (parsed.people && typeof parsed.people === 'object') {
       for (const did in parsed.people) {
@@ -2482,7 +2494,7 @@ const App = (() => {
       document.documentElement.style.setProperty('--total-rows', String(totalRows));
       // 应用当前部门的打印高度(每个部门可独立设置,默认 192mm)
       const curDept = Store.dept();
-      const bodyH = (curDept && curDept.printHeightMm) || 192;
+      const bodyH = (curDept && curDept.printHeightMm) || 200;
       // 「手机端 + 夕盛/払出部门」组合才触发特殊缩放。
       // 原因:这两个部门人员多,手机 Safari 打印 A4 横向时实际可用区比 PC 小
       // (Safari 最小边距 + URL/页码占用 30-50mm),默认 192mm body 会溢出到第 2 页。
@@ -2500,7 +2512,7 @@ const App = (() => {
       document.documentElement.style.setProperty('--print-body-h', declaredBodyH + 'mm');
       document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
       // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
-      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0');
+      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0.09');
       // 払出 部门特例:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
       document.body.classList.toggle('print-dept-haraidashi', !!(curDept && curDept.name === '払出'));
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
@@ -2824,7 +2836,7 @@ const Pages = (() => {
     // 用户自定义尺寸 → CSS 变量。每次 render 都清掉再重设,确保 reset (delete sizes[key]) 能回退到默认
     const root = document.documentElement;
     const sizes = Store.get().sizes || {};
-    ['col-role-w','col-name-w','col-sum-paid-w','col-sum-contract-w','col-sum-remain-w','col-day-w','row-person-h','row-stat-h']
+    ['col-role-w','col-name-w','col-sum-paid-w','col-sum-contract-w','col-sum-remain-w','col-day-w','row-person-h','row-stat-h','row-month-h','row-date-h','row-weekday-h']
       .forEach(v => root.style.removeProperty('--' + v));
     Object.entries(sizes).forEach(([key, px]) => {
       const suffix = key.startsWith('col-') ? '-w' : '-h';
@@ -3532,8 +3544,11 @@ const Pages = (() => {
       { key: 'col-sum-contract',label: '契休列宽',  defaultPx: 36,  unit: 'px' },
       { key: 'col-sum-remain',  label: '残列宽',    defaultPx: 36,  unit: 'px' },
       { key: 'col-day',         label: '日期列宽',  defaultPx: 27,  unit: 'px' },
-      { key: 'row-person',      label: '人员行高',  defaultPx: 25,  unit: 'px' },
-      { key: 'row-stat',        label: 'Stat 行高', defaultPx: 25,  unit: 'px' },
+      { key: 'row-month',       label: '部门/月数行高', defaultPx: 25, unit: 'px' },
+      { key: 'row-date',        label: '日期行高',  defaultPx: 25,  unit: 'px' },
+      { key: 'row-weekday',     label: '星期行高',  defaultPx: 25,  unit: 'px' },
+      { key: 'row-person',      label: '人员行高',  defaultPx: 21,  unit: 'px' },
+      { key: 'row-stat',        label: 'Stat 行高', defaultPx: 22,  unit: 'px' },
     ];
     const sizes = Store.get().sizes || {};
     for (const it of items) {
