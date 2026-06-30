@@ -410,14 +410,18 @@ body.resizing.resizing-row{cursor:row-resize!important}
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
     --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 190mm) / var(--total-rows, 30)), 7mm));
   }
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: hidden; }
+  /* overflow:visible —— 用户把行高(--row-*-h px)调大致表格超过 --print-body-h 时,
+     原 overflow:hidden 会把底部统计行硬裁掉(即便纸面下方还有空白)。改 visible 让超出部分照常打印。 */
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 192mm); overflow: visible; }
   #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 192mm); }
   /* 表格垂直居中于 body(A4 纸张内)。
      注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
      A4 可用区,浏览器看到表格上方空白后认为不能整张放进第 1 页,把整张推到第 2 页,第 1 页空白。
      修复办法是去掉 table 层级的 break-inside:avoid,只保留 tr 级别(防止单行被截断)。
      这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
-  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: center; }
+  /* justify-content:flex-start(原 center):表格顶对齐,超出 --print-body-h 时只向下延伸进纸面空白,
+     不会因居中而向上溢出被纸张上边/页边距裁掉。未超出时仍从顶部排起(与缩放后实际表现一致)。 */
+  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 192mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: flex-start; }
   .entry-hint { display: none !important; }
   .col-resize-handle, .row-resize-handle { display: none !important; }
   /* position:relative 在 border-collapse:collapse 的 table cell 上会让浏览器渲染时丢边框,
