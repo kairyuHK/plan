@@ -2467,7 +2467,7 @@ const App = (() => {
     updateDirtyIndicator();
     updateEditUI();
     Store.subscribe(() => { showRoute(); updateDirtyIndicator(); updateEditUI(); });
-    window.addEventListener('beforeprint', () => {
+    const applyPrintSizing = () => {
       originalTitle = document.title;
       document.title = buildPrintTitle();
       const peopleN = Store.peopleInPeriod().length;
@@ -2501,8 +2501,8 @@ const App = (() => {
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
       // col 宽度交给 print CSS 处理(支持用户 --col-*-w 自定义 px 值;未设时 fallback 到 mm)。
       // 此处不再 inline 覆盖,inline 会压过 CSS 里的 var fallback 链,让用户自定义失效。
-    });
-    window.addEventListener('afterprint', () => {
+    };
+    const clearPrintSizing = () => {
       if (originalTitle) document.title = originalTitle;
       document.documentElement.style.removeProperty('--total-rows');
       document.documentElement.style.removeProperty('--row-h-fixed');
@@ -2531,7 +2531,17 @@ const App = (() => {
       document.querySelectorAll('#page-schedule table.schedule td.required input, #page-schedule table.schedule td.dispatch input').forEach(i => {
         i.style.removeProperty('font-size');
       });
-    });
+    };
+    window.addEventListener('beforeprint', applyPrintSizing);
+    window.addEventListener('afterprint', clearPrintSizing);
+    // iOS Safari 不触发 beforeprint/afterprint → 上面动态行高/页高在 iOS 打印时不生效,
+    // 退回默认 30 行假设,人多的部门(夕盛 34 行)行高偏大、超出 body(overflow:hidden)被裁底,
+    // 且 body 仅 192mm 而竖向纸 297mm,故下方留白、底部统计行被切。
+    // matchMedia('print') 的变化 iOS Safari 会触发,用它驱动同一套逻辑,跨平台稳妥(幂等,重复触发无副作用)。
+    const printMql = window.matchMedia('print');
+    const onPrintChange = (e) => { if (e.matches) applyPrintSizing(); else clearPrintSizing(); };
+    if (printMql.addEventListener) printMql.addEventListener('change', onPrintChange);
+    else if (printMql.addListener) printMql.addListener(onPrintChange);
   }
 
   return { init, showRoute };
