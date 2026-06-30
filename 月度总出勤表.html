@@ -2085,7 +2085,8 @@ const Store = (() => {
   function setSize(key, px) {
     const limits = SIZE_LIMITS[key];
     if (!limits) return;
-    const n = Math.max(limits[0], Math.min(limits[1], Math.round(Number(px) || 0)));
+    // 保留 1 位小数,支持微调(如 27.5px);不再强制取整
+    const n = Math.max(limits[0], Math.min(limits[1], Math.round((Number(px) || 0) * 10) / 10));
     state.sizes[key] = n;
     commit('size');
   }
@@ -3524,9 +3525,9 @@ const Pages = (() => {
       row.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, it.label + ':'));
       const cur = sizes[it.key];
       const input = Render.el('input.size-input', {
-        // type:text + inputmode:numeric:iOS Safari 上 type=number 光标无法移动,改成 text 保留正常文本编辑
+        // type:text + inputmode:decimal:iOS Safari 上 type=number 光标无法移动,改成 text 保留正常文本编辑;decimal 让手机键盘带小数点,支持微调
         type: 'text',
-        inputmode: 'numeric',
+        inputmode: 'decimal',
         value: cur != null ? String(cur) : '',
         placeholder: String(it.defaultPx),
         title: '空值=使用默认 ' + it.defaultPx + 'px',
