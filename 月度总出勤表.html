@@ -1741,15 +1741,10 @@ const Store = (() => {
       { id: 'dept2', name: '部门 B', requiredCount: 22, printHeightMm: 200 },
       { id: 'dept3', name: '部门 C', requiredCount: 22, printHeightMm: 200 }
     ],
-    // 单元格尺寸覆盖。所有部门共享(用户调一次,所有部门生效)。
-    // key 含义:
-    //   col-role/col-name: 役職/氏名 列宽 px
-    //   col-sum-paid/col-sum-contract/col-sum-remain: 有休/契休/残 列宽 px (3 个独立)
-    //   col-day: 所有日期列统一宽度 px
-    //   row-person: 所有人员行统一高度 px
-    //   row-stat: 必要人数/ライン合計/派遣短期/過不足 4 行统一高度 px
-    // 没设置的 key 用 CSS var() fallback 的默认值。
-    sizes: {},
+    // 单元格尺寸覆盖 —— 每个部门独立: state.sizesByDept[deptId] = { key: px }。
+    // key: col-role/col-name/col-sum-paid/col-sum-contract/col-sum-remain/col-day(列宽);
+    //      row-person/row-stat/row-month/row-date/row-weekday(行高)。没设的 key 用 CSS var() fallback 默认值。
+    sizesByDept: {},
     people: { dept1: [], dept2: [], dept3: [] },
     attendance: {},
     cellColors: {},
@@ -1812,7 +1807,13 @@ const Store = (() => {
           });
         }
       }
-      if (!parsed.sizes) parsed.sizes = {};
+      // 单元格尺寸:旧全局 sizes → 每部门 sizesByDept。首次升级把旧全局值复制给每个部门。
+      if (!parsed.sizesByDept || typeof parsed.sizesByDept !== 'object') {
+        const legacySizes = (parsed.sizes && typeof parsed.sizes === 'object') ? parsed.sizes : {};
+        parsed.sizesByDept = {};
+        (parsed.departments || []).forEach(d => { parsed.sizesByDept[d.id] = { ...legacySizes }; });
+      }
+      delete parsed.sizes;
       // 每个 person 兜底 hoursDays
       if (parsed.people && typeof parsed.people === 'object') {
         for (const did in parsed.people) {
@@ -2083,7 +2084,7 @@ const Store = (() => {
       commit('dept');
     }
   }
-  // 单元格尺寸:统一存到 state.sizes,key 见 defaults() 注释。
+  // 单元格尺寸:每部门独立,存到 state.sizesByDept[deptId],key 见 defaults() 注释。
   // 单位 px,clamp 限制范围避免极端值破坏排版。
   const SIZE_LIMITS = {
     'col-role':       [10, 200],
@@ -2098,18 +2099,24 @@ const Store = (() => {
     'row-date':       [14, 80],
     'row-weekday':    [14, 80],
   };
-  function setSize(key, px) {
+  function setSize(deptId, key, px) {
     const limits = SIZE_LIMITS[key];
-    if (!limits) return;
+    if (!limits || !deptId) return;
     // 保留 1 位小数,支持微调(如 27.5px);不再强制取整
     const n = Math.max(limits[0], Math.min(limits[1], Math.round((Number(px) || 0) * 10) / 10));
-    state.sizes[key] = n;
+    (state.sizesByDept[deptId] = state.sizesByDept[deptId] || {})[key] = n;
     commit('size');
   }
-  function resetSize(key) { delete state.sizes[key]; commit('size'); }
+  function resetSize(deptId, key) {
+    if (state.sizesByDept[deptId]) delete state.sizesByDept[deptId][key];
+    commit('size');
+  }
+  // 某部门的尺寸覆盖对象(默认当前部门);未设时返回空对象
+  const sizes = (deptId = state.ui.currentDept) => (state.sizesByDept && state.sizesByDept[deptId]) || {};
   function removeDepartment(id) {
     state.departments = state.departments.filter(d => d.id !== id);
     delete state.people[id];
+    if (state.sizesByDept) delete state.sizesByDept[id];
     for (const k of Object.keys(state.attendance)) if (k.startsWith(id + '|')) delete state.attendance[k];
     for (const k of Object.keys(state.requiredPerDay)) if (k.startsWith(id + '|')) delete state.requiredPerDay[k];
     if (state.ui.currentDept === id) state.ui.currentDept = state.departments[0]?.id || null;
@@ -2232,7 +2239,12 @@ const Store = (() => {
         });
       }
     }
-    if (!parsed.sizes) parsed.sizes = {};
+    if (!parsed.sizesByDept || typeof parsed.sizesByDept !== 'object') {
+      const legacySizes = (parsed.sizes && typeof parsed.sizes === 'object') ? parsed.sizes : {};
+      parsed.sizesByDept = {};
+      (parsed.departments || []).forEach(d => { parsed.sizesByDept[d.id] = { ...legacySizes }; });
+    }
+    delete parsed.sizes;
     if (!parsed.requiredPerDay) parsed.requiredPerDay = {};
     if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
     if (!parsed.ui) parsed.ui = { currentDept: null, currentPeriod: Period.todayKey(), editMode: false };
@@ -2303,7 +2315,7 @@ const Store = (() => {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount, paidLeaveDaysInRange,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
-    setSize, resetSize,
+    setSize, resetSize, sizes,
     addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
     findPersonById, getHoursDays, setHoursDay, clearHoursDaysInRange, setHoursSetting,
     exportJson, importJson, reset, subscribe
@@ -2726,7 +2738,7 @@ const Pages = (() => {
     });
   }
 
-  // 通用拖拽尺寸调整。handle 是拖拽元素,key 是 state.sizes 的 key,axis 是 'x'(列宽) 或 'y'(行高),
+  // 通用拖拽尺寸调整。handle 是拖拽元素,key 是 state.sizesByDept[当前部门] 的 key,axis 是 'x'(列宽) 或 'y'(行高),
   // measureSel 用于读初始尺寸(必须指向有真实 layout box 的元素 — th/td,不能是 col,
   //           因为 col 元素在手机 Safari 下 getBoundingClientRect 返回 0,导致拖动开始时尺寸被设成 0)。
   // applySel 用于拖动时实时改 inline width(列宽就是 col 元素,行高同 measureSel)。
@@ -2761,7 +2773,7 @@ const Pages = (() => {
         document.removeEventListener('mouseup', mu);
         document.removeEventListener('touchmove', tm);
         document.removeEventListener('touchend', tu);
-        if (curSize !== startSize) Store.setSize(key, curSize);
+        if (curSize !== startSize) Store.setSize(Store.get().ui.currentDept, key, curSize);
       };
       const mm = (e) => onMove(axis === 'x' ? e.clientX : e.clientY);
       const mu = () => onUp();
@@ -2783,12 +2795,19 @@ const Pages = (() => {
     }, { passive: false });
     handle.addEventListener('dblclick', (e) => {
       e.stopPropagation();
-      Store.resetSize(key);
+      Store.resetSize(Store.get().ui.currentDept, key);
     });
     handle.addEventListener('click', (e) => e.stopPropagation());
   }
 
   let lastSchedKey = null;   // 上次渲染的「部门|期间」,用于判断是否同视图重渲(锁定↔编辑)以保留滚动位置
+  let sizeEditDeptId = null; // 设置页「单元格尺寸」当前编辑的部门 id(会话级,默认跟随当前部门)
+  // 部门专属默认尺寸(按部门名):只列与全局默认不同的 key,未列出的用全局默认。
+  // 给特定部门(如払出人少、需要更高的行铺满打印页)一套自己的默认基线:占位符显示这些、重置也回到这些。
+  const DEPT_SIZE_DEFAULTS = { '払出': { 'row-month': 30, 'row-person': 27, 'row-stat': 27 } };
+  const deptSizeDefaults = (deptId) => { const d = Store.dept(deptId); return (d && DEPT_SIZE_DEFAULTS[d.name]) || {}; };
+  // 生效尺寸 = 部门默认基线 覆盖上 用户显式设置(sizesByDept)。用于渲染/应用 CSS 变量。
+  const effectiveSizes = (deptId) => ({ ...deptSizeDefaults(deptId), ...Store.sizes(deptId) });
   function renderSchedule() {
     // 「個人」虚拟视图:绕过整张排班表,渲染由两个固定人员组成的个人排班页
     const isPersonal = Store.get().ui.currentDept === PERSONAL_VIEW;
@@ -2836,7 +2855,7 @@ const Pages = (() => {
     host.appendChild(buildTable());
     // 用户自定义尺寸 → CSS 变量。每次 render 都清掉再重设,确保 reset (delete sizes[key]) 能回退到默认
     const root = document.documentElement;
-    const sizes = Store.get().sizes || {};
+    const sizes = effectiveSizes(Store.get().ui.currentDept); // 部门默认基线 + 用户覆盖
     ['col-role-w','col-name-w','col-sum-paid-w','col-sum-contract-w','col-sum-remain-w','col-day-w','row-person-h','row-stat-h','row-month-h','row-date-h','row-weekday-h']
       .forEach(v => root.style.removeProperty('--' + v));
     Object.entries(sizes).forEach(([key, px]) => {
@@ -3047,7 +3066,7 @@ const Pages = (() => {
     const todayYmd = Util.ymd(new Date());
     // 显式算 table 总宽。固定列严格按声明值,日期列自动撑满剩余 viewport(若用户未自定义)。
     // 这样 table.width 是具体 px → table-layout:fixed 严格生效;同时 table 总宽=viewport 不留空白。
-    const sizes = Store.get().sizes || {};
+    const sizes = Store.sizes();
     const fixedSum = (sizes['col-role'] || 60)
       + (sizes['col-name'] || 130)
       + (sizes['col-sum-paid'] || 36)
@@ -3093,7 +3112,7 @@ const Pages = (() => {
   function buildColgroup(days, dayW) {
     const cg = Render.el('colgroup');
     // inline style 优先级最高,直接写 px 值绕开所有 CSS 优先级 / box-sizing 解析差异问题。
-    const sizes = Store.get().sizes || {};
+    const sizes = Store.sizes();
     const applyCol = (col, sizeKey, defaultPx) => {
       const px = sizes[sizeKey];
       if (px != null) col.style.width = px + 'px';
@@ -3194,7 +3213,7 @@ const Pages = (() => {
       let widthUnits = 0; // 1 全角 = 1, 半角/空格 = 0.5
       for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
       if (widthUnits > 0) {
-        const szs = Store.get().sizes || {};
+        const szs = Store.sizes();
         const colNamePx = szs['col-name'] != null ? szs['col-name'] : 130; // 当前氏名列宽(px)
         // 屏幕:默认 11px 放不下就缩到刚好(留 10px 给左 padding + 安全),下限 6px。
         const screenAvail = colNamePx - 10;
@@ -3535,13 +3554,30 @@ const Pages = (() => {
     if (keepScroll && (prevX || prevY)) requestAnimationFrame(() => window.scrollTo(prevX, prevY));
   }
 
-  // 单元格尺寸 section:8 个 px 数值输入框,精确调整,可补充拖拽手柄之外的精度控制。
-  // 与拖拽共享 Store.setSize/resetSize,所以调任何一处另一处立即同步。
+  // 单元格尺寸 section:每个部门独立。顶部下拉选要编辑的部门(默认跟随排班页当前部门)。
+  // 与拖拽共享 Store.setSize/resetSize(deptId,...),调任何一处另一处立即同步。
   function buildSizesSection() {
     const sec = Render.el('div.settings-section');
     sec.appendChild(Render.el('h2', '单元格尺寸'));
+    const depts = Store.get().departments;
+    // 编辑目标部门:sizeEditDeptId 无效时默认跟随当前部门(虚拟视图则退第一个真实部门)
+    if (!depts.some(d => d.id === sizeEditDeptId)) {
+      const cur = Store.get().ui.currentDept;
+      sizeEditDeptId = depts.some(d => d.id === cur) ? cur : (depts[0] ? depts[0].id : null);
+    }
+    const pickRow = Render.el('div.settings-row');
+    pickRow.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, '编辑部门:'));
+    const sel = Render.el('select.size-dept-select');
+    for (const d of depts) {
+      const opt = Render.el('option', { value: d.id }, d.name);
+      if (d.id === sizeEditDeptId) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', (e) => { sizeEditDeptId = e.target.value; renderSettings(true); });
+    pickRow.appendChild(sel);
+    sec.appendChild(pickRow);
     sec.appendChild(Render.el('div', { style: { color: 'var(--muted)', fontSize: '12px', marginBottom: '8px' } },
-      '直接输入 px 值,或在排班表头/行底部拖动手柄。调一次屏幕+打印同步。空值=用默认。'));
+      '每个部门尺寸独立。直接输入 px 值,或在排班表头/行底部拖动手柄。调一次屏幕+打印同步。空值=用默认。'));
     const items = [
       { key: 'col-role',        label: '役職列宽',  defaultPx: 60,  unit: 'px' },
       { key: 'col-name',        label: '氏名列宽',  defaultPx: 130, unit: 'px' },
@@ -3555,29 +3591,31 @@ const Pages = (() => {
       { key: 'row-person',      label: '人员行高',  defaultPx: 21,  unit: 'px' },
       { key: 'row-stat',        label: 'Stat 行高', defaultPx: 22,  unit: 'px' },
     ];
-    const sizes = Store.get().sizes || {};
+    const sizes = Store.sizes(sizeEditDeptId);
+    const dfl = deptSizeDefaults(sizeEditDeptId); // 该部门专属默认(占位符/重置基线)
     for (const it of items) {
       const row = Render.el('div.settings-row');
       row.appendChild(Render.el('span', { style: { minWidth: '90px', color: 'var(--muted)' } }, it.label + ':'));
       const cur = sizes[it.key];
+      const defPx = dfl[it.key] != null ? dfl[it.key] : it.defaultPx; // 该部门此项默认值
       const input = Render.el('input.size-input', {
         // type:text + inputmode:decimal:iOS Safari 上 type=number 光标无法移动,改成 text 保留正常文本编辑;decimal 让手机键盘带小数点,支持微调
         type: 'text',
         inputmode: 'decimal',
         value: cur != null ? String(cur) : '',
-        placeholder: String(it.defaultPx),
-        title: '空值=使用默认 ' + it.defaultPx + 'px',
+        placeholder: String(defPx),
+        title: '空值=使用默认 ' + defPx + 'px',
         onchange: (e) => {
           const v = e.target.value.trim();
-          if (v === '') Store.resetSize(it.key);
-          else Store.setSize(it.key, v);
+          if (v === '') Store.resetSize(sizeEditDeptId, it.key);
+          else Store.setSize(sizeEditDeptId, it.key, v);
         }
       });
       row.appendChild(input);
       row.appendChild(Render.el('span', { style: { color: 'var(--muted)', fontSize: '11px' } }, it.unit));
       row.appendChild(Render.el('span.grow'));
       const resetBtn = Render.el('button', { title: '恢复默认' }, '重置');
-      resetBtn.addEventListener('click', () => Store.resetSize(it.key));
+      resetBtn.addEventListener('click', () => Store.resetSize(sizeEditDeptId, it.key));
       row.appendChild(resetBtn);
       sec.appendChild(row);
     }
