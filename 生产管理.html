@@ -7211,6 +7211,20 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     body.mono .line-grid .cell .mats>div{color:#000 !important}
     .chip.toggle{display:none !important}
   }
+  /* === 打印位置微调:便当名 / 表格 各自独立平移(单位 mm,由「打印位置」面板控制;默认 0 无位移) === */
+  @media print {
+    .bento-title { transform: translate(var(--print-title-dx,0mm), var(--print-title-dy,0mm)) !important; }
+    .line-wrap  { transform: translate(var(--print-grid-dx,0mm), var(--print-grid-dy,0mm)) !important; }
+  }
+  /* === 手机竖屏打印:iOS 会忽略 @page landscape,285mm 横版铺在竖屏纸上导致右侧被裁。
+     这里保持内部 285mm 横版布局(字号自适应测量不变),用 zoom 把整版等比缩小铺满竖屏可用宽度,消除裁切。 === */
+  @media print and (orientation: portrait) {
+    /* 注意:这里不能写 @page{size:portrait} —— 它会和本媒体查询自锁,导致打印对话框
+       无法切回横向。竖屏适配只靠 zoom 缩放,纸张方向交给用户/系统决定。 */
+    html, body { width: 210mm !important; }
+    body { width: 210mm !important; margin: 0 !important; padding: 6mm !important; }
+    #content { width: 285mm !important; zoom: var(--print-scale, .68); }
+  }
   @media (max-width: 720px) {
     body{font-size:14px}
     header{padding:6px 8px;gap:6px}
@@ -7344,6 +7358,12 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 .font-pop .actions{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
 .font-pop .reset{background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:5px 12px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
 .font-pop .reset:hover{color:#e8e8e8;border-color:#3a3f47}
+.font-pop .nudge{display:flex;align-items:center;gap:6px}
+.font-pop .nudge button{width:34px;height:34px;padding:0;border:1px solid #2a2d33;border-radius:7px;background:transparent;color:#cfd2d8;font-size:15px;line-height:1;cursor:pointer;transition:background .12s,border-color .12s,color .12s,transform .1s}
+.font-pop .nudge button:hover{background:rgba(255,255,255,.06);border-color:var(--accent);color:var(--accent)}
+.font-pop .nudge button:active{transform:scale(.94)}
+.font-pop .nudge .val{margin-left:auto;font-size:12px;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap}
+:root[data-theme="light"] .font-pop .nudge button{border-color:#e3ded7;color:#4a443c}
 #btn-font{font-weight:600;letter-spacing:.5px}
 /* === 白天模式:压过本表 !important 深色精修(置于样式表末尾) === */
 :root[data-theme="light"] header{background:linear-gradient(180deg,#ffffff 0%,#efece7 100%)!important;border-bottom:1px solid #e3ded7!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 16px rgba(43,37,30,.08)!important}
@@ -7422,6 +7442,7 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     <div class="menu" id="export-menu">
       <div class="menu-item" data-act="print">打印</div>
       <div class="menu-item" data-act="image">导出图片</div>
+      <div class="menu-item" data-act="print-pos">打印位置</div>
     </div>
   </div>
 </header>
@@ -7437,6 +7458,29 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     <div class="row"><label>粗细</label><input type="range" id="fp-mats-weight" min="300" max="900" step="100"><span class="val" id="fp-mats-weight-v"></span></div>
   </div>
   <div class="actions"><button class="reset" id="fp-reset" type="button">重置默认</button></div>
+</div>
+<div class="font-pop" id="pos-pop">
+  <div class="grp">
+    <div class="grp-title">便当名位置（打印）</div>
+    <div class="row nudge">
+      <button data-pos="title" data-d="left" title="左移">←</button>
+      <button data-pos="title" data-d="up" title="上移">↑</button>
+      <button data-pos="title" data-d="down" title="下移">↓</button>
+      <button data-pos="title" data-d="right" title="右移">→</button>
+      <span class="val" id="pos-title-v">0, 0mm</span>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="grp-title">表格位置（打印）</div>
+    <div class="row nudge">
+      <button data-pos="grid" data-d="left" title="左移">←</button>
+      <button data-pos="grid" data-d="up" title="上移">↑</button>
+      <button data-pos="grid" data-d="down" title="下移">↓</button>
+      <button data-pos="grid" data-d="right" title="右移">→</button>
+      <span class="val" id="pos-grid-v">0, 0mm</span>
+    </div>
+  </div>
+  <div class="actions"><button class="reset" id="pos-reset" type="button">重置默认</button></div>
 </div>
 <main id="content"></main>
 <div class="backdrop" id="backdrop"></div>
@@ -7522,6 +7566,58 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     document.getElementById('fp-reset').addEventListener('click', () => {
       Object.assign(state, DEFAULTS);
       apply(state); save(state); syncUI(state);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+// === 打印位置微调(便当名 / 表格 各自上下左右,单位 mm;仅影响打印/图片输出) ===
+(function(){
+  const KEY = 'config-print-pos-v1';
+  const STEP = 2, LIM = 40;
+  const DEFAULTS = { titleDx:0, titleDy:0, gridDx:0, gridDy:0 };
+  const clamp = v => Math.max(-LIM, Math.min(LIM, v));
+  function load(){
+    try {
+      const p = JSON.parse(localStorage.getItem(KEY) || '{}');
+      return { titleDx:clamp(+p.titleDx||0), titleDy:clamp(+p.titleDy||0), gridDx:clamp(+p.gridDx||0), gridDy:clamp(+p.gridDy||0) };
+    } catch(_) { return Object.assign({}, DEFAULTS); }
+  }
+  function save(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(_){} }
+  function apply(s){
+    const r = document.documentElement.style;
+    r.setProperty('--print-title-dx', s.titleDx + 'mm');
+    r.setProperty('--print-title-dy', s.titleDy + 'mm');
+    r.setProperty('--print-grid-dx', s.gridDx + 'mm');
+    r.setProperty('--print-grid-dy', s.gridDy + 'mm');
+  }
+  function syncUI(s){
+    const t = document.getElementById('pos-title-v'); if(t) t.textContent = `${s.titleDx}, ${s.titleDy}mm`;
+    const g = document.getElementById('pos-grid-v'); if(g) g.textContent = `${s.gridDx}, ${s.gridDy}mm`;
+  }
+  const state = load();
+  apply(state);
+  function nudge(which, dir){
+    const kx = which === 'title' ? 'titleDx' : 'gridDx';
+    const ky = which === 'title' ? 'titleDy' : 'gridDy';
+    if (dir === 'left')  state[kx] = clamp(state[kx] - STEP);
+    if (dir === 'right') state[kx] = clamp(state[kx] + STEP);
+    if (dir === 'up')    state[ky] = clamp(state[ky] - STEP);
+    if (dir === 'down')  state[ky] = clamp(state[ky] + STEP);
+    apply(state); save(state); syncUI(state);
+  }
+  function init(){
+    const pop = document.getElementById('pos-pop');
+    if(!pop) return;
+    syncUI(state);
+    pop.querySelectorAll('button[data-pos]').forEach(b => {
+      b.addEventListener('click', e => { e.stopPropagation(); nudge(b.dataset.pos, b.dataset.d); });
+    });
+    const reset = document.getElementById('pos-reset');
+    if(reset) reset.addEventListener('click', () => { Object.assign(state, DEFAULTS); apply(state); save(state); syncUI(state); });
+    document.addEventListener('click', e => {
+      if(!pop.contains(e.target) && !e.target.closest('#export-menu')) pop.classList.remove('show');
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -9839,6 +9935,10 @@ exportMenu.onclick = (e) => {
   exportMenu.classList.remove("show");
   if (act === "print") window.print();
   else if (act === "image") exportImage();
+  else if (act === "print-pos") {
+    const fp = document.getElementById("font-pop"); if (fp) fp.classList.remove("show");
+    document.getElementById("pos-pop").classList.add("show");
+  }
 };
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".menu-wrap")) exportMenu.classList.remove("show");
