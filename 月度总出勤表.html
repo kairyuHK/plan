@@ -228,6 +228,9 @@ body:not(.editing) table.schedule td.required input{cursor:default}
 body:not(.editing) table.schedule td.required input:hover{background:transparent}
 body:not(.editing) table.schedule td.dispatch input{cursor:default}
 body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
+/* 锁定时数字格彻底不响应指针 —— 一并挡掉焦点背景/文字选中/手机点按高亮 */
+body:not(.editing) table.schedule td.required input,
+body:not(.editing) table.schedule td.dispatch input{pointer-events:none;user-select:none;-webkit-user-select:none}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
 .today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11.5px;line-height:1;font-variant-numeric:tabular-nums;padding-top:1px;font-family:var(--font-mono)}
