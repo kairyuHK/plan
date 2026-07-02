@@ -1507,6 +1507,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light table.schedule thead th.dept-name{background:#ffffff}
   html.theme-light table.schedule tr.stat-row td{background:#f1f2f5}
   html.theme-light table.schedule td.day-cell:hover{background:#f0f1f4}
+  html.theme-light body:not(.editing) table.schedule td.day-cell:hover{background:transparent}
   html.theme-light table.schedule td.day-cell.retired{background:#ededf0}
   html.theme-light table.schedule tr.hl-row td,
   html.theme-light table.schedule tr.hl-row th{background:rgba(109,77,255,0.10)}
@@ -1517,6 +1518,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   html.theme-light table.schedule td.required input:focus,
   html.theme-light table.schedule td.dispatch input:hover,
   html.theme-light table.schedule td.dispatch input:focus{background:#eef0f3}
+  html.theme-light body:not(.editing) table.schedule td.required input:hover,
+  html.theme-light body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
   html.theme-light .settings-row{border-bottom-color:#e6e7eb}
   html.theme-light .confirm-popover,
   html.theme-light .toast{background:linear-gradient(180deg,#ffffff 0%,#f4f5f7 100%);border-color:rgba(0,0,0,0.10);color:var(--text)}
