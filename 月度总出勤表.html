@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-appver="2026-07-03-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -5453,6 +5453,40 @@ if (location.hash.indexOf('kbdebug') >= 0) {
   if (window.visualViewport) { window.visualViewport.addEventListener('resize', _upd); window.visualViewport.addEventListener('scroll', _upd); }
   setInterval(_upd, 300); _upd();
 }
+</script>
+<script>
+/* 主屏幕独立 App 自动更新检查:启动 / 切回前台时,联网拉最新文件比对 <html data-appver>,
+   有新版且当前非编辑态就自动刷新。改完文件记得把上面 data-appver 改一下(如日期+序号)再上传。 */
+(function(){
+  var RUNNING = document.documentElement.getAttribute('data-appver') || '';
+  var busy = false, last = 0;
+  function safeToReload(){
+    if (document.body.classList.contains('editing')) return false;   // 编辑中不打断
+    var a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return false; // 正在输入不打断
+    return true;
+  }
+  function check(){
+    if (busy || !navigator.onLine) return;
+    if (Date.now() - last < 30000) return;   // 最多每 30 秒查一次
+    busy = true; last = Date.now();
+    fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : Promise.reject(0); })
+      .then(function(html){
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var latest = doc.documentElement.getAttribute('data-appver') || '';
+        if (latest && latest !== RUNNING && safeToReload()){
+          location.replace(location.pathname + '?v=' + encodeURIComponent(latest)); // 带版本参数强制拿新文件
+        }
+      })
+      .catch(function(){})
+      .then(function(){ busy = false; });
+  }
+  window.addEventListener('load', check);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') check();
+  });
+})();
 </script>
 </body>
 </html>
