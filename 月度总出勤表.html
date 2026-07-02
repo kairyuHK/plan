@@ -222,15 +222,16 @@ table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--danger)}
 table.schedule td.day-cell.absent{color:var(--danger)}
 table.schedule td.day-cell.retired{color:var(--retired);cursor:not-allowed;background:#111114}
-body:not(.editing) table.schedule td.day-cell{cursor:default;-webkit-tap-highlight-color:transparent}
+body:not(.editing) table.schedule td.day-cell{cursor:default;-webkit-tap-highlight-color:transparent;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 body:not(.editing) table.schedule td.day-cell:hover{background:transparent}
 body:not(.editing) table.schedule td.required input{cursor:default}
 body:not(.editing) table.schedule td.required input:hover{background:transparent}
 body:not(.editing) table.schedule td.dispatch input{cursor:default}
 body:not(.editing) table.schedule td.dispatch input:hover{background:transparent}
-/* 锁定时数字格彻底不响应指针 —— 一并挡掉焦点背景/文字选中/手机点按高亮 */
-body:not(.editing) table.schedule td.required input,
-body:not(.editing) table.schedule td.dispatch input{pointer-events:none;user-select:none;-webkit-user-select:none}
+/* 锁定时数字格彻底不响应指针 —— 加在 td(不是 input)上,才能挡住 iOS 长按穿透选中外层单元格;
+   -webkit-touch-callout:none 压掉长按弹出的拷贝/写作工具菜单 */
+body:not(.editing) table.schedule td.required,
+body:not(.editing) table.schedule td.dispatch{pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
 .today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11.5px;line-height:1;font-variant-numeric:tabular-nums;padding-top:1px;font-family:var(--font-mono)}
@@ -3409,7 +3410,7 @@ const Pages = (() => {
         value: String(requireds[i]),
         readonly: editing ? null : true,
         onchange: editing ? (e) => Store.setRequired(deptId, days[i].ymd, e.target.value) : null,
-        onfocus: (e) => e.target.select()
+        onfocus: editing ? (e) => e.target.select() : null
       });
       td.appendChild(input);
       r1.appendChild(td);
@@ -3485,7 +3486,7 @@ const Pages = (() => {
             Store.setDispatch(deptId, ymdCur, v);
           }
         } : null,
-        onfocus: (e) => e.target.select(),
+        onfocus: editing ? (e) => e.target.select() : null,
         onkeydown: editing ? (e) => {
           const k = e.key;
           if (k === 'Enter' || k === 'ArrowRight' || (k === 'Tab' && !e.shiftKey)) {
