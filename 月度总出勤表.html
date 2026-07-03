@@ -2,7 +2,7 @@
 <html lang="ja" data-appver="2026-07-03-1">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏/键盘上方的域名条(普通标签页里仍由 Safari 显示,无法用网页移除) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -40,7 +40,7 @@ input:focus,select:focus{border-color:var(--accent)}
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
-.nav{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
+.nav{display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
 /* 手机端 nav 不再用 position:fixed + body padding-top —
    fixed 定位在 iOS Safari 上对页面缩放状态/异步排版时机敏感,会偶发盖住表头(部门名+月份行只露一半,
    捏合缩放重置后才恢复)。改为保留 base 的 position:sticky(在流内),滚动页自然吸顶,排班页用 flex 撑满。 */
