@@ -10712,6 +10712,8 @@ window.addEventListener('hashchange', () => {
       .then(function(){ busy = false; });
   }
   window.addEventListener('load', check);
+  window.addEventListener('pageshow', check);   // iOS 独立 App 从后台/bfcache 恢复,最可靠
+  window.addEventListener('focus', check);
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible') check();
   });
