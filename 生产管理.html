@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-03-4">
+<html lang="zh-CN" data-appver="2026-07-03-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
+<!-- 启动图:iOS 独立 App 启动时先显示与 App 底色一致的纯色,消除系统白屏(仅 430x932@3 iPhone 15/16 Plus·Max) -->
+<link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait) and (prefers-color-scheme:dark)" href="splash-sc-dark.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait) and (prefers-color-scheme:light)" href="splash-sc-light.png">
 <title>生产管理</title>
 <style>
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
