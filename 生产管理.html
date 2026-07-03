@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-03-2">
+<html lang="zh-CN" data-appver="2026-07-03-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -986,7 +986,8 @@ function showConfirmPopover(anchor, opts) {
   } else {
     let left = r.left - pr.width - m; if (left < m) left = r.right + m;
     if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
-    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    var _sp = document.createElement('div'); _sp.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(_sp); var _satTop = parseFloat(getComputedStyle(_sp).height) || 0; _sp.remove();
+    let top = r.top + r.height/2 - pr.height/2; if (top < m + _satTop) top = m + _satTop;
     if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   }
@@ -3985,7 +3986,8 @@ function showConfirmPopover(anchor, opts) {
   } else {
     let left = r.left - pr.width - m; if (left < m) left = r.right + m;
     if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
-    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    var _sp = document.createElement('div'); _sp.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(_sp); var _satTop = parseFloat(getComputedStyle(_sp).height) || 0; _sp.remove();
+    let top = r.top + r.height/2 - pr.height/2; if (top < m + _satTop) top = m + _satTop;
     if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   }
@@ -7674,7 +7676,8 @@ function showConfirmPopover(anchor, opts) {
   } else {
     let left = r.left - pr.width - m; if (left < m) left = r.right + m;
     if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
-    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    var _sp = document.createElement('div'); _sp.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(_sp); var _satTop = parseFloat(getComputedStyle(_sp).height) || 0; _sp.remove();
+    let top = r.top + r.height/2 - pr.height/2; if (top < m + _satTop) top = m + _satTop;
     if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   }
@@ -9993,7 +9996,8 @@ function showConfirmPopover(anchor, opts) {
   } else {
     let left = r.left - pr.width - m; if (left < m) left = r.right + m;
     if (left + pr.width > window.innerWidth - m) left = Math.max(m, window.innerWidth - pr.width - m);
-    let top = r.top + r.height/2 - pr.height/2; if (top < m) top = m;
+    var _sp = document.createElement('div'); _sp.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(_sp); var _satTop = parseFloat(getComputedStyle(_sp).height) || 0; _sp.remove();
+    let top = r.top + r.height/2 - pr.height/2; if (top < m + _satTop) top = m + _satTop;
     if (top + pr.height > window.innerHeight - m) top = window.innerHeight - pr.height - m;
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
   }
