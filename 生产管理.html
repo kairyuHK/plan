@@ -1,8 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-appver="2026-07-03-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
+<!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="生产管理">
 <title>生产管理</title>
 <style>
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
@@ -10663,6 +10668,49 @@ window.addEventListener('hashchange', () => {
   }, 50);
   // 检查导出提醒
   setTimeout(checkExportReminder, 600);
+})();
+</script>
+<script>
+/* 主屏幕独立 App 自动更新检查:启动 / 切回前台时,联网拉最新文件比对 <html data-appver>,
+   有新版且当前没在输入就自动刷新。改完文件记得把顶部 <html data-appver> 改一下(如日期+序号)再上传。 */
+(function(){
+  var RUNNING = document.documentElement.getAttribute('data-appver') || '';
+  var busy = false, last = 0;
+  function hasLiveInput(doc){
+    try{
+      var a = doc.activeElement;
+      if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable)) return true;
+    }catch(_){}
+    return false;
+  }
+  function safeToReload(){
+    if(hasLiveInput(document)) return false;                 // 外层正在输入
+    var frames = document.querySelectorAll('iframe');
+    for(var i=0;i<frames.length;i++){                         // 各同源 iframe 子应用里正在输入
+      try{ if(hasLiveInput(frames[i].contentDocument)) return false; }catch(_){}
+    }
+    return true;
+  }
+  function check(){
+    if (busy || !navigator.onLine) return;
+    if (Date.now() - last < 30000) return;   // 最多每 30 秒查一次
+    busy = true; last = Date.now();
+    fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : Promise.reject(0); })
+      .then(function(html){
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var latest = doc.documentElement.getAttribute('data-appver') || '';
+        if (latest && latest !== RUNNING && safeToReload()){
+          location.replace(location.pathname + '?v=' + encodeURIComponent(latest)); // 带版本参数强制拿新文件
+        }
+      })
+      .catch(function(){})
+      .then(function(){ busy = false; });
+  }
+  window.addEventListener('load', check);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') check();
+  });
 })();
 </script>
 </body>
