@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-appver="2026-07-03-7">
+<html lang="ja" data-appver="2026-07-03-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -14,7 +14,7 @@
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)" href="splash-yuedu-light.png">
 <title>月度总出勤表</title>
 <!-- 启动防白闪:大文件解析前先按主题定死背景色,首帧即正确底色(独立 App 打开不再先白后现) -->
-<style>html{background:#0a0a0b}html.theme-light{background:#f4f5f7}</style>
+<style>html{background:#0a0a0b}html.theme-light{background:#f4f5f7}#__boot{position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0a0b;z-index:2147483647;transition:opacity .22s ease}html.theme-light #__boot{background:#f4f5f7}#__boot.hide{opacity:0;pointer-events:none}</style>
 <script>try{var _t=localStorage.getItem('app-theme')||'dark';if(_t==='light'||(_t==='system'&&!matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('theme-light')}catch(e){}</script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 <!-- 月度工时模块字体:Bricolage Grotesque (展示) + Geist (正文) + JetBrains Mono (等宽) -->
@@ -1631,6 +1631,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 <script>try{var _p=localStorage.getItem('app-theme')||'dark';if(_p==='light'||(_p==='system'&&!matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('theme-light')}catch(e){}</script>
 </head>
 <body>
+<div id="__boot"></div>
 <nav class="nav">
   <span class="brand" data-route="#/schedule" title="返回排班主页">月度总出勤表</span>
   <span id="dept-tabs"></span>
@@ -5363,7 +5364,14 @@ const Tests = (() => {
   return { run, render };
 })();
 
-window.addEventListener('DOMContentLoaded', () => { App.init(); Tests.render(); });
+window.addEventListener('DOMContentLoaded', () => {
+  App.init(); Tests.render();
+  // 首屏渲染完成后淡出启动遮罩,消除表格 pop-in 的「刷新感」
+  var __b = document.getElementById('__boot');
+  if (__b) requestAnimationFrame(() => requestAnimationFrame(() => { __b.classList.add('hide'); setTimeout(() => __b.remove(), 260); }));
+});
+// 兜底:无论如何 3 秒后必移除遮罩,避免卡在遮罩上
+setTimeout(() => { var b = document.getElementById('__boot'); if (b) { b.classList.add('hide'); setTimeout(() => b.remove(), 260); } }, 3000);
 </script>
 <script>
 // 手机端:输入框聚焦时滚到键盘上方,避免被软键盘挡住(iOS Safari 不支持 interactive-widget=resizes-content)。
