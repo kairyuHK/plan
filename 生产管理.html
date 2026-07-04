@@ -160,7 +160,7 @@ iframe.active{pointer-events:auto}
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast{position:fixed;top:max(24px,calc(env(safe-area-inset-top, 0px) + 12px));left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
 .toast.info{border-left:3px solid var(--accent)}
@@ -872,7 +872,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast{position:fixed;top:max(24px,calc(env(safe-area-inset-top, 0px) + 12px));left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid var(--ok)}
 .toast.error{border-left:3px solid var(--danger)}
 .toast.info{border-left:3px solid var(--accent)}
@@ -3706,7 +3706,7 @@ const Pages = (() => {
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast{position:fixed;top:max(24px,calc(env(safe-area-inset-top, 0px) + 12px));left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
 .toast.info{border-left:3px solid var(--accent)}
@@ -7317,7 +7317,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast{position:fixed;top:max(24px,calc(env(safe-area-inset-top, 0px) + 12px));left:50%;transform:translateX(-50%);z-index:20000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:#e8e8e8;font:inherit;font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid #10b981}
 .toast.error{border-left:3px solid #ef4444}
 .toast.info{border-left:3px solid var(--accent)}
