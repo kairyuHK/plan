@@ -4083,12 +4083,24 @@ const Pages = (() => {
     const r = anchor.getBoundingClientRect();
     const pr = pop.getBoundingClientRect();
     const margin = 8;
+    // iOS 灵动岛/刘海(顶部)与 home 指示条(底部)会遮住贴边的弹框。
+    // env() 无法在 JS 直接读, 用隐藏探针量出安全区像素值, 加进上下夹取边界。
+    const readInset = (side) => {
+      const probe = document.createElement('div');
+      probe.style.cssText = `position:fixed;${side}:0;height:env(safe-area-inset-${side});visibility:hidden;pointer-events:none`;
+      document.body.appendChild(probe);
+      const px = probe.offsetHeight;
+      probe.remove();
+      return px;
+    };
+    const safeTop = readInset('top');
+    const safeBottom = readInset('bottom');
     let left = r.left - pr.width - margin;
     if (left < margin) left = r.right + margin;
     if (left + pr.width > window.innerWidth - margin) left = Math.max(margin, window.innerWidth - pr.width - margin);
     let top = r.top + r.height / 2 - pr.height / 2;
-    if (top < margin) top = margin;
-    if (top + pr.height > window.innerHeight - margin) top = window.innerHeight - pr.height - margin;
+    if (top < margin + safeTop) top = margin + safeTop;
+    if (top + pr.height > window.innerHeight - margin - safeBottom) top = window.innerHeight - pr.height - margin - safeBottom;
     pop.style.left = left + 'px';
     pop.style.top = top + 'px';
 
