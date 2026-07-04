@@ -7023,7 +7023,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch;position:relative;z-index:1}
   .line-grid.vertical .cell{height:62px;min-height:62px;padding:6px;border-radius:6px}
   .line-grid.vertical .cell .lbl{font-size:10px;top:2px;left:4px}
-  .line-grid.vertical .cell .mats{font-size:13px;gap:1px}
+  .line-grid.vertical .cell .mats{font-size:var(--mats-size,13px);gap:1px}
   .vbelt{background:transparent}
   .meta-bar .date{color:var(--accent);font-weight:600}
   .belt{height:8px;background:linear-gradient(90deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;position:relative;margin:6px 0}
@@ -7246,8 +7246,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid{padding:8px 0;gap:6px}
     .line-grid .cell{min-height:56px;padding:6px;border-radius:6px;--cell-min:88px}
     .line-grid .cell .lbl{font-size:11px;top:2px;left:4px}
-    .line-grid .cell .mats{font-size:13px;gap:1px}
-    .bento-title{font-size:22px;min-height:32px;margin:4px 0 2px;letter-spacing:1px}
+    .line-grid .cell .mats{font-size:var(--mats-size,13px);gap:1px}
+    .bento-title{font-size:var(--bento-title-size,22px);min-height:32px;margin:4px 0 2px;letter-spacing:1px}
     .bento-title .muted{font-size:13px}
     .belt{height:6px;margin:4px 0}
     .drawer{width:88vw}
@@ -7261,7 +7261,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .picker .opt{padding:10px 8px;min-height:44px;font-size:15px}
     .picker .opt .swatch{width:18px;height:18px}
     .line-grid .cell{--cell-min:78px}
-    .line-grid .cell .mats{font-size:14px}
+    .line-grid .cell .mats{font-size:var(--mats-size,14px)}
     .line-grid .cell .lbl{font-size:10px}
     /* 卡片管理表格在手机竖屏下收紧,确保最右侧「×」按钮在视野内 */
     .line-screen{max-width:none}
@@ -7287,10 +7287,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   }
   @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
     header{padding:4px 8px}
-    .bento-title{font-size:18px;min-height:24px;margin:2px 0}
+    .bento-title{font-size:var(--bento-title-size,18px);min-height:24px;margin:2px 0}
     .line-grid{padding:4px 0;gap:4px}
     .line-grid .cell{min-height:48px;--cell-min:72px}
-    .line-grid .cell .mats{font-size:11px}
+    .line-grid .cell .mats{font-size:var(--mats-size,11px)}
     .belt{height:5px;margin:3px 0}
   }
 /* === 现代化弹层 / Toast === */
@@ -7534,9 +7534,12 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
   function save(s){ try { localStorage.setItem(FONT_KEY, JSON.stringify(s)); } catch(_){} }
   function apply(s){
     const r = document.documentElement.style;
-    r.setProperty('--bento-title-size', s.bentoSize + 'px');
+    // 字号:等于默认值时「不设变量」,让各断点(手机/竖版)用自己 CSS 里的默认字号回退;
+    // 用户一旦调过就写变量,桌面/手机都跟随。这样手机端 Aa 也能实时生效,同时不破坏手机默认字号。
+    const setSize = (prop, val, def) => { if (val === def) r.removeProperty(prop); else r.setProperty(prop, val + 'px'); };
+    setSize('--bento-title-size', s.bentoSize, DEFAULTS.bentoSize);
     r.setProperty('--bento-title-weight', String(s.bentoWeight));
-    r.setProperty('--mats-size', s.matsSize + 'px');
+    setSize('--mats-size', s.matsSize, DEFAULTS.matsSize);
     r.setProperty('--mats-weight', String(s.matsWeight));
   }
   function syncUI(s){
@@ -10595,10 +10598,28 @@ frames.forEach(f => {
 // (等价于手动刷新/缩放那一下),清掉残影。用 iframe 的 body transform,不碰转场用的 iframe transform。
 function repaintActiveFrame() {
   const f = document.querySelector('iframe[data-app].active');
-  const b = f && f.contentDocument && f.contentDocument.body;
+  const doc = f && f.contentDocument;
+  const b = doc && doc.body;
   if (!b) return;
-  b.style.transform = 'translateZ(0)';
-  requestAnimationFrame(() => { requestAnimationFrame(() => { b.style.transform = ''; }); });
+  const kick = () => {
+    b.style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+      b.style.transform = '';
+      // sticky 时间列/表头/统计栏的合成残影(计划板尤甚),靠「净零微滚」强制它们重新定位、重绘,
+      // 比只切 body transform 更彻底 —— transform 只重画 body 层,单独成层的 sticky 元素的旧后备缓存不一定被丢弃。
+      try {
+        [doc.scrollingElement, ...doc.querySelectorAll('.main, .board, .timeline-body')].forEach(el => {
+          if (!el) return;
+          const st = el.scrollTop, sl = el.scrollLeft;
+          el.scrollTop = st + 1; el.scrollTop = st;
+          el.scrollLeft = sl + 1; el.scrollLeft = sl;
+        });
+      } catch(_) {}
+    }); });
+  };
+  kick();
+  // iOS 独立 App 从后台恢复时,残影有时在 visible/pageshow 事件「之后」才被画出来 —— 延时再补一次才抹得掉。
+  setTimeout(kick, 280);
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') repaintActiveFrame(); });
 window.addEventListener('pageshow', repaintActiveFrame);
