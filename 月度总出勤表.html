@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-appver="2026-07-03-8">
+<html lang="ja" data-appver="2026-07-04-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -20,7 +20,11 @@
 <!-- 月度工时模块字体:Bricolage Grotesque (展示) + Geist (正文) + JetBrains Mono (等宽) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@300..500&display=swap" rel="stylesheet">
+<!-- 异步加载:字体 CSS 若同步加载会阻塞首帧渲染,冷启动时启动图撤掉→首帧之间露出系统白底(即点图标后的白闪)。
+     media="print" 先不参与渲染,onload 后切回 all;字体晚到只是文字换肤(display=swap),首帧不再等网络。 -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@300..500&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@300..500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@300..500&display=swap" rel="stylesheet"></noscript>
 <style>
 :root{
   --bg:#0a0a0b; --card:#161618; --border:#26262a;
