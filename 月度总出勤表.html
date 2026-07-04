@@ -310,7 +310,7 @@ table.schedule td.dispatch input{-moz-appearance:textfield}
 .confirm-popover .confirm-swatches button.confirm-sw-clear.active{border-color:var(--text);border-style:solid;color:var(--text)}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 /* Toast 通知(临时显示,自动消失) */
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
+.toast{position:fixed;top:calc(24px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-weight:500;box-shadow:0 12px 32px rgba(0,0,0,0.5);animation:toastIn .25s cubic-bezier(0.2,0.8,0.2,1);display:flex;align-items:center;gap:8px;max-width:90vw}
 .toast.success{border-left:3px solid var(--ok)}
 .toast.error{border-left:3px solid var(--danger)}
 .toast.info{border-left:3px solid var(--accent)}
@@ -1660,7 +1660,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),用于「检查更新」后确认新版本已生效。
-const APP_BUILD = '2026.07.04-1';
+const APP_BUILD = '2026.07.04-2';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
