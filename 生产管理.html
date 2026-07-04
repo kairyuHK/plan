@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-03-6">
+<html lang="zh-CN" data-appver="2026-07-04-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -13,6 +13,10 @@
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)" href="splash-sc-dark.png">
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: light)" href="splash-sc-light.png">
 <title>生产管理</title>
+<!-- 启动防白闪:大文件解析前先按已存模式定死背景色,首帧即正确底色(浅色用户不再先黑后白翻转);
+     #__boot 遮罩盖住 iframe 首屏 srcdoc 注入的 pop-in,首个子应用加载完成后淡出(同月度 v-8 方案)。 -->
+<style>html{background:#0a0b0e}html[data-theme="light"]{background:#efece7}#__boot{position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0b0e;z-index:2147483647;transition:opacity .22s ease}html[data-theme="light"] #__boot{background:#efece7}#__boot.hide{opacity:0;pointer-events:none}</style>
+<script>try{var _m=localStorage.getItem('workbench-theme-mode')||'dark';if(_m==='system')_m=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(_m!=='light')_m='dark';document.documentElement.dataset.theme=_m}catch(e){}</script>
 <style>
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
 *{box-sizing:border-box}
@@ -108,7 +112,8 @@ iframe.active{pointer-events:auto}
    不强制成白底的话手机端打印整张深色,iframe 内部的白色排版反而像被框在黑卡里。
    同时把顶部 tab 栏隐藏,只让 iframe 的内容铺满整页。 */
 @media print {
-  @page { size: landscape; margin: 6mm; }
+  /* 不写方向关键字 —— 带 landscape/portrait 会锁死打印对话框的纵向/横向单选,方向交给用户选。 */
+  @page { margin: 6mm; }
   /* iOS Safari iframe 打印不认 mm 单位的 height 和 contain:strict —— 会让 iframe 收缩
      到内容自然高度,纸面下半部分留大片空白。改用百分比让 iframe 一层层撑满父容器,
      最终铺满整张纸,然后 iframe 内部 body.printing 自己负责把内容铺满。 */
@@ -584,6 +589,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 </script>
 </head>
 <body>
+<div id="__boot"></div>
 <div class="tabs">
   <button data-app="plan" class="active">🏭 生产计划板</button>
   <button data-app="config">⚙ 配置表</button>
@@ -7182,10 +7188,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   body.printing .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
   body.printing .line-grid .row{gap:8px !important}
   body.printing .line-grid .cell{height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important;overflow:visible !important}
-  body.printing .line-grid .cell .mats{font-size:16px !important;font-weight:500 !important;letter-spacing:.3px}
+  body.printing .line-grid .cell .mats{font-size:var(--mats-size,16px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.3px}
   body.printing .line-grid .cell .person{display:none !important}
   @media print {
-    @page { size: A4 landscape; margin: 0; }
+    /* size 一律不写(连纸张都不写)—— 写 landscape/portrait 会锁方向,连写 size:A4 也会锁成 A4 纵向。
+       只留 margin,纸张+方向全交给打印对话框:横向=285mm 满版原设计,纵向=下方 orientation:portrait 分支 zoom 自适应。 */
+    @page { margin: 0; }
     html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; width: 297mm !important }
     header, .backdrop, .drawer, .picker, .autocomplete, .modal { display:none !important; }
     .line-grid .cell .person { display:none !important; }
@@ -7193,7 +7201,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     #content{padding:0;position:relative !important;display:flex;flex-direction:column;width:285mm !important;min-height:186mm !important;height:auto !important;overflow:visible !important}
     #content > *{break-inside:auto;page-break-inside:auto}
     .info-bar{flex:0 0 auto;margin:0 0 6px !important;gap:6px}
-    .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:28px !important;min-height:0 !important;letter-spacing:4px !important;font-weight:800;line-height:1}
+    .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1}
     .bento-title .muted{color:#555 !important;font-size:14px !important}
     .line-wrap{flex:0 0 auto;margin:60mm 0 0 !important;overflow:visible !important;width:100% !important;break-inside:auto}
     /* 打印时:把 --cell-min 收到 0,允许列在 285mm 内压缩,
@@ -7205,7 +7213,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important}
     .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
-    .line-grid .cell .mats{color:#000;font-size:16px !important;font-weight:500 !important;letter-spacing:.3px}
+    .line-grid .cell .mats{color:#000;font-size:var(--mats-size,16px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.3px}
     .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
     .belt::after{border-left-color:#000 !important}
     .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:4px 12px !important;font-size:12px !important}
@@ -7536,11 +7544,11 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
     const r = document.documentElement.style;
     // 字号:等于默认值时「不设变量」,让各断点(手机/竖版)用自己 CSS 里的默认字号回退;
     // 用户一旦调过就写变量,桌面/手机都跟随。这样手机端 Aa 也能实时生效,同时不破坏手机默认字号。
-    const setSize = (prop, val, def) => { if (val === def) r.removeProperty(prop); else r.setProperty(prop, val + 'px'); };
-    setSize('--bento-title-size', s.bentoSize, DEFAULTS.bentoSize);
-    r.setProperty('--bento-title-weight', String(s.bentoWeight));
-    setSize('--mats-size', s.matsSize, DEFAULTS.matsSize);
-    r.setProperty('--mats-weight', String(s.matsWeight));
+    const setVar = (prop, val, def, unit) => { if (val === def) r.removeProperty(prop); else r.setProperty(prop, val + (unit || '')); };
+    setVar('--bento-title-size', s.bentoSize, DEFAULTS.bentoSize, 'px');
+    setVar('--bento-title-weight', s.bentoWeight, DEFAULTS.bentoWeight);
+    setVar('--mats-size', s.matsSize, DEFAULTS.matsSize, 'px');
+    setVar('--mats-weight', s.matsWeight, DEFAULTS.matsWeight);
   }
   function syncUI(s){
     const setRange = (id, val) => {
@@ -10699,49 +10707,29 @@ window.addEventListener('hashchange', () => {
   setTimeout(checkExportReminder, 600);
 })();
 </script>
+<!-- 自动更新器已移除:曾在启动/切回前台时 location.replace 重载页面(视觉上像刷新网页,产生一下闪);
+     iOS 主屏幕拿到缓存旧版时每次冷启动都触发。更新改为:HTTP 缓存过期后自然拉到新版(同月度 v-7)。 -->
 <script>
-/* 主屏幕独立 App 自动更新检查:启动 / 切回前台时,联网拉最新文件比对 <html data-appver>,
-   有新版且当前没在输入就自动刷新。改完文件记得把顶部 <html data-appver> 改一下(如日期+序号)再上传。 */
+// 启动遮罩:首个 iframe 子应用的 srcdoc 内容加载完成(首屏已渲染)后淡出,盖住 pop-in 的「刷新感」
 (function(){
-  var RUNNING = document.documentElement.getAttribute('data-appver') || '';
-  var busy = false, last = 0;
-  function hasLiveInput(doc){
-    try{
-      var a = doc.activeElement;
-      if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable)) return true;
-    }catch(_){}
-    return false;
+  var b = document.getElementById('__boot');
+  if (!b) return;
+  var done = false;
+  function hide(){
+    if (done) return; done = true;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      b.classList.add('hide'); setTimeout(function(){ b.remove(); }, 260);
+    }); });
   }
-  function safeToReload(){
-    if(hasLiveInput(document)) return false;                 // 外层正在输入
-    var frames = document.querySelectorAll('iframe');
-    for(var i=0;i<frames.length;i++){                         // 各同源 iframe 子应用里正在输入
-      try{ if(hasLiveInput(frames[i].contentDocument)) return false; }catch(_){}
-    }
-    return true;
+  function onLoad(e){
+    var f = e.currentTarget;
+    // 过滤 iframe 初始 about:blank 的 load:只认已注入 srcdoc 且 body 里真有内容的那次
+    try { var d = f.contentDocument; if (!f.hasAttribute('srcdoc') || !d || !d.body || !d.body.firstElementChild) return; } catch(_) { return; }
+    hide();
   }
-  function check(){
-    if (busy || !navigator.onLine) return;
-    if (Date.now() - last < 30000) return;   // 最多每 30 秒查一次
-    busy = true; last = Date.now();
-    fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' })
-      .then(function(r){ return r.ok ? r.text() : Promise.reject(0); })
-      .then(function(html){
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var latest = doc.documentElement.getAttribute('data-appver') || '';
-        if (latest && latest !== RUNNING && safeToReload()){
-          location.replace(location.pathname + '?v=' + encodeURIComponent(latest)); // 带版本参数强制拿新文件
-        }
-      })
-      .catch(function(){})
-      .then(function(){ busy = false; });
-  }
-  window.addEventListener('load', check);
-  window.addEventListener('pageshow', check);   // iOS 独立 App 从后台/bfcache 恢复,最可靠
-  window.addEventListener('focus', check);
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState === 'visible') check();
-  });
+  document.querySelectorAll('iframe').forEach(function(f){ f.addEventListener('load', onLoad); });
+  // 兜底:无论如何 3 秒后必揭开,避免卡在遮罩上
+  setTimeout(hide, 3000);
 })();
 </script>
 </body>
