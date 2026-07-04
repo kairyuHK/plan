@@ -4211,20 +4211,21 @@ const Pages = (() => {
   }
 
   function doImport(anchor) {
-    showConfirmPopover(anchor, {
-      text: '导入 JSON?',
-      sub: '将覆盖当前全部数据,建议先导出备份',
-      confirmText: '选择文件',
-      danger: true,
-      onConfirm: () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'application/json,.json';
-        input.onchange = () => {
-          const file = input.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => {
+    // 先选文件, 再弹确认框(与工时页导入一致): 选完文件不会立刻覆盖, 需点「继续导入」。
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        showConfirmPopover(anchor, {
+          text: '导入 JSON?',
+          sub: `将用「${file.name}」覆盖当前全部数据,建议先导出备份`,
+          confirmText: '继续导入',
+          danger: true,
+          onConfirm: () => {
             try {
               Store.importJson(reader.result);
               showToast('导入成功', 'success');
@@ -4232,12 +4233,12 @@ const Pages = (() => {
               history.replaceState(null, '', location.pathname + location.search);
               App.showRoute();
             } catch (e) { showToast('导入失败:' + e.message, 'error'); }
-          };
-          reader.readAsText(file);
-        };
-        input.click();
-      }
-    });
+          }
+        });
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 
   function doReset(anchor) {
