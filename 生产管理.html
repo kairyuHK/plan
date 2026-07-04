@@ -597,7 +597,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
-  <button class="anim-btn" id="animBtn" title="切换转场动画" aria-label="切换转场动画">⇄</button>
+  <button class="anim-btn" id="updateBtn" title="检查更新" aria-label="检查更新">🔄</button>
   <button class="mode-btn" id="modeBtn" title="白天/夜间模式" aria-label="切换白天/夜间模式">🌙</button>
   <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"></button>
 </div>
@@ -609,7 +609,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     <button class="reset" id="themeReset" type="button">重置</button>
   </div>
 </div>
-<div class="anim-pop" id="animPop"></div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
   <iframe data-app="config"></iframe>
@@ -10041,32 +10040,20 @@ const btns = document.querySelectorAll('.tabs button[data-app]');
 const frames = document.querySelectorAll('iframe');
 const loaded = new Set();
 
-// === 可切换的 app 转场风格 ===
-const ANIM_KEY = 'workbench-app-anim';
-const ANIM_DEFAULT = 'slide-x';
-const ANIM_OPTIONS = [
-  { id: 'slide-x', label: '横向滑动' },
-  { id: 'slide-y', label: '纵向滑动' },
-  { id: 'fade',    label: '淡入淡出' },
-  { id: 'zoom',    label: '缩放淡入' },
-  { id: 'blur',    label: '模糊溶解' },
-  { id: 'push',    label: 'iOS 推入' },
-];
-const STACKED_ANIMS = new Set(['fade', 'zoom', 'blur']); // 居中叠放,非滑动
+// === app 转场:PC 固定「淡入淡出」,手机固定「横向滑动」(不再让用户切换) ===
+const STACKED_ANIMS = new Set(['fade']); // 居中叠放(非滑动)
 const frameWrap = document.querySelector('.frame-wrap');
-function loadAnim() {
-  try { const v = localStorage.getItem(ANIM_KEY); return ANIM_OPTIONS.some(o => o.id === v) ? v : ANIM_DEFAULT; }
-  catch(_) { return ANIM_DEFAULT; }
-}
-let currentAnim = loadAnim();
-let pushPrevIdx = 0; // iOS 推入:记录上一个激活 app 的下标,用于判断推入方向
-function applyAnim(id, persist) {
+const _animMobileMq = window.matchMedia('(max-width: 768px)');
+function pickAnim() { return _animMobileMq.matches ? 'slide-x' : 'fade'; }
+let currentAnim = pickAnim();
+let pushPrevIdx = 0; // 保留:activatePush 仍引用(当前配置下不会触发)
+function applyAnim(id) {
   currentAnim = id;
   if (frameWrap) frameWrap.dataset.anim = id;
-  if (persist !== false) { try { localStorage.setItem(ANIM_KEY, id); } catch(_){} }
-  document.querySelectorAll('#animPop .opt').forEach(o => o.classList.toggle('active', o.dataset.anim === id));
 }
-applyAnim(currentAnim, false); // 尽早把 data-anim 落到 .frame-wrap,保证首屏定位用对模式
+applyAnim(currentAnim); // 尽早把 data-anim 落到 .frame-wrap,保证首屏定位用对模式
+// PC ↔ 手机 视口切换(旋转 / 改窗宽)时,自动换成对应转场并按新模式立即重排
+_animMobileMq.addEventListener('change', () => { applyAnim(pickAnim()); try { activate(getCurrentApp(), true); } catch(_){} });
 
 // === 统一导入导出:覆盖三个 app 全部 localStorage 数据 ===
 const BUNDLE_KEYS_EXACT = [
@@ -10511,40 +10498,46 @@ function initThemePicker(){
 }
 initThemePicker();
 
-// === 转场风格选择器 ===
+// === 当前 app 名(供转场重排用) ===
 function getCurrentApp() {
   const b = document.querySelector('.tabs button[data-app].active');
   return b ? b.dataset.app : APP_ORDER[0];
 }
-function initAnimPicker() {
-  const pop = document.getElementById('animPop');
-  const btn = document.getElementById('animBtn');
-  if (!pop || !btn) return;
-  ANIM_OPTIONS.forEach(o => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'opt';
-    b.dataset.anim = o.id;
-    b.textContent = o.label;
-    b.addEventListener('click', () => {
-      applyAnim(o.id, true);
-      activate(getCurrentApp(), true); // 立即按新模式重排,不做动画
-      pop.classList.remove('show');
-    });
-    pop.appendChild(b);
-  });
-  btn.addEventListener('click', e => {
-    e.stopPropagation();
-    const tp = document.getElementById('themePop');
-    if (tp) tp.classList.remove('show'); // 避免和主题弹窗叠在一起
-    pop.classList.toggle('show');
-  });
-  document.addEventListener('click', e => {
-    if (!pop.contains(e.target) && e.target !== btn) pop.classList.remove('show');
-  });
-  applyAnim(currentAnim, false); // 标记当前选中项
+// === 手动检查更新 ===
+// 部署在 GitHub Pages 的单文件:用 HEAD 请求(no-store)拿服务器最新 Last-Modified,
+// 和当前运行副本的 document.lastModified 比对,只有确实更新了才提示刷新;数据存 localStorage,刷新不丢。
+function initUpdateButton() {
+  const btn = document.getElementById('updateBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => { e.stopPropagation(); checkForUpdate(btn); });
 }
-initAnimPicker();
+async function checkForUpdate(btn) {
+  showToast('正在检查更新…', 'info');
+  try {
+    const base = location.origin + location.pathname;
+    const res = await fetch(base + '?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+    const liveLM = res.headers.get('Last-Modified');
+    const live = liveLM ? new Date(liveLM).getTime() : NaN;
+    const cur = document.lastModified ? new Date(document.lastModified).getTime() : NaN;
+    if (!isNaN(live) && !isNaN(cur) && live > cur + 1000) {
+      showConfirmPopover(btn, { text: '发现新版本', sub: '是否立即更新?未保存的改动请先保存或导出。', confirmText: '更新', onConfirm: doHardReload });
+    } else if (isNaN(live) || isNaN(cur)) {
+      showConfirmPopover(btn, { text: '无法确定版本', sub: '服务器未返回版本时间。是否强制刷新到最新?', confirmText: '强制刷新', onConfirm: doHardReload });
+    } else {
+      showToast('已是最新版本', 'success');
+    }
+  } catch (err) {
+    showToast('检查更新失败:' + ((err && err.message) || err), 'error');
+  }
+}
+function doHardReload() {
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('v', Date.now());
+    location.replace(u.href);
+  } catch (_) { location.reload(); }
+}
+initUpdateButton();
 
 // === 白天/夜间模式:父壳设 <html data-theme>,并广播给三个 iframe ===
 const MODE_KEY = 'workbench-theme-mode';
