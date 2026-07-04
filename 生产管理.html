@@ -34,8 +34,9 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .tabs .io-btn{border:none;color:#9ca0a8;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px;background:transparent;border-radius:6px;transition:color .18s,background .18s}
 .tabs .io-btn:hover{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
 /* 主题色选择器 */
-.theme-btn{position:relative;width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:50%;background:var(--accent);cursor:pointer;flex:0 0 auto;box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 2px rgba(var(--accent-rgb),.18);transition:transform .15s,box-shadow .2s}
+.theme-btn{position:relative;width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:50%;background:rgba(255,255,255,.04);cursor:pointer;flex:0 0 auto;box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 1px rgba(var(--accent-rgb),.18);transition:transform .15s,box-shadow .2s}
 .theme-btn:hover{transform:scale(1.08);box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 0 3px rgba(var(--accent-rgb),.28)}
+#themeBtn svg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:block;fill:var(--accent)}
 .theme-pop{position:absolute;top:48px;right:12px;z-index:300;background:linear-gradient(180deg,#1d1d22 0%,#16161a 100%);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;box-shadow:0 24px 56px rgba(0,0,0,.7);display:none;animation:confirmIn .18s cubic-bezier(.2,.8,.2,1)}
 .theme-pop.show{display:block}
 .theme-pop .grid{display:grid;grid-template-columns:repeat(6,28px);gap:8px;margin-bottom:10px}
@@ -58,7 +59,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .anim-pop .opt:hover{background:rgba(255,255,255,.06);color:#fff}
 .anim-pop .opt.active{background:rgba(var(--accent-rgb),.14);color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
 /* 白天/夜间切换按钮 */
-.mode-btn{width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.04);color:#9ca0a8;cursor:pointer;flex:0 0 auto;font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,color .15s,border-color .15s}
+.mode-btn{width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.04);color:#9ca0a8;cursor:pointer;flex:0 0 auto;box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 1px rgba(var(--accent-rgb),.18);font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,color .15s,border-color .15s}
 .mode-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08);color:#e8e8e8;border-color:rgba(255,255,255,.2)}
 /* === 白天模式(父壳:这里多为写死深色,逐一覆盖) === */
 :root[data-theme="light"]{color-scheme:light}
@@ -78,7 +79,7 @@ html[data-theme="light"] .theme-pop,html[data-theme="light"] .anim-pop{backgroun
 html[data-theme="light"] .theme-pop .row{color:#6f6a62}
 html[data-theme="light"] .anim-pop .opt{color:#4a443c}
 html[data-theme="light"] .anim-pop .opt:hover{background:rgba(43,37,30,.05);color:#1a1612}
-html[data-theme="light"] .anim-btn,html[data-theme="light"] .mode-btn{background:rgba(43,37,30,.04);border-color:rgba(43,37,30,.12);color:#6f6a62}
+html[data-theme="light"] .anim-btn,html[data-theme="light"] .mode-btn,html[data-theme="light"] .theme-btn{background:rgba(43,37,30,.04);border-color:rgba(43,37,30,.12);color:#6f6a62}
 html[data-theme="light"] .anim-btn:hover,html[data-theme="light"] .mode-btn:hover{background:rgba(43,37,30,.08);color:#1a1612;border-color:rgba(43,37,30,.2)}
 html[data-theme="light"] .toast{background:linear-gradient(180deg,#ffffff,#f6f3ef);border-color:#e3ded7;color:#22201d;box-shadow:0 12px 32px rgba(43,37,30,.18)}
 html[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#ffffff,#f6f3ef);border-color:#e3ded7;color:#22201d}
@@ -594,13 +595,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <div class="tabs">
   <button data-app="plan" class="active">🏭 生产计划板</button>
   <button data-app="config">⚙ 配置表</button>
-  <button data-app="schedule">📅 岗位排班表</button>
+  <button data-app="schedule">📅 排岗表</button>
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
   <button class="io-btn" id="updateBtn" title="刷新页面" aria-label="刷新页面"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
   <button class="mode-btn" id="modeBtn" title="白天/夜间模式" aria-label="切换白天/夜间模式">🌙</button>
-  <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"></button>
+  <button class="theme-btn" id="themeBtn" title="主题色" aria-label="切换主题色"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg></button>
 </div>
 <div class="theme-pop" id="themePop">
   <div class="grid" id="themeGrid"></div>
@@ -620,7 +621,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>岗位排班表</title>
+<title>排岗表</title>
 <script>
 // 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
 (function(){
@@ -770,7 +771,7 @@ input:focus,select:focus{border-color:var(--accent)}
   .line-card{display:none}
   .line-card.mobile-active{display:block}
   .assign-btn{min-width:0;flex:0 0 50%;min-height:44px}
-  /* 手机端:日期 + 生产线切换栏钉在 .nav(排班/人员/设置)下方,两条都不滚走、互不遮挡 */
+  /* 手机端:日期 + 生产线切换栏钉在 .nav(排岗/人员/设置)下方,两条都不滚走、互不遮挡 */
   .sched-header{
     position:sticky;top:var(--nav-h,0);z-index:20;
     background:var(--bg);
@@ -917,13 +918,13 @@ button.primary:hover{background:linear-gradient(180deg,var(--accent-light) 0%,va
 </head>
 <body>
 <header class="nav">
-  <div class="brand">岗位排班表</div>
-  <button data-route="schedule" class="active">📅 排班</button>
+  <div class="brand">排岗表</div>
+  <button data-route="schedule" class="active">📅 排岗</button>
   <button data-route="people">👥 人员</button>
   <button data-route="settings">⚙ 设置</button>
 </header>
 <main>
-  <section id="page-schedule" class="page"><h2>排班</h2></section>
+  <section id="page-schedule" class="page"><h2>排岗</h2></section>
   <section id="page-people" class="page hidden"><h2>人员库</h2></section>
   <section id="page-settings" class="page hidden"><h2>设置</h2></section>
 </main>
@@ -1099,7 +1100,7 @@ const Store = (() => {
     {id:'l03', name:'03'}, {id:'l04', name:'04'}, {id:'l05', name:'05'},
     {id:'tsk', name:'値付け'},
     // virtual: true 的线只在「人员库」里作为 homeLine 选项出现,
-    // 不会渲染到排班表的线 tab / 卡片网格、配置表的便当生产线下拉里。
+    // 不会渲染到排岗表的线 tab / 卡片网格、配置表的便当生产线下拉里。
     // 这里挂的人在任何真实线的岗位弹窗里会自动出现在「借调」区。
     {id:'short', name:'短期', virtual:true}
   ];
@@ -1185,7 +1186,7 @@ const Store = (() => {
   }
   function deletePerson(id){
     // 软删除:从人员库移除,但保留 state.people 里的记录(打 deleted 标记),
-    // 这样历史排班卡片仍能通过 id 查到姓名,不会被抹除。
+    // 这样历史排岗卡片仍能通过 id 查到姓名,不会被抹除。
     const p = state.people.find(x=>x.id===id);
     if(p) p.deleted = true;
     save();
@@ -1303,7 +1304,7 @@ const Pages = (() => {
     const root = $('#page-settings');
     const s = Store.get();
     const html = ['<h2>设置 — 岗位</h2>'];
-    // 虚拟线(如「短期」)不参与排班,所以不在此处配置岗位
+    // 虚拟线(如「短期」)不参与排岗,所以不在此处配置岗位
     s.lines.filter(l => !l.virtual).forEach(line => {
       const positions = s.positions[line.id] || [];
       html.push(`<div class="card" data-line="${line.id}">
@@ -1348,7 +1349,7 @@ const Pages = (() => {
           } else if(act==='del'){
             showConfirmPopover(btn, {
               text: `删除岗位「${posName}」?`,
-              sub: '历史排班保留原数据',
+              sub: '历史排岗保留原数据',
               confirmText: '删除',
               danger: true,
               onConfirm: () => Store.deletePosition(lineId, i)
@@ -1458,7 +1459,7 @@ const Pages = (() => {
         showConfirmPopover(delBtn, {
           text: `删除「${cur}」?`,
           sub: usage > 0
-            ? `被 ${usage} 条排班使用,历史卡片里的名字会保留`
+            ? `被 ${usage} 条排岗使用,历史卡片里的名字会保留`
             : '该人员将从人员库移除',
           confirmText: '删除',
           danger: true,
@@ -1590,7 +1591,7 @@ const Pages = (() => {
       _suppressDateBroadcast = true;
       currentDate = d;
       _suppressDateBroadcast = false;
-      // 切到排班 Tab 时才需要重渲;此时若在排班页直接 render
+      // 切到排岗 Tab 时才需要重渲;此时若在排岗页直接 render
       const root = document.querySelector('#page-schedule');
       if (root) renderSchedule();
     }
@@ -1606,7 +1607,7 @@ const Pages = (() => {
     const root = document.querySelector('#page-schedule');
     const s = Store.get();
     if(!currentDate) currentDate = Util.todayISO();
-    // 排班表只渲染真实生产线(过滤掉 virtual,如「短期」)
+    // 排岗表只渲染真实生产线(过滤掉 virtual,如「短期」)
     const lines = s.lines.filter(l => !l.virtual);
     if(!currentTabLine || !lines.find(l=>l.id===currentTabLine)) currentTabLine = lines[0].id;
     const day = Store.getDay(currentDate);
@@ -1618,7 +1619,7 @@ const Pages = (() => {
             <button class="date-trigger" id="sched-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
             <div class="cal-host hidden" id="cal-host"></div>
           </span>
-          <button id="copy-day" class="icon-btn" title="复制某日的排班到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button id="copy-day" class="icon-btn" title="复制某日的排岗到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         </div>
         <div class="line-tabs" id="line-tabs">
           ${lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
@@ -1689,7 +1690,7 @@ const Pages = (() => {
     const todayIso = Util.todayISO();
     const dates = Object.keys(sched).filter(d => d !== currentDate && sched[d]).sort((a,b) => b.localeCompare(a));
     const items = dates.length === 0
-      ? '<div class="empty">还没有其他日期的排班数据</div>'
+      ? '<div class="empty">还没有其他日期的排岗数据</div>'
       : dates.map(d => {
           const [y,m,da] = d.split('-').map(Number);
           const dow = new Date(y, m-1, da).getDay();
@@ -1711,7 +1712,7 @@ const Pages = (() => {
     host.innerHTML = `
       <div class="copy-modal" data-stop>
         <div class="head">
-          <span class="title">复制某日排班 → ${currentDate}</span>
+          <span class="title">复制某日排岗 → ${currentDate}</span>
           <button class="close" type="button" data-close>×</button>
         </div>
         <div class="row">
@@ -1737,9 +1738,9 @@ const Pages = (() => {
   }
   function doCopyFromSchedDate(srcDate, anchor){
     if (srcDate === currentDate) { showToast('源日期不能是当前日期', 'error'); return; }
-    if (!Store.get().schedules[srcDate]) { showToast(`${srcDate} 暂无排班数据`, 'error'); return; }
+    if (!Store.get().schedules[srcDate]) { showToast(`${srcDate} 暂无排岗数据`, 'error'); return; }
     showConfirmPopover(anchor, {
-      text: `复制 ${srcDate} 的排班?`,
+      text: `复制 ${srcDate} 的排岗?`,
       sub: `将覆盖当前 ${currentDate} 的数据`,
       confirmText: '复制',
       danger: true,
@@ -1865,7 +1866,7 @@ const Pages = (() => {
     const z = n => String(n).padStart(2,'0');
     const d = new Date();
     a.href = url;
-    a.download = `岗位排班表${String(d.getFullYear()).slice(-2)}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
+    a.download = `排岗表${String(d.getFullYear()).slice(-2)}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
     Store.markExported();
@@ -4243,7 +4244,7 @@ let library = [];
 let currentPickTargetLine = null;
 
 // ============ 每条生产线的速度解析 ============
-// 计划板用 1~7 编号生产线,排班表/配置表用 'xs','l01'...'tsk' 字符串 id。
+// 计划板用 1~7 编号生产线,排岗表/配置表用 'xs','l01'...'tsk' 字符串 id。
 // 两边映射在很多地方都要用,集中放一处。
 const LINE_NUM_TO_ID = { 1:'xs', 2:'l01', 3:'l02', 4:'l03', 5:'l04', 6:'l05', 7:'tsk' };
 const LINE_ID_TO_NUM = { xs:1, l01:2, l02:3, l03:4, l04:5, l05:6, tsk:7 };
@@ -7861,7 +7862,7 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   broadcastBentos();
 }
-// === 排班数据 & 计划板日期(跨 iframe 接收) ===
+// === 排岗数据 & 计划板日期(跨 iframe 接收) ===
 let scheduleData = { lines: [], positions: {}, people: [], schedules: {} };
 let planDate = (function(){
   const d = new Date();
@@ -7892,7 +7893,7 @@ try {
   }
 } catch (_) {}
 
-// === 简易日历(切换 planDate,广播给计划板/排班表) ===
+// === 简易日历(切换 planDate,广播给计划板/排岗表) ===
 const CAL_DOW_JP = ['日','月','火','水','木','金','土'];
 const CAL_FIXED_HOL = new Set(['01-01','02-11','02-23','04-29','05-03','05-04','05-05','08-11','11-03','11-23']);
 function calNthWd(y, mo, wd, n) {
@@ -8043,15 +8044,15 @@ function pickDate(newDate) {
   } catch (_) {}
   render();
 }
-// 工具:取某便当某位置已排班的人名(可能是 [id...] 或 [[id...]])
-// 位置名匹配做归一化 + 别名映射,双向兼容排班表/配置表的不同写法
+// 工具:取某便当某位置已排岗的人名(可能是 [id...] 或 [[id...]])
+// 位置名匹配做归一化 + 别名映射,双向兼容排岗表/配置表的不同写法
 const POS_ALIAS = {
-  // 排班表写法 → 配置表写法
+  // 排岗表写法 → 配置表写法
   '蓋1': '盖盖1',
   '蓋2': '盖盖2',
   '取り': '装框'
 };
-// 反向映射:配置表写法 → 排班表写法
+// 反向映射:配置表写法 → 排岗表写法
 const POS_ALIAS_REV = {};
 for (const k in POS_ALIAS) POS_ALIAS_REV[POS_ALIAS[k]] = k;
 // 把一个 posLabel 展开成可能的等价 key 集合(原值、trim、数字去零/补零、别名双向映射)
@@ -8071,7 +8072,7 @@ function _posLabelKeys(posLabel) {
   return tries;
 }
 
-// 在某条线某日的排班里,根据 posLabel 取出已分配的人员 ID 列表
+// 在某条线某日的排岗里,根据 posLabel 取出已分配的人员 ID 列表
 function _personIdsAt(bento, posLabel) {
   if (!bento || !bento.lineId || posLabel == null) return [];
   const dateSched = scheduleData.schedules[planDate];
@@ -8093,7 +8094,7 @@ function _personIdsAt(bento, posLabel) {
   return ids;
 }
 
-// 部门分组(必须和排班表 iframe 保持一致):跨部门 = 调动
+// 部门分组(必须和排岗表 iframe 保持一致):跨部门 = 调动
 const PLAN_DEPT_OF = { xs:'A', l01:'A', l02:'B', l03:'B', l04:'B', l05:'B', tsk:'C', short:'short' };
 function planSameDept(a, b){ return !!a && !!b && PLAN_DEPT_OF[a] === PLAN_DEPT_OF[b]; }
 
@@ -8120,7 +8121,7 @@ function _lineHasAnyAssignment(lineId) {
   return false;
 }
 
-// "応援"位置:卡片标签不在排班表中该线已配置的标准位置列表里
+// "応援"位置:卡片标签不在排岗表中该线已配置的标准位置列表里
 // (例:线 1 标准位是 1~9,卡片标 "10" 即视为支援/借调位)
 function isSupportCell(bento, posLabel) {
   if (!bento || !bento.lineId || posLabel == null) return false;
@@ -9138,7 +9139,7 @@ function renderOperate() {
           if (info.borrowed) sp.className = "borrowed-name";
           personEl.appendChild(sp);
         });
-        personEl.title = `${planDate} · ${pos.label} 排班人员`;
+        personEl.title = `${planDate} · ${pos.label} 排岗人员`;
         cell.appendChild(personEl);
       } else if (_lineHasAnyAssignment(bento.lineId)) {
         const personEl = document.createElement("div");
@@ -9166,7 +9167,7 @@ function renderLine() {
   c.innerHTML = "";
   const wrap = document.createElement("div"); wrap.className = "line-screen";
 
-  // 选定要编辑哪条生产线的默认布局 —— 默认 = 排班表里第一条非虚拟线
+  // 选定要编辑哪条生产线的默认布局 —— 默认 = 排岗表里第一条非虚拟线
   const realLines = (scheduleData.lines || []).filter(ln => !ln.virtual);
   if (!state.current.lineSettingsLineId && realLines.length) {
     state.current.lineSettingsLineId = realLines[0].id;
@@ -9183,7 +9184,7 @@ function renderLine() {
   lineSel.className = "pretty-select";
   if (!realLines.length) {
     const opt = document.createElement("option");
-    opt.value = ""; opt.textContent = "(排班表没有生产线)";
+    opt.value = ""; opt.textContent = "(排岗表没有生产线)";
     lineSel.appendChild(opt);
     lineSel.disabled = true;
   } else {
@@ -9384,7 +9385,7 @@ function renderEdit() {
     if (b.lineId) b.lineSpeeds[b.lineId] = speedInp.value;
     saveState();
   };
-  // 生产线下拉(来自排班表)。値付け(tsk)不允许在便当库里指派 —— 业务约定:値付け线不参与便当生产
+  // 生产线下拉(来自排岗表)。値付け(tsk)不允许在便当库里指派 —— 业务约定:値付け线不参与便当生产
   const lineSel = document.createElement("select");
   lineSel.className = "pretty-select";
   lineSel.style.cssText = "flex:0 0 150px";
@@ -9541,7 +9542,7 @@ function renderEdit() {
         if (info.borrowed) sp.className = "borrowed-name";
         personEl.appendChild(sp);
       });
-      personEl.title = `${planDate} · ${pos.label} 排班人员`;
+      personEl.title = `${planDate} · ${pos.label} 排岗人员`;
       cell.appendChild(personEl);
     } else if (_lineHasAnyAssignment(b.lineId)) {
       const personEl = document.createElement("div");
@@ -10058,7 +10059,7 @@ _animMobileMq.addEventListener('change', () => { applyAnim(pickAnim()); try { ac
 
 // === 统一导入导出:覆盖三个 app 全部 localStorage 数据 ===
 const BUNDLE_KEYS_EXACT = [
-  'shift-schedule-data-v1',     // 排班表
+  'shift-schedule-data-v1',     // 排岗表
   'productLibrary_v3',          // 计划板 品名库
   'productionBoardCurrentDate', // 计划板 当前日期
   'productionBoard_v1',         // 计划板 legacy 单日
@@ -10082,7 +10083,7 @@ function collectBundleEntries() {
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k) continue;
-    // 排班表:parse 后只保留近 40 天的 schedules
+    // 排岗表:parse 后只保留近 40 天的 schedules
     if (k === 'shift-schedule-data-v1') {
       try {
         const obj = JSON.parse(localStorage.getItem(k) || 'null');
@@ -10228,7 +10229,7 @@ function doImportBundle(bundle, keyCount) {
       });
       showToast(`已导入 ${keyCount} 项数据,所有 app 已重新加载`, 'success');
 }
-// === 跨 iframe 数据桥:中转便当/排班/日期变更与请求,缓存最新快照 ===
+// === 跨 iframe 数据桥:中转便当/排岗/日期变更与请求,缓存最新快照 ===
 const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
 const requestToChange = {
   'bento-request': 'bento-changed',
