@@ -406,21 +406,18 @@ table.schedule tr.stat-row td.label{position:relative}
   /* 手机端关闭拖拽手柄(屏幕拖动不方便,改用设置页输入精确调) */
   .col-resize-handle,.row-resize-handle{display:none!important}
   /* 横向滚动固定 役職 + 氏名 列。
-     役職和氏名之间的分隔线画在 role-col 的右沿(inset -1px)→ 这条线在最左侧 sticky 层上,
-     横滑时永远不动。氏名列向左重叠 1px 物理消除两层接触缝(打印后 backing store 精度变化也不漏)。
-     氏名列右沿那条分隔线由后面的 sum-col 自身的 border-left 提供(separate 模型下属于 sum-col)。 */
-  /* role-col z-index 回到 3(避免盖 thead)。
-     役職/氏名之间的分隔线由 role-col 的 inset -1px 右阴影 提供,在 role sticky 层最右沿 1px。
-     氏名列 left 改回精确贴合(不重叠),且去掉 border-left → 物理上不存在能盖到这条阴影的东西。 */
+     役職/氏名之间的分隔线统一由 name-col 的 border-left 提供(唯一一条)。
+     role-col 不再画自己的右分隔阴影 —— 否则未横滑时(氏名列停在自然位置、不重叠),
+     role 阴影(w-1..w) 与 name 边框(w..w+1) 会并排显示成两条线; 横滑后才重叠成一条。 */
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important;border-right:0!important}
-  table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  table.schedule td.role-col{background:var(--card)!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  /* name-col 左移 1px 与 role-col 重叠, 堵住两个 sticky 列间的亚像素缝(深色下会透出背景);
-     分隔线改由 name-col 自己的左边框画(重叠会盖住 role-col 的 inset 分隔线)。 */
+  table.schedule th.role-col{background:#1c1c20!important}
+  table.schedule td.role-col{background:var(--card)!important}
+  /* name-col 左移 1px 与 role-col 重叠(横滑时堵住亚像素缝, 深色下会透背景),
+     其左边框是役職/氏名唯一的分隔线。 */
   table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border-left:1px solid var(--border)!important}
   table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border-left:1px solid var(--border)!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
-  table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
+  table.schedule tr.hl-row td.role-col{background:#1d2823!important}
   table.schedule tr.hl-row td.name-col{background:#1d2823!important}
 }
 body.resizing{user-select:none}
@@ -1674,7 +1671,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.06-1';
+const APP_BUILD = '2026.07.06-2';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
