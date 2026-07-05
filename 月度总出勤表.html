@@ -177,6 +177,12 @@ input[type=number]{-moz-appearance:textfield}
 .schedule-wrap::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;transition:background .25s}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb{background:#3a3a40}
 .schedule-wrap.is-scrolling::-webkit-scrollbar-thumb:hover{background:#4a4a52}
+/* iOS/触摸设备:原生 overlay 滚动条在深色内容上会显白, ::-webkit-scrollbar 颜色改不动,
+   直接隐藏(桌面保留原有滚动指示器,布局不变——右侧 gutter 预留仍在)。目的:看不到滚动条。 */
+@media (pointer: coarse){
+  .schedule-wrap::-webkit-scrollbar{display:none}
+  .schedule-wrap{scrollbar-width:none}
+}
 /* 排班页表格区已自带滚动容器,去掉 body 外层多余滚动条(设置/数据页仍正常滚动) */
 body:has(#page-schedule:not(.hidden)){overflow:hidden}
 /* 排班页屏幕布局:body 纵向 flex 撑满视口,nav 占顶部,表格容器 flex 填满剩余空间内部滚动。
@@ -1666,7 +1672,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),用于「检查更新」后确认新版本已生效。
-const APP_BUILD = '2026.07.04-4';
+const APP_BUILD = '2026.07.05-1';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
