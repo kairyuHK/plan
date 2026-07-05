@@ -2,7 +2,7 @@
 <html lang="ja" data-appver="2026-07-04-9">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏/键盘上方的域名条(普通标签页里仍由 Safari 显示,无法用网页移除) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -64,8 +64,10 @@ input[type=number]{-moz-appearance:textfield}
   .nav .spacer{display:none}
   .nav .brand{order:0}
   .nav #dept-tabs{order:1}
-  /* 主题切换按钮放第一行最右(不挤占第三行的锁定/设置/打印) */
-  .nav button#btn-theme{order:1;margin-left:auto}
+  /* 刷新 + 主题切换按钮放第一行最右(不挤占第三行的锁定/设置/打印) */
+  /* auto 间距挂在刷新上, 把「刷新+主题」整体推到最右; 主题去掉 auto 紧贴刷新右侧 */
+  .nav button#btn-refresh{order:1;margin-left:auto}
+  .nav button#btn-theme{order:1;margin-left:0}
   .nav::before{content:'';flex-basis:100%;height:0;order:2}
   .nav #period-nav{order:3}
   .nav #dirty-indicator{order:4}
@@ -1084,7 +1086,8 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   transform: translateY(-50%) rotate(180deg);
 }
 /* 人员名 label 按内容自适应宽度(标签 + 140px input + chev) */
-#page-hours .h-config label.h-person-label { min-width: 0; }
+/* scroll-margin-top: 聚焦时 scrollIntoView 到顶部要避开吸顶 nav(含灵动岛安全区) */
+#page-hours .h-config label.h-person-label { min-width: 0; scroll-margin-top: calc(90px + env(safe-area-inset-top)); }
 #page-hours .h-person-pop {
   position: absolute;
   top: calc(100% + 6px);
@@ -1481,7 +1484,9 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
     margin-left:auto;
   }
   /* 主题按钮去掉 auto 间距,紧贴在「设置」右边 —— 否则 设置 与 主题 各自吃掉一段 auto 空白,中间会裂开 */
+  /* 刷新按钮同样去掉 auto, 让「设置 刷新 主题」紧贴成一组 */
   body.hours-mode .nav button#btn-theme{margin-left:0}
+  body.hours-mode .nav button#btn-refresh{margin-left:0}
 }
 @media print {
   body.hours-mode #page-hours { display: none !important; }
@@ -1644,6 +1649,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   <span id="dirty-indicator" class="dirty">✓ 已暂存</span>
   <button id="btn-edit-toggle">🔒 锁定</button>
   <button data-route="#/settings">⚙ 设置</button>
+  <button id="btn-refresh" title="刷新页面" aria-label="刷新页面">🔄</button>
   <button id="btn-theme" title="切换深色 / 浅色" aria-label="切换主题">🌙</button>
   <button data-route="#/data">⬇⬆ 数据</button>
   <button class="primary" id="btn-personal-export">📷 出力 PNG</button>
@@ -1660,7 +1666,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),用于「检查更新」后确认新版本已生效。
-const APP_BUILD = '2026.07.04-2';
+const APP_BUILD = '2026.07.04-4';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
@@ -2427,6 +2433,7 @@ const App = (() => {
       });
     });
     document.getElementById('btn-print').addEventListener('click', () => window.print());
+    document.getElementById('btn-refresh').addEventListener('click', () => location.reload());
     document.getElementById('btn-personal-export').addEventListener('click', (e) => {
       Pages.exportPersonalPNG(e.currentTarget);
     });
@@ -5117,6 +5124,12 @@ const Pages = (() => {
       personInput.value = '';
       renderPersonPop('');
       personPop.classList.add('open');
+      // 移动端:把人员名滚到顶部,给下方弹层腾出空间,否则弹层会被虚拟键盘挡住。
+      // 延时等键盘弹出动画结束再滚,位置才准。
+      if (window.matchMedia('(pointer: coarse)').matches) {
+        const label = personInput.closest('.h-person-label');
+        if (label) setTimeout(() => label.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+      }
     });
     personInput.addEventListener('blur', () => {
       // 失焦如果用户没选,恢复显示
