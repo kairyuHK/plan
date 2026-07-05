@@ -236,6 +236,10 @@ table.schedule thead tr.month-row th.month-label{height:var(--row-month-h, 25px)
 table.schedule thead tr.head-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-date-h, 25px)}
 table.schedule thead tr.weekday-row th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:var(--row-weekday-h, 25px)}
 table.schedule td.day-cell{height:25px;box-sizing:border-box;padding:0;cursor:pointer;font-family:var(--font-mono);font-size:13px;vertical-align:middle;line-height:1;font-weight:400}
+/* day-cell 只有 border-bottom(无 border-top), box-sizing:border-box 下 vertical-align:middle 的居中区上移 0.5px
+   → 〇 看着偏高(高分屏 = 1 物理像素, 圆圈最明显)。补一条等宽透明上边框对称化, 让 〇 落在格子几何正中。
+   仅屏幕:打印是 border-collapse:collapse(边框共享), 无此不对称。 */
+@media screen{table.schedule td.day-cell{border-top:1px solid transparent}}
 table.schedule td.day-cell:hover{background:#1f1f23}
 table.schedule td.day-cell.contractRest{color:var(--text)}
 table.schedule td.day-cell.paidLeave{color:var(--danger)}
@@ -1671,7 +1675,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.06-2';
+const APP_BUILD = '2026.07.06-3';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
@@ -3143,6 +3147,17 @@ const Pages = (() => {
     return wrap;
   }
 
+  // canvas 实测名字像素宽(缓存 ctx + 字体族), 供氏名列自动缩字号用。比全角/半角估算准。
+  let _nameMeasureCtx = null, _nameFontFam = '';
+  function measureNameWidth(text, fontPx) {
+    if (!_nameMeasureCtx) {
+      _nameMeasureCtx = document.createElement('canvas').getContext('2d');
+      _nameFontFam = getComputedStyle(document.body).fontFamily || 'sans-serif';
+    }
+    _nameMeasureCtx.font = fontPx + 'px ' + _nameFontFam;
+    return _nameMeasureCtx.measureText(text).width;
+  }
+
   function buildColgroup(days, dayW) {
     const cg = Render.el('colgroup');
     // inline style 优先级最高,直接写 px 值绕开所有 CSS 优先级 / box-sizing 解析差异问题。
@@ -3240,26 +3255,29 @@ const Pages = (() => {
     for (const p of people) {
       const tr = Render.el('tr', { dataset: { personId: p.id } });
       tr.appendChild(Render.el('td.role-col', p.role || ''));
-      // 名字过长时自动缩字号完全显示 —— 按"当前氏名列宽"算(含手动调过的宽度),屏幕 + 打印都生效。
-      // 文字宽 ≈ widthUnits × fontSize(全角 1em、半角 0.5em),故 fontSize ≤ 可用宽 / widthUnits。
+      // 名字过长时自动缩字号完全显示。屏幕端用 canvas 实测真实字宽(不再靠全角/半角估算 —— 估算和实际字体
+      // 有出入, 会误判"放得下"而漏裁尾字)。
       const nameTd = Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || '');
       const nameStr = p.name || '';
-      let widthUnits = 0; // 1 全角 = 1, 半角/空格 = 0.5
-      for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
-      if (widthUnits > 0) {
+      if (nameStr) {
         const szs = Store.sizes();
         const colNamePx = szs['col-name'] != null ? szs['col-name'] : 130; // 当前氏名列宽(px)
-        // 屏幕:默认 11px 放不下就缩到刚好(留 10px 给左 padding + 安全),下限 6px。
-        const screenAvail = colNamePx - 10;
-        if (screenAvail / widthUnits < 11) {
-          nameTd.style.fontSize = Math.max(6, screenAvail / widthUnits).toFixed(1) + 'px';
+        // 屏幕:实测 11px 下像素宽, 超过可用宽(列宽 - 8: 6 左padding + 2 安全)就等比缩到刚好, 下限 6px。
+        const screenAvail = colNamePx - 8;
+        const measured = measureNameWidth(nameStr, 11);
+        if (measured > screenAvail) {
+          nameTd.style.fontSize = Math.max(6, 11 * screenAvail / measured).toFixed(1) + 'px';
         }
-        // 打印:列宽自定义时打印列=同一 px,上限用 px;未自定义时打印列=30mm,上限用 mm。
-        // --name-cap 被 @media print 的 min(row-h*0.5, name-cap) 读取,自动只在过长时压字号。
-        const printCap = szs['col-name'] != null
-          ? Math.max(6, (colNamePx - 8) / widthUnits).toFixed(1) + 'px'
-          : (26 / widthUnits).toFixed(2) + 'mm'; // 30mm 列 - 4mm padding/safety
-        nameTd.style.setProperty('--name-cap', printCap);
+        // 打印:无法可靠 canvas 实测(mm/DPI 差异), 沿用全角=1em/半角=0.5em 估算作上限(过长才压)。
+        // --name-cap 被 @media print 的 min(row-h*0.5, name-cap) 读取。
+        let widthUnits = 0;
+        for (const ch of nameStr) widthUnits += /[一-鿿぀-ゟ゠-ヿ]/.test(ch) ? 1 : 0.5;
+        if (widthUnits > 0) {
+          const printCap = szs['col-name'] != null
+            ? Math.max(6, (colNamePx - 8) / widthUnits).toFixed(1) + 'px'
+            : (26 / widthUnits).toFixed(2) + 'mm'; // 30mm 列 - 4mm padding/safety
+          nameTd.style.setProperty('--name-cap', printCap);
+        }
       }
       // 行高拖拽手柄 — 名字 td 底部 6px 拖拽区,改写 row-person(所有人员行统一)
       const rowHandle = Render.el('span.row-resize-handle', { title: '拖动调整所有人员行高(统一),双击重置' });
