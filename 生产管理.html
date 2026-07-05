@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-04-7">
+<html lang="zh-CN" data-appver="2026-07-05-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -20,6 +20,8 @@
 <style>
 :root{--accent:#fb923c;--accent-rgb:251,146,60;--accent-dark:color-mix(in srgb,var(--accent),#000 15%);--accent-light:color-mix(in srgb,var(--accent),#fff 18%)}
 *{box-sizing:border-box}
+*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
 html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
 /* iOS 修复:把父壳 body 钉成 position:fixed,使整页无法被滚动 —— 否则 iOS Safari 在 iframe 内
    输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
@@ -885,10 +887,8 @@ input:focus,select:focus{border-color:var(--accent)}
 /* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
 ::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
-*::-webkit-scrollbar{width:10px;height:10px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
-*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
 .nav{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 .nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .nav button{padding:6px 12px;transition:all .2s cubic-bezier(.4,0,.2,1)}
@@ -3719,10 +3719,8 @@ const Pages = (() => {
 /* ========== 视觉精修:在深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
 ::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
-*::-webkit-scrollbar{width:10px;height:10px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
-*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
 /* 顶栏 — 玻璃质感 */
 /* 顶栏跟 line-head/timeline-head 用同一组梯度,从 tab 栏一路衔接到内容区,层级清晰不再颠倒。
    保留 backdrop blur 让身后的 body 辐射光晕能淡淡透上来,质感不死。 */
@@ -7330,10 +7328,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 /* ========== 视觉精修:深色基础上加深度/层次/微高光 ========== */
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"tnum"}
 ::selection{background:rgba(var(--accent-rgb),.28);color:#fff}
-*::-webkit-scrollbar{width:10px;height:10px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
-*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16);background-clip:padding-box;border:2px solid transparent}
+*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important}
 /* 顶部 header —— 跟计划板顶栏/统计栏同款蓝色梯度,三端统一 */
 header{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%)!important;border-bottom:1px solid #1d2029!important;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 header input,header button,header select{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06);transition:all .18s cubic-bezier(.4,0,.2,1)}
