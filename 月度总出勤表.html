@@ -415,8 +415,10 @@ table.schedule tr.stat-row td.label{position:relative}
   table.schedule th.role-col,table.schedule td.role-col{position:sticky!important;left:0;z-index:3;text-align:left!important;border-right:0!important}
   table.schedule th.role-col{background:#1c1c20!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule td.role-col{background:var(--card)!important;box-shadow:inset -1px 0 0 0 var(--border)}
-  table.schedule th.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:#1c1c20!important;border-left:0!important}
-  table.schedule td.name-col{position:sticky!important;left:var(--col-role-w,60px);z-index:3;background:var(--card)!important;border-left:0!important}
+  /* name-col 左移 1px 与 role-col 重叠, 堵住两个 sticky 列间的亚像素缝(深色下会透出背景);
+     分隔线改由 name-col 自己的左边框画(重叠会盖住 role-col 的 inset 分隔线)。 */
+  table.schedule th.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:#1c1c20!important;border-left:1px solid var(--border)!important}
+  table.schedule td.name-col{position:sticky!important;left:calc(var(--col-role-w,60px) - 1px);z-index:3;background:var(--card)!important;border-left:1px solid var(--border)!important}
   /* 行高亮时,sticky 左两列也跟着变 — 否则点人名时高亮线只从有休开始,不连贯 */
   table.schedule tr.hl-row td.role-col{background:#1d2823!important;box-shadow:inset -1px 0 0 0 var(--border)}
   table.schedule tr.hl-row td.name-col{background:#1d2823!important}
@@ -1672,7 +1674,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.05-2';
+const APP_BUILD = '2026.07.06-1';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
