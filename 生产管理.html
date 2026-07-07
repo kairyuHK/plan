@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-1">
+<html lang="zh-CN" data-appver="2026-07-07-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4826,13 +4826,21 @@ document.querySelectorAll('.modal-mask').forEach(m => {
 (function () {
   const KB_TOP_RATIO = 0.58; // 键盘顶 ≈ 整屏高度的 58%(键盘约占下方 42%),与卡片弹窗一致
   function stableScreenH() { return Math.max(window.innerHeight, (window.screen && window.screen.height) || 0); }
+  // iframe 内 visualViewport 测不到键盘,但顶层(父壳)可视视口能;srcdoc 与父同源可访问。
+  function topVV() { try { return (window.top && window.top.visualViewport) || window.visualViewport; } catch (e) { return window.visualViewport; } }
+  // 键盘是否真的弹起:顶层可视高度显著小于整屏才算(程序化 focus 不弹键盘时不误判)
+  function kbLikelyUp() {
+    const vv = topVV();
+    const sh = (window.screen && window.screen.height) || window.innerHeight;
+    return !!vv && vv.height < sh * 0.78;
+  }
   function fit(mask) {
     const modal = mask.querySelector('.modal');
     if (!modal) return;
     const ae = document.activeElement;
-    const kbActive = window.innerWidth <= 900 && ae && mask.contains(ae)
+    const focused = window.innerWidth <= 900 && ae && mask.contains(ae)
       && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && !ae.readOnly && !ae.disabled;
-    if (kbActive) {
+    if (focused && kbLikelyUp()) {
       const kbTop = stableScreenH() * KB_TOP_RATIO;
       mask.classList.add('kb-fit');
       modal.style.maxHeight = Math.round(kbTop - 24) + 'px'; // 顶部 padding(~20)+ 余量
@@ -4856,6 +4864,9 @@ document.querySelectorAll('.modal-mask').forEach(m => {
     if (!mask) return;
     setTimeout(() => { if (!mask.contains(document.activeElement)) fit(mask); }, 150);
   });
+  // 键盘收起(如点「完成」未触发 blur)时也复原:顶层视口变化时重算一次
+  const _tvv = topVV();
+  if (_tvv) _tvv.addEventListener('resize', () => { document.querySelectorAll('.modal-mask.show').forEach(fit); });
 })();
 
 const pickModal = document.getElementById('pickModal');
