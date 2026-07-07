@@ -3102,9 +3102,12 @@ const Pages = (() => {
   .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
   .modal-body::-webkit-scrollbar { width: 4px; }
   .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-  /* 移动端软键盘弹出时:把弹窗顶到可视区域内(见 JS visualViewport 同步),避免底部输入框被键盘遮挡 */
-  .modal-mask.kb-open { bottom: auto; height: var(--app-vh, 100%); align-items: flex-start; padding-top: 12px; }
-  .modal-mask.kb-open .modal { max-height: calc(var(--app-vh, 100%) - 24px); }
+  /* 移动端:打开的弹窗始终贴合可视视口(随软键盘缩放/滚动),输入框永不被键盘遮挡。
+     --app-vh / --app-top 由 JS 的 visualViewport 同步。桌面端不命中此媒体查询,保持原样。 */
+  @media (max-width: 768px) {
+    .modal-mask.show { top: var(--app-top, 0px); bottom: auto; height: var(--app-vh, 100%); }
+    .modal-mask.show .modal { max-height: calc(var(--app-vh, 100%) - 40px); }
+  }
 
   /* 品名库表单 — 品名跨两列, 其余按两列排 */
   .lib-add-form {
@@ -4819,22 +4822,20 @@ document.querySelectorAll('.modal-mask').forEach(m => {
   });
 });
 
-// ── 移动端软键盘不遮挡弹窗输入框 ──
-// 软键盘不会缩小布局视口,但会缩小 visualViewport。据此把打开的 .modal-mask 收进可视区并顶到上方,
-// 再把聚焦的输入框滚进视野。桌面端 / 无键盘时不加 kb-open 类,完全不受影响。
+// ── 移动端弹窗贴合软键盘 ──
+// 不用「布局视口 - 可视视口」阈值判断键盘(standalone/PWA 下布局视口也会随键盘缩小,阈值恒为 0 而失效),
+// 改为直接把可视视口的高度/顶偏移同步给 CSS 变量。弹窗恒等于当前可视区域,键盘一弹出弹窗即自动让位,
+// 内部滚动配合浏览器原生聚焦滚动即可露出输入框。不再手动 scrollIntoView(避免「上滑两次」)。
 (function () {
   const vv = window.visualViewport;
   if (!vv) return;
-  const KB_THRESHOLD = 120; // 视口缩小超过此值(px)判定为键盘弹出
   function sync() {
-    const kbOpen = document.documentElement.clientHeight - vv.height > KB_THRESHOLD;
     document.documentElement.style.setProperty('--app-vh', vv.height + 'px');
-    document.querySelectorAll('.modal-mask.show')
-      .forEach(m => m.classList.toggle('kb-open', kbOpen));
+    document.documentElement.style.setProperty('--app-top', vv.offsetTop + 'px');
   }
-  // 键盘出现/收起都会触发 visualViewport resize,由它统一同步布局;
-  // 不再手动 scrollIntoView,避免和浏览器原生的聚焦滚动叠加导致「上滑两次」。
+  sync();
   vv.addEventListener('resize', sync);
+  vv.addEventListener('scroll', sync);
 })();
 
 const pickModal = document.getElementById('pickModal');
