@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-8">
+<html lang="zh-CN" data-appver="2026-07-07-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3780,6 +3780,10 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
   :root:not([data-theme="light"]) .timeline-head,
   :root:not([data-theme="light"]) .timeline-foot {
     background: linear-gradient(180deg, rgb(26,29,38) 0%, rgb(16,18,26) 100%) !important;
+  }
+  /* 时间列背景:去掉「上浅下深」的竖向渐变,统一为纯 --line-bg(≈21点那段的颜色) */
+  :root:not([data-theme="light"]) .line {
+    background: var(--line-bg) !important;
   }
 }
 /* .line 的暗渐变在 100vh(约15:20)处硬切断,浅底上会出现一条水平分界线 —— 白天改纯色平铺 + 柔化列分隔 */
