@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-9">
+<html lang="zh-CN" data-appver="2026-07-07-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3784,6 +3784,11 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
   /* 时间列背景:去掉「上浅下深」的竖向渐变,统一为纯 --line-bg(≈21点那段的颜色) */
   :root:not([data-theme="light"]) .line {
     background: var(--line-bg) !important;
+  }
+  /* 左侧时间栏 .timeline-body 同样是「上浅下深」的全高渐变(3753 行) —— 手机竖屏被拉到 3 屏高,
+     从 8 点到 22 点连续变深。统一为渐变底端(≈21点)的纯色 rgb(16,18,26)。 */
+  :root:not([data-theme="light"]) .timeline-body {
+    background: rgb(16, 18, 26) !important;
   }
 }
 /* .line 的暗渐变在 100vh(约15:20)处硬切断,浅底上会出现一条水平分界线 —— 白天改纯色平铺 + 柔化列分隔 */
