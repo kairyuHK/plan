@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-4">
+<html lang="zh-CN" data-appver="2026-07-07-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -619,6 +619,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <iframe data-app="config"></iframe>
   <iframe data-app="schedule"></iframe>
 </div>
+
+<!-- 版本号:屏幕最底部居中(父壳层,盖在 iframe 之上),只读展示当前部署版本 -->
+<div id="appver-badge"></div>
+<style>
+  #appver-badge {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
+    z-index: 50; pointer-events: none; user-select: none;
+    font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .3px; color: #8a8f98; opacity: .75;
+  }
+</style>
+<script>
+  (function () {
+    var v = document.documentElement.dataset.appver;
+    var el = document.getElementById('appver-badge');
+    if (el && v) el.textContent = 'v' + v;
+  })();
+</script>
 <script type="text/html" id="data-schedule"><!doctype html>
 <html lang="zh-CN">
 <head>
@@ -3953,28 +3972,6 @@ button:active{transform:scale(.97)}
     </div>
   </div>
 </div>
-
-<!-- 版本号:屏幕最底部居中,只读展示当前部署版本(data-appver) -->
-<div id="appver-badge"></div>
-<style>
-  #appver-badge {
-    position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
-    z-index: 90; pointer-events: none; user-select: none;
-    font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: .3px; color: var(--text-mute); opacity: .5;
-  }
-</style>
-<script>
-  // 版本号在顶层壳的 <html data-appver> 上(本文档在 iframe 内),同源可读
-  (function () {
-    let v;
-    try { v = window.top.document.documentElement.dataset.appver; } catch (e) {}
-    if (!v) v = document.documentElement.dataset.appver;
-    const el = document.getElementById('appver-badge');
-    if (el && v) el.textContent = 'v' + v;
-  })();
-<\/script>
 <script>
 // === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
 function showConfirmPopover(anchor, opts) {
