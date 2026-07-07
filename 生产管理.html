@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-05-1">
+<html lang="zh-CN" data-appver="2026-07-07-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3102,12 +3102,9 @@ const Pages = (() => {
   .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
   .modal-body::-webkit-scrollbar { width: 4px; }
   .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-  /* 移动端:打开的弹窗始终贴合可视视口(随软键盘缩放/滚动),输入框永不被键盘遮挡。
-     --app-vh / --app-top 由 JS 的 visualViewport 同步。桌面端不命中此媒体查询,保持原样。 */
-  @media (max-width: 768px) {
-    .modal-mask.show { top: var(--app-top, 0px); bottom: auto; height: var(--app-vh, 100%); }
-    .modal-mask.show .modal { max-height: calc(var(--app-vh, 100%) - 40px); }
-  }
+  /* 手机端:弹窗内输入框聚焦(软键盘弹起)时,把弹窗顶部对齐并由 JS 限高到键盘上方,避免底部输入框被遮挡。
+     iframe 内 visualViewport/innerHeight 不随键盘可靠变化,故沿用本项目卡片弹窗的做法:screen.height 估键盘顶 + focusin 触发。 */
+  .modal-mask.kb-fit { align-items: flex-start; }
 
   /* 品名库表单 — 品名跨两列, 其余按两列排 */
   .lib-add-form {
@@ -4822,20 +4819,43 @@ document.querySelectorAll('.modal-mask').forEach(m => {
   });
 });
 
-// ── 移动端弹窗贴合软键盘 ──
-// 不用「布局视口 - 可视视口」阈值判断键盘(standalone/PWA 下布局视口也会随键盘缩小,阈值恒为 0 而失效),
-// 改为直接把可视视口的高度/顶偏移同步给 CSS 变量。弹窗恒等于当前可视区域,键盘一弹出弹窗即自动让位,
-// 内部滚动配合浏览器原生聚焦滚动即可露出输入框。不再手动 scrollIntoView(避免「上滑两次」)。
+// ── 手机端:品名库等居中弹窗内输入框聚焦时,把弹窗压到软键盘上方 ──
+// 关键:本页各屏都跑在 iframe(srcdoc)里,iframe 内 visualViewport / innerHeight / interactive-widget
+// 都不随键盘可靠变化,所以之前用视口高度算的方案全失效。沿用本项目卡片弹窗(positionCardPopup)的成熟做法:
+// 用 screen.height*0.58 稳定估计键盘顶(不随键盘缩小),focusin 时把弹窗改顶部对齐 + 限高到键盘上方,多次兜底。
 (function () {
-  const vv = window.visualViewport;
-  if (!vv) return;
-  function sync() {
-    document.documentElement.style.setProperty('--app-vh', vv.height + 'px');
-    document.documentElement.style.setProperty('--app-top', vv.offsetTop + 'px');
+  const KB_TOP_RATIO = 0.58; // 键盘顶 ≈ 整屏高度的 58%(键盘约占下方 42%),与卡片弹窗一致
+  function stableScreenH() { return Math.max(window.innerHeight, (window.screen && window.screen.height) || 0); }
+  function fit(mask) {
+    const modal = mask.querySelector('.modal');
+    if (!modal) return;
+    const ae = document.activeElement;
+    const kbActive = window.innerWidth <= 900 && ae && mask.contains(ae)
+      && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && !ae.readOnly && !ae.disabled;
+    if (kbActive) {
+      const kbTop = stableScreenH() * KB_TOP_RATIO;
+      mask.classList.add('kb-fit');
+      modal.style.maxHeight = Math.round(kbTop - 24) + 'px'; // 顶部 padding(~20)+ 余量
+      // 把聚焦的输入框滚进弹窗可视区(nearest:已可见则不动,避免「上滑两次」)
+      ae.scrollIntoView({ block: 'nearest' });
+    } else {
+      mask.classList.remove('kb-fit');
+      modal.style.maxHeight = '';
+    }
   }
-  sync();
-  vv.addEventListener('resize', sync);
-  vv.addEventListener('scroll', sync);
+  document.addEventListener('focusin', (e) => {
+    const mask = e.target.closest && e.target.closest('.modal-mask.show');
+    if (!mask) return;
+    fit(mask);
+    // 键盘弹起动画 + 视口变化需要时间,多次兜底确保最终贴在键盘上方
+    setTimeout(() => fit(mask), 150);
+    setTimeout(() => fit(mask), 400);
+  });
+  document.addEventListener('focusout', (e) => {
+    const mask = e.target.closest && e.target.closest('.modal-mask');
+    if (!mask) return;
+    setTimeout(() => { if (!mask.contains(document.activeElement)) fit(mask); }, 150);
+  });
 })();
 
 const pickModal = document.getElementById('pickModal');
