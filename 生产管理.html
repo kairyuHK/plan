@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-5">
+<html lang="zh-CN" data-appver="2026-07-07-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -619,25 +619,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   <iframe data-app="config"></iframe>
   <iframe data-app="schedule"></iframe>
 </div>
-
-<!-- 版本号:屏幕最底部居中(父壳层,盖在 iframe 之上),只读展示当前部署版本 -->
-<div id="appver-badge"></div>
-<style>
-  #appver-badge {
-    position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 3px);
-    z-index: 50; pointer-events: none; user-select: none;
-    font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: .3px; color: #8a8f98; opacity: .75;
-  }
-</style>
-<script>
-  (function () {
-    var v = document.documentElement.dataset.appver;
-    var el = document.getElementById('appver-badge');
-    if (el && v) el.textContent = 'v' + v;
-  })();
-</script>
 <script type="text/html" id="data-schedule"><!doctype html>
 <html lang="zh-CN">
 <head>
@@ -2459,7 +2440,14 @@ const Pages = (() => {
   .dow-red { color: var(--red); background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); }
   .timeline-body { flex: 1; overflow: hidden; position: relative; }
   .timeline-inner { position: relative; }
-  .timeline-foot { flex-shrink: 0; height: var(--foot-h, 82px); background: var(--panel); border-top: 1px solid var(--border); }
+  .timeline-foot { flex-shrink: 0; height: var(--foot-h, 82px); background: var(--panel); border-top: 1px solid var(--border); position: relative; }
+  /* 版本号:分三行右对齐,居中于左下角 timeline-foot 空格里 */
+  .appver-foot {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font: 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px;
+    text-align: right; color: var(--text-mute); opacity: .7; white-space: nowrap;
+    pointer-events: none; user-select: none;
+  }
   .tick {
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--border);
@@ -3907,7 +3895,7 @@ button:active{transform:scale(.97)}
     <div class="timeline-body" id="timelineBody">
       <div class="timeline-inner" id="timelineInner"></div>
     </div>
-    <div class="timeline-foot" id="timelineFoot"></div>
+    <div class="timeline-foot" id="timelineFoot"><span class="appver-foot" id="appverFoot"></span></div>
   </div>
   <div class="board" id="board"></div>
 </div>
@@ -3972,6 +3960,24 @@ button:active{transform:scale(.97)}
     </div>
   </div>
 </div>
+
+<script>
+  // 左下角版本号:版本在顶层壳 <html data-appver> 上(本文档在 iframe 内),同源可读
+  (function () {
+    var v;
+    try { v = window.top.document.documentElement.dataset.appver; } catch (e) {}
+    if (!v) v = document.documentElement.dataset.appver;
+    var el = document.getElementById('appverFoot');
+    if (!el || !v) return;
+    // 2026-07-07-6 → v2026 / 07-07 / 6 三行右对齐
+    var p = v.split('-');
+    if (p.length >= 4) {
+      el.innerHTML = 'v' + p[0] + '<br>' + p[1] + '-' + p[2] + '<br>' + p[3];
+    } else {
+      el.textContent = 'v' + v;
+    }
+  })();
+<\/script>
 <script>
 // === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
 function showConfirmPopover(anchor, opts) {
