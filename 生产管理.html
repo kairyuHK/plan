@@ -4832,15 +4832,9 @@ document.querySelectorAll('.modal-mask').forEach(m => {
     document.querySelectorAll('.modal-mask.show')
       .forEach(m => m.classList.toggle('kb-open', kbOpen));
   }
+  // 键盘出现/收起都会触发 visualViewport resize,由它统一同步布局;
+  // 不再手动 scrollIntoView,避免和浏览器原生的聚焦滚动叠加导致「上滑两次」。
   vv.addEventListener('resize', sync);
-  document.addEventListener('focusin', (e) => {
-    const input = e.target;
-    if (!input || input.tagName !== 'INPUT') return;
-    if (!input.closest('.modal-mask.show')) return;
-    // 等键盘弹出、布局稳定后再滚动,避免滚到键盘裂缝里
-    setTimeout(() => { sync(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 250);
-  });
-  document.addEventListener('focusout', () => setTimeout(sync, 150));
 })();
 
 const pickModal = document.getElementById('pickModal');
