@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-7">
+<html lang="zh-CN" data-appver="2026-07-07-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3773,6 +3773,15 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 :root[data-theme="light"] .line-head{border-bottom-color:#e3ded7!important}
 :root[data-theme="light"] .timeline-head:hover{background:#efece7!important}
 :root[data-theme="light"] .board{background:#e7e2db!important}
+/* 手机端夜间模式:sticky 的行头(夕盛等)/统计栏/时间栏改为完全不透明,避免下方卡片透过来 —— 仅手机+夜间,PC/白天不动 */
+@media (max-width: 900px) {
+  :root:not([data-theme="light"]) .line-head,
+  :root:not([data-theme="light"]) .line-foot,
+  :root:not([data-theme="light"]) .timeline-head,
+  :root:not([data-theme="light"]) .timeline-foot {
+    background: linear-gradient(180deg, rgb(26,29,38) 0%, rgb(16,18,26) 100%) !important;
+  }
+}
 /* .line 的暗渐变在 100vh(约15:20)处硬切断,浅底上会出现一条水平分界线 —— 白天改纯色平铺 + 柔化列分隔 */
 :root[data-theme="light"] .line{background:var(--line-bg)!important;box-shadow:1px 0 0 rgba(255,255,255,.5) inset,-1px 0 0 rgba(43,37,30,.06) inset!important}
 :root[data-theme="light"] .top-btn:hover{background:rgba(43,37,30,.05)!important;border-color:rgba(43,37,30,.1)!important;color:var(--text)!important}
