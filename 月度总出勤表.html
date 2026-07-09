@@ -433,7 +433,9 @@ body.resizing.resizing-row{cursor:row-resize!important}
 .data-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 /* print */
 @media print {
-  @page { size: A4 landscape; margin: 4mm; }
+  /* size:A4(不锁朝向)—— 纵向/横向由打印对话框决定, 两个都能选。
+     注意:本表为横向设计(宽≈289mm), 纵向会把 30 天列挤扁, 正常打印请在对话框选「横向」。 */
+  @page { size: A4; margin: 4mm; }
   :root {
     /* 每个部门可独立设置打印高度(state.departments[].printHeightMm,默认 192mm)。
        beforeprint 时 JS 读取当前部门设置,覆盖 --print-body-h / --print-row-h-base。
@@ -1678,7 +1680,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.10-1';
+const APP_BUILD = '2026.07.10-2';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
