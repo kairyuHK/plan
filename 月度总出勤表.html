@@ -1676,7 +1676,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.06-4';
+const APP_BUILD = '2026.07.06-5';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
@@ -2843,7 +2843,7 @@ const Pages = (() => {
   let sizeEditDeptId = null; // 设置页「单元格尺寸」当前编辑的部门 id(会话级,默认跟随当前部门)
   // 部门专属默认尺寸(按部门名):只列与全局默认不同的 key,未列出的用全局默认。
   // 给特定部门(如払出人少、需要更高的行铺满打印页)一套自己的默认基线:占位符显示这些、重置也回到这些。
-  const DEPT_SIZE_DEFAULTS = { '払出': { 'row-month': 30, 'row-person': 27, 'row-stat': 27 } };
+  const DEPT_SIZE_DEFAULTS = { '払出': { 'row-month': 30, 'row-person': 27, 'row-stat': 27, 'col-name': 110 } };
   const deptSizeDefaults = (deptId) => { const d = Store.dept(deptId); return (d && DEPT_SIZE_DEFAULTS[d.name]) || {}; };
   // 生效尺寸 = 部门默认基线 覆盖上 用户显式设置(sizesByDept)。用于渲染/应用 CSS 变量。
   const effectiveSizes = (deptId) => ({ ...deptSizeDefaults(deptId), ...Store.sizes(deptId) });
@@ -3261,7 +3261,7 @@ const Pages = (() => {
       const nameTd = Render.el('td.name-col', { onclick: () => toggleRow(p.id) }, p.name || '');
       const nameStr = p.name || '';
       if (nameStr) {
-        const szs = Store.sizes();
+        const szs = effectiveSizes(Store.get().ui.currentDept); // 部门默认基线 + 用户覆盖(与 --col-name-w 一致)
         const colNamePx = szs['col-name'] != null ? szs['col-name'] : 130; // 当前氏名列宽(px)
         // 屏幕:实测 11px 下像素宽, 超过可用宽(列宽 - 8: 6 左padding + 2 安全)就等比缩到刚好, 下限 6px。
         const screenAvail = colNamePx - 8;
