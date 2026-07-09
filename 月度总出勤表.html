@@ -441,10 +441,12 @@ body.resizing.resizing-row{cursor:row-resize!important}
        表格 height: auto + .schedule-wrap flex 自动让 table 垂直居中在 A4 中间。 */
     --row-h: var(--row-h-fixed, min(calc(var(--print-row-h-base, 198mm) / var(--total-rows, 30)), 7mm));
   }
-  /* overflow:visible —— 行高(--row-*-h px)调大致表格超过 --print-body-h 时,不硬裁底部统计行;
-     超出部分照常打印,用户据此把行高调到刚好铺满一页。 */
-  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: var(--print-body-h, 200mm); overflow: visible; }
-  #page-schedule.page { padding: 0 !important; height: var(--print-body-h, 200mm); }
+  /* overflow:visible —— 行高(--row-*-h px)调大致表格超过页高时,不硬裁底部统计行;超出部分照常打印。
+     容器高度用 height:100%(填满整页)而非固定 --print-body-h(200mm): 固定 200mm 在更高的纸上(尤其
+     "无"边距时纸有 210mm)会在 200mm 处露出容器盒底 → 表短/居中的部门(如払出)打印时下方留一条横线。
+     填满整页后盒底与纸底对齐, 线消失; 行高仍由 --print-row-h-base 控制, 表格尺寸不变。 */
+  html, body { background: #fff; color: #000; padding-top: 0 !important; margin: 0 !important; height: 100%; overflow: visible; }
+  #page-schedule.page { padding: 0 !important; height: 100%; }
   /* 表格垂直居中于 body(A4 纸张内)。
      注意:之前配合 table 的 break-inside:avoid 会在 130% 缩放下出 bug — body 被放大超出
      A4 可用区,浏览器看到表格上方空白后认为不能整张放进第 1 页,把整张推到第 2 页,第 1 页空白。
@@ -452,7 +454,7 @@ body.resizing.resizing-row{cursor:row-resize!important}
      这样 130% 时表格仍按居中位置摆放,且能在第 1 页正常显示。 */
   /* justify-content:safe center —— 装得下就上下居中;表格总高超过 --print-body-h 时,safe 自动回退为顶对齐
      (flex-start),不把顶部行推出纸张可打印区被裁,超出部分改为向下延伸进纸面空白。兼顾"居中"与"不裁顶"。 */
-  .schedule-wrap { margin: 0 !important; height: var(--print-body-h, 200mm); max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: safe center; }
+  .schedule-wrap { margin: 0 !important; height: 100%; max-height: none !important; overflow: visible !important; display: flex; flex-direction: column; justify-content: safe center; }
   .entry-hint { display: none !important; }
   .col-resize-handle, .row-resize-handle { display: none !important; }
   /* position:relative 在 border-collapse:collapse 的 table cell 上会让浏览器渲染时丢边框,
@@ -1676,7 +1678,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.07.06-5';
+const APP_BUILD = '2026.07.10-1';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
