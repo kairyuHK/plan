@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-10">
+<html lang="zh-CN" data-appver="2026-07-07-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3949,7 +3949,7 @@ button:active{transform:scale(.97)}
     <div class="modal-head">
       <div>
         <div class="modal-title">复制某日的数据</div>
-        <div class="modal-sub" id="copyDaySub">选中日期的全部生产计划将覆盖当前日期</div>
+        <div class="modal-sub" id="copyDaySub">按生产线合并:源有数据的线覆盖,源无数据的线保留当前日期</div>
       </div>
       <button class="modal-close" data-close>×</button>
     </div>
@@ -6101,20 +6101,27 @@ function saveBoard() {
   try { localStorage.setItem(boardKey(), JSON.stringify(captureState())); } catch (e) {}
 }
 
-function applyState(state) {
+// opts.mergeNonEmpty:按生产线合并 —— 只覆盖「源有卡片」的线,源为空的线保留当前日期的数据(不清空)。
+function applyState(state, opts) {
   if (!state || !state.lines) return;
-  if (Array.isArray(state.hiddenLines)) {
+  const merge = !!(opts && opts.mergeNonEmpty);
+  if (!merge && Array.isArray(state.hiddenLines)) {
     hiddenLines = new Set(state.hiddenLines.map(Number));
     updateBoardLayout();
   }
   setActiveCard(null); // 先把激活卡片的弹窗收回卡片内,避免下面删卡后弹窗孤儿化
-  document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
+  if (!merge) document.querySelectorAll('.cards-grid').forEach(g => g.querySelectorAll('.card').forEach(c => c.remove()));
   cleanupDetachedPopups(); // 兜底清掉任何残留的孤儿弹窗
   activeCard = null;
   const lineEls = document.querySelectorAll('.line');
   state.lines.forEach((lineData, idx) => {
     const lineEl = lineEls[idx];
     if (!lineEl) return;
+    if (merge) {
+      const hasData = Array.isArray(lineData.cards) && lineData.cards.length > 0;
+      if (!hasData) return;                                        // 源该线无数据 → 保留今日该线
+      lineEl.querySelectorAll('.card').forEach(c => c.remove());   // 源该线有数据 → 先清今日该线再覆盖
+    }
     if (lineData.startTime) lineEl.querySelector('.start-time').value = lineData.startTime;
     if (lineData.gap != null) lineEl.querySelector('.gap').value = lineData.gap;
     lineEl.querySelector('.actual-finish').value = lineData.actualFinish || '';
@@ -6221,20 +6228,14 @@ function doCopyFromDate(srcDate) {
   const anchor = document.getElementById('copyDayBtn') || document.body;
   showConfirmPopover(anchor, {
     text: `复制 ${srcDate}?`,
-    sub: `将覆盖当前 ${currentDate} 的数据`,
+    sub: `按生产线合并到 ${currentDate}(源有数据的线覆盖,无数据的线保留)`,
     confirmText: '复制',
     danger: true,
     onConfirm: () => {
       let state;
       try { state = JSON.parse(raw); } catch (e) { showToast('复制失败: 数据解析错误', 'error'); return; }
       setActiveCard(null);
-      document.querySelectorAll('.line').forEach(line => {
-        line.querySelectorAll('.card').forEach(c => c.remove());
-        const st = line.querySelector('.start-time'); if (st) st.value = '08:00';
-        const gp = line.querySelector('.gap'); if (gp) gp.value = '0';
-      });
-      hiddenLines = new Set();
-      applyState(state);
+      applyState(state, { mergeNonEmpty: true }); // 按生产线合并:只覆盖源有数据的线,今日其它线保留
       document.querySelectorAll('.line').forEach(l => recalc(l));
       updateBoardLayout();
       saveBoard();
@@ -6243,7 +6244,7 @@ function doCopyFromDate(srcDate) {
       updateUndoButtons();
       markUnsaved();
       document.getElementById('copyDayModal').classList.remove('show');
-      showToast(`已复制 ${srcDate} 的数据到 ${currentDate}`, 'success');
+      showToast(`已合并 ${srcDate} 的数据到 ${currentDate}`, 'success');
     }
   });
 }
@@ -6252,7 +6253,7 @@ function doCopyFromDate(srcDate) {
 function renderCopyDayList() {
   const listEl = document.getElementById('copyDayList');
   const subEl = document.getElementById('copyDaySub');
-  subEl.textContent = `选中日期的生产计划将覆盖当前日期 (${currentDate})`;
+  subEl.textContent = `按生产线合并到当前日期 (${currentDate}):源有数据的线覆盖,无数据的线保留`;
   const dates = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
