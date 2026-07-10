@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-11">
+<html lang="zh-CN" data-appver="2026-07-07-14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2438,6 +2438,15 @@ const Pages = (() => {
   .dow-weekday { color: var(--text-dim); }
   .dow-sat { color: var(--blue); background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.3); }
   .dow-red { color: var(--red); background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); }
+  /* PC:「今」保持在右下角。80px 高的窄头里要塞下 年/月/日/星期 + 「今」,逐项收紧:
+     年上移、行间距压缩、日数调小、底部留白 —— 让整组不与顶部的年、也不与底部的「今」重叠。 */
+  @media (min-width: 901px) {
+    .timeline-head { padding-bottom: 20px; }
+    .date-year { top: 2px; }
+    .date-month { margin-bottom: 1px; }
+    .date-day { font-size: 15px; }
+    .date-dow { margin-top: 2px; }
+  }
   .timeline-body { flex: 1; overflow: hidden; position: relative; }
   .timeline-inner { position: relative; }
   .timeline-foot { flex-shrink: 0; height: var(--foot-h, 82px); background: var(--panel); border-top: 1px solid var(--border); position: relative; }
