@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-14">
+<html lang="zh-CN" data-appver="2026-07-07-18">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2948,6 +2948,15 @@ const Pages = (() => {
     font: inherit;
     font-variant-numeric: tabular-nums;
   }
+  /* 仅 macOS 桌面(.is-mac):空的 <input type=time> 会被 WebKit 画成 12:30 等默认值 → 隐藏。
+     PC(Windows)/手机不加 .is-mac,保持原生显示不变。聚焦编辑时 JS 临时去掉 af-empty 让字段可见。 */
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-fields-wrapper,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-hour-field,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-minute-field,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-text,
+  .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-ampm-field { color: transparent !important; }
   .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
 
   .pager {
@@ -4004,6 +4013,11 @@ button:active{transform:scale(.97)}
       el.textContent = 'v' + v;
     }
   })();
+  // 仅 macOS 桌面浏览器:空的 <input type=time> 会被画成 12:30 等默认值。加 is-mac 类,由 CSS 只在 Mac 隐藏空值。
+  // 排除 iPad(iPadOS 的 UA 也含 Macintosh 但有触摸点),PC/手机不受影响。
+  if (/Macintosh/.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) === 0) {
+    document.documentElement.classList.add('is-mac');
+  }
 <\/script>
 <script>
 // === 现代化 popover/toast(替代原生 confirm/alert/prompt) ===
@@ -5026,7 +5040,9 @@ function buildLine(num) {
   line.querySelector('.add-rest').addEventListener('click', () => addRestCard(grid));
   line.querySelector('.start-time').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
   line.querySelector('.gap').addEventListener('input', () => { recalc(line); scheduleSaveBoard(); });
-  line.querySelector('.actual-finish').addEventListener('input', () => scheduleSaveBoard());
+  line.querySelector('.actual-finish').addEventListener('focus', () => { const w = line.querySelector('.actual-finish-wrap'); if (w) w.classList.remove('af-empty'); });
+  line.querySelector('.actual-finish').addEventListener('input', () => { updateActualFinishEmpty(line); scheduleSaveBoard(); });
+  line.querySelector('.actual-finish').addEventListener('blur', () => updateActualFinishEmpty(line));
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -5858,7 +5874,15 @@ function recalc(line) {
   setFootVal(line.querySelector('.time-total'), fmtDurationHM(totalSec));
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   mirrorActualFinishSize(line);
+  updateActualFinishEmpty(line);
   recalcGlobal();
+}
+
+// 实结无值时给 wrapper 加 af-empty 类 → CSS 把空值隐藏(避免 macOS 空 type=time 显示 12:30 等默认值)
+function updateActualFinishEmpty(line) {
+  const wrap = line.querySelector('.actual-finish-wrap');
+  const af = line.querySelector('.actual-finish');
+  if (wrap && af) wrap.classList.toggle('af-empty', !af.value);
 }
 
 function mirrorActualFinishSize(line) {
