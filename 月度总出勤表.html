@@ -2256,7 +2256,13 @@ const Store = (() => {
   function exportJson() {
     state.lastExportAt = new Date().toISOString();
     commit('export');
-    return JSON.stringify(state, null, 2);
+    // 部门数据导出:剔除每个人的 hoursDays(月度工时)。工时走工时页独立导出/导入,两套数据分家。
+    const snapshot = Util.clone(state);
+    for (const did in snapshot.people) {
+      const list = snapshot.people[did];
+      if (Array.isArray(list)) list.forEach(p => { delete p.hoursDays; });
+    }
+    return JSON.stringify(snapshot, null, 2);
   }
   function importJson(json) {
     const parsed = JSON.parse(json);
@@ -2295,6 +2301,20 @@ const Store = (() => {
       parsed.ui.currentDept = parsed.departments[0]?.id || null;
     }
     if (!parsed.ui.currentPeriod) parsed.ui.currentPeriod = Period.todayKey();
+    // A 方案:部门数据整体覆盖,但保留当前的月度工时。
+    // 导入文件里若带 hoursDays(旧格式)一律忽略,以当前 state 的工时为准(按 personId 保留)。
+    const prevHours = {};
+    for (const did in state.people) {
+      const list = state.people[did];
+      if (Array.isArray(list)) list.forEach(p => { if (p.hoursDays) prevHours[p.id] = p.hoursDays; });
+    }
+    for (const did in parsed.people) {
+      const list = parsed.people[did];
+      if (Array.isArray(list)) list.forEach(p => {
+        if (prevHours[p.id]) p.hoursDays = prevHours[p.id];
+        else delete p.hoursDays;
+      });
+    }
     // 所有验证 + 补全完成,才原子替换 state
     state = parsed;
     commit('import');
@@ -4243,6 +4263,7 @@ const Pages = (() => {
     resetBtn.addEventListener('click', () => doReset(resetBtn));
     actions.appendChild(resetBtn);
     card.appendChild(actions);
+    card.appendChild(Render.el('div.entry-hint', '这里的导出/导入只含部门数据(不含月度工时)。月度工时请到「工时」页单独导出/导入(导入按人员+按日合并,同日覆盖)。'));
     host.appendChild(card);
   }
 
@@ -4274,7 +4295,7 @@ const Pages = (() => {
       reader.onload = () => {
         showConfirmPopover(anchor, {
           text: '导入 JSON?',
-          sub: `将用「${file.name}」覆盖当前全部数据,建议先导出备份`,
+          sub: `将用「${file.name}」覆盖部门数据(月度工时保持不变),建议先导出备份`,
           confirmText: '继续导入',
           danger: true,
           onConfirm: () => {
