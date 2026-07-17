@@ -536,10 +536,10 @@ body.resizing.resizing-row{cursor:row-resize!important}
   table.schedule td.day-cell.has-text {
     font-size: min(calc(var(--row-h) * 0.5), 3.2mm) !important;
   }
-  /* 払出 部门特例:有/〇/欠 缩到和 has-text 一样小,避免和并排自定义文字大小不一致 */
-  body.print-dept-haraidashi table.schedule td.day-cell.paidLeave,
-  body.print-dept-haraidashi table.schedule td.day-cell.contractRest,
-  body.print-dept-haraidashi table.schedule td.day-cell.absent {
+  /* 払出/夕盛 特例:有/〇/欠 缩到和 has-text 一样小,避免和并排自定义文字(早/包 等)大小不一致 */
+  body.print-compact-marks table.schedule td.day-cell.paidLeave,
+  body.print-compact-marks table.schedule td.day-cell.contractRest,
+  body.print-compact-marks table.schedule td.day-cell.absent {
     font-size: min(calc(var(--row-h) * 0.5), 3.2mm) !important;
   }
   table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label) {
@@ -2590,8 +2590,8 @@ const App = (() => {
       document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
       // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
       document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0.07');
-      // 払出 部门特例:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
-      document.body.classList.toggle('print-dept-haraidashi', !!(curDept && curDept.name === '払出'));
+      // 払出/夕盛:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
+      document.body.classList.toggle('print-compact-marks', !!(curDept && (curDept.name === '払出' || curDept.name === '夕盛')));
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
       // 所有平台统一走 base print CSS,部门高度由 --print-body-h 控制(已设)。
       // col 宽度交给 print CSS 处理(支持用户 --col-*-w 自定义 px 值;未设时 fallback 到 mm)。
@@ -2604,7 +2604,7 @@ const App = (() => {
       document.documentElement.style.removeProperty('--print-body-h');
       document.documentElement.style.removeProperty('--print-row-h-base');
       document.documentElement.style.removeProperty('--day-cell-pad-ratio');
-      document.body.classList.remove('print-dept-haraidashi');
+      document.body.classList.remove('print-compact-marks');
       // 清除 beforeprint 给 col 加的 inline width(否则屏幕显示会异常)
       document.querySelectorAll('table.schedule col').forEach(c => c.style.removeProperty('width'));
       // Clean up brute-force inline styles
@@ -2869,7 +2869,21 @@ const Pages = (() => {
   // 部门专属默认尺寸(按部门名):只列与全局默认不同的 key,未列出的用全局默认。
   // 给特定部门(如払出人少、需要更高的行铺满打印页)一套自己的默认基线:占位符显示这些、重置也回到这些。
   const DEPT_SIZE_DEFAULTS = { '払出': { 'row-month': 30, 'row-person': 27, 'row-stat': 27, 'col-name': 110 } };
-  const deptSizeDefaults = (deptId) => { const d = Store.dept(deptId); return (d && DEPT_SIZE_DEFAULTS[d.name]) || {}; };
+  // 手机端专属默认(叠在 DEPT_SIZE_DEFAULTS 之上,仅视口 ≤640px 生效):
+  // 夕盛人多(34 行),手机屏/手机打印可用区比 PC 小,列宽行高都需要更紧凑。PC 端仍用全局默认。
+  // 断点与 applyPrintSizing 的 isMobile 保持一致。
+  const DEPT_SIZE_DEFAULTS_MOBILE = {
+    '夕盛': { 'col-role': 55, 'col-name': 105, 'col-sum-paid': 30, 'col-sum-contract': 30, 'col-sum-remain': 30, 'row-person': 16, 'row-stat': 18 }
+  };
+  const isMobileViewport = () => window.matchMedia('(max-width: 640px)').matches;
+  const deptSizeDefaults = (deptId) => {
+    const d = Store.dept(deptId);
+    if (!d) return {};
+    return {
+      ...(DEPT_SIZE_DEFAULTS[d.name] || {}),
+      ...(isMobileViewport() ? (DEPT_SIZE_DEFAULTS_MOBILE[d.name] || {}) : {})
+    };
+  };
   // 生效尺寸 = 部门默认基线 覆盖上 用户显式设置(sizesByDept)。用于渲染/应用 CSS 变量。
   const effectiveSizes = (deptId) => ({ ...deptSizeDefaults(deptId), ...Store.sizes(deptId) });
   function renderSchedule() {
