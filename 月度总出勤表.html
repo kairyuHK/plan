@@ -522,8 +522,8 @@ body.resizing.resizing-row{cursor:row-resize!important}
     /* CJK 字体 ascent > descent,line-height:1 下字形视觉偏上,padding-top 下推到视觉中心。
        按【实际行高】缩放(用户自定义 --row-person-h 优先,否则自动 --row-h):
        这样调大行高时补偿同步变大,〇 始终居中(原来只按 --row-h 算,自定义行高时会偏上)。
-       PC 端系数 0.07(canvas/几何实测: 0.09 会过度补偿把 〇/汉字压低 ~0.3px, 0.07 让各标记都落在 ±0.12px);
-       手机端字体度量不同,beforeprint 里设 0(不偏移)。 */
+       系数 0.07(canvas/几何实测: 0.09 会过度补偿把 〇/汉字压低 ~0.3px, 0.07 让各标记都落在 ±0.12px);
+       PC/手机端统一,由 beforeprint 设(手机端曾误设 0 导致偏上,详见 applyPrintSizing 注释)。 */
     padding-top: calc(var(--row-person-h, var(--row-h)) * var(--day-cell-pad-ratio, 0.07)) !important;
   }
   /* 〇(契休) 大且笔画密,欠/有 是汉字笔画也密,统一压小一档 */
@@ -2588,8 +2588,11 @@ const App = (() => {
         : bodyH;
       document.documentElement.style.setProperty('--print-body-h', declaredBodyH + 'mm');
       document.documentElement.style.setProperty('--print-row-h-base', (declaredBodyH - 2) + 'mm');
-      // 手机端 (视口 ≤ 640px) 不给 day-cell 加 padding-top — 移动浏览器字体度量不同,加 padding 反而偏下
-      document.documentElement.style.setProperty('--day-cell-pad-ratio', isMobile ? '0' : '0.07');
+      // day-cell padding-top 补偿系数(CJK ascent>descent,line-height:1 下字形偏上,padding 下推到视觉中心)。
+      // 手机端曾硬设 0:那是 PC 值还是 0.09 时的反应(0.09 在手机上把字压偏下)。但 0.09 后来被几何实测
+      // 证明在 PC 上同样是过度补偿(27cfd8f: 0.09→0.07),手机端没跟着复测,一直停在 0 = 完全不补偿 → 各标记偏上。
+      // 现与 PC 统一用校准值 0.07(PC 行为不变,实际只改手机端)。勿再把手机端设回 0。
+      document.documentElement.style.setProperty('--day-cell-pad-ratio', '0.07');
       // 払出/夕盛:打印时切换 body class,触发 day-cell 字号缩档(避免 有/〇 比 早/包 大)
       document.body.classList.toggle('print-compact-marks', !!(curDept && (curDept.name === '払出' || curDept.name === '夕盛')));
       // 已彻底禁用 mobile-print-style 注入,beforeprint 不再做 brute-force inline 覆盖。
