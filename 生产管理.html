@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-07-07-19">
+<html lang="zh-CN" data-appver="2026-07-07-20">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7145,7 +7145,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .drawer .add{flex:0 0 auto;display:flex;gap:6px;padding:12px;border-top:1px solid var(--line)}
   .drawer .add input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px;border-radius:4px;font:inherit;min-width:0}
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
-  .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 0;width:max-content;min-width:100%}
+  .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 12px;width:100%;min-width:0;box-sizing:border-box}
   .line-grid .row{display:grid;gap:10px}
   .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:78px;min-height:78px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
@@ -9171,7 +9171,8 @@ function renderLineGrid(line, cellRenderer) {
   const wrap = document.createElement("div"); wrap.className = "line-wrap";
   const grid = document.createElement("div"); grid.className = "line-grid";
   const N = Math.max(maxSlot(line), 1);
-  const cols = `repeat(${N}, minmax(var(--cell-min, 120px), 1fr))`;
+  // 列可压缩到 0 → N 列平分容器宽度,整条流水线(含右端箭头)一屏完整显示,不再横向溢出滚动
+  const cols = `repeat(${N}, minmax(var(--cell-min, 0px), 1fr))`;
 
   const top = document.createElement("div"); top.className = "row"; top.style.gridTemplateColumns = cols;
   const bot = document.createElement("div"); bot.className = "row"; bot.style.gridTemplateColumns = cols;
