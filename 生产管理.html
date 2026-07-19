@@ -4659,6 +4659,8 @@ function renderLibList() {
     row.querySelector('.lib-item-btn.edit').addEventListener('click', () => startEditLib(item.id));
     // 按线展开
     row.querySelector('.lib-item-btn.per-line').addEventListener('click', () => {
+      // 同时只保留一个按线面板:展开当前项前先关掉其它已展开的
+      libList.querySelectorAll('.lib-item.expanded').forEach(r => { if (r !== row) r.classList.remove('expanded'); });
       row.classList.toggle('expanded');
       // 展开时把面板滚进可视区(尤其底部条目,否则展开内容在视口外看不到)
       if (row.classList.contains('expanded')) {
