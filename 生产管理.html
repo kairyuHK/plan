@@ -4137,6 +4137,8 @@ function applyBentoOverlay() {
     const prevPeople = item.people;
     // 拍一份按线速度的快照,用于检测有没有任何 lid 的值变了 → 否则 affected 不会包含此项,显示不刷新
     const prevLineSpdMap = JSON.stringify(item.lineSpeedByLine || {});
+    // 同理拍一份按线人数快照:配置表只改某条线的位数(全体人数不变)时也要能被检测到
+    const prevPeopleMap = JSON.stringify(item.peopleByLine || {});
     let b = null;
     // 1) 用 bentoId 找(便当改名也能跟随)
     if (item.bentoId) {
@@ -4184,11 +4186,13 @@ function applyBentoOverlay() {
       item._bentoLinked = false;
     }
     const nextLineSpdMap = JSON.stringify(item.lineSpeedByLine || {});
+    const nextPeopleMap = JSON.stringify(item.peopleByLine || {});
     if (wasLinked !== item._bentoLinked
         || prevName !== item.name
         || prevSpeed !== item.lineSpeed
         || prevPeople !== item.people
-        || prevLineSpdMap !== nextLineSpdMap) {
+        || prevLineSpdMap !== nextLineSpdMap
+        || prevPeopleMap !== nextPeopleMap) {
       affected.push(item.id);
     }
   });
@@ -4817,13 +4821,13 @@ function propagateLibChange(libId) {
     const lineSpdInp = popupQ(card, '.line-speed');
     const peopleInp = popupQ(card, '.people');
     const meterInp = popupQ(card, '.meter-people');
+    // 按卡片所在线解析(流水线速度 / 人数都因线而异)
+    const _lineId = getLineIdFromNode(card);
     if (lineSpdInp) {
-      // 按卡片所在线解析流水线速度(显示用)
-      const _lineId = getLineIdFromNode(card);
       const _ls = resolveItemLineSpeed(item, _lineId);
       lineSpdInp.value = _ls > 0 ? _ls : '';
     }
-    if (peopleInp) peopleInp.value = (item.people === '?' || item.people === '？') ? '?' : (item.people > 0 ? item.people : '');
+    if (peopleInp) peopleInp.value = peopleToInputVal(resolveItemPeople(item, _lineId));
     // 品名速度 / 计量人数 已改为每张卡独立快照,品名库编辑不再回写已有卡片(避免改动之前日期的计划)。
     affectedLines.add(card.closest('.line'));
   });
