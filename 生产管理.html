@@ -1478,7 +1478,6 @@ const Pages = (() => {
   let calViewYear = null;
   let calViewMonth = null;
 
-  const JP_WD_SHORT = ['日','月','火','水','木','金','土'];
   function fmtDateJp(iso){
     // 统一为 YYYY-MM-DD,和配置表顶部日期 chip 一致
     return iso;
@@ -2776,6 +2775,9 @@ const Pages = (() => {
     font-variant-numeric: tabular-nums;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* 人数与配置表该线位置数比较:多于→红,等于→默认(白),少于→蓝 */
+  .compact-people.people-over { color: var(--red); font-weight: 700; }
+  .compact-people.people-under { color: var(--blue); font-weight: 700; }
   .compact-del {
     position: absolute;
     top: 2px;
@@ -3792,7 +3794,8 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 :root[data-theme="light"] .timeline-head:hover{background:#efece7!important}
 :root[data-theme="light"] .board{background:#e7e2db!important}
 /* 手机端夜间模式:sticky 的行头(夕盛等)/统计栏/时间栏改为完全不透明,避免下方卡片透过来 —— 仅手机+夜间,PC/白天不动 */
-@media (max-width: 900px) {
+/* 限定 screen:纵向打印时页宽 <900px 会误命中,暗色不透明背景压过打印白底规则(特异度更高),导致时间轴/行头/统计栏印成黑块。 */
+@media screen and (max-width: 900px) {
   :root:not([data-theme="light"]) .line-head,
   :root:not([data-theme="light"]) .line-foot,
   :root:not([data-theme="light"]) .timeline-head,
@@ -4100,6 +4103,20 @@ const STORAGE_CURRENT_DATE = 'productionBoardCurrentDate';
 // 配置表(便当库)使用的 localStorage 键 — 与 data-config iframe 中的 STORAGE_KEY 保持一致
 const BENTO_STORAGE_KEY = 'bento-conveyor-v1';
 let bentoMap = new Map();
+// 每条生产线「默认布局」的槽位数(来自配置表 lineTemplates[lineId].length)。
+// 计划板卡片人数着色时以此为基准:多于→红,等于→白,少于→蓝。
+let lineSlotCount = {};
+function refreshLineSlotFromStorage() {
+  lineSlotCount = {};
+  try {
+    const raw = localStorage.getItem(BENTO_STORAGE_KEY);
+    if (!raw) return;
+    const t = JSON.parse(raw).lineTemplates;
+    if (t && typeof t === 'object') {
+      for (const lid in t) lineSlotCount[lid] = Array.isArray(t[lid]) ? t[lid].length : 0;
+    }
+  } catch (e) { lineSlotCount = {}; }
+}
 function setBentoMapFromArray(bentos) {
   bentoMap = new Map();
   (Array.isArray(bentos) ? bentos : []).forEach(b => {
@@ -4113,11 +4130,7 @@ function refreshBentoMapFromStorage() {
     const s = JSON.parse(raw);
     setBentoMapFromArray(s && s.bentos);
   } catch (e) { bentoMap = new Map(); }
-}
-// 兼容旧调用名:刷新策略改为优先用最近一次 postMessage 数据;若无则读 localStorage
-function refreshBentoMap() {
-  if (bentoMap && bentoMap.size > 0) return; // 已经有 postMessage 同步的数据,不要被本地存储覆盖
-  refreshBentoMapFromStorage();
+  refreshLineSlotFromStorage();
 }
 // 把便当库的 名字 / LINE 速度 / 人数覆盖到品名库匹配项上;返回受影响 lib 项的 id 列表
 // 链接策略:优先 bentoId(可跟随便当改名);若无 bentoId 或失效则按 name 兜底匹配,并写入 bentoId 形成稳定链接
@@ -4319,7 +4332,6 @@ let currentPickTargetLine = null;
 // 计划板用 1~7 编号生产线,排岗表/配置表用 'xs','l01'...'tsk' 字符串 id。
 // 两边映射在很多地方都要用,集中放一处。
 const LINE_NUM_TO_ID = { 1:'xs', 2:'l01', 3:'l02', 4:'l03', 5:'l04', 6:'l05', 7:'tsk' };
-const LINE_ID_TO_NUM = { xs:1, l01:2, l02:3, l03:4, l04:5, l05:6, tsk:7 };
 const LINE_IDS_ORDER = ['xs','l01','l02','l03','l04','l05','tsk'];
 const LINE_ID_DISPLAY = { xs:'夕盛', l01:'01', l02:'02', l03:'03', l04:'04', l05:'05', tsk:'値付け' };
 
@@ -4374,7 +4386,6 @@ function hasPerLineSpeed(item) {
 
 let activeCard = null;
 let editingLibId = null;
-let saveTimer = null;
 let hiddenLines = new Set();
 
 const board = document.getElementById('board');
@@ -5834,7 +5845,16 @@ function recalc(line) {
         letterEl.style.color = card.dataset.color || '';
       }
       const peopleEl = card.querySelector('.compact-people');
-      if (peopleEl) peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
+      if (peopleEl) {
+        peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
+        // 与配置表该线「默认布局」的槽位数比较着色:多于→红,等于→默认(白),少于→蓝
+        const _slotN = lineSlotCount[getLineIdFromNode(card)] || 0;
+        peopleEl.classList.remove('people-over', 'people-under');
+        if (!peopleIsQ && people > 0 && _slotN > 0) {
+          if (people > _slotN) peopleEl.classList.add('people-over');
+          else if (people < _slotN) peopleEl.classList.add('people-under');
+        }
+      }
       const timeEl = card.querySelector('.compact-time');
       if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
     } else if (type === 'rest') {
@@ -6009,103 +6029,6 @@ function doRedo() {
   lastSnapshot = next;
   markUnsaved();
   updateUndoButtons();
-}
-
-function collectAllBoards() {
-  const boards = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith(STORAGE_BOARD_PREFIX)) {
-      const date = key.slice(STORAGE_BOARD_PREFIX.length);
-      try { boards[date] = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
-    }
-  }
-  return boards;
-}
-
-function saveJSON() {
-  exportMenu && exportMenu.classList.remove('show');
-  setActiveCard(null);
-  saveBoard();
-  const d = new Date();
-  const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  const defaultName = `生产计划板${ds}.json`;
-  // 用 popover 替代原生 prompt
-  const anchor = document.getElementById('exportBtn') || document.body;
-  showConfirmPopover(anchor, {
-    text: '导出 JSON',
-    sub: '保存为本地文件',
-    input: { type: 'text', value: defaultName, placeholder: '文件名' },
-    confirmText: '保存',
-    onConfirm: (v) => {
-      const name = (v || '').trim();
-      if (!name) return;
-      const filename = /\.json$/i.test(name) ? name : name + '.json';
-      let library = [];
-      try { library = JSON.parse(localStorage.getItem(STORAGE_LIB) || '[]'); } catch (e) {}
-      const boards = collectAllBoards();
-      const payload = { version: 2, type: 'production-board', library, boards, board: boards[currentDate] || {} };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.download = filename;
-      a.href = URL.createObjectURL(blob);
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      const dayCount = Object.keys(boards).length;
-      showToast(`已保存 ${filename}(${dayCount} 天数据)`, 'success');
-    }
-  });
-}
-
-function importJSON() {
-  exportMenu && exportMenu.classList.remove('show');
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'application/json';
-  inp.onchange = () => {
-    const f = inp.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      let data;
-      try {
-        data = JSON.parse(r.result);
-        if (data.type !== 'production-board') throw new Error('文件类型不匹配');
-        if (!Array.isArray(data.library)) throw new Error('品名库数据结构错误');
-        const hasBoards = data.boards && typeof data.boards === 'object' && Object.keys(data.boards).length > 0;
-        const hasBoard = data.board && typeof data.board === 'object';
-        if (!hasBoards && !hasBoard) throw new Error('计划板数据结构错误');
-        const dayCount = hasBoards ? Object.keys(data.boards).length : 1;
-        const anchor = document.getElementById('exportBtn') || document.body;
-        showConfirmPopover(anchor, {
-          text: `导入 ${dayCount} 天数据?`,
-          sub: '将覆盖当前所有数据,建议先备份',
-          confirmText: '继续导入',
-          danger: true,
-          onConfirm: () => {
-            localStorage.setItem(STORAGE_LIB, JSON.stringify(data.library));
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const k = localStorage.key(i);
-              if (k && k.startsWith(STORAGE_BOARD_PREFIX)) keysToRemove.push(k);
-            }
-            keysToRemove.forEach(k => localStorage.removeItem(k));
-            if (data.boards && Object.keys(data.boards).length > 0) {
-              for (const date in data.boards) {
-                localStorage.setItem(STORAGE_BOARD_PREFIX + date, JSON.stringify(data.boards[date]));
-              }
-            } else {
-              localStorage.setItem(boardKey(), JSON.stringify(data.board));
-            }
-            window.skipAutoSave = true;
-            location.reload();
-          }
-        });
-      } catch (e) {
-        showToast('导入失败: ' + e.message, 'error');
-      }
-    };
-    r.readAsText(f);
-  };
-  inp.click();
 }
 
 function doSaveOverwrite() {
@@ -6431,9 +6354,12 @@ function replaceActualFinishWithSpan() {
 
 function setupPrintLayout() {
   setActiveCard(null);
+  // 防御:上一次打印若没走完 cleanup(afterprint 未触发、doPrint 覆盖 _printCleanup 等),
+  // 先把上次的 inline 还原,保证每次都从干净 DOM 起算 —— 否则会在已缩放/已裁剪的布局上
+  // 叠加计算,minTop/shift 变大,顶部时间轴被多裁掉,表现为「只印下半截(从 16:00 起)」。
+  if (_printCleanup) { try { _printCleanup(); } catch (e) {} _printCleanup = null; }
   const root = document.documentElement;
   const origHourPxStr = getComputedStyle(root).getPropertyValue('--hour-px').trim();
-  const origHourPx = parseFloat(origHourPxStr) || 140;
 
   // 手机横屏 body 上有 mob-ls 类,它把 line-foot/timeline-foot 隐藏、line-head 拉到
   // 92px,等等 —— 这些规则即使在打印态下也会通过 specificity 漏过去几条,导致手机
@@ -6645,80 +6571,6 @@ async function doExportPng() {
     exportBtn.textContent = orig;
     exportBtn.disabled = false;
   }
-}
-
-function doExportCsv() {
-  exportMenu.classList.remove('show');
-  const rows = [['流水线', '类型', '品名/说明', '数量', '品名速度', '计量人数', '流水线速度', '人数', '耗时', '开始时间', '结束时间']];
-  document.querySelectorAll('.line').forEach(line => {
-    const lineNum = line.dataset.line;
-    line.querySelectorAll('.card').forEach(card => {
-      if (card.dataset.type === 'job') {
-        const _li = findLibItem(card.dataset.libId);
-        // 优先用卡片快照,没有就按所在线解析品名库默认/覆盖
-        const _lid = getLineIdFromNode(card);
-        const _speedVal = card.dataset.speed || (_li ? (resolveItemSpeed(_li, _lid) || '') : '');
-        const _meterVal = popupQ(card, '.meter-people') ? popupQ(card, '.meter-people').value : (_li ? _li.meterPeople : '');
-        rows.push([lineNum, '品名', card.dataset.name, popupQ(card, '.qty').value, _speedVal, _meterVal, popupQ(card, '.line-speed').value, popupQ(card, '.people').value, popupQ(card, '.duration').textContent.replace('耗时 ',''), popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
-      } else if (card.dataset.type === 'rest') {
-        rows.push([lineNum, '休息', popupQ(card, '.rest-name-input').value, '', '', '', '', '', popupQ(card, '.rest-min').value + '分钟', popupQ(card, '.t-start').textContent, popupQ(card, '.t-end').textContent]);
-      }
-    });
-  });
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const link = document.createElement('a');
-  link.download = `生产计划板_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.csv`;
-  link.href = URL.createObjectURL(blob);
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-}
-
-function doExportHtml() {
-  exportMenu.classList.remove('show');
-  setActiveCard(null); // 让任何被 detach 的弹窗先归位到卡片内
-  saveBoard();
-  const libData = localStorage.getItem(STORAGE_LIB) || '[]';
-  const boardData = localStorage.getItem(boardKey()) || '{}';
-
-  const docEl = document.documentElement.cloneNode(true);
-
-  // 清空运行时动态生成的内容（防御性：明确清空所有可能含动态节点的容器）
-  const clearIds = ['timelineHead','timelineInner','timelineFoot','board','pager','linesMenu','libList','pickList'];
-  clearIds.forEach(id => {
-    const el = docEl.querySelector('#' + id);
-    if (!el) return;
-    while (el.firstChild) el.removeChild(el.firstChild);
-  });
-  // 防御性：万一克隆树里残留卡片，全部移除
-  docEl.querySelectorAll('.card, .line, .tick, .grid-line, .pip').forEach(n => n.remove());
-
-  // 重置 UI 状态
-  docEl.querySelectorAll('.modal-mask').forEach(m => m.classList.remove('show'));
-  docEl.querySelectorAll('.export-menu').forEach(m => m.classList.remove('show'));
-  // 清空 board 上的动态 inline 样式（gridTemplateColumns 等会由脚本重建）
-  const boardClone = docEl.querySelector('#board');
-  if (boardClone) { boardClone.removeAttribute('style'); }
-  docEl.querySelector('#totalAll').textContent = '共 0 个 · 0:00:00';
-  docEl.querySelector('#clock').textContent = '--:--:--';
-
-  // 在 <head> 最前面注入数据预载脚本
-  const initScript = document.createElement('script');
-  initScript.textContent =
-    `localStorage.setItem(${JSON.stringify(STORAGE_LIB)},${JSON.stringify(libData)});` +
-    `localStorage.setItem(${JSON.stringify(boardKey())},${JSON.stringify(boardData)});` +
-    `localStorage.setItem(${JSON.stringify(STORAGE_CURRENT_DATE)},${JSON.stringify(currentDate)});`;
-  const headEl = docEl.querySelector('head');
-  headEl.insertBefore(initScript, headEl.firstChild);
-
-  const html = '<!DOCTYPE html>\n' + docEl.outerHTML;
-  const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const link = document.createElement('a');
-  link.download = `生产计划板_${date}.html`;
-  link.href = URL.createObjectURL(blob);
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
 document.addEventListener('keydown', e => {
@@ -6990,6 +6842,8 @@ window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type !== 'bento-changed') return;
   setBentoMapFromArray(e.data.bentos);
+  // 便当广播只带 bentos,不含 lineTemplates;槽位数改从存储补读(配置表 saveState 已落盘)
+  refreshLineSlotFromStorage();
   const affected = applyBentoOverlay();
   onBentoSynced(affected);
 });
@@ -7647,16 +7501,6 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 </div>
 <main id="content"></main>
 <div class="backdrop" id="backdrop"></div>
-<div class="modal" id="save-modal">
-  <div class="box">
-    <h3>保存为</h3>
-    <input id="save-name" spellcheck="false">
-    <div class="actions">
-      <button id="save-cancel">取消</button>
-      <button id="save-ok" class="primary">保存</button>
-    </div>
-  </div>
-</div>
 <aside class="drawer" id="materials-drawer">
   <header>材料库 <button id="materials-close" style="float:right;background:transparent;color:var(--fg);border:1px solid var(--line);padding:2px 8px;border-radius:4px;cursor:pointer">×</button></header>
   <div class="add">
@@ -8037,7 +7881,6 @@ try {
 } catch (_) {}
 
 // === 简易日历(切换 planDate,广播给计划板/排岗表) ===
-const CAL_DOW_JP = ['日','月','火','水','木','金','土'];
 const CAL_FIXED_HOL = new Set(['01-01','02-11','02-23','04-29','05-03','05-04','05-05','08-11','11-03','11-23']);
 function calNthWd(y, mo, wd, n) {
   let c = 0;
@@ -8264,30 +8107,6 @@ function _lineHasAnyAssignment(lineId) {
   return false;
 }
 
-// "応援"位置:卡片标签不在排岗表中该线已配置的标准位置列表里
-// (例:线 1 标准位是 1~9,卡片标 "10" 即视为支援/借调位)
-function isSupportCell(bento, posLabel) {
-  if (!bento || !bento.lineId || posLabel == null) return false;
-  const positions = scheduleData.positions && scheduleData.positions[bento.lineId];
-  if (!Array.isArray(positions) || positions.length === 0) return false;
-  const norm = s => String(s).trim();
-  const set = new Set();
-  positions.forEach(p => {
-    const t = norm(p);
-    set.add(t);
-    if (/^\d+$/.test(t)) {
-      const n = parseInt(t, 10);
-      set.add(String(n));
-      set.add(String(n).padStart(2, '0'));
-    }
-    if (POS_ALIAS[t]) set.add(POS_ALIAS[t]);
-    if (POS_ALIAS_REV[t]) set.add(POS_ALIAS_REV[t]);
-  });
-  for (const k of _posLabelKeys(posLabel)) {
-    if (set.has(k)) return false;
-  }
-  return true;
-}
 // === 跨 iframe 桥:把便当库变更广播给父壳(由父壳中转给计划板) ===
 function broadcastBentos() {
   try {
@@ -8402,13 +8221,6 @@ function deleteSlotPositionFrom(bento, posId) {
   saveState();
 }
 
-// 旧 API（线设置模板编辑用） — 仅操作 state.line
-function deleteSlotPosition(posId) {
-  state.line = state.line.filter(p => p.id !== posId);
-  compactSlots(state.line);
-  saveState();
-}
-
 function compactSlots(line) {
   if (!line || !line.length) return;
   const used = [...new Set(line.map(p => p.slot))].sort((a,b) => a - b);
@@ -8459,21 +8271,6 @@ function getLineTemplate(lineId) {
 function resetLineTemplateToSeed(lineId) {
   if (!lineId) { resetLineToSeed(); return; }
   state.lineTemplates[lineId] = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
-  saveState();
-}
-
-// 用某条生产线的默认布局覆盖一个便当的卡片;同时清空 assignments(布局换了,旧分配失效)。
-function applyLineTemplateToBento(bento, lineId) {
-  const tpl = getLineTemplate(lineId);
-  bento.line = tpl.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
-  bento.assignments = {};
-  saveState();
-}
-
-// 重置单个便当的卡片布局为种子
-function resetBentoLine(bento) {
-  bento.assignments = {};
-  bento.line = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
   saveState();
 }
 
@@ -9996,51 +9793,6 @@ window.matchMedia("(orientation:portrait)").addEventListener("change", () => ren
 let _resizeT;
 window.addEventListener("resize", () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => render(), 200); });
 
-function saveJSON() {
-  saveState();
-  const d = new Date();
-  const ds = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-  const modal = document.getElementById("save-modal");
-  const input = document.getElementById("save-name");
-  input.value = "配置表" + ds + ".json";
-  modal.classList.add("show");
-  setTimeout(() => { input.focus(); input.select(); }, 0);
-
-  function close() {
-    modal.classList.remove("show");
-    document.getElementById("save-ok").onclick = null;
-    document.getElementById("save-cancel").onclick = null;
-    input.onkeydown = null;
-  }
-  function doSave() {
-    let name = input.value.trim();
-    if (!name) return;
-    if (!/\.json$/i.test(name)) name += ".json";
-    const payload = {
-      version: state.version,
-      materials: state.materials,
-      line: state.line,
-      bentos: state.bentos,
-      meta: state.meta,
-      _migrations: state._migrations
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
-    const a = document.createElement("a");
-    a.download = name;
-    a.href = URL.createObjectURL(blob);
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    close();
-    showBanner(`✓ 已保存 ${state.bentos.length} 个便当 / ${state.materials.length} 个材料 / ${state.line.length} 个位置`, "ok");
-  }
-  document.getElementById("save-ok").onclick = doSave;
-  document.getElementById("save-cancel").onclick = close;
-  input.onkeydown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); doSave(); }
-    else if (e.key === "Escape") close();
-  };
-}
-
 function loadHtml2Canvas() {
   // 父壳已通过 srcdoc 注入 html2canvas;旧版残留的 CDN 兜底已移除
   if (window.html2canvas) return Promise.resolve(window.html2canvas);
@@ -10073,42 +9825,6 @@ async function exportImage() {
   }
 }
 
-function importJSON() {
-  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
-  inp.onchange = () => {
-    const f = inp.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      let data;
-      try {
-        data = JSON.parse(r.result);
-        if (data.version !== 1) throw new Error("版本不匹配");
-        if (!Array.isArray(data.materials) || !Array.isArray(data.line) || !Array.isArray(data.bentos)) throw new Error("数据结构错误");
-      } catch (e) {
-        showToast('导入失败: ' + e.message, 'error');
-        return;
-      }
-      const anchor = document.getElementById('btn-import') || document.body;
-      showConfirmPopover(anchor, {
-        text: '导入数据?',
-        sub: '将覆盖当前所有数据,建议先备份',
-        confirmText: '继续导入',
-        danger: true,
-        onConfirm: () => {
-          state = data;
-          if (!state.current) state.current = { screen:"operate", bentoId:null, editingBentoId:null };
-          seedLineIfEmpty(state);
-          migrate(state);
-          saveState();
-          render();
-          showToast('导入完成', 'success');
-        }
-      });
-    };
-    r.readAsText(f);
-  };
-  inp.click();
-}
 const exportMenu = document.getElementById("export-menu");
 document.getElementById("btn-export").onclick = (e) => {
   e.stopPropagation();
