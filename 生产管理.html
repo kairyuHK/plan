@@ -4181,6 +4181,13 @@ function applyBentoOverlay() {
           if (n > 0) item.peopleByLine[lid] = n;
         }
       }
+      // 便当「当前编辑线」的最新布局在工作副本 b.line 里;b.layouts[b.lineId] 只在切线时才快照,
+      // 编辑当前线加/减岗位后它是过时的。所以当前线人数以 b.line 为准覆盖,否则卡片显示旧值不刷新。
+      if (b.lineId && b.lineId !== 'tsk' && Array.isArray(b.line)) {
+        if (!item.peopleByLine || typeof item.peopleByLine !== 'object') item.peopleByLine = {};
+        if (b.line.length > 0) item.peopleByLine[b.lineId] = b.line.length;
+        else delete item.peopleByLine[b.lineId];
+      }
       // 把配置表的 b.lineSpeeds 同步到品名库的 lineSpeedByLine。
       // 已链接便当时配置表是唯一真源 —— 值清空 = 删 key,而不是保留旧值。
       // 値付け(tsk)不参与同步:plan 板不暴露 tsk 的按线编辑,也不从配置表隐式接收
@@ -4843,7 +4850,15 @@ function propagateLibChange(libId) {
     affectedLines.add(card.closest('.line'));
   });
   affectedLines.forEach(l => l && recalc(l));
-  if (affectedLines.size) scheduleSaveBoard();
+  if (affectedLines.size) {
+    markUnsaved();
+    // 配置表同步来的人数/名称改动不是用户在计划板上的编辑,不该进 undo 栈 —— 否则一撤回就把
+    // 人数退回同步前的旧值,和配置表不一致。改为把历史基线抬到「同步后」的当前状态:不入栈,
+    // 但之后的真实编辑仍以同步后为撤回目标(不会混入旧人数)。
+    lastSnapshot = snapshotStr();
+    redoStack.length = 0;
+    updateUndoButtons();
+  }
 }
 // 把品名库当前的「品名速度 / 计量人数」推送到当前显示日期(currentDate)所有该品名的卡片上。
 // 只影响打开的这一天的 DOM 与存储,其它日期的快照不动。
