@@ -10520,6 +10520,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('pageshow', repaintActiveFrame);
 window.addEventListener('focus', repaintActiveFrame);                                  // 窗口重新聚焦
 window.addEventListener('orientationchange', () => { requestAnimationFrame(repaintActiveFrame); }); // 旋转屏幕
+document.addEventListener('resume', repaintActiveFrame);                                // Page Lifecycle:长时间后台被冻结(freeze)后恢复,专门覆盖「放很久再打开」这一情形
 
 // === 手机端左右滑屏切换 app ===
 const APP_ORDER = ['plan', 'config', 'schedule'];
