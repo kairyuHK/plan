@@ -5124,8 +5124,11 @@ function addJobCard(grid, libItem, savedData) {
   const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
   const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (_resolvedLineSpeed > 0 ? _resolvedLineSpeed : '');
   const qtyVal = savedData?.qty != null ? savedData.qty : '';
-  // 人数按目标线解析:同一便当在不同生产线上的卡片布局可能不同(peopleByLine[lineId])
-  const peopleVal = savedData?.people != null ? savedData.people : peopleToInputVal(resolveItemPeople(libItem, _lineId));
+  // 人数是 readonly、完全由配置表(便当布局)决定,不是每卡独立可编辑值 —— 所以始终按「当前配置」解析,
+  // 不再优先用卡片旧快照。否则「以前建的卡」会一直显示和配置表对不上的旧人数(加载时不会被纠正)。
+  // 品名库被删的卡:libItem 是 applyState 传入的兜底对象(带旧 people、无 peopleByLine),
+  // resolveItemPeople 会回落到它携带的旧值,行为不变。
+  const peopleVal = peopleToInputVal(resolveItemPeople(libItem, _lineId));
   node.innerHTML = `
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
