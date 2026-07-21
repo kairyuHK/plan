@@ -10480,6 +10480,13 @@ function repaintActiveFrame() {
   setTimeout(kick, 120);
   setTimeout(kick, 280);
   setTimeout(kick, 650);
+  // 定时仍可能漏(残影画出的时机不定)。实测「再操作一下就消失」——所以恢复后用户第一次触屏时再补一拍:
+  // 此刻 iOS 必定已把残影画出来了,能可靠抹掉,用户一上手就干净,不必手动再切一次 App。
+  if (!doc.__repaintTouchArmed) {
+    doc.__repaintTouchArmed = true;
+    const onFirstTouch = () => { doc.__repaintTouchArmed = false; kick(); };
+    doc.addEventListener('touchstart', onFirstTouch, { capture: true, passive: true, once: true });
+  }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') repaintActiveFrame(); });
 window.addEventListener('pageshow', repaintActiveFrame);
