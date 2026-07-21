@@ -10465,7 +10465,7 @@ function repaintActiveFrame() {
       // sticky 时间列/表头/统计栏的合成残影(计划板尤甚),靠「净零微滚」强制它们重新定位、重绘,
       // 比只切 body transform 更彻底 —— transform 只重画 body 层,单独成层的 sticky 元素的旧后备缓存不一定被丢弃。
       try {
-        [doc.scrollingElement, ...doc.querySelectorAll('.main, .board, .timeline-body')].forEach(el => {
+        [doc.scrollingElement, ...doc.querySelectorAll('.main, .board, .timeline-body, .cards-wrap')].forEach(el => {
           if (!el) return;
           const st = el.scrollTop, sl = el.scrollLeft;
           el.scrollTop = st + 1; el.scrollTop = st;
@@ -10475,8 +10475,11 @@ function repaintActiveFrame() {
     }); });
   };
   kick();
-  // iOS 独立 App 从后台恢复时,残影有时在 visible/pageshow 事件「之后」才被画出来 —— 延时再补一次才抹得掉。
+  // iOS 独立 App 从后台恢复时,残影有时在 visible/pageshow 事件「之后」才被画出来 —— 残影出现的时机不固定,
+  // 在恢复后的一段窗口里多补几拍(120/280/650ms),覆盖不同机型/负载下的重绘延迟,减少漏网。
+  setTimeout(kick, 120);
   setTimeout(kick, 280);
+  setTimeout(kick, 650);
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') repaintActiveFrame(); });
 window.addEventListener('pageshow', repaintActiveFrame);
