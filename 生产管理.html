@@ -10472,6 +10472,16 @@ function repaintActiveFrame() {
           el.scrollLeft = sl + 1; el.scrollLeft = sl;
         });
       } catch(_) {}
+      // 更彻底:把 sticky 栏(时间列/表头/表尾)的 position 瞬间切成 static 再切回,强制销毁并重建它们的
+      // 合成层 —— 微滚只是移动旧层,旧后备缓存往往只被剥掉一部分(所以要切好几次 App 才干净);
+      // 重建层能一次抹净。全程同步、中间不绘制,屏幕看不到 static 中间态。
+      try {
+        const bars = [...doc.querySelectorAll('.timeline, .timeline-head, .timeline-foot, .line-head, .line-foot')];
+        const prev = bars.map(el => el.style.position);
+        bars.forEach(el => { el.style.position = 'static'; });
+        void doc.body.offsetHeight; // 强制回流,阻止 static→原值 被合并成空操作
+        bars.forEach((el, i) => { el.style.position = prev[i]; });
+      } catch(_) {}
     }); });
   };
   kick();
