@@ -2278,6 +2278,17 @@ const Pages = (() => {
     transition: background 0.12s var(--ease), color 0.12s var(--ease);
   }
   .export-menu button:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  #teTableToggle { border-top: 1px solid var(--border-strong); margin-top: 3px; }
+  #teTableToggle .te-caret { margin-left: auto; transition: transform .2s var(--ease); font-size: 10px; }
+  #teTableToggle.open .te-caret { transform: rotate(180deg); }
+  .te-line-sub {
+    max-height: 0; overflow: hidden;
+    transition: max-height .22s var(--ease);
+    background: rgba(0,0,0,0.18);
+  }
+  .te-line-sub.show { max-height: 280px; }
+  .te-line-sub button { padding-left: 30px; font-size: 12px; }
+  .te-line-sub button::before { content: "└"; margin-right: 6px; color: var(--text-mute); }
 
   .main {
     position: relative; z-index: 1;
@@ -3919,6 +3930,8 @@ button:active{transform:scale(.97)}
         <button id="printBtn" onclick="doPrint()">打印</button>
         <button onclick="doExportPdf()">导出PDF</button>
         <button onclick="doExportPng()">导出图片</button>
+        <button id="teTableToggle" onclick="toggleTableExportSub(event)">导出表格 <span class="te-caret">▾</span></button>
+        <div id="teLineBtns" class="te-line-sub"></div>
       </div>
     </div>
     <span id="totalAll" style="white-space:nowrap;flex:0 0 auto">总计 0 个</span>
@@ -3996,6 +4009,121 @@ button:active{transform:scale(.97)}
     </div>
     <div class="modal-body">
       <div class="pick-list" id="pickList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 导出表格：A4 纵向生产计划表 ===== -->
+<style>
+#tableExportOverlay{position:fixed;inset:0;z-index:400;display:none;background:rgba(9,12,18,.82);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);overflow:auto;
+  padding:64px 20px 40px;justify-content:center;align-items:flex-start}
+#tableExportOverlay.show{display:flex}
+.te-toolbar{position:fixed;top:0;left:0;right:0;height:52px;z-index:410;display:flex;align-items:center;
+  gap:10px;padding:0 18px;background:rgba(17,22,30,.96);border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.te-toolbar .te-tt{font-weight:700;font-size:14px;color:#e8ecf2;letter-spacing:.5px;margin-right:18px;
+  display:flex;align-items:center;gap:8px;white-space:nowrap}
+.te-line-switch{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.te-line-switch .lsw-lbl{font-size:12px;color:#9aa4b2;margin-right:2px}
+.te-line-switch button{font:inherit;font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#c7d0dc;cursor:pointer;transition:.15s}
+.te-line-switch button:hover{background:rgba(255,255,255,.1)}
+.te-line-switch button.active{background:#f59e0b;border-color:#f59e0b;color:#14181f}
+.te-toolbar .te-tt::before{content:"";width:6px;height:16px;border-radius:3px;background:#f59e0b}
+.te-btn{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e8ecf2;transition:.15s}
+.te-btn:hover{background:rgba(255,255,255,.12)}
+.te-btn.accent{background:#f59e0b;border-color:#f59e0b;color:#14181f}
+.te-btn.accent:hover{background:#ffb020}
+.te-btn.close{color:#9aa4b2}
+
+/* A4 纵向纸张 210×297mm ≈ 794×1123px @96dpi */
+.te-sheet{width:794px;min-height:1123px;background:#fff;color:#14181f;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);border-radius:2px;
+  padding:40px 44px 34px;display:flex;flex-direction:column;box-sizing:border-box;
+  font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",-apple-system,"Segoe UI",sans-serif}
+
+/* 抬头：标题 + 部门 / 日期 */
+.te-head{flex:0 0 auto;margin-bottom:18px}
+.te-title{text-align:center;font-size:26px;font-weight:800;letter-spacing:6px;color:#1f2937;margin:0 0 4px}
+.te-title-en{text-align:center;font-size:11px;letter-spacing:3px;color:#9aa4b2;text-transform:uppercase;margin-bottom:16px}
+.te-meta{display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding-bottom:10px;border-bottom:2.5px solid #1f2937}
+.te-meta .te-field{display:flex;align-items:center;gap:8px;font-size:15px;color:#374151}
+.te-meta .te-field .lbl{font-weight:700;color:#6b7280;white-space:nowrap}
+.te-meta .te-field .val{font-weight:700;color:#111827;padding:2px 4px;outline:none}
+.te-meta .te-field .val:empty::before{content:attr(data-ph);color:#c2c9d3;font-weight:500}
+.te-meta .te-field .val:focus{background:#fff8ec;border-radius:4px}
+
+/* 表格：撑满剩余高度 */
+.te-table-wrap{flex:1 1 auto;position:relative;margin-top:14px}
+.te-table{position:absolute;inset:0;width:100%;height:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
+.te-table th,.te-table td{border:1px solid #d5dae2;text-align:center;padding:0 6px;overflow:hidden}
+.te-table thead th{height:42px;background:#1f2937;color:#fff;font-size:14px;font-weight:700;
+  letter-spacing:1px;border-color:#33404f}
+.te-table tbody td{font-size:14px;color:#1f2937;line-height:1.25}
+.te-table tbody tr:nth-child(even) td{background:#f6f8fb}
+.te-table tbody td.te-idx{color:#9aa4b2;font-weight:600;font-size:13px}
+.te-table tbody td.te-name{text-align:left;padding-left:12px;font-weight:600}
+.te-table tbody td.te-name .ln{display:inline-block;font-size:10px;font-weight:700;color:#fff;
+  background:#94a3b8;border-radius:4px;padding:1px 5px;margin-right:7px;vertical-align:1px;letter-spacing:.5px}
+.te-table tbody td.te-time{font-size:13px;color:#374151;letter-spacing:.3px}
+.te-table tbody td.te-num{font-weight:600}
+.te-table tbody tr.te-empty td{color:transparent}
+.te-table tbody tr.te-empty td.te-idx{color:#9aa4b2}
+
+/* 统计栏 */
+.te-table tfoot td{height:50px;background:#1f2937;border-color:#33404f;font-size:17px;font-weight:800;color:#fff}
+.te-table tfoot .te-sum-lbl{letter-spacing:4px;color:#c7d0dc;font-size:16px}
+.te-table tfoot .te-sum-val{font-size:20px;color:#fff}
+
+/* 页脚 */
+.te-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:12px;
+  font-size:11px;color:#9aa4b2;letter-spacing:.5px}
+
+/* 打印走「新窗口打印 A4 图片」方案(见 teExportPrint),不再依赖本页 @media print */
+</style>
+<div id="tableExportOverlay" role="dialog" aria-modal="true">
+  <div class="te-toolbar">
+    <span class="te-tt">生产计划表 · 导出预览</span>
+    <div class="te-line-switch" id="teLineSwitch"></div>
+    <button class="te-btn" style="margin-left:auto" onclick="teExportPrint()">打印</button>
+    <button class="te-btn accent" onclick="teExportPdf()">导出PDF</button>
+    <button class="te-btn" onclick="teExportPng()">导出图片</button>
+    <button class="te-btn close" onclick="closeTableExport()">关闭 ✕</button>
+  </div>
+  <div class="te-sheet" id="teSheet">
+    <div class="te-head">
+      <h1 class="te-title">生产计划表</h1>
+      <div class="te-title-en">Production Schedule</div>
+      <div class="te-meta">
+        <div class="te-field"><span class="val" id="teLineName">—</span><span class="lbl">LINE</span></div>
+        <div class="te-field"><span class="lbl">日期</span><span class="val" id="teDate" contenteditable="true" data-ph="日期"></span></div>
+      </div>
+    </div>
+    <div class="te-table-wrap">
+      <table class="te-table">
+        <colgroup>
+          <col style="width:7%"><col style="width:30%"><col style="width:18%"><col style="width:9%">
+          <col style="width:9%"><col style="width:14%"><col style="width:13%">
+        </colgroup>
+        <thead>
+          <tr><th>序号</th><th>品名</th><th>时间</th><th>速度</th><th>人数</th><th>耗时</th><th>数量</th></tr>
+        </thead>
+        <tbody id="teBody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="te-sum-lbl">合　计</td>
+            <td><span class="te-sum-val" id="teSumDur">—</span></td>
+            <td><span class="te-sum-val" id="teSumQty">0</span></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="te-foot">
+      <span id="teFootLeft">共 0 项</span>
+      <span id="teFootRight">流水线生产计划板</span>
     </div>
   </div>
 </div>
@@ -6290,7 +6418,16 @@ document.getElementById('copyDayDoBtn').addEventListener('click', () => {
 // ============ 导出功能 ============
 const exportBtn = document.getElementById('exportBtn');
 const exportMenu = document.getElementById('exportMenu');
-exportBtn.addEventListener('click', (e) => { e.stopPropagation(); exportMenu.classList.toggle('show'); });
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu.classList.toggle('show');
+  if (exportMenu.classList.contains('show')) {
+    buildTableExportMenu();
+    // 每次打开菜单时,生产线子列表默认收起
+    document.getElementById('teLineBtns').classList.remove('show');
+    document.getElementById('teTableToggle').classList.remove('open');
+  }
+});
 document.addEventListener('click', () => exportMenu.classList.remove('show'));
 
 function trimGridForExport(minVisH) {
@@ -6590,6 +6727,194 @@ async function doExportPng() {
     exportBtn.disabled = false;
   }
 }
+
+// ============ 导出表格：A4 纵向生产计划表(单条生产线) ============
+const TE_ROWS = 20; // 固定 20 个数据栏
+
+// 生产线显示名:夕盛 / 01 / 02 … 05
+function teLineDisplay(num) {
+  return num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
+}
+
+
+// 收集指定生产线上的品名卡片(按卡片顺序),只取有品名且有数量的行
+function teCollectRows(lineNum) {
+  const rows = [];
+  const line = document.querySelector(`.line[data-line="${lineNum}"]`);
+  if (!line) return rows;
+  line.querySelectorAll('.card[data-type="job"]').forEach(card => {
+    const name = (card.dataset.name || '').trim();
+    const qty = parseFloat(popupQ(card, '.qty').value) || 0;
+    if (!name || qty <= 0) return; // 跳过空白 / 未填数量的草稿卡
+    const cardSpeed = parseFloat(card.dataset.speed);
+    const libItem = findLibItem(card.dataset.libId);
+    const speed = cardSpeed > 0 ? cardSpeed : (libItem && libItem.speed > 0 ? libItem.speed : 0);
+    const meterPeople = Math.max(1, parseFloat(popupQ(card, '.meter-people').value) || 1);
+    const durSec = (speed > 0 && meterPeople > 0) ? (qty / (speed * meterPeople)) * 60 : 0;
+    const tS = popupQ(card, '.t-start').textContent.trim();
+    const tE = popupQ(card, '.t-end').textContent.trim();
+    const time = (tS && tS !== '—' && tE && tE !== '—') ? `${tS}~${tE}` : '—';
+    const lineSpeed = (popupQ(card, '.line-speed').value || '').trim() || '—';
+    const people = (popupQ(card, '.people').value || '').trim() || '—';
+    rows.push({ name, time, lineSpeed, people, durSec, qty });
+  });
+  return rows;
+}
+
+// 在「输出」菜单里生成 6 条生产线选项(夕盛 / 01…05)
+function buildTableExportMenu() {
+  const box = document.getElementById('teLineBtns');
+  if (!box) return;
+  box.innerHTML = '';
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = teLineDisplay(i);
+    btn.addEventListener('click', (e) => { e.stopPropagation(); openTableExport(i); });
+    box.appendChild(btn);
+  }
+}
+
+// 预览顶栏的生产线切换器:直接在预览里换线,不用关掉重开
+function teBuildLineSwitch(active) {
+  const box = document.getElementById('teLineSwitch');
+  if (!box) return;
+  box.innerHTML = '<span class="lsw-lbl">生产线</span>';
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    const b = document.createElement('button');
+    b.textContent = teLineDisplay(i);
+    if (i === active) b.classList.add('active');
+    b.addEventListener('click', () => openTableExport(i));
+    box.appendChild(b);
+  }
+}
+
+// 点击「导出表格」展开/收起下方的 6 条生产线
+function toggleTableExportSub(e) {
+  if (e) e.stopPropagation();
+  const sub = document.getElementById('teLineBtns');
+  const tog = document.getElementById('teTableToggle');
+  const open = sub.classList.toggle('show');
+  tog.classList.toggle('open', open);
+}
+
+let teCurrentLine = 1;
+function openTableExport(lineNum) {
+  teCurrentLine = lineNum;
+  exportMenu.classList.remove('show');
+  const rows = teCollectRows(lineNum);
+  const shown = rows.slice(0, TE_ROWS);
+  let totalDur = 0, totalQty = 0;
+  const body = document.getElementById('teBody');
+  body.innerHTML = '';
+  for (let i = 0; i < TE_ROWS; i++) {
+    const r = shown[i];
+    const tr = document.createElement('tr');
+    if (!r) {
+      tr.className = 'te-empty';
+      tr.innerHTML = `<td class="te-idx">${i + 1}</td><td class="te-name">&nbsp;</td><td></td><td></td><td></td><td></td><td></td>`;
+    } else {
+      totalDur += r.durSec; totalQty += r.qty;
+      tr.innerHTML =
+        `<td class="te-idx">${i + 1}</td>` +
+        `<td class="te-name">${escapeHtml(r.name)}</td>` +
+        `<td class="te-time">${escapeHtml(r.time)}</td>` +
+        `<td>${escapeHtml(String(r.lineSpeed))}</td>` +
+        `<td>${escapeHtml(String(r.people))}</td>` +
+        `<td>${fmtDuration(r.durSec)}</td>` +
+        `<td class="te-num">${r.qty.toLocaleString()}</td>`;
+    }
+    body.appendChild(tr);
+  }
+  document.getElementById('teSumDur').textContent = fmtDurationHM(totalDur);
+  document.getElementById('teSumQty').textContent = totalQty.toLocaleString();
+
+  document.getElementById('teLineName').textContent = teLineDisplay(lineNum);
+  teBuildLineSwitch(lineNum);
+  document.getElementById('teDate').textContent = currentDate || todayStr();
+
+  const foot = document.getElementById('teFootLeft');
+  foot.textContent = rows.length > TE_ROWS
+    ? `共 ${rows.length} 项(表格显示前 ${TE_ROWS} 项)`
+    : `共 ${rows.length} 项`;
+  if (rows.length > TE_ROWS) showToast(`该线共 ${rows.length} 项,单页表格仅显示前 ${TE_ROWS} 项`, 'warn');
+
+  document.getElementById('tableExportOverlay').classList.add('show');
+}
+
+function closeTableExport() {
+  document.getElementById('tableExportOverlay').classList.remove('show');
+}
+
+function teFileStamp() {
+  const line = teLineDisplay(teCurrentLine).replace(/\s+/g, '');
+  const date = (document.getElementById('teDate').textContent.trim() || todayStr()).replace(/\//g, '-');
+  return `生产计划表_${line}_${date}`;
+}
+
+async function teExportPdf() {
+  if (typeof html2canvas === 'undefined' || !window.jspdf) {
+    showToast('PDF 导出库未加载,请刷新页面重试', 'error'); return;
+  }
+  const sheet = document.getElementById('teSheet');
+  try {
+    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+    // 等比铺满,保持 A4 比例(纸张本身即 A4 比例,几乎正好填满)
+    const iw = pw, ih = canvas.height * (pw / canvas.width);
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, iw, Math.min(ih, ph));
+    pdf.save(teFileStamp() + '.pdf');
+  } catch (err) {
+    showToast('PDF 导出失败: ' + err.message, 'error');
+  }
+}
+
+async function teExportPng() {
+  if (typeof html2canvas === 'undefined') { showToast('截图库未加载,请刷新页面重试', 'error'); return; }
+  const sheet = document.getElementById('teSheet');
+  try {
+    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    const link = document.createElement('a');
+    link.download = teFileStamp() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    showToast('图片导出失败: ' + err.message, 'error');
+  }
+}
+
+// 打印:本页在 iframe 内,直接 window.print() 会被 Chrome 打印成外层整页并把 iframe 裁掉(只出半页)。
+// 改为把整张表渲染成 A4 比例图片,开一个顶层新窗口铺满 A4 打印,彻底绕开裁剪。
+async function teExportPrint() {
+  if (typeof html2canvas === 'undefined') { showToast('打印库未加载,请刷新页面重试', 'error'); return; }
+  // 必须在点击的同一同步过程里先开窗口,否则 await 之后再 open 会丢失用户手势被弹窗拦截。
+  const w = window.open('', '_blank');
+  if (!w) { showToast('打印窗口被浏览器拦截,请允许本页弹窗后重试', 'error'); return; }
+  w.document.write('<!doctype html><meta charset="utf-8"><title>' + teFileStamp() +
+    '</title><body style="margin:0;font:14px sans-serif;color:#888;padding:24px">正在生成打印页…</body>');
+  w.document.close();
+  const sheet = document.getElementById('teSheet');
+  try {
+    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    const img = canvas.toDataURL('image/png');
+    w.document.open();
+    w.document.write(
+      '<!doctype html><html><head><meta charset="utf-8"><title>' + teFileStamp() + '</title>' +
+      '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}' +
+      'img{display:block;width:100%;height:auto}</style></head>' +
+      '<body><img src="' + img + '" onload="setTimeout(function(){window.focus();window.print();},100)"></body></html>'
+    );
+    w.document.close();
+  } catch (err) {
+    w.close();
+    showToast('打印失败: ' + err.message, 'error');
+  }
+}
+
+document.getElementById('tableExportOverlay').addEventListener('click', e => {
+  if (e.target.id === 'tableExportOverlay') closeTableExport();
+});
 
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
