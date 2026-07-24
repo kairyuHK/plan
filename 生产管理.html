@@ -5970,6 +5970,13 @@ function fitCardCompact(card, height) {
   }
 }
 
+// 非生产项:朝礼/不足/扫除(掃除)/応援/段取り 等,数量不计入统计(行统计/顶部总计/导出表格通用)
+function isNoQtyName(name) {
+  const s = (name || '').trim();
+  return s === '朝礼' || s === '不足' || s === '扫除' || s === '掃除' ||
+         s === '応援' || s === '段取り' || s === '段取';
+}
+
 function recalc(line) {
   const grid = line.querySelector('.cards-grid');
   const startSec = parseClock(line.querySelector('.start-time').value);
@@ -5999,7 +6006,8 @@ function recalc(line) {
       if (speed > 0 && qty > 0 && meterPeople > 0) duration = (qty / (speed * meterPeople)) * 60;
       popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
       if (cursor != null && duration > 0) { cardStart = cursor; cardEnd = cursor + duration; cursor = cardEnd + gapSec; lastEnd = cardEnd; }
-      totalQty += qty; totalSec += duration;
+      if (!isNoQtyName(card.dataset.name)) totalQty += qty;
+      totalSec += duration;
       const letterEl = card.querySelector('.compact-name-letter');
       if (letterEl) {
         letterEl.textContent = (card.dataset.name || '').charAt(0);
@@ -6115,7 +6123,7 @@ function recalcGlobal() {
       const speed = (_cardSpeed > 0) ? _cardSpeed : ((libItem && libItem.speed > 0) ? libItem.speed : 0);
       const qty = parseFloat(popupQ(card, '.qty').value) || 0;
       const mp = Math.max(1, parseFloat(popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
-      cnt++; q += qty;
+      cnt++; if (!isNoQtyName(card.dataset.name)) q += qty;
       if (speed > 0 && qty > 0) s += (qty / (speed * mp)) * 60;
     });
     const ft = line.querySelector('.finish-total');
@@ -6745,8 +6753,6 @@ async function doExportPng() {
 
 // ============ 导出表格：A4 纵向生产计划表(单条生产线) ============
 const TE_ROWS = 20; // 固定 20 个数据栏
-// 非生产项:朝礼/不足/扫除(掃除)/応援/段取り 等,不显示数量、也不计入数量总计
-const TE_NO_QTY = new Set(['朝礼', '不足', '扫除', '掃除', '応援', '段取り', '段取']);
 
 // 生产线显示名:夕盛 / 01 / 02 … 05
 function teLineDisplay(num) {
@@ -6862,7 +6868,7 @@ function openTableExport(lineNum) {
       tr.innerHTML = `<td class="te-idx">${i + 1}</td><td class="te-name">&nbsp;</td><td></td><td></td><td></td><td></td><td></td>`;
     } else {
       totalDur += r.durSec;
-      const noQty = TE_NO_QTY.has(r.name.trim());
+      const noQty = isNoQtyName(r.name);
       if (!noQty) totalQty += r.qty;
       tr.innerHTML =
         `<td class="te-idx">${i + 1}</td>` +
