@@ -4060,8 +4060,8 @@ button:active{transform:scale(.97)}
 .te-meta .te-field .val:focus{background:#fff8ec;border-radius:4px}
 
 /* 表格：撑满剩余高度 */
-.te-table-wrap{flex:1 1 auto;position:relative;margin-top:14px}
-.te-table{position:absolute;inset:0;width:100%;height:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
+.te-table-wrap{flex:1 1 auto;margin-top:14px}
+.te-table{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
 .te-table th,.te-table td{border:1px solid #d5dae2;text-align:center;padding:0 6px;overflow:hidden}
 .te-table thead th{height:42px;background:#1f2937;color:#fff;font-size:14px;font-weight:700;
   letter-spacing:1px;border-color:#33404f}
@@ -6815,6 +6815,19 @@ function buildTableExportMenu() {
   }
 }
 
+// 给每个数据行设固定像素高,均分表格区高度,把整张 A4 铺满。
+// (不能靠 <table height:100%> 自动分摊 —— WebKit/iOS Safari 不分摊,会在下方留空一半)
+function teFillRows() {
+  const wrap = document.querySelector('.te-table-wrap');
+  const thead = document.querySelector('.te-table thead');
+  const tfoot = document.querySelector('.te-table tfoot');
+  const rows = document.querySelectorAll('.te-table tbody tr');
+  if (!wrap || !thead || !tfoot || !rows.length) return;
+  const avail = wrap.clientHeight - thead.offsetHeight - tfoot.offsetHeight;
+  const h = Math.max(18, Math.floor((avail / rows.length) * 100) / 100);
+  rows.forEach(tr => { tr.style.height = h + 'px'; });
+}
+
 // 移动端把整张 A4 缩放到屏宽:transform 缩放 + 负边距回收布局空间,避免横向滚动
 function teFitSheet() {
   const sheet = document.getElementById('teSheet');
@@ -6934,6 +6947,7 @@ function openTableExport(lineNum) {
   if (rows.length > TE_ROWS) showToast(`该线共 ${rows.length} 项,单页表格仅显示前 ${TE_ROWS} 项`, 'warn');
 
   document.getElementById('tableExportOverlay').classList.add('show');
+  teFillRows();
   teFitSheet();
 }
 
