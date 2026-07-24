@@ -2286,6 +2286,7 @@ const Pages = (() => {
     transition: max-height .22s var(--ease);
     background: rgba(0,0,0,0.18);
   }
+  :root[data-theme="light"] .te-line-sub { background: rgba(0,0,0,0.045); }
   .te-line-sub.show { max-height: 280px; }
   .te-line-sub button { padding-left: 30px; font-size: 12px; }
   .te-line-sub button::before { content: "└"; margin-right: 6px; color: var(--text-mute); }
@@ -4083,6 +4084,23 @@ button:active{transform:scale(.97)}
 /* 页脚 */
 .te-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:12px;
   font-size:11px;color:#9aa4b2;letter-spacing:.5px}
+
+/* ===== 白天模式:预览外壳(遮罩 + 顶栏)跟随浅色;A4 纸张本身始终白色不变 =====
+   统一带 .te-toolbar 前缀把特异性提到 (0,4,0)+,确保盖过基础深色按钮样式 */
+:root[data-theme="light"] #tableExportOverlay{background:rgba(224,227,233,.8)}
+:root[data-theme="light"] .te-toolbar{background:rgba(249,250,252,.97);
+  border-bottom:1px solid rgba(0,0,0,.1);box-shadow:0 4px 18px rgba(0,0,0,.12)}
+:root[data-theme="light"] .te-toolbar .te-tt{color:#1f2937}
+:root[data-theme="light"] .te-toolbar .te-btn{border-color:rgba(0,0,0,.14);background:rgba(0,0,0,.03);color:#374151}
+:root[data-theme="light"] .te-toolbar .te-btn:hover{background:rgba(0,0,0,.07)}
+:root[data-theme="light"] .te-toolbar .te-btn.close{color:#6b7280}
+:root[data-theme="light"] .te-toolbar .te-line-switch .lsw-lbl{color:#6b7280}
+:root[data-theme="light"] .te-toolbar .te-line-switch button{border-color:rgba(0,0,0,.14);background:rgba(0,0,0,.03);color:#4b5563}
+:root[data-theme="light"] .te-toolbar .te-line-switch button:hover{background:rgba(0,0,0,.07)}
+/* 主题色元素:白天模式下也要保住 var(--accent)(特异性再高一级,盖过上面的通用浅色) */
+:root[data-theme="light"] .te-toolbar .te-btn.accent{background:var(--accent);border-color:var(--accent);color:#14181f}
+:root[data-theme="light"] .te-toolbar .te-btn.accent:hover{background:var(--accent-light)}
+:root[data-theme="light"] .te-toolbar .te-line-switch button.active{background:var(--accent);border-color:var(--accent);color:#14181f}
 
 /* ===== 移动端优化：顶栏重排两行 + A4 缩放到屏宽 ===== */
 @media (max-width: 820px){
@@ -6822,7 +6840,11 @@ async function teRenderCanvas() {
   sheet.style.transform = ''; sheet.style.marginRight = ''; sheet.style.marginBottom = '';
   await new Promise(r => setTimeout(r, 30));
   try {
-    return await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    // 显式给定 794×1123 与同尺寸 window,避免手机端窄视口下 html2canvas 只截到可视宽度导致比例错乱
+    return await html2canvas(sheet, {
+      backgroundColor: '#fff', scale: 2, useCORS: true, logging: false,
+      width: 794, height: 1123, windowWidth: 794, windowHeight: 1123,
+    });
   } finally {
     sheet.style.transform = t; sheet.style.marginRight = mr; sheet.style.marginBottom = mb;
   }
@@ -6968,8 +6990,8 @@ async function teExportPrint() {
   fd.open();
   fd.write(
     '<!doctype html><html><head><meta charset="utf-8"><title>' + teFileStamp() + '</title>' +
-    '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}' +
-    'img{display:block;width:100%;height:auto}</style></head><body><img src="' + img + '"></body></html>'
+    '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff;overflow:hidden}' +
+    'img{display:block;width:210mm;height:297mm;object-fit:contain}</style></head><body><img src="' + img + '"></body></html>'
   );
   fd.close();
   const cleanup = () => setTimeout(() => { const el = document.getElementById('tePrintFrame'); if (el) el.remove(); }, 300);
