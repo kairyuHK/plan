@@ -6833,21 +6833,38 @@ function teFitSheet() {
   }
 }
 
-// 导出/打印时按原始 1:1 尺寸渲染(临时去掉移动端缩放),渲染完再还原
+// 导出/打印时按原始 1:1(794×1123)渲染。
+// 关键:把纸张「克隆」到 body 顶层再截图 —— 预览容器有 overflow:auto + 移动端 transform 缩放,
+// 手机上 794px 纸张溢出容器时,iOS 的 html2canvas 只会截到可视那部分(数量列被裁)。克隆脱离容器可完整抓取。
 async function teRenderCanvas() {
   const sheet = document.getElementById('teSheet');
-  const t = sheet.style.transform, mr = sheet.style.marginRight, mb = sheet.style.marginBottom;
-  sheet.style.transform = ''; sheet.style.marginRight = ''; sheet.style.marginBottom = '';
-  await new Promise(r => setTimeout(r, 30));
+  const clone = sheet.cloneNode(true);
+  clone.id = 'teSheetClone';
+  clone.style.cssText += ';position:fixed;left:0;top:0;margin:0;transform:none;box-shadow:none;z-index:-1';
+  document.body.appendChild(clone);
+  const sx = window.scrollX, sy = window.scrollY;
+  window.scrollTo(0, 0);
+  await new Promise(r => setTimeout(r, 40));
   try {
-    // 显式给定 794×1123 与同尺寸 window,避免手机端窄视口下 html2canvas 只截到可视宽度导致比例错乱
-    return await html2canvas(sheet, {
+    return await html2canvas(clone, {
       backgroundColor: '#fff', scale: 2, useCORS: true, logging: false,
-      width: 794, height: 1123, windowWidth: 794, windowHeight: 1123,
+      width: 794, height: 1123, windowWidth: 794, windowHeight: 1123, scrollX: 0, scrollY: 0,
     });
   } finally {
-    sheet.style.transform = t; sheet.style.marginRight = mr; sheet.style.marginBottom = mb;
+    clone.remove();
+    window.scrollTo(sx, sy);
   }
+}
+
+// 生成一张满版 A4 的 PDF(导出 / 打印共用)
+async function teBuildPdf() {
+  const canvas = await teRenderCanvas();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+  // 纸张本身就是 A4 比例,直接铺满整页(0,0 → 全页宽高),不留白也不溢出到第二页
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pw, ph);
+  return pdf;
 }
 
 // 预览顶栏的生产线切换器:直接在预览里换线,不用关掉重开
@@ -6938,15 +6955,8 @@ async function teExportPdf() {
   if (typeof html2canvas === 'undefined' || !window.jspdf) {
     showToast('PDF 导出库未加载,请刷新页面重试', 'error'); return;
   }
-  const sheet = document.getElementById('teSheet');
   try {
-    const canvas = await teRenderCanvas();
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
-    // 等比铺满,保持 A4 比例(纸张本身即 A4 比例,几乎正好填满)
-    const iw = pw, ih = canvas.height * (pw / canvas.width);
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, iw, Math.min(ih, ph));
+    const pdf = await teBuildPdf();
     pdf.save(teFileStamp() + '.pdf');
   } catch (err) {
     showToast('PDF 导出失败: ' + err.message, 'error');
@@ -6955,7 +6965,6 @@ async function teExportPdf() {
 
 async function teExportPng() {
   if (typeof html2canvas === 'undefined') { showToast('截图库未加载,请刷新页面重试', 'error'); return; }
-  const sheet = document.getElementById('teSheet');
   try {
     const canvas = await teRenderCanvas();
     const link = document.createElement('a');
@@ -6967,46 +6976,25 @@ async function teExportPng() {
   }
 }
 
-// 打印:本页在 iframe 内,直接 window.print() 会被 Chrome 打印成外层整页并把表格裁掉(只出半页)。
-// 改用「隐藏 iframe」打印:不弹出可见网页,把整张表渲染成 A4 图片写进后台 iframe 再打印它自身的文档。
+// 打印:本页嵌在 iframe 里,直接 window.print() 或隐藏 iframe 在 iOS 上都会打印「外层整页」(被裁+多页+带网址页脚)。
+// 最稳的方式:生成同一张满版 A4 PDF,在新标签打开 —— 由系统 PDF 阅读器打印,iOS/桌面都能干净地铺满一页。
 async function teExportPrint() {
-  if (typeof html2canvas === 'undefined') { showToast('打印库未加载,请刷新页面重试', 'error'); return; }
-  let canvas;
-  try {
-    canvas = await teRenderCanvas();
-  } catch (err) {
-    showToast('打印失败: ' + err.message, 'error'); return;
+  if (typeof html2canvas === 'undefined' || !window.jspdf) {
+    showToast('打印库未加载,请刷新页面重试', 'error'); return;
   }
-  const img = canvas.toDataURL('image/png');
-  // 复用/新建一个隐藏打印 iframe
-  const old = document.getElementById('tePrintFrame');
-  if (old) old.remove();
-  const f = document.createElement('iframe');
-  f.id = 'tePrintFrame';
-  f.setAttribute('aria-hidden', 'true');
-  f.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden';
-  document.body.appendChild(f);
-  const fd = f.contentDocument;
-  fd.open();
-  fd.write(
-    '<!doctype html><html><head><meta charset="utf-8"><title>' + teFileStamp() + '</title>' +
-    '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff;overflow:hidden}' +
-    'img{display:block;width:210mm;height:297mm;object-fit:contain}</style></head><body><img src="' + img + '"></body></html>'
-  );
-  fd.close();
-  const cleanup = () => setTimeout(() => { const el = document.getElementById('tePrintFrame'); if (el) el.remove(); }, 300);
-  const fire = () => {
-    try {
-      f.contentWindow.focus();
-      f.contentWindow.addEventListener('afterprint', cleanup, { once: true });
-      f.contentWindow.print();
-    } catch (err) {
-      showToast('打印失败: ' + err.message, 'error'); cleanup();
-    }
-  };
-  const im = fd.querySelector('img');
-  if (im && !im.complete) im.onload = () => setTimeout(fire, 50);
-  else setTimeout(fire, 50);
+  // 必须在点击的同步过程里先开标签,否则 await 之后再 open 会被弹窗拦截
+  const win = window.open('', '_blank');
+  if (!win) { showToast('请先允许本页弹窗,再点打印', 'error'); return; }
+  win.document.write('<!doctype html><meta charset="utf-8"><title>' + teFileStamp() +
+    '</title><body style="margin:0;font:15px sans-serif;color:#888;padding:28px">正在生成可打印的 PDF…</body>');
+  win.document.close();
+  try {
+    const pdf = await teBuildPdf();
+    win.location.href = pdf.output('bloburl');
+  } catch (err) {
+    win.close();
+    showToast('打印失败: ' + err.message, 'error');
+  }
 }
 
 document.addEventListener('keydown', e => {
