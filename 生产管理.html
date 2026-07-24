@@ -4029,13 +4029,15 @@ button:active{transform:scale(.97)}
 .te-line-switch button{font:inherit;font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;
   border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#c7d0dc;cursor:pointer;transition:.15s}
 .te-line-switch button:hover{background:rgba(255,255,255,.1)}
-.te-line-switch button.active{background:#f59e0b;border-color:#f59e0b;color:#14181f}
-.te-toolbar .te-tt::before{content:"";width:6px;height:16px;border-radius:3px;background:#f59e0b}
+.te-line-switch button.active{background:var(--accent);border-color:var(--accent);color:#14181f}
+/* 主题色填充元素禁用 transition:否则 transition:all + var() 在 Chromium 下改主题色会卡住旧色 */
+.te-btn.accent,.te-line-switch button.active{transition:none}
+.te-toolbar .te-tt::before{content:"";width:6px;height:16px;border-radius:3px;background:var(--accent)}
 .te-btn{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;
   border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e8ecf2;transition:.15s}
 .te-btn:hover{background:rgba(255,255,255,.12)}
-.te-btn.accent{background:#f59e0b;border-color:#f59e0b;color:#14181f}
-.te-btn.accent:hover{background:#ffb020}
+.te-btn.accent{background:var(--accent);border-color:var(--accent);color:#14181f}
+.te-btn.accent:hover{background:var(--accent-light)}
 .te-btn.close{color:#9aa4b2}
 
 /* A4 纵向纸张 210×297mm ≈ 794×1123px @96dpi */
@@ -4068,7 +4070,7 @@ button:active{transform:scale(.97)}
 .te-table tbody td.te-name{text-align:left;padding-left:12px;font-weight:600}
 .te-table tbody td.te-name .ln{display:inline-block;font-size:10px;font-weight:700;color:#fff;
   background:#94a3b8;border-radius:4px;padding:1px 5px;margin-right:7px;vertical-align:1px;letter-spacing:.5px}
-.te-table tbody td.te-time{font-size:13px;color:#374151;letter-spacing:.3px}
+.te-table tbody td.te-time{font-size:12px;color:#374151;letter-spacing:0;white-space:nowrap}
 .te-table tbody td.te-num{font-weight:600}
 .te-table tbody tr.te-empty td{color:transparent}
 .te-table tbody tr.te-empty td.te-idx{color:#9aa4b2}
@@ -4076,11 +4078,24 @@ button:active{transform:scale(.97)}
 /* 统计栏 */
 .te-table tfoot td{height:50px;background:#1f2937;border-color:#33404f;font-size:17px;font-weight:800;color:#fff}
 .te-table tfoot .te-sum-lbl{letter-spacing:4px;color:#c7d0dc;font-size:16px}
-.te-table tfoot .te-sum-val{font-size:20px;color:#fff}
+.te-table tfoot .te-sum-val{font-size:18px;color:#fff;white-space:nowrap}
 
 /* 页脚 */
 .te-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:12px;
   font-size:11px;color:#9aa4b2;letter-spacing:.5px}
+
+/* ===== 移动端优化：顶栏重排两行 + A4 缩放到屏宽 ===== */
+@media (max-width: 820px){
+  #tableExportOverlay{padding:96px 8px 24px;align-items:flex-start}
+  .te-toolbar{height:auto;flex-wrap:wrap;padding:6px 8px;gap:5px;align-content:flex-start}
+  .te-toolbar .te-tt{display:none}
+  .te-line-switch{order:1;width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .te-line-switch::-webkit-scrollbar{height:0}
+  .te-line-switch button{flex:0 0 auto}
+  .te-toolbar .te-btn{order:2;margin-left:0 !important;padding:6px 0;font-size:12px;flex:1 1 0;text-align:center}
+  /* 整张 A4 用 transform 缩放到屏宽,右/下负边距回收多余布局空间,避免横向滚动 */
+  .te-sheet{transform-origin:top left}
+}
 
 /* 打印走「新窗口打印 A4 图片」方案(见 teExportPrint),不再依赖本页 @media print */
 </style>
@@ -6730,6 +6745,8 @@ async function doExportPng() {
 
 // ============ 导出表格：A4 纵向生产计划表(单条生产线) ============
 const TE_ROWS = 20; // 固定 20 个数据栏
+// 非生产项:朝礼/不足/扫除(掃除)/応援/段取り 等,不显示数量、也不计入数量总计
+const TE_NO_QTY = new Set(['朝礼', '不足', '扫除', '掃除', '応援', '段取り', '段取']);
 
 // 生产线显示名:夕盛 / 01 / 02 … 05
 function teLineDisplay(num) {
@@ -6753,7 +6770,7 @@ function teCollectRows(lineNum) {
     const durSec = (speed > 0 && meterPeople > 0) ? (qty / (speed * meterPeople)) * 60 : 0;
     const tS = popupQ(card, '.t-start').textContent.trim();
     const tE = popupQ(card, '.t-end').textContent.trim();
-    const time = (tS && tS !== '—' && tE && tE !== '—') ? `${tS}~${tE}` : '—';
+    const time = (tS && tS !== '—' && tE && tE !== '—') ? `${tS} ~ ${tE}` : '—';
     const lineSpeed = (popupQ(card, '.line-speed').value || '').trim() || '—';
     const people = (popupQ(card, '.people').value || '').trim() || '—';
     rows.push({ name, time, lineSpeed, people, durSec, qty });
@@ -6771,6 +6788,37 @@ function buildTableExportMenu() {
     btn.textContent = teLineDisplay(i);
     btn.addEventListener('click', (e) => { e.stopPropagation(); openTableExport(i); });
     box.appendChild(btn);
+  }
+}
+
+// 移动端把整张 A4 缩放到屏宽:transform 缩放 + 负边距回收布局空间,避免横向滚动
+function teFitSheet() {
+  const sheet = document.getElementById('teSheet');
+  const overlay = document.getElementById('tableExportOverlay');
+  if (!sheet || !overlay) return;
+  if (window.innerWidth <= 820) {
+    const avail = overlay.clientWidth - 16; // 减去 overlay 左右 padding(8+8)
+    const scale = Math.min(1, avail / 794);
+    sheet.style.transform = `scale(${scale})`;
+    sheet.style.marginRight = `${-(794 - 794 * scale)}px`;
+    sheet.style.marginBottom = `${-(1123 - 1123 * scale)}px`;
+  } else {
+    sheet.style.transform = '';
+    sheet.style.marginRight = '';
+    sheet.style.marginBottom = '';
+  }
+}
+
+// 导出/打印时按原始 1:1 尺寸渲染(临时去掉移动端缩放),渲染完再还原
+async function teRenderCanvas() {
+  const sheet = document.getElementById('teSheet');
+  const t = sheet.style.transform, mr = sheet.style.marginRight, mb = sheet.style.marginBottom;
+  sheet.style.transform = ''; sheet.style.marginRight = ''; sheet.style.marginBottom = '';
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    return await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+  } finally {
+    sheet.style.transform = t; sheet.style.marginRight = mr; sheet.style.marginBottom = mb;
   }
 }
 
@@ -6813,7 +6861,9 @@ function openTableExport(lineNum) {
       tr.className = 'te-empty';
       tr.innerHTML = `<td class="te-idx">${i + 1}</td><td class="te-name">&nbsp;</td><td></td><td></td><td></td><td></td><td></td>`;
     } else {
-      totalDur += r.durSec; totalQty += r.qty;
+      totalDur += r.durSec;
+      const noQty = TE_NO_QTY.has(r.name.trim());
+      if (!noQty) totalQty += r.qty;
       tr.innerHTML =
         `<td class="te-idx">${i + 1}</td>` +
         `<td class="te-name">${escapeHtml(r.name)}</td>` +
@@ -6821,7 +6871,7 @@ function openTableExport(lineNum) {
         `<td>${escapeHtml(String(r.lineSpeed))}</td>` +
         `<td>${escapeHtml(String(r.people))}</td>` +
         `<td>${fmtDuration(r.durSec)}</td>` +
-        `<td class="te-num">${r.qty.toLocaleString()}</td>`;
+        `<td class="te-num">${noQty ? '' : r.qty.toLocaleString()}</td>`;
     }
     body.appendChild(tr);
   }
@@ -6839,7 +6889,12 @@ function openTableExport(lineNum) {
   if (rows.length > TE_ROWS) showToast(`该线共 ${rows.length} 项,单页表格仅显示前 ${TE_ROWS} 项`, 'warn');
 
   document.getElementById('tableExportOverlay').classList.add('show');
+  teFitSheet();
 }
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('tableExportOverlay').classList.contains('show')) teFitSheet();
+});
 
 function closeTableExport() {
   document.getElementById('tableExportOverlay').classList.remove('show');
@@ -6857,7 +6912,7 @@ async function teExportPdf() {
   }
   const sheet = document.getElementById('teSheet');
   try {
-    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    const canvas = await teRenderCanvas();
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
@@ -6874,7 +6929,7 @@ async function teExportPng() {
   if (typeof html2canvas === 'undefined') { showToast('截图库未加载,请刷新页面重试', 'error'); return; }
   const sheet = document.getElementById('teSheet');
   try {
-    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
+    const canvas = await teRenderCanvas();
     const link = document.createElement('a');
     link.download = teFileStamp() + '.png';
     link.href = canvas.toDataURL('image/png');
@@ -6884,37 +6939,47 @@ async function teExportPng() {
   }
 }
 
-// 打印:本页在 iframe 内,直接 window.print() 会被 Chrome 打印成外层整页并把 iframe 裁掉(只出半页)。
-// 改为把整张表渲染成 A4 比例图片,开一个顶层新窗口铺满 A4 打印,彻底绕开裁剪。
+// 打印:本页在 iframe 内,直接 window.print() 会被 Chrome 打印成外层整页并把表格裁掉(只出半页)。
+// 改用「隐藏 iframe」打印:不弹出可见网页,把整张表渲染成 A4 图片写进后台 iframe 再打印它自身的文档。
 async function teExportPrint() {
   if (typeof html2canvas === 'undefined') { showToast('打印库未加载,请刷新页面重试', 'error'); return; }
-  // 必须在点击的同一同步过程里先开窗口,否则 await 之后再 open 会丢失用户手势被弹窗拦截。
-  const w = window.open('', '_blank');
-  if (!w) { showToast('打印窗口被浏览器拦截,请允许本页弹窗后重试', 'error'); return; }
-  w.document.write('<!doctype html><meta charset="utf-8"><title>' + teFileStamp() +
-    '</title><body style="margin:0;font:14px sans-serif;color:#888;padding:24px">正在生成打印页…</body>');
-  w.document.close();
-  const sheet = document.getElementById('teSheet');
+  let canvas;
   try {
-    const canvas = await html2canvas(sheet, { backgroundColor: '#fff', scale: 2, useCORS: true, logging: false });
-    const img = canvas.toDataURL('image/png');
-    w.document.open();
-    w.document.write(
-      '<!doctype html><html><head><meta charset="utf-8"><title>' + teFileStamp() + '</title>' +
-      '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}' +
-      'img{display:block;width:100%;height:auto}</style></head>' +
-      '<body><img src="' + img + '" onload="setTimeout(function(){window.focus();window.print();},100)"></body></html>'
-    );
-    w.document.close();
+    canvas = await teRenderCanvas();
   } catch (err) {
-    w.close();
-    showToast('打印失败: ' + err.message, 'error');
+    showToast('打印失败: ' + err.message, 'error'); return;
   }
+  const img = canvas.toDataURL('image/png');
+  // 复用/新建一个隐藏打印 iframe
+  const old = document.getElementById('tePrintFrame');
+  if (old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'tePrintFrame';
+  f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const fd = f.contentDocument;
+  fd.open();
+  fd.write(
+    '<!doctype html><html><head><meta charset="utf-8"><title>' + teFileStamp() + '</title>' +
+    '<style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}' +
+    'img{display:block;width:100%;height:auto}</style></head><body><img src="' + img + '"></body></html>'
+  );
+  fd.close();
+  const cleanup = () => setTimeout(() => { const el = document.getElementById('tePrintFrame'); if (el) el.remove(); }, 300);
+  const fire = () => {
+    try {
+      f.contentWindow.focus();
+      f.contentWindow.addEventListener('afterprint', cleanup, { once: true });
+      f.contentWindow.print();
+    } catch (err) {
+      showToast('打印失败: ' + err.message, 'error'); cleanup();
+    }
+  };
+  const im = fd.querySelector('img');
+  if (im && !im.complete) im.onload = () => setTimeout(fire, 50);
+  else setTimeout(fire, 50);
 }
-
-document.getElementById('tableExportOverlay').addEventListener('click', e => {
-  if (e.target.id === 'tableExportOverlay') closeTableExport();
-});
 
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
