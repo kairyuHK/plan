@@ -258,6 +258,13 @@ body:not(.editing) table.schedule td.dispatch{pointer-events:none;user-select:no
 table.schedule th.sat{color:var(--sat)}
 table.schedule th.sun{color:var(--sun)}
 .today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#f97316;color:#fff;border-radius:50%;font-weight:500;font-size:11.5px;line-height:1;font-variant-numeric:tabular-nums;padding-top:1px;font-family:var(--font-mono)}
+/* PC 屏幕端:今日徽章数字精确居中。去掉写死的 padding-top:1px(它随字体在 Win/Mac 上偏差不同),
+   改由 --today-badge-nudge(calibrateCircleNudge 运行时按当前机器字体实测)驱动 translateY。默认 0=不动。
+   仅 screen+PC:打印(print)与手机端(≤380px,仍用上面的 padding-top:1px)均不受影响。 */
+@media screen and (min-width: 381px) {
+  .today-badge { padding-top: 0; }
+  .today-badge > .tb-n { display: inline-block; transform: translateY(var(--today-badge-nudge, 0px)); }
+}
 /* row / column highlight (click name-col / date-th to toggle) */
 table.schedule td.name-col{cursor:pointer}
 table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-row th[data-ymd]{cursor:pointer}
@@ -754,6 +761,13 @@ body.resizing.resizing-row{cursor:row-resize!important}
   width: 22px; height: 22px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 800;
+}
+/* 今日圈内数字精确居中 —— 仅 PC 端(min-width:381px,与手机断点 max-width:380px 互补)。
+   拉丁数字在 em 盒里的垂直位置随字体不同(CJK 偏下、拉丁偏上),写死像素值必因字体而错。
+   --today-dnum-nudge 由 calibrateTodayDnumNudge() 运行时 pixel-scan 真实渲染墨迹算出(每台机器自适应),默认 0=不动。
+   用 transform(合成层,亚像素平滑,不吸附网格、不压椭圆)。手机端(≤380px)不动。 */
+@media (min-width: 381px) {
+  .personal-day-list .day-row.today .day-cell .dnum > .dnum-n { display: inline-block; transform: translateY(var(--today-dnum-nudge, 0px)); }
 }
 .personal-day-list .day-row.both-rest { background: #3a2a1c; }
 
@@ -2945,6 +2959,7 @@ const Pages = (() => {
     });
     requestAnimationFrame(() => {
       syncStickyOffsets(); applyHighlight(); applyFocus();
+      calibrateCircleNudge('.today-badge', '--today-badge-nudge');
       if (keepScroll) {
         // 同视图重渲(锁定↔编辑):还原滚动位置,不回到初始位置
         const w = host.querySelector('.schedule-wrap');
@@ -3260,7 +3275,7 @@ const Pages = (() => {
     // 日期列所有 31 个共享 col-day 宽度 key。每个 th 都加 handle,拖任意一个都改 --col-day-w
     for (const d of days) {
       const content = d.ymd === todayYmd
-        ? Render.el('span.today-badge', String(d.day))
+        ? Render.el('span.today-badge', [Render.el('span.tb-n', String(d.day))])
         : String(d.day);
       const th = Render.el('th', { dataset: { ymd: d.ymd }, onclick: () => toggleCol(d.ymd) }, content);
       if (d.isSat) th.classList.add('sat');
@@ -4448,7 +4463,7 @@ const Pages = (() => {
 
         const dayCell = Render.el('div.day-cell');
         dayCell.appendChild(Render.el('div.dow', d.weekdayJp));
-        dayCell.appendChild(Render.el('div.dnum', String(d.day)));
+        dayCell.appendChild(Render.el('div.dnum', [Render.el('span.dnum-n', String(d.day))]));
         row.appendChild(dayCell);
 
         const shifts = Render.el('div.shifts');
@@ -4481,6 +4496,42 @@ const Pages = (() => {
     wrap.appendChild(legend);
 
     host.appendChild(wrap);
+    calibrateCircleNudge('.personal-day-list .day-row.today .day-cell .dnum', '--today-dnum-nudge');
+  }
+
+  // 今日橙圈内数字精确居中(运行时自校准,仅 PC)。不同机器/字体下拉丁数字在 em 盒里的垂直位置不同
+  // (Windows Consolas / Mac SF Mono / CJK Noto 各不同),写死像素值必因字体而错、跨机器不一致。
+  // 这里把圈内数字盒光栅化(SVG foreignObject→canvas),扫描墨迹算出相对圆心的偏差,写入给定 CSS 变量,
+  // 由 CSS 用 translateY 反向修正。字体本会话恒定,每个变量成功一次即缓存不再重算。
+  const _nudgeDone = {};
+  function calibrateCircleNudge(circleSelector, varName) {
+    if (_nudgeDone[varName]) return;
+    if (!window.matchMedia('(min-width: 381px)').matches) return; // 仅 PC,手机端不动
+    const el = document.querySelector(circleSelector);
+    const txt = el && (el.textContent || '').trim();
+    if (!txt) return; // 今日不在当前视图 → 下次渲染再试
+    try {
+      const cs = getComputedStyle(el);
+      const stack = cs.fontFamily.replace(/"/g, "'");
+      const W = Math.round(parseFloat(cs.width)), H = Math.round(parseFloat(cs.height)), S = 16;
+      const html = `<div xmlns="http://www.w3.org/1999/xhtml" style="box-sizing:border-box;width:${W}px;height:${H}px;display:flex;align-items:center;justify-content:center;line-height:${cs.lineHeight};font-family:${stack};font-weight:${cs.fontWeight};font-size:${cs.fontSize};font-variant-numeric:tabular-nums;color:#000"><span style="display:inline-block">${txt}</span></div>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W*S}" height="${H*S}"><foreignObject width="${W}" height="${H}" transform="scale(${S})">${html}</foreignObject></svg>`;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const cv = document.createElement('canvas'); cv.width = W*S; cv.height = H*S;
+          const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+          const d = ctx.getImageData(0, 0, W*S, H*S).data;
+          let mn = 1e9, mx = -1;
+          for (let y = 0; y < H*S; y++) { for (let x = 0; x < W*S; x++) { if (d[(y*W*S + x)*4 + 3] > 40) { if (y < mn) mn = y; if (y > mx) mx = y; break; } } }
+          if (mx < 0) return;
+          const delta = (((mn/S) + ((mx+1)/S)) / 2) - H/2; // >0=墨迹偏下(需上移)
+          document.documentElement.style.setProperty(varName, (-delta).toFixed(2) + 'px');
+          _nudgeDone[varName] = true;
+        } catch (_) { /* 某些浏览器 SVG-foreignObject 会污染 canvas → getImageData 抛错,放弃校准,保持默认 0(原始位置) */ }
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    } catch (_) {}
   }
 
   // ============================================================
