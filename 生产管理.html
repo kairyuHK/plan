@@ -9014,12 +9014,14 @@ function renderMaterialsDrawer() {
       nameView.style.display = "none";
       nameInput.style.display = "";
       nameInput.value = m.name;
-      // 手机端:在 focus 之前「瞬间」(无动画)把该行定位到列表顶部,并垫出滚动余量(连最后几行也顶得上来)。
-      // 关键:先定位再 focus,键盘弹起时输入框已在其上方,iOS 便不会再做一次平滑滚动 ——
-      // 这样就没有「从下往上滑」的画面(behavior:instant 保证本次滚动也无动画)。
+      // 手机端:只把「被键盘挡住」的输入框就近上移到软键盘正上方(不是滚到列表最顶),位移最小、无动画。
+      // 估算键盘顶 ≈ 视口高 58%,目标定在略高处(55%)留出余量;在 focus 之前同步做好,
+      // 键盘弹起时输入框已在其上方 → iOS 不会再补一次平滑滚动,也就没有「从下往上滑」的画面。
       if (window.innerWidth <= 720) {
         list.style.paddingBottom = list.clientHeight + "px";
-        nameInput.scrollIntoView({ block: "start", behavior: "instant" });
+        const target = window.innerHeight * 0.55;                  // 目标:输入框底边落在此处(键盘上方)
+        const delta = nameInput.getBoundingClientRect().bottom - target;
+        if (delta > 0) list.scrollTop += delta;                    // 仅当被键盘遮住才上移,且只移最小距离
       }
       nameInput.focus();
       try { nameInput.select(); } catch (_) {}
