@@ -9021,9 +9021,11 @@ function renderMaterialsDrawer() {
         list.style.paddingBottom = list.clientHeight + "px";
         const target = window.innerHeight * 0.55;                  // 目标:输入框底边落在此处(键盘上方)
         const delta = nameInput.getBoundingClientRect().bottom - target;
-        if (delta > 0) list.scrollTop += delta;                    // 仅当被键盘遮住才上移,且只移最小距离
+        if (delta > 0) list.scrollTop += delta;                    // 仅当被键盘遮住才上移,且只移最小距离(直接赋值=瞬间、无动画)
       }
-      nameInput.focus();
+      // preventScroll:阻止 iOS 在 focus 时把输入框「平滑滚动」进可视区 —— 那正是「从下往上」的画面来源。
+      // 位置已由上面的瞬间滚动摆好,这里只负责弹键盘。
+      nameInput.focus({ preventScroll: true });
       try { nameInput.select(); } catch (_) {}
     };
 
