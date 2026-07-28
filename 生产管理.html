@@ -7461,12 +7461,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:78px;min-height:78px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
-  .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:12px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
+  .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:10px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
   .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
   /* 卡片右上角「量」(需求3):字号与右下角人员名一致 */
-  .line-grid .cell .cell-qty{position:absolute;top:4px;right:6px;font-size:12px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(50% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+  .line-grid .cell .cell-qty{position:absolute;top:4px;right:6px;font-size:10px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(50% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .line-grid.vertical .cell .cell-qty{font-size:10px;top:2px;right:4px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -8941,6 +8941,7 @@ function runSelfTests() {
 function renderMaterialsDrawer() {
   const list = document.getElementById("materials-list");
   list.innerHTML = "";
+  list.style.paddingBottom = ""; // 复原编辑时为避键盘垫出的滚动余量(改名重渲后也要清干净)
   // 需求4:每个便当当天排产数量只在本次渲染里算一次(便当数可能多,避免重复读 localStorage)
   const _planCache = {};
   const plannedQty = (b) => (b.id in _planCache) ? _planCache[b.id] : (_planCache[b.id] = getBentoPlannedQty(b));
@@ -8976,6 +8977,7 @@ function renderMaterialsDrawer() {
     nameInput.onblur = () => {
       nameInput.style.display = "none";
       nameView.style.display = "";
+      list.style.paddingBottom = ""; // 复原编辑时为避键盘垫出的滚动余量
       if (nameInput.value === m.name) return; // 没改 → 不重渲,保留已展开的便当列表
       if (!updateMaterial(m.id, { name: nameInput.value })) { nameInput.value = m.name; return; }
       renderMaterialsDrawer();
@@ -9014,7 +9016,9 @@ function renderMaterialsDrawer() {
       nameInput.value = m.name;
       nameInput.focus();
       try { nameInput.select(); } catch (_) {}
-      // 需求2/3:把输入框滚到列表顶部,避免被软键盘挡住(不改抽屉尺寸,较顺畅)
+      // 需求2:手机端给列表底部垫出可滚动余量,连最后几行也能顶到列表顶部、避开软键盘;
+      // 否则列表滚到底也没法把底部的行推到键盘上方(表现为「被键盘挡住且无法下滑」)。
+      if (window.innerWidth <= 720) list.style.paddingBottom = list.clientHeight + "px";
       nameInput.scrollIntoView({ block: "start" });
     };
 
