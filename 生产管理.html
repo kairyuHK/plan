@@ -7442,12 +7442,17 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .drawer .row .swatch{width:24px;height:24px;border-radius:4px;border:1px solid var(--line);cursor:pointer;flex:0 0 auto;padding:0}
   .drawer .row .name{flex:1;background:transparent;border:none;color:var(--fg);font:inherit;padding:4px;min-width:0}
   .drawer .row .name:focus{outline:1px solid var(--accent);border-radius:3px}
-  .drawer .row .del{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px}
+  /* 需求1/2:材料名的「只读展示」形态(非 input,避免 iOS 弹写作工具/自动填充) */
+  .drawer .row .name-view{flex:1;color:var(--fg);font:inherit;padding:8px 4px;min-width:0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .drawer .row .del{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px;flex:0 0 auto;padding:6px 8px;line-height:1}
   .drawer .row .del:hover{color:#ef4444}
-  /* 需求1:材料名「编辑」图标;需求4:材料名旁「总需要量」 */
-  .drawer .row .edit{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:15px;flex:0 0 auto;padding:0 2px}
+  /* 需求1:材料名「编辑」图标(需求5:放大点按区域);需求4:材料名旁「总需要量」 */
+  .drawer .row .edit{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px;flex:0 0 auto;padding:6px 10px;line-height:1}
   .drawer .row .edit:hover{color:var(--accent)}
   .drawer .row .mat-total{flex:0 0 auto;color:var(--accent);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:2px}
+  /* 需求1:去掉「量」数字输入框的上下箭头(spinner) */
+  .no-spin::-webkit-outer-spin-button,.no-spin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .no-spin{-moz-appearance:textfield;appearance:textfield}
   .drawer .add{flex:0 0 auto;display:flex;gap:6px;padding:12px;border-top:1px solid var(--line)}
   .drawer .add input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px;border-radius:4px;font:inherit;min-width:0}
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
@@ -8933,30 +8938,9 @@ function runSelfTests() {
   }
 }
 
-// 需求2:手机端进入材料名编辑态时,软键盘会挡住底部行 —— 把该输入框顶到键盘上方。
-// iframe 内 visualViewport 测不到键盘,取顶层(父壳)可视视口,与本项目品名库弹窗一致。
-function _topVV() { try { return (window.top && window.top.visualViewport) || window.visualViewport; } catch (e) { return window.visualViewport; } }
-function keepNameAboveKeyboard(input) {
-  if (window.innerWidth > 720) return;
-  const drawer = document.getElementById("materials-drawer");
-  if (!drawer) return;
-  const apply = () => {
-    const vv = _topVV();
-    const inset = vv ? Math.max(0, window.innerHeight - vv.height) : Math.round(window.innerHeight * 0.42);
-    // 把整个抽屉底边抬到键盘上方,列表随之收缩,聚焦行即可滚进可视区
-    drawer.style.bottom = (inset > 60 ? inset : 0) + "px";
-    input.scrollIntoView({ block: "center" });
-  };
-  apply();
-  setTimeout(apply, 200); // 键盘弹出/视口变化有延迟,多次兜底
-  setTimeout(apply, 450);
-}
-function resetMaterialsListPadding() { const d = document.getElementById("materials-drawer"); if (d) d.style.bottom = ""; }
-
 function renderMaterialsDrawer() {
   const list = document.getElementById("materials-list");
   list.innerHTML = "";
-  resetMaterialsListPadding();
   // 需求4:每个便当当天排产数量只在本次渲染里算一次(便当数可能多,避免重复读 localStorage)
   const _planCache = {};
   const plannedQty = (b) => (b.id in _planCache) ? _planCache[b.id] : (_planCache[b.id] = getBentoPlannedQty(b));
@@ -8972,28 +8956,31 @@ function renderMaterialsDrawer() {
     sw.value = colorToHex(m.color);
     sw.oninput = () => {
       updateMaterial(m.id, { color: sw.value });
-      name.style.color = sw.value;
+      nameView.style.color = sw.value;
+      nameInput.style.color = sw.value;
     };
 
-    // 需求1:材料名默认只读(点名字 = 查看用途),点「编辑」图标才进入可改名状态
-    const name = document.createElement("input");
-    name.className = "name";
-    name.value = m.name;
-    name.style.color = m.color;
-    name.style.cursor = "pointer";
-    name.readOnly = true;
-    name.title = "点击查看用了此材料的便当";
-    name.onblur = () => {
-      if (name.readOnly) return;
-      name.readOnly = true;
-      name.style.cursor = "pointer";
-      name.title = "点击查看用了此材料的便当";
-      resetMaterialsListPadding();
-      if (name.value === m.name) return; // 没改 → 不重渲,保留已展开的便当列表
-      if (!updateMaterial(m.id, { name: name.value })) { name.value = m.name; return; }
+    // 需求1/2:材料名默认是「文本」不是输入框(点名字=查看用途;避免 iOS 弹出「写作工具/自动填充」)。
+    // 点「编辑」图标才把它换成输入框并聚焦(在用户点击手势里同步 focus,iOS 才会弹键盘)。
+    const nameView = document.createElement("span");
+    nameView.className = "name-view";
+    nameView.textContent = m.name;
+    nameView.style.color = m.color;
+    nameView.title = "点击查看用了此材料的便当";
+
+    const nameInput = document.createElement("input");
+    nameInput.className = "name";
+    nameInput.value = m.name;
+    nameInput.style.color = m.color;
+    nameInput.style.display = "none";
+    nameInput.onblur = () => {
+      nameInput.style.display = "none";
+      nameView.style.display = "";
+      if (nameInput.value === m.name) return; // 没改 → 不重渲,保留已展开的便当列表
+      if (!updateMaterial(m.id, { name: nameInput.value })) { nameInput.value = m.name; return; }
       renderMaterialsDrawer();
     };
-    name.onkeydown = (e) => { if (e.key === "Enter") name.blur(); };
+    nameInput.onkeydown = (e) => { if (e.key === "Enter") nameInput.blur(); };
 
     // 需求4:材料名旁显示「总需要量」= Σ(该材料在各便当的单份量 × 该便当当天排产数量)
     let matTotal = 0;
@@ -9021,12 +9008,14 @@ function renderMaterialsDrawer() {
     edit.title = "编辑材料名";
     edit.onclick = (e) => {
       e.stopPropagation();
-      name.readOnly = false;
-      name.style.cursor = "text";
-      name.title = "";
-      name.focus();
-      try { name.select(); } catch (_) {}
-      keepNameAboveKeyboard(name); // 需求2
+      // 同步:先显示输入框再 focus —— iOS 只有在用户手势里对可见输入框 focus 才会弹键盘(需求4)
+      nameView.style.display = "none";
+      nameInput.style.display = "";
+      nameInput.value = m.name;
+      nameInput.focus();
+      try { nameInput.select(); } catch (_) {}
+      // 需求2/3:把输入框滚到列表顶部,避免被软键盘挡住(不改抽屉尺寸,较顺畅)
+      nameInput.scrollIntoView({ block: "start" });
     };
 
     const del = document.createElement("button");
@@ -9092,10 +9081,12 @@ function renderMaterialsDrawer() {
       if (isOpen) return;
       buildUsage();
       usageBox.style.display = "";
+      // 需求3:材料靠底部时,展开的便当名会滚出可视区 —— 把它滚进来
+      requestAnimationFrame(() => usageBox.scrollIntoView({ block: "nearest" }));
     };
-    name.onclick = () => { if (name.readOnly) toggleUsage(); };
+    nameView.onclick = () => toggleUsage();
 
-    row.appendChild(sw); row.appendChild(name); row.appendChild(total); row.appendChild(edit); row.appendChild(del);
+    row.appendChild(sw); row.appendChild(nameView); row.appendChild(nameInput); row.appendChild(total); row.appendChild(edit); row.appendChild(del);
     list.appendChild(row);
     list.appendChild(usageBox);
   }
@@ -9109,7 +9100,6 @@ function openMaterialsDrawer() {
 function closeMaterialsDrawer() {
   document.getElementById("materials-drawer").classList.remove("show");
   document.getElementById("backdrop").classList.remove("show");
-  resetMaterialsListPadding(); // 复原可能因键盘抬高的抽屉底边
 }
 
 document.getElementById("btn-materials").onclick = openMaterialsDrawer;
@@ -10020,7 +10010,7 @@ function renderEdit() {
       // 需求3:每个卡片一个「量」,填入后显示在该卡片右上角
       const tdQty = document.createElement("td");
       const qtyInp = document.createElement("input");
-      qtyInp.className = "label"; qtyInp.type = "number"; qtyInp.min = "0"; qtyInp.step = "1";
+      qtyInp.className = "label no-spin"; qtyInp.type = "number"; qtyInp.min = "0"; qtyInp.step = "1"; qtyInp.inputMode = "numeric";
       qtyInp.style.width = "56px"; qtyInp.placeholder = "";
       qtyInp.value = (p.qty != null ? p.qty : "");
       qtyInp.onblur = () => {
