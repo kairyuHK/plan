@@ -7444,6 +7444,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .drawer .row .name:focus{outline:1px solid var(--accent);border-radius:3px}
   .drawer .row .del{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px}
   .drawer .row .del:hover{color:#ef4444}
+  /* 需求1:材料名「编辑」图标;需求4:材料名旁「总需要量」 */
+  .drawer .row .edit{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:15px;flex:0 0 auto;padding:0 2px}
+  .drawer .row .edit:hover{color:var(--accent)}
+  .drawer .row .mat-total{flex:0 0 auto;color:var(--accent);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:2px}
   .drawer .add{flex:0 0 auto;display:flex;gap:6px;padding:12px;border-top:1px solid var(--line)}
   .drawer .add input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px;border-radius:4px;font:inherit;min-width:0}
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
@@ -7456,6 +7460,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
   .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
+  /* 卡片右上角「量」(需求3):字号与右下角人员名一致 */
+  .line-grid .cell .cell-qty{position:absolute;top:4px;right:6px;font-size:12px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(50% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+  .line-grid.vertical .cell .cell-qty{font-size:10px;top:2px;right:4px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 16px}
@@ -8649,6 +8656,47 @@ function getBentosUsingMaterial(matId) {
   return result;
 }
 
+// 需求4:该便当里某材料所需的「单份量」= 该材料所在各卡片右上角「量」之和(位号可能多个)。
+// 只累加填了数字的卡片;都没填则返回 0(调用方据此不显示)。
+function getMaterialQtyPerBento(bento, matId) {
+  let sum = 0;
+  const line = Array.isArray(bento.line) ? bento.line : [];
+  for (const p of line) {
+    const ids = bento.assignments[p.id] || [];
+    if (!ids.includes(matId)) continue;
+    const q = parseFloat(p.qty);
+    if (isFinite(q)) sum += q;
+  }
+  return sum;
+}
+
+// 需求4:读取「计划板」当天(planDate)该便当的排产数量。
+// srcdoc 各 iframe 与父壳同源,共用 localStorage —— 与本项目既有「storage 事件 / bento-conveyor-v1」跨屏机制一致。
+// 计划板存储:productionBoard_v1_<date> = { lines:[ { cards:[ {type,libId,name,qty,...} ] } ] }
+// 品名库 productLibrary_v3 = [ { id, name, bentoId } ] —— 卡片按 libId→bentoId 链接便当,失效时退回名字匹配。
+function getBentoPlannedQty(bento) {
+  try {
+    const raw = localStorage.getItem('productionBoard_v1_' + planDate);
+    if (!raw) return 0;
+    const board = JSON.parse(raw);
+    if (!board || !Array.isArray(board.lines)) return 0;
+    let lib = [];
+    try { lib = JSON.parse(localStorage.getItem('productLibrary_v3') || '[]') || []; } catch (_) {}
+    const libToBento = new Map();
+    for (const it of lib) if (it && it.id) libToBento.set(it.id, it.bentoId || null);
+    let total = 0;
+    for (const line of board.lines) {
+      for (const c of (line.cards || [])) {
+        if (c.type !== 'job') continue;
+        const linkedBentoId = libToBento.get(c.libId);
+        const match = (linkedBentoId && linkedBentoId === bento.id) || (c.name && c.name === bento.name);
+        if (match) { const q = parseFloat(c.qty); if (isFinite(q)) total += q; }
+      }
+    }
+    return total;
+  } catch (_) { return 0; }
+}
+
 // 卡片操作函数（接受 line 数组，便于按便当独立操作）
 function addSlot(line) {
   const ns = maxSlot(line) + 1;
@@ -8689,6 +8737,7 @@ function updateSlotPosition(line, posId, patch) {
     p.row = patch.row;
   }
   if (patch.label !== undefined) p.label = String(patch.label);
+  if (patch.qty !== undefined) p.qty = String(patch.qty).trim();
   saveState();
   return true;
 }
@@ -8884,9 +8933,33 @@ function runSelfTests() {
   }
 }
 
+// 需求2:手机端进入材料名编辑态时,软键盘会挡住底部行 —— 把该输入框顶到键盘上方。
+// iframe 内 visualViewport 测不到键盘,取顶层(父壳)可视视口,与本项目品名库弹窗一致。
+function _topVV() { try { return (window.top && window.top.visualViewport) || window.visualViewport; } catch (e) { return window.visualViewport; } }
+function keepNameAboveKeyboard(input) {
+  if (window.innerWidth > 720) return;
+  const drawer = document.getElementById("materials-drawer");
+  if (!drawer) return;
+  const apply = () => {
+    const vv = _topVV();
+    const inset = vv ? Math.max(0, window.innerHeight - vv.height) : Math.round(window.innerHeight * 0.42);
+    // 把整个抽屉底边抬到键盘上方,列表随之收缩,聚焦行即可滚进可视区
+    drawer.style.bottom = (inset > 60 ? inset : 0) + "px";
+    input.scrollIntoView({ block: "center" });
+  };
+  apply();
+  setTimeout(apply, 200); // 键盘弹出/视口变化有延迟,多次兜底
+  setTimeout(apply, 450);
+}
+function resetMaterialsListPadding() { const d = document.getElementById("materials-drawer"); if (d) d.style.bottom = ""; }
+
 function renderMaterialsDrawer() {
   const list = document.getElementById("materials-list");
   list.innerHTML = "";
+  resetMaterialsListPadding();
+  // 需求4:每个便当当天排产数量只在本次渲染里算一次(便当数可能多,避免重复读 localStorage)
+  const _planCache = {};
+  const plannedQty = (b) => (b.id in _planCache) ? _planCache[b.id] : (_planCache[b.id] = getBentoPlannedQty(b));
   const sorted = [...state.materials].sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
   for (const m of sorted) {
     const row = document.createElement("div");
@@ -8902,18 +8975,59 @@ function renderMaterialsDrawer() {
       name.style.color = sw.value;
     };
 
+    // 需求1:材料名默认只读(点名字 = 查看用途),点「编辑」图标才进入可改名状态
     const name = document.createElement("input");
     name.className = "name";
     name.value = m.name;
     name.style.color = m.color;
     name.style.cursor = "pointer";
+    name.readOnly = true;
     name.title = "点击查看用了此材料的便当";
     name.onblur = () => {
+      if (name.readOnly) return;
+      name.readOnly = true;
+      name.style.cursor = "pointer";
+      name.title = "点击查看用了此材料的便当";
+      resetMaterialsListPadding();
       if (name.value === m.name) return; // 没改 → 不重渲,保留已展开的便当列表
       if (!updateMaterial(m.id, { name: name.value })) { name.value = m.name; return; }
       renderMaterialsDrawer();
     };
     name.onkeydown = (e) => { if (e.key === "Enter") name.blur(); };
+
+    // 需求4:材料名旁显示「总需要量」= Σ(该材料在各便当的单份量 × 该便当当天排产数量)
+    let matTotal = 0;
+    const usageRows = [];
+    for (const bt of getBentosUsingMaterial(m.id)) {
+      const bento = state.bentos.find(x => x.id === bt.id);
+      if (!bento) continue;
+      const per = getMaterialQtyPerBento(bento, m.id); // 卡片右上角「量」之和;0 表示没填
+      const hasQty = per > 0;
+      const pq = hasQty ? plannedQty(bento) : 0;
+      const required = hasQty ? per * pq : 0;
+      if (hasQty) matTotal += required;
+      usageRows.push({ name: bento.name, id: bento.id, per, pq, required, hasQty });
+    }
+
+    const total = document.createElement("span");
+    total.className = "mat-total";
+    if (matTotal > 0) {
+      total.textContent = "共 " + matTotal;
+      total.title = "总需要量 = Σ(卡片量 × 当日排产数量)";
+    }
+
+    const edit = document.createElement("button");
+    edit.className = "edit"; edit.textContent = "✎";
+    edit.title = "编辑材料名";
+    edit.onclick = (e) => {
+      e.stopPropagation();
+      name.readOnly = false;
+      name.style.cursor = "text";
+      name.title = "";
+      name.focus();
+      try { name.select(); } catch (_) {}
+      keepNameAboveKeyboard(name); // 需求2
+    };
 
     const del = document.createElement("button");
     del.className = "del"; del.textContent = "×";
@@ -8932,40 +9046,56 @@ function renderMaterialsDrawer() {
     const usageBox = document.createElement("div");
     usageBox.className = "usage-details";
     usageBox.style.cssText = "display:none;padding:2px 8px 8px 36px;font-size:12px;line-height:1.6";
-    name.addEventListener("focus", () => {
-      // 收起其他材料的展开
-      list.querySelectorAll(".usage-details").forEach(el => { if (el !== usageBox) el.style.display = "none"; });
-      const bentos = getBentosUsingMaterial(m.id);
+    const buildUsage = () => {
       usageBox.innerHTML = "";
-      if (bentos.length === 0) {
+      if (usageRows.length === 0) {
         const empty = document.createElement("span");
         empty.style.color = "var(--muted)";
         empty.textContent = "未在任何便当中使用";
         usageBox.appendChild(empty);
-      } else {
-        const title = document.createElement("div");
-        title.style.cssText = "color:var(--muted);font-size:11px;margin-bottom:3px";
-        title.textContent = `${bentos.length} 个便当使用 (点击进入编辑):`;
-        usageBox.appendChild(title);
-        for (const b of bentos) {
-          const btn = document.createElement("button");
-          btn.style.cssText = "display:block;background:transparent;border:none;color:var(--accent);font:inherit;font-size:12px;padding:2px 0;cursor:pointer;text-align:left;text-decoration:underline;width:100%";
-          btn.textContent = b.name;
-          // 阻止 mousedown 移焦,避免 input 失焦/重渲冲掉点击
-          btn.onmousedown = (e) => e.preventDefault();
-          btn.onclick = () => {
-            state.current = { ...state.current, screen: "edit", editingBentoId: b.id };
-            saveState();
-            closeMaterialsDrawer();
-            render();
-          };
-          usageBox.appendChild(btn);
-        }
+        return;
       }
+      const title = document.createElement("div");
+      title.style.cssText = "color:var(--muted);font-size:11px;margin-bottom:3px";
+      title.textContent = `${usageRows.length} 个便当使用 (点击进入编辑):`;
+      usageBox.appendChild(title);
+      for (const u of usageRows) {
+        const btn = document.createElement("button");
+        btn.style.cssText = "display:flex;justify-content:space-between;gap:8px;background:transparent;border:none;color:var(--accent);font:inherit;font-size:12px;padding:2px 0;cursor:pointer;text-align:left;width:100%";
+        const nm = document.createElement("span");
+        nm.textContent = u.name;
+        nm.style.textDecoration = "underline";
+        btn.appendChild(nm);
+        // 需求4:便当名旁显示该材料所需量 = 卡片右上角量 × 便当数量;卡片没填量则不显示
+        if (u.hasQty) {
+          const need = document.createElement("span");
+          need.style.cssText = "color:var(--muted);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums";
+          need.textContent = "需 " + u.required;
+          need.title = `${u.per} × ${u.pq}(当日排产)`;
+          btn.appendChild(need);
+        }
+        // 阻止 mousedown 移焦,避免 input 失焦/重渲冲掉点击
+        btn.onmousedown = (e) => e.preventDefault();
+        btn.onclick = () => {
+          state.current = { ...state.current, screen: "edit", editingBentoId: u.id };
+          saveState();
+          closeMaterialsDrawer();
+          render();
+        };
+        usageBox.appendChild(btn);
+      }
+    };
+    const toggleUsage = () => {
+      const isOpen = usageBox.style.display !== "none";
+      // 收起所有材料的展开(含自己),再决定是否重开
+      list.querySelectorAll(".usage-details").forEach(el => { el.style.display = "none"; });
+      if (isOpen) return;
+      buildUsage();
       usageBox.style.display = "";
-    });
+    };
+    name.onclick = () => { if (name.readOnly) toggleUsage(); };
 
-    row.appendChild(sw); row.appendChild(name); row.appendChild(del);
+    row.appendChild(sw); row.appendChild(name); row.appendChild(total); row.appendChild(edit); row.appendChild(del);
     list.appendChild(row);
     list.appendChild(usageBox);
   }
@@ -8979,6 +9109,7 @@ function openMaterialsDrawer() {
 function closeMaterialsDrawer() {
   document.getElementById("materials-drawer").classList.remove("show");
   document.getElementById("backdrop").classList.remove("show");
+  resetMaterialsListPadding(); // 复原可能因键盘抬高的抽屉底边
 }
 
 document.getElementById("btn-materials").onclick = openMaterialsDrawer;
@@ -9433,6 +9564,17 @@ function renderLineGrid(line, cellRenderer) {
   return wrap;
 }
 
+// 需求3:把某位号(卡片)的「量」渲染到卡片右上角(有数字才显示,字号同人员名)
+function appendCellQty(cell, pos) {
+  if (!pos) return;
+  const q = (pos.qty != null ? String(pos.qty).trim() : "");
+  if (!q) return;
+  const el = document.createElement("div");
+  el.className = "cell-qty";
+  el.textContent = q;
+  cell.appendChild(el);
+}
+
 function renderOperate() {
   const c = document.getElementById("content");
   c.innerHTML = "";
@@ -9519,6 +9661,7 @@ function renderOperate() {
       }
     }
     cell.appendChild(mats);
+    appendCellQty(cell, pos);
     // 右下角:有人名时按本线/借调分别上色;只要这条线当日有任意岗位有人,但该岗位空着 → 显示「応援」。
     if (bento) {
       const infos = getPersonInfosForCell(bento, pos.label);
@@ -9837,7 +9980,7 @@ function renderEdit() {
   const renderCardPanel = () => {
     cardPanel.innerHTML = "";
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th></th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量</th><th></th></tr></thead>";
     const tbody = document.createElement("tbody");
     const sorted = b.line.slice().sort((a,bb) => a.slot - bb.slot || (a.row === "top" ? -1 : 1));
     for (const p of sorted) {
@@ -9874,6 +10017,18 @@ function renderEdit() {
       };
       tdLabel.appendChild(labelInp);
 
+      // 需求3:每个卡片一个「量」,填入后显示在该卡片右上角
+      const tdQty = document.createElement("td");
+      const qtyInp = document.createElement("input");
+      qtyInp.className = "label"; qtyInp.type = "number"; qtyInp.min = "0"; qtyInp.step = "1";
+      qtyInp.style.width = "56px"; qtyInp.placeholder = "";
+      qtyInp.value = (p.qty != null ? p.qty : "");
+      qtyInp.onblur = () => {
+        updateSlotPosition(b.line, p.id, { qty: qtyInp.value });
+        renderEditGrid();
+      };
+      tdQty.appendChild(qtyInp);
+
       const tdDel = document.createElement("td");
       const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
       del.onclick = (e) => {
@@ -9890,7 +10045,7 @@ function renderEdit() {
       };
       tdDel.appendChild(del);
 
-      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdDel);
+      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdDel);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -9930,6 +10085,7 @@ function renderEdit() {
       }
     }
     cell.appendChild(mats);
+    appendCellQty(cell, pos);
     // 右下角:有人名时按本线/借调分别上色;只要这条线当日有任意岗位有人,但该岗位空着 → 显示「応援」。
     const infos = getPersonInfosForCell(b, pos.label);
     if (infos.length) {
