@@ -9014,12 +9014,15 @@ function renderMaterialsDrawer() {
       nameView.style.display = "none";
       nameInput.style.display = "";
       nameInput.value = m.name;
+      // 手机端:在 focus 之前「瞬间」(无动画)把该行定位到列表顶部,并垫出滚动余量(连最后几行也顶得上来)。
+      // 关键:先定位再 focus,键盘弹起时输入框已在其上方,iOS 便不会再做一次平滑滚动 ——
+      // 这样就没有「从下往上滑」的画面(behavior:instant 保证本次滚动也无动画)。
+      if (window.innerWidth <= 720) {
+        list.style.paddingBottom = list.clientHeight + "px";
+        nameInput.scrollIntoView({ block: "start", behavior: "instant" });
+      }
       nameInput.focus();
       try { nameInput.select(); } catch (_) {}
-      // 需求2:手机端给列表底部垫出可滚动余量,连最后几行也能顶到列表顶部、避开软键盘;
-      // 否则列表滚到底也没法把底部的行推到键盘上方(表现为「被键盘挡住且无法下滑」)。
-      if (window.innerWidth <= 720) list.style.paddingBottom = list.clientHeight + "px";
-      nameInput.scrollIntoView({ block: "start" });
     };
 
     const del = document.createElement("button");
