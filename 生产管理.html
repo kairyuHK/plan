@@ -8576,7 +8576,7 @@ window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type === 'bento-request') broadcastBentos();
   else if (e.data.type === 'jump-to-bento') {
-    // 从计划板弹窗点便当名跳过来:切到「操作屏」并选中这条便当
+    // 从计划板弹窗点便当名跳过来:切到「便当库」并直接打开这条便当的编辑页
     const target = (e.data.bentoId && state.bentos.find(b => b.id === e.data.bentoId))
       || (e.data.bentoName && state.bentos.find(b => b.name === e.data.bentoName));
     // 计划板会带 lineId(那张卡片所在生产线);把便当切到那条线的布局再打开
@@ -8585,7 +8585,7 @@ window.addEventListener('message', (e) => {
       if (jumpLineId && jumpLineId !== target.lineId) {
         switchBentoToLine(target, jumpLineId);
       }
-      state.current = { ...state.current, screen: 'operate', bentoId: target.id };
+      state.current = { ...state.current, screen: 'edit', editingBentoId: target.id };
     } else {
       // 便当已被删/找不到 → 退到便当库列表,用户自己定位
       state.current = { ...state.current, screen: 'bentos' };
