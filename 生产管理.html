@@ -9203,6 +9203,15 @@ function flipAnimate(oldRects) {
   }
 }
 
+// 拖拽结束后,浏览器常会紧接着合成一次 click。编辑页的卡片有 onclick(打开材料选择器),
+// 不吞掉的话拖完就误开选择器。捕获阶段吞掉「拖拽后的下一次 click」,300ms 兜底撤除。
+function swallowNextClick() {
+  const swallow = (ce) => { ce.stopPropagation(); ce.preventDefault(); done(); };
+  const done = () => window.removeEventListener("click", swallow, true);
+  window.addEventListener("click", swallow, true);
+  setTimeout(done, 300);
+}
+
 function setupOperateDrag(wrap, bento) {
   for (const cell of wrap.querySelectorAll(".cell[data-pos-id]")) {
     cell.addEventListener("pointerdown", e => startCellPress(e, cell, wrap, bento));
@@ -9328,6 +9337,7 @@ function startCellPressVertical(e, cell, wrap, bento) {
 
   function onUp() {
     if (!dragging) { cleanup(); return; }
+    swallowNextClick(); // 发生过拖拽:吞掉紧随的合成 click,避免编辑页误开材料选择器
     const d = drop;
     cleanup();
     if (d) {
@@ -9459,6 +9469,7 @@ function startCellPress(e, cell, wrap, bento) {
 
   function onUp() {
     if (!dragging) { cleanup(); return; }
+    swallowNextClick(); // 发生过拖拽:吞掉紧随的合成 click,避免编辑页误开材料选择器
     const d = drop;
     if (d) {
       const oldRects = new Map();
@@ -9771,7 +9782,7 @@ function renderLine() {
     const tr = document.createElement("tr");
 
     const tdSlot = document.createElement("td");
-    const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot;
+    const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot; slotInp.className = "no-spin"; slotInp.inputMode = "numeric";
     slotInp.onchange = () => {
       if (!updateSlotPosition(tpl, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
       else { saveState(); renderLine(); }
@@ -9988,7 +9999,7 @@ function renderEdit() {
       const tr = document.createElement("tr");
 
       const tdSlot = document.createElement("td");
-      const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot;
+      const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot; slotInp.className = "no-spin"; slotInp.inputMode = "numeric";
       slotInp.onchange = () => {
         if (!updateSlotPosition(b.line, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
         else { renderCardPanel(); renderEditGrid(); }
@@ -10063,7 +10074,10 @@ function renderEdit() {
     const editWrap = buildGrid(b.line, (pos, slot, row) => {
     const cell = document.createElement("div");
     cell.className = "cell" + (pos ? " clickable" : " empty");
+    cell.dataset.slot = slot;   // 拖拽命中测试用(空格也要,便于拖进空位)
+    cell.dataset.row = row;
     if (!pos) return cell;
+    cell.dataset.posId = pos.id; // 有位号的卡片才可作为拖拽源
     const lbl = document.createElement("div"); lbl.className = "lbl"; lbl.textContent = pos.label;
     cell.appendChild(lbl);
     const mats = document.createElement("div"); mats.className = "mats";
@@ -10116,6 +10130,9 @@ function renderEdit() {
     });
     gridHost.appendChild(editWrap);
     fitAllCells(editWrap);
+    // 便当库编辑页也支持拖拽卡片(长按拖动;轻点仍打开材料选择器)—— 复用操作屏的拖拽逻辑
+    if (isVerticalLayout()) setupOperateDragVertical(editWrap, b);
+    else setupOperateDrag(editWrap, b);
   };
   renderEditGrid();
 }
