@@ -7465,9 +7465,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
   .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
-  /* 卡片右上角「量」(需求3):字号与右下角人员名一致 */
-  .line-grid .cell .cell-qty{position:absolute;top:4px;right:6px;font-size:10px;color:var(--accent);text-align:right;pointer-events:none;max-width:calc(50% - 8px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px}
-  .line-grid.vertical .cell .cell-qty{font-size:10px;top:2px;right:4px}
+  /* 材料名右方的「量」(克数):行内、固定 10px、颜色继承材料名 */
+  .line-grid .cell .mats .g{font-size:10px;margin-left:.3em;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
   .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 16px}
@@ -8231,7 +8230,7 @@ function migrate(s) {
     if (!b.layouts || typeof b.layouts !== "object") b.layouts = {};
     if (b.lineId && !b.layouts[b.lineId] && Array.isArray(b.line) && b.line.length) {
       b.layouts[b.lineId] = {
-        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
+        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 })),
         assignments: JSON.parse(JSON.stringify(b.assignments || {}))
       };
     }
@@ -8249,7 +8248,7 @@ function switchBentoToLine(b, newLineId) {
   // 1) 当前 line/assignments 快照到旧线缓存
   if (oldLineId) {
     b.layouts[oldLineId] = {
-      line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label })),
+      line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 })),
       assignments: JSON.parse(JSON.stringify(b.assignments || {}))
     };
     if (b.speed != null && b.speed !== "") b.lineSpeeds[oldLineId] = b.speed;
@@ -8261,7 +8260,7 @@ function switchBentoToLine(b, newLineId) {
   if (newLineId) {
     if (b.layouts[newLineId]) {
       const saved = b.layouts[newLineId];
-      b.line = saved.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label }));
+      b.line = saved.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 }));
       b.assignments = JSON.parse(JSON.stringify(saved.assignments || {}));
     } else {
       const tpl = getLineTemplate(newLineId);
@@ -8661,15 +8660,25 @@ function getBentosUsingMaterial(matId) {
   return result;
 }
 
-// 需求4:该便当里某材料所需的「单份量」= 该材料所在各卡片右上角「量」之和(位号可能多个)。
+// 克数显示:≥1000 克用 kg(去掉多余尾零),否则用 g。
+function fmtWeight(g) {
+  const n = Number(g) || 0;
+  if (n >= 1000) return Number((n / 1000).toFixed(3)) + "kg";
+  return n + "g";
+}
+
+// 该便当里某材料所需的「单份量」= 该材料所在各卡片对应量之和(位号可能多个)。
+// 量按材料在卡片中的行取:第1行材料→量1(qty),第2行材料→量2(qty2),第3行起无量 —— 与卡片渲染一致。
 // 只累加填了数字的卡片;都没填则返回 0(调用方据此不显示)。
 function getMaterialQtyPerBento(bento, matId) {
   let sum = 0;
   const line = Array.isArray(bento.line) ? bento.line : [];
   for (const p of line) {
     const ids = bento.assignments[p.id] || [];
-    if (!ids.includes(matId)) continue;
-    const q = parseFloat(p.qty);
+    const idx = ids.indexOf(matId);
+    if (idx < 0) continue;
+    const raw = idx === 0 ? p.qty : (idx === 1 ? p.qty2 : "");
+    const q = parseFloat(raw);
     if (isFinite(q)) sum += q;
   }
   return sum;
@@ -8743,6 +8752,7 @@ function updateSlotPosition(line, posId, patch) {
   }
   if (patch.label !== undefined) p.label = String(patch.label);
   if (patch.qty !== undefined) p.qty = String(patch.qty).trim();
+  if (patch.qty2 !== undefined) p.qty2 = String(patch.qty2).trim();
   saveState();
   return true;
 }
@@ -9001,7 +9011,7 @@ function renderMaterialsDrawer() {
     const total = document.createElement("span");
     total.className = "mat-total";
     if (matTotal > 0) {
-      total.textContent = "共 " + matTotal;
+      total.textContent = "共 " + fmtWeight(matTotal);
       total.title = "总需要量 = Σ(卡片量 × 当日排产数量)";
     }
 
@@ -9070,7 +9080,7 @@ function renderMaterialsDrawer() {
         if (u.hasQty) {
           const need = document.createElement("span");
           need.style.cssText = "color:var(--muted);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums";
-          need.textContent = "需 " + u.required;
+          need.textContent = "需 " + fmtWeight(u.required);
           need.title = `${u.per} × ${u.pq}(当日排产)`;
           btn.appendChild(need);
         }
@@ -9576,15 +9586,26 @@ function renderLineGrid(line, cellRenderer) {
   return wrap;
 }
 
-// 需求3:把某位号(卡片)的「量」渲染到卡片右上角(有数字才显示,字号同人员名)
-function appendCellQty(cell, pos) {
-  if (!pos) return;
-  const q = (pos.qty != null ? String(pos.qty).trim() : "");
-  if (!q) return;
-  const el = document.createElement("div");
-  el.className = "cell-qty";
-  el.textContent = q;
-  cell.appendChild(el);
+// 把材料渲染进 .mats,并在材料名旁显示对应克数:量1→第1行材料,量2→第2行材料,第3行起无量
+function appendMats(mats, ids, pos) {
+  let shown = 0;
+  for (const mid of ids) {
+    const m = state.materials.find(x => x.id === mid);
+    if (!m) continue;
+    const div = document.createElement("div");
+    div.textContent = m.name;
+    div.style.color = m.color;
+    const raw = shown === 0 ? pos.qty : (shown === 1 ? pos.qty2 : "");
+    const g = (raw != null ? String(raw).trim() : "");
+    if (g) {
+      const gs = document.createElement("span");
+      gs.className = "g";
+      gs.textContent = g + "g";
+      div.appendChild(gs);
+    }
+    mats.appendChild(div);
+    shown++;
+  }
 }
 
 function renderOperate() {
@@ -9662,18 +9683,9 @@ function renderOperate() {
     cell.appendChild(lbl);
     const mats = document.createElement("div"); mats.className = "mats";
     if (bento) {
-      const ids = bento.assignments[pos.id] || [];
-      for (const mid of ids) {
-        const m = state.materials.find(x => x.id === mid);
-        if (!m) continue;
-        const span = document.createElement("div");
-        span.textContent = m.name;
-        span.style.color = m.color;
-        mats.appendChild(span);
-      }
+      appendMats(mats, bento.assignments[pos.id] || [], pos);
     }
     cell.appendChild(mats);
-    appendCellQty(cell, pos);
     // 右下角:有人名时按本线/借调分别上色;只要这条线当日有任意岗位有人,但该岗位空着 → 显示「応援」。
     if (bento) {
       const infos = getPersonInfosForCell(bento, pos.label);
@@ -9992,7 +10004,7 @@ function renderEdit() {
   const renderCardPanel = () => {
     cardPanel.innerHTML = "";
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量</th><th></th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量1</th><th>量2</th><th></th></tr></thead>";
     const tbody = document.createElement("tbody");
     const sorted = b.line.slice().sort((a,bb) => a.slot - bb.slot || (a.row === "top" ? -1 : 1));
     for (const p of sorted) {
@@ -10029,17 +10041,22 @@ function renderEdit() {
       };
       tdLabel.appendChild(labelInp);
 
-      // 需求3:每个卡片一个「量」,填入后显示在该卡片右上角
-      const tdQty = document.createElement("td");
-      const qtyInp = document.createElement("input");
-      qtyInp.className = "label no-spin"; qtyInp.type = "number"; qtyInp.min = "0"; qtyInp.step = "1"; qtyInp.inputMode = "numeric";
-      qtyInp.style.width = "56px"; qtyInp.placeholder = "";
-      qtyInp.value = (p.qty != null ? p.qty : "");
-      qtyInp.onblur = () => {
-        updateSlotPosition(b.line, p.id, { qty: qtyInp.value });
-        renderEditGrid();
+      // 量1 / 量2:分别对应卡片内第 1、2 行材料,填入后显示在材料名旁(克数)
+      const mkQtyCell = (field) => {
+        const td = document.createElement("td");
+        const inp = document.createElement("input");
+        inp.className = "label no-spin"; inp.type = "number"; inp.min = "0"; inp.step = "1"; inp.inputMode = "numeric";
+        inp.style.width = "56px"; inp.placeholder = "";
+        inp.value = (p[field] != null ? p[field] : "");
+        inp.onblur = () => {
+          updateSlotPosition(b.line, p.id, { [field]: inp.value });
+          renderEditGrid();
+        };
+        td.appendChild(inp);
+        return td;
       };
-      tdQty.appendChild(qtyInp);
+      const tdQty = mkQtyCell("qty");
+      const tdQty2 = mkQtyCell("qty2");
 
       const tdDel = document.createElement("td");
       const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
@@ -10057,7 +10074,7 @@ function renderEdit() {
       };
       tdDel.appendChild(del);
 
-      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdDel);
+      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdQty2); tr.appendChild(tdDel);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -10090,17 +10107,9 @@ function renderEdit() {
       hint.style.fontWeight = "400";
       mats.appendChild(hint);
     } else {
-      for (const mid of ids) {
-        const m = state.materials.find(x => x.id === mid);
-        if (!m) continue;
-        const span = document.createElement("div");
-        span.textContent = m.name;
-        span.style.color = m.color;
-        mats.appendChild(span);
-      }
+      appendMats(mats, ids, pos);
     }
     cell.appendChild(mats);
-    appendCellQty(cell, pos);
     // 右下角:有人名时按本线/借调分别上色;只要这条线当日有任意岗位有人,但该岗位空着 → 显示「応援」。
     const infos = getPersonInfosForCell(b, pos.label);
     if (infos.length) {
