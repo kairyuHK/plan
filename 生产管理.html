@@ -7745,8 +7745,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-screen td button.del{font-size:22px;padding:6px 12px;min-width:40px;min-height:40px;line-height:1}
     .edit-toolbar{flex-wrap:wrap;gap:6px;margin-bottom:8px}
     .edit-toolbar input{font-size:16px;padding:8px 10px}
-    /* 行 1:便当名 7 : (复制图标 + 速度) 3 —— 三者同排 */
-    .edit-toolbar input:nth-of-type(1){flex:0 0 calc(70% - 8px) !important;min-width:0;order:1}
+    /* 行 1:便当名对齐下一行[生产线+卡片](2/3) | 速度+复制图标对齐[管理卡片](1/3) */
+    .edit-toolbar input:nth-of-type(1){flex:0 0 calc(66.666% - 2px) !important;min-width:0;order:1}
     .edit-toolbar .copy-order{order:1;flex:0 0 40px;width:40px}
     .edit-toolbar input:nth-of-type(2){flex:1 1 0 !important;min-width:0;order:1}
     /* 行 2:生产线 | + 卡片 | 管理卡片 三列同行 */
