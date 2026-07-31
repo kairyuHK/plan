@@ -7565,10 +7565,11 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .edit-toolbar button{background:transparent;border:1px solid var(--line);color:var(--fg);padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
   .edit-toolbar .done{background:var(--accent);color:#000;border-color:var(--accent)}
   /* 复制排序:图标按钮(用 span,避免影响手机端 button:nth-of-type 序号) */
-  .edit-toolbar .copy-order{flex:0 0 auto;align-self:stretch;display:inline-flex;align-items:center;justify-content:center;width:44px;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--fg);cursor:pointer;font-size:16px;user-select:none;transition:background .15s,color .15s,border-color .15s}
-  .edit-toolbar .copy-order:hover{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+  .edit-toolbar .copy-order{flex:0 0 auto;align-self:stretch;display:inline-flex;align-items:center;justify-content:center;width:44px;border:1px solid var(--line);border-radius:4px;background:#1a1d22;color:var(--fg);cursor:pointer;font-size:16px;user-select:none;transition:background .15s,color .15s,border-color .15s}
+  :root[data-theme="light"] .edit-toolbar .copy-order{background:#f6f3ef}
+  .edit-toolbar .copy-order:hover{border-color:var(--accent);color:var(--accent)}
   .edit-toolbar .copy-order.disabled{opacity:.35;cursor:not-allowed}
-  .edit-toolbar .copy-order.disabled:hover{border-color:var(--line);color:var(--fg);background:transparent}
+  .edit-toolbar .copy-order.disabled:hover{border-color:var(--line);color:var(--fg)}
   /* 复制目标生产线选择弹窗 */
   .copy-line-pop{position:fixed;z-index:100;background:var(--soft);border:1px solid var(--line);border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,.5);padding:8px;min-width:180px;max-width:calc(100vw - 16px)}
   .copy-line-pop .cl-title{color:var(--muted);font-size:12px;padding:2px 6px 6px}
@@ -7744,10 +7745,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-screen td button.del{font-size:22px;padding:6px 12px;min-width:40px;min-height:40px;line-height:1}
     .edit-toolbar{flex-wrap:wrap;gap:6px;margin-bottom:8px}
     .edit-toolbar input{font-size:16px;padding:8px 10px}
-    /* 行 1:便当名 | 复制图标 | 速度 30% 同排 */
-    .edit-toolbar input:nth-of-type(1){flex:1 1 auto !important;min-width:0;order:1}
-    .edit-toolbar .copy-order{order:1;flex:0 0 42px;width:42px}
-    .edit-toolbar input:nth-of-type(2){flex:3 1 calc(30% - 3px) !important;min-width:0;order:1}
+    /* 行 1:便当名 7 : (复制图标 + 速度) 3 */
+    .edit-toolbar input:nth-of-type(1){flex:0 0 calc(70% - 8px) !important;min-width:0;order:1}
+    .edit-toolbar .copy-order{order:1;flex:0 0 40px;width:40px}
+    .edit-toolbar input:nth-of-type(2){flex:1 1 auto !important;min-width:0;order:1}
     /* 行 2:生产线 | + 卡片 | 管理卡片 三列同行 */
     .edit-toolbar select{flex:1 1 calc(33.333% - 4px) !important;min-width:0;order:2;padding:8px;font-size:14px}
     .edit-toolbar button:nth-of-type(1){flex:1 1 calc(33.333% - 4px);order:2}
