@@ -282,6 +282,10 @@ body.editing table.schedule td.day-cell.cell-focus{position:relative;box-shadow:
 .color-palette .swatch-text{background:transparent;border:2px solid var(--accent);color:var(--accent);font-weight:700;font-family:var(--font-mono)}
 .entry-hint{margin:8px 0 0;padding:6px 12px;background:rgba(124,92,255,0.08);border:1px solid rgba(124,92,255,0.25);border-radius:6px;font-size:12px;color:var(--text);font-family:var(--font-mono)}
 .entry-hint kbd{display:inline-block;background:#1f1f23;border:1px solid var(--border);border-radius:3px;padding:0 5px;margin:0 2px;font-size:11px;color:var(--accent)}
+.auto-schedule-btn{margin-left:12px;padding:4px 12px;font-size:12px;font-weight:600;background:var(--accent);border-color:var(--accent);color:#fff;border-radius:var(--r-btn);font-family:var(--font-mono);vertical-align:middle}
+.auto-schedule-btn:hover{background:#6a4def;border-color:#6a4def}
+.clear-schedule-btn{margin-left:8px;padding:4px 12px;font-size:12px;font-weight:600;background:transparent;border-color:var(--danger);color:var(--danger);border-radius:var(--r-btn);font-family:var(--font-mono);vertical-align:middle}
+.clear-schedule-btn:hover{background:var(--danger);border-color:var(--danger);color:#fff}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
 table.schedule tr.stat-row td.label{text-align:left;padding-left:6px;color:var(--muted)}
 table.schedule td.required{cursor:text;padding:0}
@@ -1806,6 +1810,7 @@ const Store = (() => {
     attendance: {},
     cellColors: {},
     cellTexts: {},
+    autoPlaced: {}, // 自动排班放置的休息格 key 集合(手动编辑该格即从中移除),供「清空·仅自动」用
     requiredPerDay: {},
     dispatchPerDay: {},
     ui: {
@@ -1845,6 +1850,7 @@ const Store = (() => {
       if (!parsed.dispatchPerDay) parsed.dispatchPerDay = {};
       if (!parsed.cellColors) parsed.cellColors = {};
       if (!parsed.cellTexts) parsed.cellTexts = {};
+      if (!parsed.autoPlaced) parsed.autoPlaced = {};
       // 旧数据兼容:部门缺少新字段时补默认值
       if (Array.isArray(parsed.departments)) {
         parsed.departments.forEach(d => {
@@ -2034,10 +2040,13 @@ const Store = (() => {
   function setUi(patch) { Object.assign(state.ui, patch); commit('ui'); }
 
   // silent=true:只 persist 不 commit(不触发整表重渲),调用方负责局部更新 DOM。
-  function setCell(deptId, personId, ymd, status, color, silent) {
+  function setCell(deptId, personId, ymd, status, color, silent, markAuto) {
     const k = cellKey(deptId, personId, ymd);
     if (status === 'work') delete state.attendance[k];
     else state.attendance[k] = status;
+    // 自动排班放置 → 记标记;任何手动写入(markAuto 缺省)→ 清标记,该格转为「手动」
+    if (markAuto) state.autoPlaced[k] = true;
+    else delete state.autoPlaced[k];
     // 非 work(休息)状态强制清色 + 清文字 — 颜色/文字只属于出勤日
     if (status !== 'work') {
       delete state.cellColors[k];
@@ -2088,6 +2097,7 @@ const Store = (() => {
       state.cellTexts[k] = { text: t, color: color || null };
       delete state.attendance[k]; // 出勤日
     }
+    delete state.autoPlaced[k]; // 手动改文字 → 该格转为手动
     commit('cellText');
   }
 
@@ -2228,6 +2238,33 @@ const Store = (() => {
     for (const k of Object.keys(state.attendance)) if (k.startsWith(`${deptId}|${personId}|`)) delete state.attendance[k];
     commit('people');
   }
+  // 清空某部门在指定日期集合(ymds)内所有人员的出勤格:状态(〇/有/欠)、颜色、文字。
+  // 不动「必要人数/派遣」等按日计划配置。key 结构 = `${deptId}|${personId}|${ymd}`。
+  function clearPeriodCells(deptId, ymds) {
+    const set = new Set(ymds);
+    const prefix = deptId + '|';
+    for (const store of [state.attendance, state.cellColors, state.cellTexts, state.autoPlaced]) {
+      for (const k of Object.keys(store)) {
+        if (!k.startsWith(prefix)) continue;
+        if (set.has(k.slice(k.lastIndexOf('|') + 1))) delete store[k];
+      }
+    }
+    commit('clear');
+  }
+  // 仅清「自动排班」放置的休息格(仍带 autoPlaced 标记的);手动的 〇/有/欠/文字保留。
+  function clearAutoCells(deptId, ymds) {
+    const set = new Set(ymds);
+    const prefix = deptId + '|';
+    for (const k of Object.keys(state.autoPlaced)) {
+      if (!k.startsWith(prefix)) continue;
+      if (!set.has(k.slice(k.lastIndexOf('|') + 1))) continue;
+      delete state.attendance[k];
+      delete state.cellColors[k];
+      delete state.cellTexts[k];
+      delete state.autoPlaced[k];
+    }
+    commit('clear');
+  }
   // 在同一部门内把人员从源位置移动到目标位置。
   // toPid 为目标参考人员 id;beforeTarget=true 插到目标之前,否则之后。
   // 操作底层 state.people[deptId] 完整数组,跨越已软删除的人员(removedOn)保持其原位置稳定。
@@ -2289,6 +2326,7 @@ const Store = (() => {
     if (!parsed.attendance) parsed.attendance = {};
     if (!parsed.cellColors) parsed.cellColors = {};
     if (!parsed.cellTexts) parsed.cellTexts = {};
+    if (!parsed.autoPlaced) parsed.autoPlaced = {};
     parsed.departments.forEach(d => {
       if (d.printHeightMm == null || d.printHeightMm === 192) d.printHeightMm = 200; // 旧默认 192 → 200,铺满 A4 横向(可用高≈202mm),无 UI 故统一升
     });
@@ -2393,7 +2431,7 @@ const Store = (() => {
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
     setSize, resetSize, sizes,
-    addPerson, updatePerson, removePerson, purgePerson, transferPerson, reorderPerson,
+    addPerson, updatePerson, removePerson, purgePerson, clearPeriodCells, clearAutoCells, transferPerson, reorderPerson,
     findPersonById, getHoursDays, setHoursDay, clearHoursDaysInRange, setHoursSetting,
     exportJson, importJson, reset, subscribe
   };
@@ -2977,6 +3015,32 @@ const Pages = (() => {
     const left = Render.el('span');
     left.innerHTML = '键盘: <kbd>1</kbd>=〇 <kbd>2</kbd>=有 <kbd>3</kbd>=空 <kbd>4</kbd>=✲　<kbd>→</kbd><kbd>↓</kbd> 移焦　<kbd>Enter</kbd> 下一人';
     div.appendChild(left);
+    const autoBtn = Render.el('button.auto-schedule-btn', {
+      title: '按契休数与「上2-3天休1天」节奏自动填休息日;保留已手动设置的 〇/有/欠',
+      onclick: (e) => {
+        showConfirmPopover(e.currentTarget, {
+          text: '自动排班',
+          sub: '给每人补足休息日到契休数,保留你已设的 〇/有/欠,尽量兼顾每天必要人数。之后仍可手动微调。',
+          confirmText: '开始',
+          onConfirm: () => autoSchedule()
+        });
+      }
+    }, '🗓 自动排班');
+    div.appendChild(autoBtn);
+    const clearBtn = Render.el('button.clear-schedule-btn', {
+      title: '清空当前部门·当前周期的排班(必要人数、派遣不受影响)',
+      onclick: (e) => {
+        showConfirmPopover(e.currentTarget, {
+          text: '清空排班（当前部门·当前周期）',
+          sub: '「仅自动排班」保留你手动设的 〇/有/欠/文字,只撤销自动排的休息;「全部清空」清除所有 〇/有/欠/颜色/文字。必要人数与派遣均保留。此操作不可撤销。',
+          extra: { text: '仅清自动排班（保留手动）', onClick: () => clearSchedule('auto') },
+          confirmText: '全部清空',
+          danger: true,
+          onConfirm: () => clearSchedule('all')
+        });
+      }
+    }, '🧹 清空');
+    div.appendChild(clearBtn);
     div.appendChild(buildColorPalette());
     return div;
   }
@@ -3649,6 +3713,120 @@ const Pages = (() => {
       if (Store.cellStatus(deptId, p.id, ymd) === 'absent') total++;
     }
     return total;
+  }
+
+  // ---- 自动排班 ----
+  // 目标:每人 contractRest(〇)数达到契休数;尽量「上2-3天休1天」(可上4),避免连上5天;
+  // 只在纯「上班」格补休息,已手动设的 〇/有/欠/文字格保留不动;
+  // 并列位置优先挑「当天不缺岗」的一天,尽量让每天在岗人数接近必要人数(不足由派遣补)。
+  function autoSchedule() {
+    const st = Store.get();
+    const deptId = st.ui.currentDept;
+    if (deptId === PERSONAL_VIEW || deptId === HOURS_VIEW) { showToast('请切到部门排班表', 'info'); return; }
+    if (!st.ui.editMode) { showToast('请先点「🔒 锁定」解锁编辑', 'info'); return; }
+    const periodKey = st.ui.currentPeriod;
+    const days = Period.days(periodKey);
+    const D = days.length;
+    const contract = D >= 31 ? 9 : 8;
+    const people = Store.peopleInPeriod(deptId, periodKey);
+    if (!people.length) { showToast('本部门暂无人员', 'info'); return; }
+
+    // 每天在岗容量 = 当前在岗人数 − 目标在岗(必要人数 − 派遣)。>0 = 还能休几人不缺岗。
+    // 随分配实时递减,用来在并列位置里优先挑不缺岗的那天,分散各人休息日。
+    const capacity = days.map((d) => {
+      const target = Math.max(0, Store.requiredCount(deptId, d.ymd) - Store.dispatchCount(deptId, d.ymd));
+      return computeLineTotal(deptId, d.ymd) - target;
+    });
+
+    const placements = []; // { pid, ymd }
+    for (const person of people) {
+      const pid = person.id;
+      // 分类每天:onDuty(在岗,计入 line) / assignable(可改成休息:纯上班无文字)
+      const onDuty = new Array(D);
+      const assignable = new Array(D);
+      let restCount = 0;
+      for (let i = 0; i < D; i++) {
+        const ymd = days[i].ymd;
+        const status = Store.cellStatus(deptId, pid, ymd);
+        const ct = Store.cellText(deptId, pid, ymd);
+        if (status === 'contractRest') { restCount++; onDuty[i] = false; assignable[i] = false; }
+        else if (status === 'work') {
+          const textRest = ct && ct.text && !WORK_TEXTS.has(ct.text); // 非班次文字 = 休息,不在岗
+          onDuty[i] = !textRest;
+          assignable[i] = !textRest && !(ct && ct.text);              // 早/晚等带文字的在岗格不动
+        } else { onDuty[i] = false; assignable[i] = false; }          // paidLeave/absent/retired
+      }
+      let need = contract - restCount;
+      if (need <= 0) continue; // 已达标/超额 → 尊重手动,不删不加
+
+      while (need > 0) {
+        // 找所有连续在岗段,取「最长且含可分配格」的一段,在其接近中点处放休息 → 自然切短连上
+        const runs = [];
+        let s = -1;
+        for (let i = 0; i <= D; i++) {
+          if (i < D && onDuty[i]) { if (s < 0) s = i; }
+          else if (s >= 0) { runs.push([s, i - 1]); s = -1; }
+        }
+        // 永远切「最长的在岗段」→ 保证节奏、优先消除连上5天+。段选定后在段内择格:
+        //   主 pen = 切完后两侧较长的一段超过 4 的量(能做到两侧都≤4 的格 pen=0,并列);
+        //   次   = 当日容量大(最不缺岗)→ 在并列格里分散各人休息日,兼顾必要人数;
+        //   末   = 接近段中点,切得更匀。
+        // 永远切「最长的在岗段」→ 保证节奏、优先消除连上5天+。段内先划一条「合格带」,
+        // 再在带内挑「当日最不缺岗」的一天(次:接近中点)→ 让相同排班的人也能分散休息、兼顾必要人数。
+        //   段长≤9:合格带 = 切完两侧都≤4 的位置(保证不留连上5天);
+        //   段长≥10:一刀切不到≤4,合格带 = 中间三分之一(切得匀、快速收敛),带宽仍够容量分散。
+        runs.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
+        let chosen = -1;
+        for (const [a, b] of runs) { // 最长段优先;若整段无可分配格则退到下一段
+          const L = b - a + 1, mid = (a + b) / 2;
+          const lo = L <= 9 ? a + Math.max(0, L - 5) : a + Math.floor(L / 3);
+          const hi = L <= 9 ? a + Math.min(L - 1, 4) : a + Math.ceil(2 * L / 3);
+          // 先在合格带内选;带内无可分配格则退到整段
+          for (const [from, to] of [[lo, hi], [a, b]]) {
+            let bestCap = -Infinity, bestDist = Infinity;
+            for (let i = from; i <= to; i++) {
+              if (!assignable[i]) continue;
+              const dist = Math.abs(i - mid);
+              if (capacity[i] > bestCap || (capacity[i] === bestCap && dist < bestDist)) {
+                chosen = i; bestCap = capacity[i]; bestDist = dist;
+              }
+            }
+            if (chosen >= 0) break;
+          }
+          if (chosen >= 0) break;
+        }
+        if (chosen < 0) break; // 无可分配格 → 该人放不满,best effort
+        onDuty[chosen] = false;
+        assignable[chosen] = false;
+        capacity[chosen] -= 1;
+        placements.push({ pid, ymd: days[chosen].ymd });
+        need--;
+      }
+    }
+
+    if (!placements.length) { showToast('已满足契休数,无需自动排班', 'info'); return; }
+    // 批量静默写入,最后一笔非静默 → 触发一次重渲 + 持久化
+    for (let i = 0; i < placements.length; i++) {
+      const p = placements[i];
+      Store.setCell(deptId, p.pid, p.ymd, 'contractRest', undefined, i < placements.length - 1, true);
+    }
+    showToast(`自动排班完成:新增 ${placements.length} 个休息日`, 'success');
+  }
+
+  // 清空当前部门·当前周期的出勤格。mode='all' 全清;mode='auto' 只清自动排班放的、保留手动。必要人数/派遣不动。
+  function clearSchedule(mode) {
+    const st = Store.get();
+    const deptId = st.ui.currentDept;
+    if (deptId === PERSONAL_VIEW || deptId === HOURS_VIEW) { showToast('请切到部门排班表', 'info'); return; }
+    if (!st.ui.editMode) { showToast('请先点「🔒 锁定」解锁编辑', 'info'); return; }
+    const ymds = Period.days(st.ui.currentPeriod).map(d => d.ymd);
+    if (mode === 'auto') {
+      Store.clearAutoCells(deptId, ymds);
+      showToast('已清除自动排班(保留手动)', 'success');
+    } else {
+      Store.clearPeriodCells(deptId, ymds);
+      showToast('已清空当前周期排班', 'success');
+    }
   }
 
   // ---- settings page ----
