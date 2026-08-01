@@ -4473,10 +4473,10 @@ function boardKey(date) { return STORAGE_BOARD_PREFIX + (date || currentDate); }
   if (!localStorage.getItem(todayKey)) localStorage.setItem(todayKey, legacy);
   localStorage.removeItem(STORAGE_BOARD_LEGACY);
 })();
-// 自动清理超过 365 天的旧计划板数据
+// 自动清理超过 3 年的旧计划板数据
 (function pruneOldBoards() {
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 365);
+  cutoff.setFullYear(cutoff.getFullYear() - 3);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -10650,7 +10650,7 @@ const BUNDLE_KEYS_EXACT = [
 ];
 const BUNDLE_KEY_PREFIXES = ['productionBoard_v1_']; // 计划板 每日存档
 const STORAGE_LAST_EXPORT_AT = 'production-management-last-export-at';
-const EXPORT_KEEP_DAYS = 40;
+const EXPORT_KEEP_DAYS = 365;
 const EXPORT_REMIND_DAYS = 25;
 
 function isoDateNDaysAgo(n) {
@@ -10666,7 +10666,7 @@ function collectBundleEntries() {
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k) continue;
-    // 排岗表:parse 后只保留近 40 天的 schedules
+    // 排岗表:parse 后只保留近 1 年的 schedules
     if (k === 'shift-schedule-data-v1') {
       try {
         const obj = JSON.parse(localStorage.getItem(k) || 'null');
