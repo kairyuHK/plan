@@ -273,6 +273,8 @@ table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
 table.schedule tr.hl-row td.hl-col,table.schedule tr.hl-row th.hl-col{background:#2a3f5f}
 /* keyboard focus indicator(仅在编辑模式下显示,锁定时即使焦点逻辑保留也不画边框) */
 body.editing table.schedule td.day-cell.cell-focus{position:relative;box-shadow:inset 0 0 0 2px var(--accent),0 0 0 1px var(--accent);z-index:2}
+/* 键盘移焦 scrollIntoView 时,焦点格上边避开吸顶 thead(月/日/星期三行),左边避开吸顶役職+氏名列 */
+table.schedule td.day-cell{scroll-margin-top:calc(var(--row-month-h,25px) + var(--row-date-h,25px) + var(--row-weekday-h,25px));scroll-margin-left:calc(var(--col-role-w,60px) + var(--col-name-w,130px))}
 /* color palette toolbar */
 .color-palette{display:inline-flex;gap:6px;align-items:center;margin-left:12px}
 .color-palette .swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
@@ -2800,6 +2802,14 @@ const Pages = (() => {
     if (cell) cell.classList.add('cell-focus');
   }
 
+  // 键盘移焦时把焦点格滚进可视区(block/inline:'nearest' → 已可见则不动,只在越界时最小滚动)。
+  // 仅供键盘导航调用,不放进 applyFocus,以免与重渲后的滚动位置恢复相互打架。
+  function scrollFocusIntoView() {
+    if (!focusedCell) return;
+    const cell = document.querySelector(`td.day-cell[data-person="${focusedCell.personId}"][data-ymd="${focusedCell.ymd}"]`);
+    if (cell) cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
   function moveFocus(dx, dy) {
     if (!focusedCell) return;
     const days = Period.days(Store.get().ui.currentPeriod);
@@ -2810,6 +2820,7 @@ const Pages = (() => {
     const newPi = Math.max(0, Math.min(ppl.length - 1, pi + dy));
     focusedCell = { personId: ppl[newPi].id, ymd: days[newDi].ymd };
     applyFocus();
+    scrollFocusIntoView();
   }
 
   function setFocusedState(status) {
@@ -2827,10 +2838,12 @@ const Pages = (() => {
     const person = (Store.people(deptId) || []).find(pp => pp.id === cur.personId);
     const isDerivedRetired = st === 'retired' && person && person.retiredOn && cur.ymd >= person.retiredOn;
     if (!isDerivedRetired) {
-      Store.setCell(deptId, cur.personId, cur.ymd, status, activeColor);
-    } else {
-      applyFocus();
+      // 静默改 store + 只局部更新受影响格 → 不重建整表(与点击路径一致,避免快速连按时滚动跳回顶部)
+      Store.setCell(deptId, cur.personId, cur.ymd, status, activeColor, true);
+      patchDayCell(deptId, cur.personId, cur.ymd);
     }
+    applyFocus();
+    scrollFocusIntoView();
   }
 
   function toggleRow(personId) {
@@ -3127,6 +3140,7 @@ const Pages = (() => {
       if (pi >= 0 && pi < ppl.length - 1) {
         focusedCell = { personId: ppl[pi + 1].id, ymd: days[0].ymd };
         applyFocus();
+        scrollFocusIntoView();
       }
       e.preventDefault();
     } else if (k === 'Escape') {
