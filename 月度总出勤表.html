@@ -229,6 +229,12 @@ table.schedule td.name-col{background:var(--card)}
 table.schedule th.sum-col,table.schedule td.sum-col{min-width:0;color:var(--muted);overflow:hidden}
 table.schedule td.sum-col.over{color:var(--danger);font-weight:700}
 table.schedule td.sum-col.under{color:var(--warn);font-weight:700}
+/* 契休可编辑单元格:编辑模式下行内数字输入,继承 over/under 颜色;手动覆盖值加虚下划线区分自动值 */
+table.schedule td.sum-col.editable-contract{cursor:text;padding:0}
+table.schedule td.sum-col.editable-contract input{width:100%;padding:2px 0;font-size:12px;font-family:var(--font-mono);text-align:center;background:transparent;border:none;border-radius:0;color:inherit;font-weight:600;-moz-appearance:textfield}
+table.schedule td.sum-col.editable-contract input::-webkit-outer-spin-button,table.schedule td.sum-col.editable-contract input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+table.schedule td.sum-col.editable-contract input:hover{background:#1f1f23}
+table.schedule td.sum-col.editable-contract input:focus{background:#1f1f23;outline:1px solid var(--accent);outline-offset:-1px}
 table.schedule th:not(.role-col):not(.name-col):not(.sum-col):not(.dept-name):not(.month-label){height:25px;box-sizing:border-box;padding:0;vertical-align:middle}
 /* 表头 3 行可独立调高(设置→单元格尺寸)。head/weekday 行沿用上一条的 :not 链 + 行 class 抬高特异性以覆盖其 25px;未设回退 25px */
 table.schedule thead tr.month-row th.dept-name,
@@ -1813,6 +1819,7 @@ const Store = (() => {
     cellColors: {},
     cellTexts: {},
     autoPlaced: {}, // 自动排班放置的休息格 key 集合(手动编辑该格即从中移除),供「清空·仅自动」用
+    contractOverride: {}, // 契休手动覆盖(按周期):key `${deptId}|${personId}|${periodKey}` → 数字;无则用自动 8/9
     requiredPerDay: {},
     dispatchPerDay: {},
     ui: {
@@ -1853,6 +1860,7 @@ const Store = (() => {
       if (!parsed.cellColors) parsed.cellColors = {};
       if (!parsed.cellTexts) parsed.cellTexts = {};
       if (!parsed.autoPlaced) parsed.autoPlaced = {};
+      if (!parsed.contractOverride) parsed.contractOverride = {};
       // 旧数据兼容:部门缺少新字段时补默认值
       if (Array.isArray(parsed.departments)) {
         parsed.departments.forEach(d => {
@@ -2111,6 +2119,17 @@ const Store = (() => {
     commit('required');
   }
 
+  // 契休手动覆盖(按周期)。返回数字或 undefined(未覆盖 → 调用方用自动 8/9)。
+  const contractKey = (deptId, personId, periodKey) => `${deptId}|${personId}|${periodKey}`;
+  const contractOverrideOf = (deptId, personId, periodKey) => state.contractOverride[contractKey(deptId, personId, periodKey)];
+  function setContractOverride(deptId, personId, periodKey, n) {
+    const k = contractKey(deptId, personId, periodKey);
+    const raw = String(n == null ? '' : n).trim();
+    if (raw === '') { delete state.contractOverride[k]; commit('contract'); return; } // 空 → 恢复自动
+    state.contractOverride[k] = Math.max(0, Math.round(Number(raw) || 0));
+    commit('contract');
+  }
+
   function setDispatch(deptId, ymd, n, silent) {
     const k = dispKey(deptId, ymd);
     const raw = String(n).trim();
@@ -2329,6 +2348,7 @@ const Store = (() => {
     if (!parsed.cellColors) parsed.cellColors = {};
     if (!parsed.cellTexts) parsed.cellTexts = {};
     if (!parsed.autoPlaced) parsed.autoPlaced = {};
+    if (!parsed.contractOverride) parsed.contractOverride = {};
     parsed.departments.forEach(d => {
       if (d.printHeightMm == null || d.printHeightMm === 192) d.printHeightMm = 200; // 旧默认 192 → 200,铺满 A4 横向(可用高≈202mm),无 UI 故统一升
     });
@@ -2431,6 +2451,7 @@ const Store = (() => {
   return {
     get, dept, people, peopleInPeriod, cellStatus, cellColor, cellText, requiredCount, dispatchCount, paidLeaveDaysInRange,
     setUi, setCell, cycleCell, setRequired, setDispatch, setCellText,
+    contractOverrideOf, setContractOverride,
     addDepartment, renameDepartment, setDeptRequired, setDeptPrintHeight, removeDepartment, reorderDepartment,
     setSize, resetSize, sizes,
     addPerson, updatePerson, removePerson, purgePerson, clearPeriodCells, clearAutoCells, transferPerson, reorderPerson,
@@ -2762,7 +2783,9 @@ const Pages = (() => {
       if (paidEl) paidEl.textContent = String(sums.paid);
       const contractEl = row.querySelector('td.sum-col[data-sum="contract"]');
       if (contractEl) {
-        contractEl.textContent = String(sums.contract);
+        const cInput = contractEl.querySelector('input'); // 编辑模式下契休是行内 input,勿用 textContent 冲掉
+        if (cInput) { if (document.activeElement !== cInput) cInput.value = String(sums.contract); }
+        else contractEl.textContent = String(sums.contract);
         contractEl.classList.remove('over', 'under');
         if (sums.restCount > sums.contract) contractEl.classList.add('over');
         else if (sums.restCount < sums.contract) contractEl.classList.add('under');
@@ -3379,6 +3402,7 @@ const Pages = (() => {
     const tbody = Render.el('tbody');
     const deptId = Store.get().ui.currentDept;
     const periodKey = Store.get().ui.currentPeriod;
+    const editing = Store.get().ui.editMode;
     const people = Store.peopleInPeriod(deptId, periodKey);
 
     if (people.length === 0) {
@@ -3423,9 +3447,25 @@ const Pages = (() => {
 
       const sums = computeSums(deptId, p, periodKey, days);
       tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'paid' } }, String(sums.paid)));
-      const contractTd = Render.el('td.sum-col', { dataset: { sum: 'contract' } }, String(sums.contract));
+      const contractTd = Render.el('td.sum-col', { dataset: { sum: 'contract' } });
       if (sums.restCount > sums.contract) contractTd.classList.add('over');
       else if (sums.restCount < sums.contract) contractTd.classList.add('under');
+      const contractOv = Store.contractOverrideOf(deptId, p.id, periodKey);
+      if (editing) {
+        contractTd.classList.add('editable-contract');
+        if (contractOv != null) contractTd.classList.add('overridden'); // 手动值:虚下划线标记
+        const cInput = Render.el('input', {
+          type: 'number', min: '0',
+          value: String(sums.contract),
+          title: contractOv != null ? '手动契休(清空恢复自动 8/9)' : '契休默认自动,可改;清空恢复自动',
+          onchange: (e) => Store.setContractOverride(deptId, p.id, periodKey, e.target.value),
+          onfocus: (e) => e.target.select()
+        });
+        contractTd.appendChild(cInput);
+      } else {
+        contractTd.textContent = String(sums.contract);
+        if (contractOv != null) contractTd.classList.add('overridden');
+      }
       tr.appendChild(contractTd);
       tr.appendChild(Render.el('td.sum-col', { dataset: { sum: 'remain' } }, sums.remaining == null ? '—' : String(sums.remaining)));
 
@@ -3544,7 +3584,8 @@ const Pages = (() => {
       if (st === 'paidLeave') paid++;
       else if (st === 'contractRest') restCount++;
     }
-    const contract = days.length >= 31 ? 9 : 8;
+    const ov = Store.contractOverrideOf(deptId, person.id, periodKey);
+    const contract = (ov != null) ? ov : (days.length >= 31 ? 9 : 8); // 手动覆盖优先,否则自动
     // 残:基于当前查看周期的截止日,按 年度有休 + 前年残留 − 已用 计算
     const asOf = Util.parseYmd(days[days.length - 1].ymd);
     const annual = computeAnnualLeave(deptId, person, asOf);
@@ -3741,7 +3782,7 @@ const Pages = (() => {
     const periodKey = st.ui.currentPeriod;
     const days = Period.days(periodKey);
     const D = days.length;
-    const contract = D >= 31 ? 9 : 8;
+    const autoContract = D >= 31 ? 9 : 8;
     const people = Store.peopleInPeriod(deptId, periodKey);
     if (!people.length) { showToast('本部门暂无人员', 'info'); return; }
 
@@ -3770,6 +3811,8 @@ const Pages = (() => {
           assignable[i] = !textRest && !(ct && ct.text);              // 早/晚等带文字的在岗格不动
         } else { onDuty[i] = false; assignable[i] = false; }          // paidLeave/absent/retired
       }
+      const ov = Store.contractOverrideOf(deptId, pid, periodKey);
+      const contract = (ov != null) ? ov : autoContract; // 手动覆盖优先
       let need = contract - restCount;
       if (need <= 0) continue; // 已达标/超额 → 尊重手动,不删不加
 
