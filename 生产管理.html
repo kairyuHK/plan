@@ -2581,9 +2581,9 @@ const Pages = (() => {
     .head-btn { height: 13px; padding: 0 3px; font-size: 7px; border-radius: 3px; gap: 1px; }
     .head-btn .ic { font-size: 7px; }
 
-    /* 手机端紧凑视图：仅显示首字徽章 + 人数 */
-    .card-compact .compact-time,
+    /* 手机端紧凑视图：删除键隐藏,连它预留的 padding-right 一起收掉,把空间让给人数 */
     .card-compact .compact-del { display: none; }
+    .card-compact { padding-right: 6px; }
 
     /* 配置栏 */
     .line-config { gap: 2px; grid-template-columns: 1fr 1fr; align-items: stretch; }
@@ -2599,6 +2599,11 @@ const Pages = (() => {
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
     .pager { display: none; }
+  }
+
+  /* 竖屏卡片窄:隐藏耗时,优先把空间给人数;横屏/PC 卡片够宽时耗时正常显示 */
+  @media (max-width: 900px) and (orientation: portrait) {
+    .card-compact .compact-time { display: none; }
   }
 
   .line-head {
