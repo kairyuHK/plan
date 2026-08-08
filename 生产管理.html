@@ -7448,7 +7448,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   #content{padding:16px}
   .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;display:none}
   .backdrop.show{display:block}
-  .drawer{position:fixed;top:0;right:0;bottom:0;width:340px;background:#0f1115;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .15s;z-index:10;display:flex;flex-direction:column}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:380px;background:#0f1115;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .15s;z-index:10;display:flex;flex-direction:column}
   .drawer.show{transform:translateX(0)}
   .drawer header{flex:0 0 auto;padding:12px;border-bottom:1px solid var(--line);font-weight:bold;background:none}
   .drawer .list{flex:1;overflow:auto;padding:8px 12px}
@@ -7463,6 +7463,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   /* 需求1:材料名「编辑」图标(需求5:放大点按区域);需求4:材料名旁「总需要量」 */
   .drawer .row .edit{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px;flex:0 0 auto;padding:6px 10px;line-height:1}
   .drawer .row .edit:hover{color:var(--accent)}
+  /* 材料单位切换按钮(克 g / 個) */
+  .drawer .row .unit-btn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--fg);cursor:pointer;font:inherit;font-size:12px;padding:3px 8px;border-radius:5px;min-width:34px;transition:border-color .15s,color .15s}
+  .drawer .row .unit-btn:hover{border-color:var(--accent);color:var(--accent)}
   .drawer .row .mat-total{flex:0 0 auto;color:var(--accent);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:2px}
   /* 需求1:去掉「量」数字输入框的上下箭头(spinner) */
   .no-spin::-webkit-outer-spin-button,.no-spin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
@@ -7737,7 +7740,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .bento-title{font-size:var(--bento-title-size,22px);min-height:32px;margin:4px 0 2px;letter-spacing:1px}
     .bento-title .muted{font-size:13px}
     .belt{height:6px;margin:4px 0}
-    .drawer{width:88vw}
+    .drawer{width:94vw}
     .picker{max-width:90vw;max-height:45vh}
     .bentos-screen .item .name{font-size:15px}
     .line-screen td input{width:60px}
@@ -8639,7 +8642,7 @@ function addMaterial(name, color) {
   name = (name || "").trim();
   if (!name) return null;
   if (state.materials.some(m => m.name === name)) return null;
-  const m = { id: uid("mat"), name, color: color || randomColor() };
+  const m = { id: uid("mat"), name, color: color || randomColor(), unit: "g" };
   state.materials.push(m);
   saveState();
   return m;
@@ -8664,6 +8667,7 @@ function updateMaterial(id, patch) {
     m.name = t;
   }
   if (patch.color !== undefined) m.color = patch.color;
+  if (patch.unit !== undefined) m.unit = patch.unit;
   saveState();
   return true;
 }
@@ -8692,6 +8696,13 @@ function fmtWeight(g) {
   const n = Number(g) || 0;
   if (n >= 1000) return Number((n / 1000).toFixed(3)) + "kg";
   return n + "g";
+}
+
+// 材料总需要量按单位格式化:克(g)→kg/g 换算;個→整数 + 個(个数不换算)
+function fmtTotal(qty, unit) {
+  if (unit === "個") return (Number(qty) || 0) + "個";
+  if (unit === "无") return String(Number(qty) || 0); // 无单位:纯数字,不换算
+  return fmtWeight(qty); // g:kg/g 换算
 }
 
 // 该便当里某材料所需的「单份量」= 该材料所在各卡片对应量之和(位号可能多个)。
@@ -9035,10 +9046,23 @@ function renderMaterialsDrawer() {
       usageRows.push({ name: bento.name, id: bento.id, per, pq, required, hasQty });
     }
 
+    // 单位切换按钮:克(g) / 個 —— 单位是材料属性,一处切换,所有卡片/总量处处生效
+    const unitBtn = document.createElement("button");
+    unitBtn.className = "unit-btn";
+    const curUnit = m.unit || "g";
+    unitBtn.textContent = curUnit;
+    unitBtn.title = "切换单位:克(g) / 個 / 无";
+    unitBtn.onclick = (e) => {
+      e.stopPropagation();
+      const nextUnit = curUnit === "g" ? "個" : curUnit === "個" ? "无" : "g";
+      updateMaterial(m.id, { unit: nextUnit });
+      renderMaterialsDrawer();
+    };
+
     const total = document.createElement("span");
     total.className = "mat-total";
     if (matTotal > 0) {
-      total.textContent = "共 " + fmtWeight(matTotal);
+      total.textContent = "共 " + fmtTotal(matTotal, m.unit);
       total.title = "总需要量 = Σ(卡片量 × 当日排产数量)";
     }
 
@@ -9107,7 +9131,7 @@ function renderMaterialsDrawer() {
         if (u.hasQty) {
           const need = document.createElement("span");
           need.style.cssText = "color:var(--muted);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums";
-          need.textContent = "需 " + fmtWeight(u.required);
+          need.textContent = "需 " + fmtTotal(u.required, m.unit);
           need.title = `${u.per} × ${u.pq}(当日排产)`;
           btn.appendChild(need);
         }
@@ -9134,7 +9158,7 @@ function renderMaterialsDrawer() {
     };
     nameView.onclick = () => toggleUsage();
 
-    row.appendChild(sw); row.appendChild(nameView); row.appendChild(nameInput); row.appendChild(total); row.appendChild(edit); row.appendChild(del);
+    row.appendChild(sw); row.appendChild(nameView); row.appendChild(nameInput); row.appendChild(total); row.appendChild(unitBtn); row.appendChild(edit); row.appendChild(del);
     list.appendChild(row);
     list.appendChild(usageBox);
   }
@@ -9627,7 +9651,7 @@ function appendMats(mats, ids, pos) {
     if (g) {
       const gs = document.createElement("span");
       gs.className = "g";
-      gs.textContent = g + "g";
+      const u = m.unit || "g"; gs.textContent = g + (u === "无" ? "" : u);
       div.appendChild(gs);
     }
     mats.appendChild(div);
