@@ -1417,7 +1417,11 @@ const Pages = (() => {
 
     const searchEl = root.querySelector('#people-search');
     if(query){ searchEl.focus(); searchEl.setSelectionRange(query.length, query.length); }
-    searchEl.addEventListener('input', renderPeople);
+    // IME(日/中文)输入合成中不重渲(重建搜索框会打断合成 → 出双字母);合成结束才搜索
+    let _composing = false;
+    searchEl.addEventListener('compositionstart', () => { _composing = true; });
+    searchEl.addEventListener('compositionend', () => { _composing = false; renderPeople(); });
+    searchEl.addEventListener('input', () => { if (!_composing) renderPeople(); });
     const addBtn = root.querySelector('#people-add');
     addBtn.addEventListener('click', () => {
       // 两步弹窗:先输姓名,再选主属线
