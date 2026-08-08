@@ -733,6 +733,9 @@ input:focus,select:focus{border-color:var(--accent)}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;line-height:1;color:var(--text)}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
 .icon-btn svg{display:block}
+.icon-btn.active{color:var(--accent);border-color:var(--accent)}
+/* 隐藏人名:透明化岗位按钮里的人名(含借调⇄),按钮框保留、仍可点开分配 */
+.names-hidden .assign-btn,.names-hidden .assign-btn *{color:transparent!important}
 /* 复制某日 弹窗 (复用 #picker-host 的遮罩样式) */
 #copy-day-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:101;padding:16px}
 #copy-day-host.hidden{display:none}
@@ -1624,6 +1627,7 @@ const Pages = (() => {
             <div class="cal-host hidden" id="cal-host"></div>
           </span>
           <button id="copy-day" class="icon-btn" title="复制某日的排岗到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button id="toggle-names" class="icon-btn" title="隐藏人名" aria-label="显示/隐藏人名"></button>
         </div>
         <div class="line-tabs" id="line-tabs">
           ${lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
@@ -1681,6 +1685,24 @@ const Pages = (() => {
     root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
 
     document.getElementById('copy-day').addEventListener('click', () => openCopyDayHost());
+    // 显示/隐藏人名:透明化 .assign-btn 里的人名(按钮框保留、仍可点开改分配);状态存 localStorage,切日期也记住
+    const EYE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    const tnBtn = document.getElementById('toggle-names');
+    const applyHideNames = (hide) => {
+      root.classList.toggle('names-hidden', hide);
+      tnBtn.innerHTML = hide ? EYE_OFF : EYE;
+      tnBtn.classList.toggle('active', hide);
+      tnBtn.title = hide ? '显示人名' : '隐藏人名';
+    };
+    applyHideNames(localStorage.getItem('sched-hide-names') === '1');
+    tnBtn.addEventListener('click', () => {
+      const hide = !root.classList.contains('names-hidden');
+      localStorage.setItem('sched-hide-names', hide ? '1' : '0');
+      applyHideNames(hide);
+      // 通知父壳广播给其它 iframe(配置表品名卡右下角人名同步隐藏/显示)
+      try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'hide-names', hide }, '*'); } catch(_){}
+    });
     root.querySelectorAll('.assign-btn').forEach(b => {
       b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
     });
@@ -7410,6 +7432,11 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     if(!e.data) return;
     if(e.data.type === 'theme-changed') apply(e.data.accent, e.data.accentRgb);
     else if(e.data.type === 'theme-mode' && e.data.mode) document.documentElement.dataset.theme = e.data.mode;
+    else if(e.data.type === 'hide-names') document.body.classList.toggle('names-hidden', !!e.data.hide);
+  });
+  // 排岗表"隐藏人名"开关:初始化读共享 localStorage;之后父壳广播 hide-names 实时更新品名卡右下角人名
+  window.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.toggle('names-hidden', localStorage.getItem('sched-hide-names') === '1');
   });
   try { window.parent && window.parent.postMessage({type:'theme-request'}, '*'); } catch(_){}
 })();
@@ -7482,6 +7509,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
   .line-grid .cell .person .borrowed-name{color:#a78bfa}
   .line-grid.vertical .cell .person{font-size:10px;bottom:2px;right:4px}
+  /* 与排岗表"隐藏人名"开关联动:品名卡右下角的排岗人员也一起隐藏(共用 localStorage 'sched-hide-names') */
+  body.names-hidden .line-grid .cell .person{visibility:hidden}
   /* 材料名右方的「量」(克数):固定 10px、颜色继承材料名;基线对齐后按材料字号上移,使数字墨迹中线对齐材料名墨迹中线 */
   .line-grid .cell .mats .g{font-size:10px;flex:0 0 auto;transform:translateY(calc(3.5px - var(--mats-size,15px)/3));font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -10851,7 +10880,7 @@ function doImportBundle(bundle, keyCount) {
       showToast(`已导入 ${keyCount} 项数据,所有 app 已重新加载`, 'success');
 }
 // === 跨 iframe 数据桥:中转便当/排岗/日期变更与请求,缓存最新快照 ===
-const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
+const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null, 'hide-names': null };
 const requestToChange = {
   'bento-request': 'bento-changed',
   'schedule-request': 'schedule-changed',
@@ -10860,7 +10889,7 @@ const requestToChange = {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   const t = e.data.type;
-  if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed') {
+  if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed' || t === 'hide-names') {
     snapshots[t] = e.data;
     frames.forEach(f => {
       if (f.contentWindow && f.contentWindow !== e.source) {
