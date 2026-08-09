@@ -733,9 +733,6 @@ input:focus,select:focus{border-color:var(--accent)}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;line-height:1;color:var(--text)}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
 .icon-btn svg{display:block}
-.icon-btn.active{color:var(--accent);border-color:var(--accent)}
-/* 隐藏人名:透明化岗位按钮里的人名(含借调⇄),按钮框保留、仍可点开分配 */
-.names-hidden .assign-btn,.names-hidden .assign-btn *{color:transparent!important}
 /* 复制某日 弹窗 (复用 #picker-host 的遮罩样式) */
 #copy-day-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:101;padding:16px}
 #copy-day-host.hidden{display:none}
@@ -1631,7 +1628,6 @@ const Pages = (() => {
             <div class="cal-host hidden" id="cal-host"></div>
           </span>
           <button id="copy-day" class="icon-btn" title="复制某日的排岗到当前日期" aria-label="复制某日"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-          <button id="toggle-names" class="icon-btn" title="隐藏人名" aria-label="显示/隐藏人名"></button>
         </div>
         <div class="line-tabs" id="line-tabs">
           ${lines.map(l=>`<button data-line="${l.id}" class="${l.id===currentTabLine?'active':''}" style="--c:var(--line-${l.id})">${l.name}</button>`).join('')}
@@ -1689,24 +1685,6 @@ const Pages = (() => {
     root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
 
     document.getElementById('copy-day').addEventListener('click', () => openCopyDayHost());
-    // 显示/隐藏人名:透明化 .assign-btn 里的人名(按钮框保留、仍可点开改分配);状态存 localStorage,切日期也记住
-    const EYE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    const EYE_OFF = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-    const tnBtn = document.getElementById('toggle-names');
-    const applyHideNames = (hide) => {
-      root.classList.toggle('names-hidden', hide);
-      tnBtn.innerHTML = hide ? EYE_OFF : EYE;
-      tnBtn.classList.toggle('active', hide);
-      tnBtn.title = hide ? '显示人名' : '隐藏人名';
-    };
-    applyHideNames(localStorage.getItem('sched-hide-names') === '1');
-    tnBtn.addEventListener('click', () => {
-      const hide = !root.classList.contains('names-hidden');
-      localStorage.setItem('sched-hide-names', hide ? '1' : '0');
-      applyHideNames(hide);
-      // 通知父壳广播给其它 iframe(配置表品名卡右下角人名同步隐藏/显示)
-      try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'hide-names', hide }, '*'); } catch(_){}
-    });
     root.querySelectorAll('.assign-btn').forEach(b => {
       b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
     });
@@ -7436,7 +7414,6 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     if(!e.data) return;
     if(e.data.type === 'theme-changed') apply(e.data.accent, e.data.accentRgb);
     else if(e.data.type === 'theme-mode' && e.data.mode) document.documentElement.dataset.theme = e.data.mode;
-    else if(e.data.type === 'hide-names') document.body.classList.toggle('names-hidden', !!e.data.hide);
   });
   // 排岗表"隐藏人名"开关:初始化读共享 localStorage;之后父壳广播 hide-names 实时更新品名卡右下角人名
   window.addEventListener('DOMContentLoaded', () => {
@@ -7506,7 +7483,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
   .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 12px;width:100%;min-width:0;box-sizing:border-box}
   .line-grid .row{display:grid;gap:10px}
-  .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:78px;min-height:78px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
+  .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:86px;min-height:86px;display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
   .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
   .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:10px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
@@ -7516,15 +7493,15 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   /* 与排岗表"隐藏人名"开关联动:品名卡右下角的排岗人员也一起隐藏(共用 localStorage 'sched-hide-names') */
   body.names-hidden .line-grid .cell .person{visibility:hidden}
   /* 材料名右方的「量」(克数):固定 10px、颜色继承材料名;基线对齐后按材料字号上移,使数字墨迹中线对齐材料名墨迹中线 */
-  .line-grid .cell .mats .g{font-size:10px;flex:0 0 auto;transform:translateY(calc(3.5px - var(--mats-size,15px)/3));font-variant-numeric:tabular-nums;letter-spacing:.2px}
+  .line-grid .cell .mats .g{display:block;font-size:0.67em;line-height:1.35;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .line-grid .cell .mats{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;font-size:var(--mats-size,15px);font-weight:var(--mats-weight,400);line-height:1.25;letter-spacing:.3px;width:100%;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-  .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:baseline;justify-content:center;gap:.3em}
+  .line-grid .cell .mats>div{max-width:100%;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .line-grid.vertical{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;padding:8px 0 16px}
   .line-grid.vertical::before{content:"";position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:16px;width:8px;background:linear-gradient(180deg,#1f2937 0,#374151 50%,#1f2937 100%);border-radius:4px;z-index:0}
   /* 向下三角形,贴在 ::before 末端,纯 border 几何实现,像素级精确 */
   .line-grid.vertical::after{content:"";position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--accent)}
   .line-grid.vertical .vrow{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch;position:relative;z-index:1}
-  .line-grid.vertical .cell{height:62px;min-height:62px;padding:6px;border-radius:6px}
+  .line-grid.vertical .cell{height:68px;min-height:68px;padding:6px;border-radius:6px}
   .line-grid.vertical .cell .lbl{font-size:10px;top:2px;left:4px}
   .line-grid.vertical .cell .mats{font-size:var(--mats-size,13px);gap:1px}
   .vbelt{background:transparent}
@@ -7695,6 +7672,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .chip.toggle{cursor:pointer;user-select:none;transition:background .15s,border-color .15s}
   .chip.toggle:hover{border-color:var(--accent)}
   .chip.toggle.on{background:var(--accent);border-color:var(--accent)}
+  .chip.toggle.name-toggle{padding:6px 11px}
+  .chip.toggle.on svg{color:#000}
   .chip.toggle.on .k,.chip.toggle.on .v{color:#000}
   body.mono .line-grid .cell .mats>div{color:var(--fg) !important}
   /* 临时类:在屏幕上模拟打印布局,用于打印前同步测量与缩字号 */
@@ -7725,10 +7704,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid{--cell-min:0 !important;width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important;break-inside:auto}
     .line-grid .row{gap:8px !important}
     .belt{align-self:stretch !important;width:100% !important}
-    .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important}
+    .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:90px !important;padding:10px !important;border-radius:8px !important;min-width:0 !important;overflow:hidden !important}
     .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
-    .line-grid .cell .mats{color:#000;font-size:var(--mats-size,16px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.3px}
+    .line-grid .cell .mats{color:#000;font-size:12px !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.2px}
+    /* 打印:材料名不换行(缩字号让长名一行放下,超长用省略号) */
+    .line-grid .cell .mats>div{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important}
     .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
     .belt::after{border-left-color:#000 !important}
     .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:4px 12px !important;font-size:12px !important}
@@ -8083,6 +8064,8 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
       el.addEventListener('input', () => {
         state[key] = parseInt(el.value, 10);
         apply(state); save(state); syncUI(state);
+        // 字号变了要重跑卡片缩放,否则被 fit 设过行内字号的长名卡片盖不过变量、不更新
+        try { fitAllCells(document.getElementById('content'), { sync: true }); } catch(_){}
       });
     };
     bind('fp-bento-size', 'bentoSize');
@@ -8733,7 +8716,7 @@ function fmtWeight(g) {
 
 // 材料总需要量按单位格式化:克(g)→kg/g 换算;個→整数 + 個(个数不换算)
 function fmtTotal(qty, unit) {
-  if (unit === "個") return (Number(qty) || 0) + "個";
+  if (unit === "個" || unit === "p") return (Number(qty) || 0) + "p";
   if (unit === "无") return String(Number(qty) || 0); // 无单位:纯数字,不换算
   return fmtWeight(qty); // g:kg/g 换算
 }
@@ -9083,11 +9066,11 @@ function renderMaterialsDrawer() {
     const unitBtn = document.createElement("button");
     unitBtn.className = "unit-btn";
     const curUnit = m.unit || "g";
-    unitBtn.textContent = curUnit;
-    unitBtn.title = "切换单位:克(g) / 個 / 无";
+    unitBtn.textContent = curUnit === "個" ? "p" : curUnit;
+    unitBtn.title = "切换单位:克(g) / p / 无";
     unitBtn.onclick = (e) => {
       e.stopPropagation();
-      const nextUnit = curUnit === "g" ? "個" : curUnit === "個" ? "无" : "g";
+      const nextUnit = curUnit === "g" ? "p" : (curUnit === "p" || curUnit === "個") ? "无" : "g";
       updateMaterial(m.id, { unit: nextUnit });
       renderMaterialsDrawer();
     };
@@ -9640,7 +9623,13 @@ function fitAllCells(root, opts) {
       for (const el of items) el.style.fontSize = "";
       let size = parseFloat(getComputedStyle(items[0]).fontSize);
       let guard = 30;
-      while (guard-- > 0 && size > minSize && (mats.scrollHeight > mats.clientHeight + 1 || items.some(el => el.scrollWidth > el.clientWidth + 1))) {
+      // 竖向溢出改用真实位置判断:mats 是固定高+overflow:hidden,内容不超容器时 scrollHeight 恒等于 clientHeight、
+      // 测不出内容(尤其居中后)是否贴底。改看最后一行(含其下方克数)的底边是否顶到 mats 底(留 2px),贴到就缩。
+      const overflow = () => {
+        if (items[items.length - 1].getBoundingClientRect().bottom > mats.getBoundingClientRect().bottom - 2) return true;
+        return items.some(el => el.scrollWidth > el.clientWidth);
+      };
+      while (guard-- > 0 && size > minSize && overflow()) {
         size -= 1;
         for (const el of items) el.style.fontSize = size + "px";
       }
@@ -9684,7 +9673,7 @@ function appendMats(mats, ids, pos) {
     if (g) {
       const gs = document.createElement("span");
       gs.className = "g";
-      const u = m.unit || "g"; gs.textContent = g + (u === "无" ? "" : u);
+      const u = m.unit || "g"; gs.textContent = g + (u === "无" ? "" : (u === "個" ? "p" : u));
       div.appendChild(gs);
     }
     mats.appendChild(div);
@@ -9734,6 +9723,22 @@ function renderOperate() {
     saveState();
   };
   right.appendChild(monoChip);
+  // 显示/隐藏卡片右下角人名(只图标,放字体 chip 旁);状态存 localStorage,body.names-hidden 由 CSS 隐藏 .person
+  const _eyeOn = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const _eyeOff = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const nameChip = document.createElement("span");
+  const _nh = document.body.classList.contains("names-hidden");
+  nameChip.className = "chip toggle name-toggle" + (_nh ? " on" : "");
+  nameChip.title = "显示/隐藏卡片右下角人名";
+  nameChip.innerHTML = _nh ? _eyeOff : _eyeOn;
+  nameChip.onclick = () => {
+    const hide = !document.body.classList.contains("names-hidden");
+    document.body.classList.toggle("names-hidden", hide);
+    localStorage.setItem("sched-hide-names", hide ? "1" : "0");
+    nameChip.classList.toggle("on", hide);
+    nameChip.innerHTML = hide ? _eyeOff : _eyeOn;
+  };
+  right.appendChild(nameChip);
   meta.appendChild(right);
   c.appendChild(meta);
 
@@ -10884,7 +10889,7 @@ function doImportBundle(bundle, keyCount) {
       showToast(`已导入 ${keyCount} 项数据,所有 app 已重新加载`, 'success');
 }
 // === 跨 iframe 数据桥:中转便当/排岗/日期变更与请求,缓存最新快照 ===
-const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null, 'hide-names': null };
+const snapshots = { 'bento-changed': null, 'schedule-changed': null, 'plan-date-changed': null };
 const requestToChange = {
   'bento-request': 'bento-changed',
   'schedule-request': 'schedule-changed',
@@ -10893,7 +10898,7 @@ const requestToChange = {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   const t = e.data.type;
-  if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed' || t === 'hide-names') {
+  if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed') {
     snapshots[t] = e.data;
     frames.forEach(f => {
       if (f.contentWindow && f.contentWindow !== e.source) {
