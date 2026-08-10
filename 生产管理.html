@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-08-09-1">
+<html lang="zh-CN" data-appver="2026-08-09-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7481,6 +7481,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .drawer .add{flex:0 0 auto;display:flex;gap:6px;padding:12px;border-top:1px solid var(--line)}
   .drawer .add input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px;border-radius:4px;font:inherit;min-width:0}
   .drawer .add button{background:var(--accent);color:#000;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit}
+  .drawer .search{flex:0 0 auto;padding:8px 12px;border-bottom:1px solid var(--line)}
+  .drawer .search input{width:100%;box-sizing:border-box;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 8px;border-radius:4px;font:inherit}
+  .drawer .search input:focus{outline:1px solid var(--accent)}
+  :root[data-theme="light"] .drawer .search input{background:#f6f3ef;color:var(--fg)}
   .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 12px;width:100%;min-width:0;box-sizing:border-box}
   .line-grid .row{display:grid;gap:10px}
   .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:var(--cell-height,95px);min-height:var(--cell-height,95px);display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
@@ -8004,6 +8008,9 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
   <div class="add">
     <input id="materials-name" placeholder="新材料名">
     <button id="materials-add">添加</button>
+  </div>
+  <div class="search">
+    <input id="materials-search" type="search" placeholder="🔍 搜索材料…" autocomplete="off">
   </div>
   <div class="list" id="materials-list"></div>
 </aside>
@@ -8726,11 +8733,13 @@ function fmtTotal(qty, unit) {
   return fmtWeight(qty); // g:kg/g 换算
 }
 
-// 该便当里某材料所需的「单份量」= 该材料所在各卡片对应量之和(位号可能多个)。
+// 该便当里某材料所需的「单份量」:一个便当只含一份该材料,即使它被放在多张卡片上
+// (多人协作同一份),也只算一份 —— 不累加。多张卡片理应填相同的量,这里取已填值里的
+// 最大,兼顾个别重复卡片留空(0)的情况。
 // 量按材料在卡片中的行取:第1行材料→量1(qty),第2行材料→量2(qty2),第3行起无量 —— 与卡片渲染一致。
-// 只累加填了数字的卡片;都没填则返回 0(调用方据此不显示)。
+// 所有卡片都没填则返回 0(调用方据此不显示)。
 function getMaterialQtyPerBento(bento, matId) {
-  let sum = 0;
+  let per = 0, found = false;
   const line = Array.isArray(bento.line) ? bento.line : [];
   for (const p of line) {
     const ids = bento.assignments[p.id] || [];
@@ -8738,9 +8747,9 @@ function getMaterialQtyPerBento(bento, matId) {
     if (idx < 0) continue;
     const raw = idx === 0 ? p.qty : (idx === 1 ? p.qty2 : "");
     const q = parseFloat(raw);
-    if (isFinite(q)) sum += q;
+    if (isFinite(q)) { per = found ? Math.max(per, q) : q; found = true; }
   }
-  return sum;
+  return per;
 }
 
 // 需求4:读取「计划板」当天(planDate)该便当的排产数量。
@@ -9007,6 +9016,7 @@ function runSelfTests() {
   }
 }
 
+let materialsSearchQuery = ""; // 材料库搜索:按材料名子串过滤(大小写不敏感)
 function renderMaterialsDrawer() {
   const list = document.getElementById("materials-list");
   list.innerHTML = "";
@@ -9014,7 +9024,17 @@ function renderMaterialsDrawer() {
   // 需求4:每个便当当天排产数量只在本次渲染里算一次(便当数可能多,避免重复读 localStorage)
   const _planCache = {};
   const plannedQty = (b) => (b.id in _planCache) ? _planCache[b.id] : (_planCache[b.id] = getBentoPlannedQty(b));
-  const sorted = [...state.materials].sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  const q = materialsSearchQuery.trim().toLowerCase();
+  const sorted = [...state.materials]
+    .filter(m => !q || m.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+  if (!sorted.length) {
+    const em = document.createElement("div");
+    em.textContent = q ? "无匹配材料" : "材料库为空";
+    em.style.cssText = "color:var(--muted);text-align:center;padding:20px 0;font-size:13px";
+    list.appendChild(em);
+    return;
+  }
   for (const m of sorted) {
     const row = document.createElement("div");
     row.className = "row";
@@ -9059,7 +9079,7 @@ function renderMaterialsDrawer() {
     for (const bt of getBentosUsingMaterial(m.id)) {
       const bento = state.bentos.find(x => x.id === bt.id);
       if (!bento) continue;
-      const per = getMaterialQtyPerBento(bento, m.id); // 卡片右上角「量」之和;0 表示没填
+      const per = getMaterialQtyPerBento(bento, m.id); // 该便当单份量(多卡片只算一份);0 表示没填
       const hasQty = per > 0;
       const pq = hasQty ? plannedQty(bento) : 0;
       const required = hasQty ? per * pq : 0;
@@ -9186,6 +9206,8 @@ function renderMaterialsDrawer() {
 }
 
 function openMaterialsDrawer() {
+  materialsSearchQuery = ""; // 每次打开都从空搜索开始
+  document.getElementById("materials-search").value = "";
   document.getElementById("materials-drawer").classList.add("show");
   document.getElementById("backdrop").classList.add("show");
   renderMaterialsDrawer();
@@ -9203,6 +9225,8 @@ document.getElementById("materials-add").onclick = () => {
   const m = addMaterial(inp.value);
   if (m) {
     inp.value = "";
+    materialsSearchQuery = ""; // 清掉搜索,确保新材料可见并能滚到
+    document.getElementById("materials-search").value = "";
     renderMaterialsDrawer();
     // 列表按名字排序,新材料可能插在中间 —— 滚到它的位置并高亮一下
     const row = document.getElementById("materials-list").querySelector('.row[data-id="' + m.id + '"]');
@@ -9214,6 +9238,10 @@ document.getElementById("materials-add").onclick = () => {
 };
 document.getElementById("materials-name").addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("materials-add").click();
+});
+document.getElementById("materials-search").addEventListener("input", e => {
+  materialsSearchQuery = e.target.value;
+  renderMaterialsDrawer();
 });
 
 // 手机端:页面内(非固定弹层)输入框聚焦时滚到键盘上方,避免被软键盘挡住(iOS Safari 不支持 interactive-widget)。
