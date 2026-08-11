@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-08-09-2">
+<html lang="zh-CN" data-appver="2026-08-09-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7686,7 +7686,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   body.printing .line-grid{width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
   body.printing .line-grid .row{gap:8px !important}
   body.printing .line-grid .cell{height:auto !important;min-height:var(--cell-height,95px) !important;padding:10px !important;border-radius:8px !important;overflow:visible !important}
-  body.printing .line-grid .cell .mats{font-size:var(--mats-size,16px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.3px}
+  body.printing .line-grid .cell .mats{font-size:var(--mats-size,15px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.3px}
   body.printing .line-grid .cell .person{display:none !important}
   @media print {
     /* size 一律不写(连纸张都不写)—— 写 landscape/portrait 会锁方向,连写 size:A4 也会锁成 A4 纵向。
@@ -7711,7 +7711,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:var(--cell-height,95px) !important;padding:10px !important;border-radius:8px !important;min-width:0 !important;overflow:hidden !important}
     .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
-    .line-grid .cell .mats{color:#000;font-size:var(--mats-size,12px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.2px}
+    .line-grid .cell .mats{color:#000;font-size:var(--mats-size,15px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.2px}
     /* 打印:材料名不换行(缩字号让长名一行放下,超长用省略号) */
     .line-grid .cell .mats>div{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important}
     .belt{background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
@@ -8288,7 +8288,7 @@ function migrate(s) {
     if (!b.layouts || typeof b.layouts !== "object") b.layouts = {};
     if (b.lineId && !b.layouts[b.lineId] && Array.isArray(b.line) && b.line.length) {
       b.layouts[b.lineId] = {
-        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 })),
+        line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2, extra: p.extra })),
         assignments: JSON.parse(JSON.stringify(b.assignments || {}))
       };
     }
@@ -8306,7 +8306,7 @@ function switchBentoToLine(b, newLineId) {
   // 1) 当前 line/assignments 快照到旧线缓存
   if (oldLineId) {
     b.layouts[oldLineId] = {
-      line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 })),
+      line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2, extra: p.extra })),
       assignments: JSON.parse(JSON.stringify(b.assignments || {}))
     };
     if (b.speed != null && b.speed !== "") b.lineSpeeds[oldLineId] = b.speed;
@@ -8318,7 +8318,7 @@ function switchBentoToLine(b, newLineId) {
   if (newLineId) {
     if (b.layouts[newLineId]) {
       const saved = b.layouts[newLineId];
-      b.line = saved.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 }));
+      b.line = saved.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2, extra: p.extra }));
       b.assignments = JSON.parse(JSON.stringify(saved.assignments || {}));
     } else {
       const tpl = getLineTemplate(newLineId);
@@ -8733,13 +8733,14 @@ function fmtTotal(qty, unit) {
   return fmtWeight(qty); // g:kg/g 换算
 }
 
-// 该便当里某材料所需的「单份量」:一个便当只含一份该材料,即使它被放在多张卡片上
-// (多人协作同一份),也只算一份 —— 不累加。多张卡片理应填相同的量,这里取已填值里的
-// 最大,兼顾个别重复卡片留空(0)的情况。
+// 该便当里某材料所需的「单份量」:
+// 默认同一材料放在多张卡片上=多人协作「同一份」,只算一份(取已填量的最大,兼顾重复卡留空)。
+// 但被标记「独立份」(p.extra)的卡片是便当里真正多出来的份,各自额外累加。
+//   例:玉子 两张卡都不标 → 1 份;バッテラ 第二张标独立份 → 1 + 1 = 2 份。
 // 量按材料在卡片中的行取:第1行材料→量1(qty),第2行材料→量2(qty2),第3行起无量 —— 与卡片渲染一致。
 // 所有卡片都没填则返回 0(调用方据此不显示)。
 function getMaterialQtyPerBento(bento, matId) {
-  let per = 0, found = false;
+  let shared = 0, hasShared = false, extra = 0;
   const line = Array.isArray(bento.line) ? bento.line : [];
   for (const p of line) {
     const ids = bento.assignments[p.id] || [];
@@ -8747,9 +8748,11 @@ function getMaterialQtyPerBento(bento, matId) {
     if (idx < 0) continue;
     const raw = idx === 0 ? p.qty : (idx === 1 ? p.qty2 : "");
     const q = parseFloat(raw);
-    if (isFinite(q)) { per = found ? Math.max(per, q) : q; found = true; }
+    if (!isFinite(q)) continue;
+    if (p.extra) extra += q;                                   // 独立份:额外累加
+    else { shared = hasShared ? Math.max(shared, q) : q; hasShared = true; } // 同一份:只算一次
   }
-  return per;
+  return shared + extra;
 }
 
 // 需求4:读取「计划板」当天(planDate)该便当的排产数量。
@@ -8821,6 +8824,7 @@ function updateSlotPosition(line, posId, patch) {
   if (patch.label !== undefined) p.label = String(patch.label);
   if (patch.qty !== undefined) p.qty = String(patch.qty).trim();
   if (patch.qty2 !== undefined) p.qty2 = String(patch.qty2).trim();
+  if (patch.extra !== undefined) { if (patch.extra) p.extra = true; else delete p.extra; } // 独立份标记(不设时不留字段)
   saveState();
   return true;
 }
@@ -9614,7 +9618,7 @@ window.addEventListener("beforeprint", () => {
   render();
   document.body.classList.add("printing");
   document.body.offsetHeight; // 强制 reflow,让 printing 布局生效后再测
-  fitAllCells(document.getElementById("content"), { sync: true, minSize: 6 });
+  fitAllCells(document.getElementById("content"), { sync: true, minSize: 15 });
   document.body.classList.remove("printing");
   // _skipFitRaf 留到 afterprint 再清,防止任何 stale rAF 在截屏前夕覆盖我们的同步 fit
 });
@@ -9647,7 +9651,7 @@ function buildGrid(line, cellRenderer) {
 let _skipFitRaf = false;
 function fitAllCells(root, opts) {
   const sync = opts && opts.sync;
-  const minSize = (opts && typeof opts.minSize === "number") ? opts.minSize : 7;
+  const minSize = (opts && typeof opts.minSize === "number") ? opts.minSize : 15; // 屏幕最小字号下限:缩到 15px 还放不下就靠 text-overflow:ellipsis 截断(打印处显式传更小值)
   const work = () => {
     if (!sync && _skipFitRaf) return;
     for (const mats of root.querySelectorAll(".cell .mats")) {
@@ -10136,7 +10140,7 @@ function renderEdit() {
   const renderCardPanel = () => {
     cardPanel.innerHTML = "";
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量1</th><th>量2</th><th></th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量1</th><th>量2</th><th title=\"勾选=这张卡算便当里独立的一份(额外计入用量);不勾=与同材料其它卡片是同一份,只算一次\">独立份</th><th></th></tr></thead>";
     const tbody = document.createElement("tbody");
     const sorted = b.line.slice().sort((a,bb) => a.slot - bb.slot || (a.row === "top" ? -1 : 1));
     for (const p of sorted) {
@@ -10190,6 +10194,16 @@ function renderEdit() {
       const tdQty = mkQtyCell("qty");
       const tdQty2 = mkQtyCell("qty2");
 
+      // 独立份:勾选后这张卡在用量计算里算作额外一份(默认不勾=与同材料其它卡片同一份)
+      const tdExtra = document.createElement("td");
+      tdExtra.style.textAlign = "center";
+      const extraCb = document.createElement("input");
+      extraCb.type = "checkbox";
+      extraCb.checked = !!p.extra;
+      extraCb.title = "勾选=这张卡算独立一份(额外计入用量);不勾=与同材料其它卡片同一份";
+      extraCb.onchange = () => { updateSlotPosition(b.line, p.id, { extra: extraCb.checked }); renderEditGrid(); };
+      tdExtra.appendChild(extraCb);
+
       const tdDel = document.createElement("td");
       const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
       del.onclick = (e) => {
@@ -10206,7 +10220,7 @@ function renderEdit() {
       };
       tdDel.appendChild(del);
 
-      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdQty2); tr.appendChild(tdDel);
+      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdQty2); tr.appendChild(tdExtra); tr.appendChild(tdDel);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -10427,7 +10441,7 @@ function openCopyOrderPopover(anchorEl, b) {
         const doCopy = () => {
           if (!b.layouts || typeof b.layouts !== 'object') b.layouts = {};
           b.layouts[ln.id] = {
-            line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2 })),
+            line: b.line.map(p => ({ id: p.id, slot: p.slot, row: p.row, label: p.label, qty: p.qty, qty2: p.qty2, extra: p.extra })),
             assignments: JSON.parse(JSON.stringify(b.assignments || {}))
           };
           saveState();
