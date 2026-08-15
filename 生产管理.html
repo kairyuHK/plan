@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-08-09-4">
+<html lang="zh-CN" data-appver="2026-08-09-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10930,7 +10930,7 @@ function doImportBundle(bundle, keyCount) {
       loaded.clear();
       frames.forEach(f => {
         const app = f.dataset.app;
-        if (app) setFrameHtml(f, getHtml(app));
+        if (app) f.srcdoc = getHtml(app);
         loaded.add(app);
       });
       showToast(`已导入 ${keyCount} 项数据,所有 app 已重新加载`, 'success');
@@ -11008,20 +11008,10 @@ function getHtml(app){
   }
   return src;
 }
-// iOS Safari 在 srcdoc iframe 里原生「粘贴」是空操作(编辑菜单能弹但插不进)。线上改用同源 blob: URL 加载:
-// blob 继承父壳 http(s) 原点 → iframe 与父壳同源(localStorage / postMessage / 读父 appver 照旧),原生粘贴恢复正常。
-// 但本地 file:// 直接双击打开时,blob 在部分浏览器会变成「不透明(null)原点」→ 子应用读不到父壳/localStorage、
-// 直接空白打不开。所以只在 http(s) 用 blob;file:// 仍用 srcdoc(本地文件照常打开,粘贴问题只影响线上手机端)。
-function setFrameHtml(frame, html){
-  if (location.protocol === 'file:') { frame.srcdoc = html; return; }
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  frame.addEventListener('load', function once(){ frame.removeEventListener('load', once); URL.revokeObjectURL(url); }, { once: true });
-  frame.src = url;
-}
 function ensureLoaded(app){
   if(loaded.has(app)) return;
   const frame = document.querySelector('iframe[data-app="'+app+'"]');
-  setFrameHtml(frame, getHtml(app));
+  frame.srcdoc = getHtml(app);
   loaded.add(app);
 }
 function activate(app, instant){
@@ -11439,8 +11429,8 @@ window.addEventListener('hashchange', () => {
   }
   function onLoad(e){
     var f = e.currentTarget;
-    // 过滤 iframe 初始 about:blank 的 load:只认 body 里真有内容的那次(blob: 加载后同源可读;about:blank 无 firstElementChild 天然被滤掉)
-    try { var d = f.contentDocument; if (!d || !d.body || !d.body.firstElementChild) return; } catch(_) { return; }
+    // 过滤 iframe 初始 about:blank 的 load:只认已注入 srcdoc 且 body 里真有内容的那次
+    try { var d = f.contentDocument; if (!f.hasAttribute('srcdoc') || !d || !d.body || !d.body.firstElementChild) return; } catch(_) { return; }
     hide();
   }
   document.querySelectorAll('iframe').forEach(function(f){ f.addEventListener('load', onLoad); });
