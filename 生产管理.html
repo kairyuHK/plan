@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-08-09-6">
+<html lang="zh-CN" data-appver="2026-08-09-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7456,11 +7456,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   #content{padding:16px}
   .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;display:none}
   .backdrop.show{display:block}
-  /* 用 right 位移做滑入(而非 transform):iOS Safari 里带 transform 的容器会让内部输入框原生
-     「粘贴」失效(菜单能弹但插不进) —— 材料库抽屉粘不了就是这个原因。改成 right 后展开态完全
-     无 transform,粘贴恢复;隐藏态 right = -宽度(--dw,桌面 380px/手机 94vw)滑出屏外。 */
-  .drawer{position:fixed;top:0;bottom:0;width:var(--dw,380px);right:calc(-1 * var(--dw,380px));background:#0f1115;border-left:1px solid var(--line);transition:right .15s;z-index:10;display:flex;flex-direction:column}
-  .drawer.show{right:0}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:380px;background:#0f1115;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .15s;z-index:10;display:flex;flex-direction:column}
+  .drawer.show{transform:translateX(0)}
   .drawer header{flex:0 0 auto;padding:12px;border-bottom:1px solid var(--line);font-weight:bold;background:none}
   .drawer .list{flex:1;overflow:auto;padding:8px 12px}
   .drawer .row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);background:#0f1115}
@@ -7761,7 +7758,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .bento-title{font-size:var(--bento-title-size,22px);min-height:32px;margin:4px 0 2px;letter-spacing:1px}
     .bento-title .muted{font-size:13px}
     .belt{height:6px;margin:4px 0}
-    .drawer{--dw:94vw}
+    .drawer{width:94vw}
     .picker{max-width:90vw;max-height:45vh}
     .bentos-screen .item .name{font-size:15px}
     .line-screen td input{width:60px}
