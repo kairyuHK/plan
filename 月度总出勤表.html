@@ -71,6 +71,8 @@ input[type=number]{-moz-appearance:textfield}
   .nav::before{content:'';flex-basis:100%;height:0;order:2}
   .nav #period-nav{order:3}
   .nav #dirty-indicator{order:4}
+  /* 手机端不显示「N 天未导出」警告(移动端难以导出,提醒无意义);正常「✓ 已暂存」保留 */
+  .nav #dirty-indicator.warn{display:none}
   .nav button[data-route="#/data"]{order:5;margin-left:auto}
   .nav::after{content:'';flex-basis:100%;height:0;order:6}
   .nav button#btn-edit-toggle{order:7;margin-left:auto}
