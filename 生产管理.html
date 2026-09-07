@@ -27,7 +27,8 @@ html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -a
    输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
    导致「没父壳」+ 触摸坐标错位、起始/切换框点不动。钉死后键盘只会覆盖底部,布局不再位移。 */
 body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
-.tabs{display:flex;height:calc(48px + env(safe-area-inset-top,0px));background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:env(safe-area-inset-top,0px) 12px 0;gap:4px;flex-wrap:nowrap;overflow-x:hidden;touch-action:manipulation;box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
+.tabs{display:flex;height:calc(48px + env(safe-area-inset-top,0px));background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:env(safe-area-inset-top,0px) 12px 0;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;touch-action:manipulation;box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
+.tabs::-webkit-scrollbar{display:none}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
 .tabs button:hover{background:rgba(255,255,255,.05);color:#e8e8e8}
 .tabs button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.4),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
@@ -93,12 +94,10 @@ html[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#fff
    避免误伤红色「继续导入」(.danger)和主色按钮(.primary)。*/
 html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
 html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
-@media (max-width:600px){.tabs{padding:env(safe-area-inset-top,0px) 8px 0;height:calc(44px + env(safe-area-inset-top,0px));gap:2px}.tabs button{padding:6px 10px;font-size:13px}.tabs .io-btn{padding:5px 8px;font-size:12px}
-  /* 窄屏保命:导航标签可压缩/省略,腾出空间给右侧「刷新/白天夜间/主题色」按钮,避免它们被 overflow-x:hidden 裁掉。
-     当前(active)标签不压缩、保持完整文字;只让另外两个未选中标签收缩(仍留 emoji 可辨识)。 */
-  .tabs button[data-app]{flex:0 1 auto;min-width:2.2em;overflow:hidden;text-overflow:ellipsis}
-  .tabs button[data-app].active{flex-shrink:0}
-  .tabs .spacer,.tabs .io-btn,.tabs .mode-btn,.tabs .theme-btn{flex:0 0 auto}}
+@media (max-width:600px){.tabs{padding:env(safe-area-inset-top,0px) 6px 0;height:calc(44px + env(safe-area-inset-top,0px));gap:2px}.tabs button{padding:6px 6px;font-size:13px}.tabs .io-btn{padding:5px 6px;font-size:12px}
+  /* 窄屏:隐藏三个标签的装饰 emoji(🏭⚙📅),让「生产计划板 / 配置表 / 排岗表」文字完整显示,
+     腾出的空间刚好让右侧「刷新 / 白天夜间 / 主题色」按钮也全部露出,无需截断、无需横滑(横滑仅作超窄屏兜底)。 */
+  .tabs button[data-app] .tab-ico{display:none}}
 .frame-wrap{position:fixed;top:calc(44px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0f1115;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s cubic-bezier(.4,0,.2,1),filter .32s cubic-bezier(.4,0,.2,1);pointer-events:none;will-change:transform,opacity}
 iframe.active{pointer-events:auto}
@@ -604,9 +603,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <body>
 <div id="__boot"></div>
 <div class="tabs">
-  <button data-app="plan" class="active">🏭 生产计划板</button>
-  <button data-app="config">⚙ 配置表</button>
-  <button data-app="schedule">📅 排岗表</button>
+  <button data-app="plan" class="active"><span class="tab-ico">🏭</span> 生产计划板</button>
+  <button data-app="config"><span class="tab-ico">⚙</span> 配置表</button>
+  <button data-app="schedule"><span class="tab-ico">📅</span> 排岗表</button>
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
@@ -2844,8 +2843,9 @@ const Pages = (() => {
   /* 手机端(≤900px):6 列窄卡片压缩占位(卡片贴边/小圆圈/小间距/小字号),保证完整人数显示。
      放在通用卡片样式之后,自然覆盖(.card left/right、圆圈 22、字号 13 都在前面),无需 !important */
   @media (max-width: 900px) {
-    .card { left: 2px; right: 2px; }
-    .card-compact { gap: 3px; padding: 0 3px; }
+    /* 窄列(6条线时列宽~60px)卡片:收窄卡片左右内边距,把空间让给人数,保证两位数(如 12)完整显示不被省略成「1…」 */
+    .card { left: 2px; right: 2px; padding-left: 4px; padding-right: 4px; }
+    .card-compact { gap: 3px; padding: 0 2px; }
     .card-compact .compact-del { display: none; }
     .compact-name-letter { width: 18px; height: 18px; font-size: 11px; }
     .compact-people { font-size: 11px; }
