@@ -6150,14 +6150,16 @@ function setFootVal(el, text) {
   if (!el) return;
   el.textContent = text;
   el.style.fontSize = '';
-  requestAnimationFrame(() => {
+  const fit = () => {
     let fs = parseFloat(getComputedStyle(el).fontSize) || 13;
     let guard = 40;
     while (el.scrollWidth > el.clientWidth + 1 && fs > 4 && guard-- > 0) {
       fs -= 0.5;
       el.style.fontSize = fs + 'px';
     }
-  });
+  };
+  if (el.clientWidth > 0) fit();   // 布局已就绪时同步立即缩放,不依赖 rAF(后台标签/隐藏时 rAF 会被暂停)
+  requestAnimationFrame(fit);       // 兜底:初次渲染 clientWidth 可能为 0,下一帧再缩一次
 }
 
 window.addEventListener('resize', () => {
@@ -6357,6 +6359,15 @@ function updateBoardLayout() {
   }
   document.querySelectorAll('#pager .pip').forEach((p, i) => {
     p.style.display = hiddenLines.has(i + 1) ? 'none' : '';
+  });
+  // 列宽定下来后,按最终列宽重新缩放统计栏数字(数量/耗时/结束/实结),避免列变窄后被裁切
+  // (初始化顺序是先 loadBoard 按默认宽缩放、再 updateBoardLayout 收窄列宽,不重算就会被切)
+  document.querySelectorAll('.line').forEach(line => {
+    ['.qty-total', '.time-total', '.finish-total'].forEach(sel => {
+      const el = line.querySelector(sel);
+      if (el) setFootVal(el, el.textContent);
+    });
+    mirrorActualFinishSize(line);
   });
 }
 
