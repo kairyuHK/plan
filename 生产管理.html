@@ -7783,9 +7783,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   }
   @media (max-width: 720px) {
     body{font-size:14px}
-    header{padding:6px 8px;gap:6px}
-    header input,header button,header select{padding:5px 8px;font-size:13px}
-    header input{min-width:0;flex:1 1 120px}
+    /* 不换行:操作屏/便当库/材料库/线设置/Aa/输出 与搜索框保持一排,「输出」不掉到第二行 */
+    header{padding:6px 8px;gap:4px;flex-wrap:nowrap}
+    header input,header button,header select{padding:5px 7px;font-size:13px}
+    header button,header select{flex:0 0 auto;white-space:nowrap}
+    /* 搜索框可压缩,把宽度让给按钮,保证一排放下(「输出」在最右,下拉菜单往左展开不出屏) */
+    header input{min-width:0;flex:1 1 56px}
     header .grow{display:none}
     #content{padding:8px}
     .line-grid{padding:8px 0;gap:6px}
