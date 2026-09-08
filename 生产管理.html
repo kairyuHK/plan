@@ -94,7 +94,9 @@ html[data-theme="light"] .confirm-popover{background:linear-gradient(180deg,#fff
    避免误伤红色「继续导入」(.danger)和主色按钮(.primary)。*/
 html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
 html[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
-@media (max-width:600px){.tabs{padding:env(safe-area-inset-top,0px) 6px 0;height:calc(44px + env(safe-area-inset-top,0px));gap:2px}.tabs button{padding:6px 6px;font-size:13px}.tabs .io-btn{padding:5px 6px;font-size:12px}}
+@media (max-width:600px){.tabs{padding:env(safe-area-inset-top,0px) 6px 0;height:calc(44px + env(safe-area-inset-top,0px));gap:2px}.tabs button{padding:6px 6px;font-size:13px}.tabs .io-btn{padding:5px 6px;font-size:12px}
+  /* 手机端:刷新↻ / 白天夜间(跟随系统)🌙 / 主题色🔺 去掉外框(边框+光晕环+底色),只留图标 */
+  .tabs .mode-btn,.tabs .theme-btn{border-color:transparent!important;box-shadow:none!important;background:transparent!important}}
   /* 窄屏保留三个标签的图标(🏭⚙📅)与完整文字:靠上面收紧的内边距,大屏(如 Plus/Pro Max)一行放下全部按钮;
      万一超窄屏放不下,overflow-x:auto 兜底可轻滑,主题色/模式永不被裁掉。 */
 .frame-wrap{position:fixed;top:calc(44px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;background:#0f1115;overflow:hidden}
@@ -3035,19 +3037,23 @@ const Pages = (() => {
     }
     .line-label { text-align: left; line-height: 1; margin-top: 2px; }
     .head-btns { flex-direction: column; gap: 3px; margin-left: 0; width: 100%; }
-    .head-btn { width: 100%; justify-content: center; height: 20px; }
+    /* 窄列(线多平分屏宽时列宽~58px)下,收紧内边距 + 不换行,保证「+品名 / +休息」单行不折行 */
+    .head-btn { width: 100%; justify-content: center; height: 20px; padding: 0 3px; gap: 2px; white-space: nowrap; }
+    .head-btn .ic { font-size: 11px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
     .line-foot { padding: 8px 8px; overflow: hidden; box-sizing: border-box; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
-    .line-foot .foot-row { gap: 4px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
+    .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
-    .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; }
+    /* 标签压缩,把宽度让给右侧数值(窄列下数量才有空间自动缩放显示完整) */
+    .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; font-size: 8.5px; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
     /* 实结 input + wrapper 都限制成 18px 高,避免比其他行高 */
     .line-foot .actual-finish-wrap { height: 18px; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; }
     .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; }
-    /* 数量数字固定 10px */
-    .line-foot .qty-total { font-size: 10px !important; }
+    /* 数量默认 10px,过长(5位数+)时由 setFootVal 自动缩字号显示完整、不裁切。
+       去掉 !important 才能让 setFootVal 的行内字号生效(否则被 important 锁死在 10px → overflow 裁切) */
+    .line-foot .qty-total { font-size: 10px; }
   }
 
   /* 手机横屏:用 max-height 精准匹配 (iPhone 横屏宽可能 > 900px) */
@@ -6155,6 +6161,7 @@ function setFootVal(el, text) {
 }
 
 window.addEventListener('resize', () => {
+  updateBoardLayout();  // 屏宽变化(旋转/分屏)时重新按当前宽度平分列宽,保持不横滑
   document.querySelectorAll('.line').forEach(line => {
     ['.qty-total','.time-total','.finish-total'].forEach(sel => {
       const el = line.querySelector(sel);
@@ -6332,8 +6339,17 @@ function updateBoardLayout() {
   if (visibleCount > 0) {
     const isMobile = window.innerWidth <= 900;
     if (isMobile) {
-      board.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(66px, 1fr))`;
-      board.style.minWidth = (66 * visibleCount) + 'px';
+      // 让所有生产线自动平分屏宽、不用左右滑;只有当列会窄到不可读(线太多)时,才回落到最小列宽 + 横滑
+      const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--time-col-w')) || 44;
+      const MIN_COL = 46;
+      const perCol = (window.innerWidth - gutter) / visibleCount;
+      if (perCol >= MIN_COL) {
+        board.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(0, 1fr))`;
+        board.style.minWidth = '0';
+      } else {
+        board.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(${MIN_COL}px, 1fr))`;
+        board.style.minWidth = (MIN_COL * visibleCount) + 'px';
+      }
     } else {
       board.style.gridTemplateColumns = `repeat(${visibleCount}, 1fr)`;
       board.style.minWidth = '';
