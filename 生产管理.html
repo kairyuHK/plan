@@ -7790,7 +7790,13 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     /* 搜索框可压缩,把宽度让给按钮,保证一排放下(「输出」在最右,下拉菜单往左展开不出屏) */
     header input{min-width:0;flex:1 1 56px}
     header .grow{display:none}
-    #content{padding:8px}
+    /* 信息栏(日期 + 人数/速度/字体/眼睛):收紧 chip、保持一排不换行;实在放不下时极轻微横滑
+       (本栏没有下拉菜单,横滑不会裁切任何弹层)。同时更小的 chip 也解决"整体偏大/挤"的观感 */
+    .info-bar{flex-wrap:nowrap;overflow-x:auto;gap:4px;scrollbar-width:none;margin:8px 0 6px}
+    .info-bar::-webkit-scrollbar{display:none}
+    .info-bar .right{flex-wrap:nowrap;gap:4px;min-width:0}
+    .info-bar .chip{padding:4px 7px;font-size:12px;white-space:nowrap;flex:0 0 auto}
+    #content{padding:6px 8px}
     .line-grid{padding:8px 0;gap:6px}
     .line-grid .cell{min-height:56px;padding:6px;border-radius:6px;--cell-min:88px}
     .line-grid .cell .lbl{font-size:11px;top:2px;left:4px}
