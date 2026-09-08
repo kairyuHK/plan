@@ -783,6 +783,9 @@ input:focus,select:focus{border-color:var(--accent)}
   .line-card{display:none}
   .line-card.mobile-active{display:block}
   .assign-btn{min-width:0;flex:0 0 50%;min-height:44px}
+  /* 手机端:排岗表顶栏(排岗/人员/设置)高度与配置表顶栏统一(原 padding 12px 偏高 → 60px,压到 ~43px) */
+  .nav{padding:4px 8px;gap:4px}
+  .nav button{padding:5px 7px;font-size:13px}
   /* 手机端:日期 + 生产线切换栏钉在 .nav(排岗/人员/设置)下方,两条都不滚走、互不遮挡 */
   .sched-header{
     position:sticky;top:var(--nav-h,0);z-index:20;
@@ -7796,6 +7799,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .info-bar::-webkit-scrollbar{display:none}
     .info-bar .right{flex-wrap:nowrap;gap:4px;min-width:0}
     .info-bar .chip{padding:4px 7px;font-size:12px;white-space:nowrap;flex:0 0 auto}
+    /* 眼睛(显示/隐藏人名)按钮原 padding 6px11px 比旁边 chip 高一截,收到与其它 chip 等高 */
+    .info-bar .chip.toggle.name-toggle{padding:5px 8px}
     #content{padding:6px 8px}
     .line-grid{padding:8px 0;gap:6px}
     .line-grid .cell{min-height:56px;padding:6px;border-radius:6px;--cell-min:88px}
