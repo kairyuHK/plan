@@ -55,10 +55,10 @@ input[type=number]{-moz-appearance:textfield}
 /* 手机端 nav 不再用 position:fixed + body padding-top —
    fixed 定位在 iOS Safari 上对页面缩放状态/异步排版时机敏感,会偶发盖住表头(部门名+月份行只露一半,
    捏合缩放重置后才恢复)。改为保留 base 的 position:sticky(在流内),滚动页自然吸顶,排班页用 flex 撑满。 */
-/* 手机竖屏三行布局(用 flex order + 伪元素强制换行):
+/* 手机竖屏两行布局(用 flex order + 伪元素强制换行):
    行1:月度总出勤表 [部门▼] .......... ⬇⬆数据 🔄刷新 🌙主题
-   行2:◀ 日期 ▶ 今日 .......... 🔒锁定 ⚙设置
-   行3:                                      🖨打印
+   行2:◀ 日期 ▶ 今日 .......... 🔒 ⚙ 🖨(锁定/设置/打印,纯图标)
+   个人视图行2:◀ 日期 ▶ 今日 .......... ⚙ 📷出力(设置右侧接出力)
    各行右缘竖直对齐(都贴 nav 右内边距)。 */
 @media (max-width:640px){
   .nav .spacer{display:none}
@@ -78,16 +78,15 @@ input[type=number]{-moz-appearance:textfield}
   .nav #period-nav span{padding:0 3px!important} /* 压过内联 padding:0 8px */
   /* 移动端隐藏暂存/未导出状态 */
   .nav #dirty-indicator{display:none}
-  /* 行2:◀日期▶今日 …… 🔒锁定 ⚙设置(锁定/设置在今日右边)。auto 挂在最左的「锁定」上 */
+  /* 行2:◀日期▶今日 …… 🔒 ⚙ 🖨(锁定/设置/打印 在今日右边,纯图标)。auto 挂在最左的「锁定」上 */
+  .nav .nlbl{display:none} /* 手机端隐藏 锁定/设置/打印 的中文标签,只留图标以塞进第2行 */
   .nav button#btn-edit-toggle{order:7;margin-left:auto}
   .nav button[data-route="#/settings"]{order:8;margin-left:0}
-  .nav::after{content:'';flex-basis:100%;height:0;order:9}
-  /* 行3:🖨打印(右对齐,与上方右缘对齐) */
-  .nav button#btn-print{order:10;margin-left:auto}
-  .nav button#btn-personal-export{order:11}
-  /* 个人视图:锁定/打印被隐藏 → 设置右对齐补位;出力 PNG 右对齐 */
+  .nav button#btn-print{order:9;margin-left:0}
+  .nav::after{content:'';flex-basis:100%;height:0;order:10}
+  /* 个人视图:锁定/打印隐藏 → 设置右对齐补位,出力紧贴设置右侧(同第2行);order 与 print 同为 9,二者互斥只显其一 */
+  .nav button#btn-personal-export{order:9;margin-left:0}
   body.personal-mode .nav button[data-route="#/settings"]{margin-left:auto}
-  body.personal-mode .nav button#btn-personal-export{margin-left:auto}
 }
 .nav .brand{font-weight:600;margin-right:12px;cursor:pointer}
 .nav .brand:hover{color:var(--accent)}
@@ -1696,13 +1695,13 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
   <span class="spacer"></span>
   <span id="period-nav"></span>
   <span id="dirty-indicator" class="dirty">✓ 已暂存</span>
-  <button id="btn-edit-toggle">🔒 锁定</button>
-  <button data-route="#/settings">⚙ 设置</button>
+  <button id="btn-edit-toggle" title="锁定 / 编辑">🔒<span class="nlbl"> 锁定</span></button>
+  <button data-route="#/settings" title="设置">⚙<span class="nlbl"> 设置</span></button>
   <button id="btn-refresh" title="刷新页面" aria-label="刷新页面">🔄</button>
   <button id="btn-theme" title="切换深色 / 浅色" aria-label="切换主题">🌙</button>
   <button data-route="#/data">⬇⬆ 数据</button>
   <button class="primary" id="btn-personal-export">📷 出力 PNG</button>
-  <button class="primary" id="btn-print">🖨 打印</button>
+  <button class="primary" id="btn-print" title="打印">🖨<span class="nlbl"> 打印</span></button>
 </nav>
 <section id="page-schedule" class="page"></section>
 <section id="page-settings" class="page hidden"></section>
@@ -2608,7 +2607,7 @@ const App = (() => {
     document.body.classList.toggle('personal-mode', isPersonal);
     document.body.classList.toggle('hours-mode', isHours);
     const btn = document.getElementById('btn-edit-toggle');
-    btn.textContent = editing ? '✏ 编辑中' : '🔒 锁定';
+    btn.innerHTML = editing ? '✏<span class="nlbl"> 编辑中</span>' : '🔒<span class="nlbl"> 锁定</span>';
     btn.classList.toggle('primary', editing);
   }
 
