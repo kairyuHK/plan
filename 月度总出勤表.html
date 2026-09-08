@@ -62,7 +62,10 @@ input[type=number]{-moz-appearance:textfield}
    各行右缘竖直对齐(都贴 nav 右内边距)。 */
 @media (max-width:640px){
   .nav .spacer{display:none}
-  .nav .brand{order:0}
+  /* 整体压缩:字号 / 内边距 / 间距收紧,让三行布局在窄屏(~375-390px)不换行 */
+  .nav{font-size:12px;gap:5px}
+  .nav button{padding:4px 6px}
+  .nav .brand{order:0;margin-right:6px}
   .nav #dept-tabs{order:1}
   /* 行1右侧:⬇⬆数据 🔄刷新 🌙主题(数据在刷新左边)。auto 挂在最左的「数据」上,把三者整体推到最右 */
   .nav button[data-route="#/data"]{order:2;margin-left:auto}
@@ -70,9 +73,9 @@ input[type=number]{-moz-appearance:textfield}
   .nav button#btn-theme{order:4;margin-left:0}
   .nav::before{content:'';flex-basis:100%;height:0;order:5}
   /* period-nav 缩小(font 11 + 紧凑内边距/间距),给行2的「锁定 设置」腾出空间 */
-  .nav #period-nav{order:6;font-size:11px;gap:2px}
-  .nav #period-nav button{padding:3px 6px}
-  .nav #period-nav span{padding:0 4px!important} /* 压过内联 padding:0 8px */
+  .nav #period-nav{order:6;font-size:10px;gap:2px}
+  .nav #period-nav button{padding:3px 5px}
+  .nav #period-nav span{padding:0 3px!important} /* 压过内联 padding:0 8px */
   /* 移动端隐藏暂存/未导出状态 */
   .nav #dirty-indicator{display:none}
   /* 行2:◀日期▶今日 …… 🔒锁定 ⚙设置(锁定/设置在今日右边)。auto 挂在最左的「锁定」上 */
