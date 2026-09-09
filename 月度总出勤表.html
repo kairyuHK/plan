@@ -301,6 +301,16 @@ table.schedule td.day-cell{scroll-margin-top:calc(var(--row-month-h,25px) + var(
 .auto-schedule-btn:hover{background:#6a4def;border-color:#6a4def}
 .clear-schedule-btn{margin-left:8px;padding:4px 12px;font-size:12px;font-weight:600;background:transparent;border-color:var(--danger);color:var(--danger);border-radius:var(--r-btn);font-family:var(--font-mono);vertical-align:middle}
 .clear-schedule-btn:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+/* 手机端:编辑栏压成两行 —— 行1=键盘提示(整行),行2=自动排班+清空+颜色。桌面(>640px)维持原 inline 排布 */
+@media (max-width:640px){
+  #page-schedule .entry-hint{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+  #page-schedule .entry-hint > span{flex-basis:100%;font-size:10px;line-height:1.4}
+  #page-schedule .entry-hint kbd{padding:0 3px;margin:0 1px;font-size:10px}
+  #page-schedule .auto-schedule-btn,#page-schedule .clear-schedule-btn{margin-left:0;padding:3px 8px;font-size:11px}
+  #page-schedule .color-palette{margin-left:0;gap:5px}
+  #page-schedule .color-palette .swatch{width:18px;height:18px}
+  #page-schedule .color-palette > span{display:none} /* 隐藏「颜色:」字样,色块已足够直观 */
+}
 table.schedule tr.stat-row td{background:#161618;font-family:var(--font-mono)}
 table.schedule tr.stat-row td.label{text-align:left;padding-left:6px;color:var(--muted)}
 table.schedule td.required{cursor:text;padding:0}
