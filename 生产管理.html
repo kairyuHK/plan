@@ -5618,8 +5618,9 @@ function positionCardPopup(card) {
   // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
   // 键盘弹起会让 innerHeight 也一起缩小到「键盘上方可视区」;若据此算高度/兜底线,弹框会被压扁或离键盘差一截。
   const stableH = Math.max(window.innerHeight, (window.screen && window.screen.height) || 0);
-  // 键盘顶(稳定估计,不随键盘缩小 —— iOS 视口数值在键盘动画中不可靠):stableH*0.58,与卡片弹窗其它处一致。
-  const kbTop = Math.min(vh, stableH * 0.58);
+  // 键盘顶(稳定估计,不随键盘缩小 —— iOS 视口数值在键盘动画中不可靠)。卡片弹窗输入框都是数字/小数键盘
+  // (较矮),用 0.61 估键盘顶(约屏高 61%);比全键盘的 0.58 略低,弹窗可贴得更靠下、不至于顶太高留大空隙。
+  const kbTop = Math.min(vh, stableH * 0.61);
   // 可用高度(限制 maxHeight):没聚焦用整屏;聚焦(键盘弹起)时限制到「键盘上方」这段,
   // 否则高弹框会越过键盘顶,把底部(下一个品名/耗时)压到键盘下面够不到。
   // 用稳定的 kbTop 算(不是会飘到 ~0 的实时视口高度),所以不会把弹框压成 0 消失。
@@ -5630,10 +5631,9 @@ function positionCardPopup(card) {
   const ph = Math.min(popupRect.height, availH);
   let top;
   if (kbActive) {
-    // 键盘弹起时把弹框顶到最上方(表头之下),而不是「刚好压在键盘上方」:
-    // iOS 键盘弹起会把 position:fixed 弹框整体往下顶一截(视口偏移),若只留刚好的余量,底部「下一个品名」
-    // 就会被顶到键盘下够不到。顶到最上方留出最大余量吸收这段偏移;弹框已由 availH 限高到键盘上方,不会与键盘重叠。
-    top = minTop;
+    // 弹框贴到(数字)键盘上方:底部落在 kbTop 之上。弹框已由 availH 限高到键盘上方,不会与键盘重叠;
+    // kbTop 用 0.61 已留出对 iOS 视口下顶偏移的余量,不再顶到最上方(那样离键盘空隙太大)。
+    top = Math.max(minTop, kbTop - ph - margin);
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > window.innerHeight) {
