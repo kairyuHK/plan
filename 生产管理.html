@@ -5618,8 +5618,12 @@ function positionCardPopup(card) {
   // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
   // 键盘弹起会让 innerHeight 也一起缩小到「键盘上方可视区」;若据此算高度/兜底线,弹框会被压扁或离键盘差一截。
   const stableH = Math.max(window.innerHeight, (window.screen && window.screen.height) || 0);
-  // 可用高度(限制 maxHeight)用稳定整屏高度算,避免键盘弹起时把弹框压成 ~0 而消失。
-  const availH = stableH - minTop - margin;
+  // 键盘顶(稳定估计,不随键盘缩小 —— iOS 视口数值在键盘动画中不可靠):stableH*0.58,与卡片弹窗其它处一致。
+  const kbTop = Math.min(vh, stableH * 0.58);
+  // 可用高度(限制 maxHeight):没聚焦用整屏;聚焦(键盘弹起)时限制到「键盘上方」这段,
+  // 否则高弹框会越过键盘顶,把底部(下一个品名/耗时)压到键盘下面够不到。
+  // 用稳定的 kbTop 算(不是会飘到 ~0 的实时视口高度),所以不会把弹框压成 0 消失。
+  const availH = (kbActive ? kbTop : stableH) - minTop - margin;
   if (popupRect.height > availH) {
     popup.style.maxHeight = availH + 'px';
   }
@@ -5627,8 +5631,6 @@ function positionCardPopup(card) {
   let top;
   if (kbActive) {
     // 稳定地把弹框放在键盘上方(不追求精确吸附 —— iOS 视口数值在不同状态下不一致,精确吸附会消失/弹回)。
-    // 兜底线用 stableH*0.58(稳定整屏高度,不随键盘缩小):聚焦时在键盘上方,键盘起来后也始终在键盘之上。
-    const kbTop = Math.min(vh, stableH * 0.58);
     top = Math.max(minTop, kbTop - ph - margin);
   } else {
     top = cardRect.bottom + 6;
