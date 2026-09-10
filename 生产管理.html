@@ -5688,57 +5688,6 @@ document.addEventListener('focusout', (e) => {
   }, 60);
 });
 
-// 键盘调试浮层:显示视口/弹窗/键盘真实数值(键盘弹起时截图发来定位偏移)。两种开启方式,平时不显示、零影响:
-//   ① 网址带 #kbdebug;② 长按第二行工具栏最左的小圆点(●)/其左侧区域约 0.6 秒切换。
-(function () {
-  let dbg = null, iv = null;
-  const tVV = () => { try { return (window.top && window.top.visualViewport) || window.visualViewport; } catch (e) { return window.visualViewport; } };
-  function upd() {
-    if (!dbg) return;
-    const tvv = tVV();
-    const sh = (window.screen && window.screen.height) || 0;
-    let iframeTop = 0; try { iframeTop = window.frameElement ? Math.round(window.frameElement.getBoundingClientRect().top) : 0; } catch (e) {}
-    const kbLine = tvv
-      ? 'tvvH=' + Math.round(tvv.height) + ' tvvOffT=' + Math.round(tvv.offsetTop) + ' ifTop=' + iframeTop + ' kbTop=' + Math.round(tvv.offsetTop + tvv.height - iframeTop)
-      : 'tvv:none';
-    const pop = document.querySelector('.card-expanded.popup-detached');
-    let popLine = 'no-popup';
-    if (pop) {
-      const r = pop.getBoundingClientRect();
-      const nb = pop.querySelector('.card-next-btn');
-      popLine = 'setTop=' + (pop.style.top || '-') + ' rectTop=' + Math.round(r.top) + ' rectBot=' + Math.round(r.bottom) + ' btnBot=' + (nb ? Math.round(nb.getBoundingClientRect().bottom) : '-');
-    }
-    let topSY = '?'; try { topSY = Math.round(window.top.scrollY); } catch (e) {}
-    dbg.textContent = 'screenH=' + sh + ' ifInnerH=' + window.innerHeight + ' scrollY=' + Math.round(window.scrollY) + ' topSY=' + topSY + '\n' + kbLine + '\n' + popLine;
-  }
-  function show() {
-    if (dbg) return;
-    dbg = document.createElement('div');
-    dbg.style.cssText = 'position:fixed;top:2px;left:2px;right:2px;z-index:2147483647;background:rgba(0,0,0,.86);color:#5f5;font:10px/1.35 ui-monospace,monospace;padding:4px 6px;border-radius:4px;pointer-events:none;white-space:pre';
-    document.body.appendChild(dbg);
-    const _tvv = tVV();
-    if (_tvv) { _tvv.addEventListener('resize', upd); _tvv.addEventListener('scroll', upd); }
-    document.addEventListener('focusin', () => { setTimeout(upd, 120); setTimeout(upd, 450); });
-    document.addEventListener('touchend', upd);
-    iv = setInterval(upd, 500); upd();
-  }
-  function toggle() { if (dbg) { dbg.remove(); dbg = null; if (iv) { clearInterval(iv); iv = null; } } else { show(); } }
-  // ① #kbdebug(父壳会保留它);读父壳 hash,srcdoc/blob 初始化时可能读不到,重试几次
-  (function retry(n) { let h = ''; try { h = window.top.location.hash; } catch (e) {} if ((h + location.hash).indexOf('kbdebug') >= 0) { show(); return; } if (n < 12) setTimeout(function () { retry(n + 1); }, 200); })(0);
-  // ② 长按第二行工具栏 .brand(最左的 ● 圆点/计划板一带)约 0.6s 切换 —— 不依赖网址,主屏 PWA 也能开
-  (function wire(n) {
-    const t = document.querySelector('.topbar .brand') || document.querySelector('.brand');
-    if (!t) { if (n < 20) setTimeout(function () { wire(n + 1); }, 300); return; }
-    let tm = null;
-    const start = () => { tm = setTimeout(toggle, 600); };
-    const cancel = () => { if (tm) { clearTimeout(tm); tm = null; } };
-    t.addEventListener('touchstart', start, { passive: true });
-    t.addEventListener('touchend', cancel);
-    t.addEventListener('touchmove', cancel);
-    t.addEventListener('mousedown', start);
-    t.addEventListener('mouseup', cancel);
-  })(0);
-})();
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
@@ -11526,8 +11475,8 @@ window.addEventListener('hashchange', () => {
       if(['schedule','plan','config'].includes(last)) firstApp = last;
     }catch(_){}
   }
-  // 清掉网址里残留的标签 hash(如旧版留下的 #plan),保持地址栏干净;但保留 #kbdebug(调试用,子 iframe 要读它)
-  if(location.hash && location.hash.indexOf('kbdebug') < 0){ try{ history.replaceState(null, '', location.pathname + location.search); }catch(_){} }
+  // 清掉网址里残留的标签 hash(如旧版留下的 #plan),保持地址栏干净
+  if(location.hash){ try{ history.replaceState(null, '', location.pathname + location.search); }catch(_){} }
   activate(firstApp, true); // 首次定位无动画
   // 预加载其余 iframe(隐藏运行,后台广播数据让跨 app 同步生效)
   setTimeout(() => {
