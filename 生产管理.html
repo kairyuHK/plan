@@ -5630,8 +5630,10 @@ function positionCardPopup(card) {
   const ph = Math.min(popupRect.height, availH);
   let top;
   if (kbActive) {
-    // 稳定地把弹框放在键盘上方(不追求精确吸附 —— iOS 视口数值在不同状态下不一致,精确吸附会消失/弹回)。
-    top = Math.max(minTop, kbTop - ph - margin);
+    // 键盘弹起时把弹框顶到最上方(表头之下),而不是「刚好压在键盘上方」:
+    // iOS 键盘弹起会把 position:fixed 弹框整体往下顶一截(视口偏移),若只留刚好的余量,底部「下一个品名」
+    // 就会被顶到键盘下够不到。顶到最上方留出最大余量吸收这段偏移;弹框已由 availH 限高到键盘上方,不会与键盘重叠。
+    top = minTop;
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > window.innerHeight) {
