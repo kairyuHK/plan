@@ -5631,9 +5631,9 @@ function positionCardPopup(card) {
   const ph = Math.min(popupRect.height, availH);
   let top;
   if (kbActive) {
-    // 弹框贴到(数字)键盘上方:底部落在 kbTop 之上。弹框已由 availH 限高到键盘上方,不会与键盘重叠;
-    // kbTop 用 0.61 已留出对 iOS 视口下顶偏移的余量,不再顶到最上方(那样离键盘空隙太大)。
-    top = Math.max(minTop, kbTop - ph - margin);
+    // 键盘弹起时顶到最上方(表头之下)。实测:再往下贴一点(哪怕留 66px 余量)都会被 iOS 键盘弹起时的
+    // 视口下顶偏移重新盖住底部「下一个品名」;只有顶到最上方留足余量才稳。空隙是这个偏移的必要代价。
+    top = minTop;
   } else {
     top = cardRect.bottom + 6;
     if (top + ph + margin > window.innerHeight) {
@@ -5679,6 +5679,41 @@ document.addEventListener('focusout', (e) => {
     }
   }, 60);
 });
+
+// 键盘调试:网址末尾加 #kbdebug 时,左上角实时显示视口/弹窗/键盘真实数值(键盘弹起时截图发来定位偏移)。平时不显示、零影响。
+// 本 iframe 用 srcdoc/blob 加载,自己没 hash,故读父壳(同源)的 hash。延一拍再判,确保 srcdoc 初始化时能访问父壳。
+(function initKbDebug(tries){
+  if (((function(){ try { return window.top.location.hash; } catch (e) { return ''; } })() + location.hash).indexOf('kbdebug') < 0) {
+    if (tries < 12) setTimeout(function(){ initKbDebug(tries + 1); }, 200); // srcdoc 初始化时父壳 hash 可能还读不到,重试几次
+    return;
+  }
+  const dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;top:2px;left:2px;right:2px;z-index:2147483647;background:rgba(0,0,0,.86);color:#5f5;font:10px/1.35 ui-monospace,monospace;padding:4px 6px;border-radius:4px;pointer-events:none;white-space:pre';
+  document.body.appendChild(dbg);
+  const tVV = () => { try { return (window.top && window.top.visualViewport) || window.visualViewport; } catch (e) { return window.visualViewport; } };
+  const upd = () => {
+    const tvv = tVV();
+    const sh = (window.screen && window.screen.height) || 0;
+    let iframeTop = 0; try { iframeTop = window.frameElement ? Math.round(window.frameElement.getBoundingClientRect().top) : 0; } catch (e) {}
+    const kbLine = tvv
+      ? 'tvvH=' + Math.round(tvv.height) + ' tvvOffT=' + Math.round(tvv.offsetTop) + ' ifTop=' + iframeTop + ' kbTop=' + Math.round(tvv.offsetTop + tvv.height - iframeTop)
+      : 'tvv:none';
+    const pop = document.querySelector('.card-expanded.popup-detached');
+    let popLine = 'no-popup';
+    if (pop) {
+      const r = pop.getBoundingClientRect();
+      const nb = pop.querySelector('.card-next-btn');
+      popLine = 'setTop=' + (pop.style.top || '-') + ' rectTop=' + Math.round(r.top) + ' rectBot=' + Math.round(r.bottom) + ' btnBot=' + (nb ? Math.round(nb.getBoundingClientRect().bottom) : '-');
+    }
+    let topSY = '?'; try { topSY = Math.round(window.top.scrollY); } catch (e) {}
+    dbg.textContent = 'screenH=' + sh + ' ifInnerH=' + window.innerHeight + ' scrollY=' + Math.round(window.scrollY) + ' topSY=' + topSY + '\n' + kbLine + '\n' + popLine;
+  };
+  const _tvv = tVV();
+  if (_tvv) { _tvv.addEventListener('resize', upd); _tvv.addEventListener('scroll', upd); }
+  document.addEventListener('focusin', () => { setTimeout(upd, 120); setTimeout(upd, 450); });
+  document.addEventListener('touchend', upd);
+  setInterval(upd, 500); upd();
+})(0);
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
