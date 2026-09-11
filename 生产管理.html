@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-08-09-7">
+<html lang="zh-CN" data-appver="2026-09-11-kbdbg">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5659,6 +5659,26 @@ function positionCardPopup(card) {
   if (left < margin) left = margin;
   popup.style.top = top + 'px';
   popup.style.left = left + 'px';
+  // === KBDEBUG (临时,诊断完删除) ===
+  try {
+    if (window.innerWidth <= 900) {
+      let dbg = document.getElementById('kbdbg');
+      if (!dbg) {
+        dbg = document.createElement('div'); dbg.id = 'kbdbg';
+        dbg.style.cssText = 'position:fixed;left:0;top:0;z-index:99999;background:rgba(0,0,0,.82);color:#0f0;font:10px/1.25 monospace;padding:3px 5px;max-width:100%;white-space:pre;pointer-events:none';
+        document.body.appendChild(dbg);
+      }
+      const fld = (_ae && _ae.className || '').replace(/field-input|field/g, '').trim() || '(none)';
+      let tvvH = -1, tvvOff = -1, ifTop = -1;
+      try { const t = window.top.visualViewport; if (t) { tvvH = Math.round(t.height); tvvOff = Math.round(t.offsetTop); } } catch (e) {}
+      try { ifTop = window.frameElement ? Math.round(window.frameElement.getBoundingClientRect().top) : 0; } catch (e) {}
+      const r = popup.getBoundingClientRect();
+      const line = `[${fld}] ed=${_editable ? 1 : 0} up=${_kbUp ? 1 : 0} act=${kbActive ? 1 : 0}\n  stH=${stableH} inH=${window.innerHeight} sY=${window.scrollY}\n  tvvH=${tvvH} tvvOff=${tvvOff} ifTop=${ifTop} kbTop=${Math.round(kbTop)}\n  ph=${Math.round(ph)} setTop=${Math.round(top)} rTop=${Math.round(r.top)} rBot=${Math.round(r.bottom)}`;
+      dbg._log = ((dbg._log || []).concat(line)).slice(-4);
+      dbg.textContent = dbg._log.join('\n');
+    }
+  } catch (e) {}
+  // === /KBDEBUG ===
 }
 
 function repositionActivePopup() {
