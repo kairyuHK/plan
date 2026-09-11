@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-11-kbdbg">
+<html lang="zh-CN" data-appver="2026-09-11-kbdbg2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5619,9 +5619,11 @@ function positionCardPopup(card) {
   // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
   // 键盘弹起会让 innerHeight 也一起缩小到「键盘上方可视区」;若据此算高度/兜底线,弹框会被压扁或离键盘差一截。
   const stableH = Math.max(window.innerHeight, (window.screen && window.screen.height) || 0);
-  // 键盘顶:优先用父壳(top)可视视口的真实高度换算(实测这个准 —— screenH932 时真实键盘顶=484,而 0.58 估成 540
-  // 会把按钮推到键盘下)。tvv.height 键盘弹起时会缩小;换算到本 iframe 坐标 = offsetTop + height − iframe在父中的top。
-  // 拿不到 / 键盘还没弹起时回落到估计值。实测 setTop=rectTop、scrollY=0,弹框无偏移,所以按真实键盘顶贴上去即可。
+  // 键盘顶(换算到本 iframe 的 fixed 定位坐标):= 父壳可视视口高 − iframe在父中的top(getBoundingClientRect)。
+  // 关键:iOS 聚焦输入框会自动滚动页面把它顶进可视区,令父壳 visualViewport.offsetTop>0;此时 ifTop(相对可视
+  // 视口)已隐含 −offsetTop,iframe 的**布局**位置其实没动(ifTop+offsetTop 恒等于未滚动时的值)。故正确键盘顶
+  // = (offsetTop+height) − (ifTop+offsetTop) = height − ifTop,offsetTop 抵消 —— 若再加 offsetTop 会重复计入滚动量,
+  // 把弹框底推进键盘里(实测:offsetTop=120 时多算 120px 致遮挡)。拿不到/键盘没弹起时回落到估计值。
   let kbTop = Math.min(vh, stableH * 0.58);
   let _kbUp = false;
   try {
@@ -5629,7 +5631,7 @@ function positionCardPopup(card) {
     if (_tvv && _tvv.height < stableH * 0.78) { // 可视高明显小于整屏 = 键盘确已弹起(与 kbLikelyUp 同阈值)
       _kbUp = true;
       let _ifTop = 0; try { _ifTop = window.frameElement ? window.frameElement.getBoundingClientRect().top : 0; } catch (e) {}
-      const _real = _tvv.offsetTop + _tvv.height - _ifTop;
+      const _real = _tvv.height - _ifTop; // 不加 offsetTop —— 见上,ifTop 已含 −offsetTop
       if (_real > minTop + 60) kbTop = _real; // 换算值合理才用
     }
   } catch (e) {}
