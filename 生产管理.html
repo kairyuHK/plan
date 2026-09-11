@@ -5605,14 +5605,15 @@ function positionCardPopup(card) {
   //   resizes-content:innerHeight 缩小、visualViewport.height 可能仍报满屏(导致弹框被算回低位被盖住)。
   // 取 min 才是真正的键盘顶,避免「先顶上去又瞬间弹回低位」。
   const vh = Math.min(window.innerHeight, vv ? vv.height : window.innerHeight);
-  // 手机端:弹框里有输入框聚焦(键盘已/将弹起)时,把弹框贴到键盘上方。
-  // 用「是否聚焦」判断,而不是 visualViewport 高度差 —— 后者在 iOS 反复开合键盘后会飘、判断失效,
-  // 聚焦是确定信号,不受视口飘移影响。
+  // 手机端:弹框里有输入框聚焦时把弹框贴到键盘上方。判据分两部分:
+  //   _editable:聚焦的是可编辑输入框 —— 键盘已/将弹起(确定信号,不受视口飘移影响);
+  //   _kbUp:父壳真实可视视口仍明显小于整屏 —— 键盘此刻确实还开着(见下方 tvv 块)。
+  // 关键:在可编辑框(数量)与只读框(人数/流水线速度)之间切换时,iOS 键盘不收起,但焦点落到
+  // 只读框会让 _editable=false;此时必须靠 _kbUp 仍判定键盘在,否则弹框掉回卡片下方被键盘盖住。
   const _ae = document.activeElement;
-  const kbActive = window.innerWidth <= 900 && !!popup && !!_ae
-    && popup.contains(_ae)
-    && /^(INPUT|SELECT|TEXTAREA)$/.test(_ae.tagName)
-    && !_ae.readOnly && !_ae.disabled; // 只读/禁用字段(流水线速度、人数)点了不弹键盘,弹框不要上移
+  const _focusInPopup = !!popup && !!_ae && popup.contains(_ae)
+    && /^(INPUT|SELECT|TEXTAREA)$/.test(_ae.tagName);
+  const _editable = _focusInPopup && !_ae.readOnly && !_ae.disabled;
   const margin = 8;
   const minTop = Math.max(margin, getStickyHeadersBottom() + margin); // 不允许进入表头区
   // 稳定整屏高度:用 screen.height,不随键盘缩小。viewport 带 interactive-widget=resizes-content 时,
@@ -5622,14 +5623,18 @@ function positionCardPopup(card) {
   // 会把按钮推到键盘下)。tvv.height 键盘弹起时会缩小;换算到本 iframe 坐标 = offsetTop + height − iframe在父中的top。
   // 拿不到 / 键盘还没弹起时回落到估计值。实测 setTop=rectTop、scrollY=0,弹框无偏移,所以按真实键盘顶贴上去即可。
   let kbTop = Math.min(vh, stableH * 0.58);
+  let _kbUp = false;
   try {
     const _tvv = (window.top && window.top.visualViewport) || null;
     if (_tvv && _tvv.height < stableH * 0.78) { // 可视高明显小于整屏 = 键盘确已弹起(与 kbLikelyUp 同阈值)
+      _kbUp = true;
       let _ifTop = 0; try { _ifTop = window.frameElement ? window.frameElement.getBoundingClientRect().top : 0; } catch (e) {}
       const _real = _tvv.offsetTop + _tvv.height - _ifTop;
       if (_real > minTop + 60) kbTop = _real; // 换算值合理才用
     }
   } catch (e) {}
+  // 键盘上方定位:聚焦可编辑框(键盘将弹起)或键盘此刻确实还开着(切到只读框仍成立)时都启用。
+  const kbActive = window.innerWidth <= 900 && _focusInPopup && (_editable || _kbUp);
   // 可用高度(限制 maxHeight):没聚焦用整屏;聚焦(键盘弹起)时限制到「键盘上方」这段,
   // 否则高弹框会越过键盘顶,把底部(下一个品名/耗时)压到键盘下面够不到。
   // 用稳定的 kbTop 算(不是会飘到 ~0 的实时视口高度),所以不会把弹框压成 0 消失。
