@@ -51,7 +51,7 @@ input:focus,select:focus{border-color:var(--accent)}
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
-.nav{display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;will-change:transform;box-shadow:0 6px 0 var(--bg)}
+.nav{display:flex;gap:8px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;isolation:isolate;box-shadow:0 6px 0 var(--bg)}
 /* 手机端 nav 不再用 position:fixed + body padding-top —
    fixed 定位在 iOS Safari 上对页面缩放状态/异步排版时机敏感,会偶发盖住表头(部门名+月份行只露一半,
    捏合缩放重置后才恢复)。改为保留 base 的 position:sticky(在流内),滚动页自然吸顶,排班页用 flex 撑满。 */
