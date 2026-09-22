@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-6">
+<html lang="zh-CN" data-appver="2026-09-22-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2295,7 +2295,7 @@ const Pages = (() => {
   }
   .export-menu button:hover { background: rgba(255,255,255,0.05); color: var(--text); }
   /* 模板菜单 */
-  #tplMenu { min-width: 210px; }
+  #tplMenu { min-width: 176px; }
   #tplMenu .tpl-line-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #tplMenu .tpl-line-cnt { flex: 0 0 auto; margin-left: auto; font-size: 11px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
   .tpl-empty { padding: 8px 14px; font-size: 11.5px; color: var(--text-mute); }
@@ -3020,6 +3020,7 @@ const Pages = (() => {
   .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-text,
   .is-mac .actual-finish-wrap.af-empty .foot-val.actual-finish::-webkit-datetime-edit-ampm-field { color: transparent !important; }
   .foot-val .unit { color: var(--text-mute); font-size: 10px; font-weight: 400; margin-left: 2px; }
+  .foot-divider { display: none; } /* 仅手机竖屏显示:把实结下方的安全区留白用一条线切开 */
 
   .pager {
     display: none; position: fixed; bottom: 8px; left: 50%;
@@ -3055,13 +3056,10 @@ const Pages = (() => {
     .head-btn { width: 100%; justify-content: center; height: 20px; padding: 0 3px; gap: 2px; white-space: nowrap; }
     .head-btn .ic { font-size: 11px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
-    /* 底部 padding 额外抬升整段安全区(--sab,父壳注入;iframe 内 env() 常年为 0),把最后一行「实结」抬离屏幕
-       右下圆角/指示条,否则被圆角切掉、点不到也看不见。背景仍铺满 padding 区不露黑边。
-       (抬升量曾试封顶 16px 减小留白,但实结又难点到 → 恢复抬满,宁可留白也要好点。) */
-    .line-foot { padding: 8px 8px calc(8px + var(--sab, 0px)); overflow: hidden; box-sizing: border-box; }
-    /* 最右生产线(05=data-line 6)的底栏额外加右边距:实结右对齐、紧贴屏幕右边缘+右下圆角,很难点准。
-       整段行内容左移,让实结离开边缘/圆角好点(其他线不动,不浪费列宽)。 */
-    .line[data-line="6"] .line-foot { padding-right: 20px; }
+    /* 底部:实结下方的安全区留白改由 .foot-divider 承载(一条分隔线 + 其下 --sab 高的留白 = home 指示条/圆角安全区)。
+       实结仍被抬离右下圆角(抬升量 = divider 的 margin-top + 高度 ≈ 5+--sab),但现在有条线把留白切开、显得有意。 */
+    .line-foot { padding: 8px 8px 6px; overflow: hidden; box-sizing: border-box; }
+    .line-foot .foot-divider { display: block; margin-top: 5px; border-top: 1px solid var(--border-strong); height: var(--sab, 0px); }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -3069,8 +3067,10 @@ const Pages = (() => {
     .line-foot .foot-label { flex: 0 0 auto; white-space: nowrap; font-size: 8.5px; }
     .line-foot .foot-val { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-align: right; }
     /* 实结 input + wrapper 都限制成 18px 高,避免比其他行高 */
-    .line-foot .actual-finish-wrap { height: 18px; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; }
-    .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; }
+    /* 窄列(~64px)里「实结 + HH:MM 输入框」原来 13px 放不下 → 输入框溢出到列右侧,最右线更被推出屏幕点不到。
+       缩到 10px(与数量一致)+ 压掉 wrapper 左内边距,让整行塞进列内不溢出。 */
+    .line-foot .actual-finish-wrap { height: 18px; padding: 0 0 0 1px; margin: 0; min-width: 0; }
+    .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; font-size: 10px; min-width: 0; }
     /* 数量默认 10px,过长(5位数+)时由 setFootVal 自动缩字号显示完整、不裁切。
        去掉 !important 才能让 setFootVal 的行内字号生效(否则被 important 锁死在 10px → overflow 裁切) */
     .line-foot .qty-total { font-size: 10px; }
@@ -5285,6 +5285,7 @@ function buildLine(num) {
           <input class="foot-val actual-finish" type="time">
         </label>
       </div>
+      <div class="foot-divider"></div>
     </div>
   `;
   const grid = line.querySelector('.cards-grid');
@@ -6185,7 +6186,11 @@ function mirrorActualFinishSize(line) {
   if (!ft || !af) return;
   // setFootVal 在下一帧才设最终字号,这里也等一帧再读
   requestAnimationFrame(() => {
-    af.style.fontSize = getComputedStyle(ft).fontSize;
+    let fs = parseFloat(getComputedStyle(ft).fontSize) || 13;
+    // 手机窄列(~64px):实结是 5 字符时间输入(--:--),结束为「—」时不缩放会停在 13px,
+    // 令实结溢出列右侧(最右线更被推出屏幕点不到)→ 封顶到能塞进列内的字号。
+    if (window.innerWidth <= 900) fs = Math.min(fs, 10);
+    af.style.fontSize = fs + 'px';
   });
 }
 
