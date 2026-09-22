@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-7">
+<html lang="zh-CN" data-appver="2026-09-22-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3070,7 +3070,7 @@ const Pages = (() => {
     /* 窄列(~64px)里「实结 + HH:MM 输入框」原来 13px 放不下 → 输入框溢出到列右侧,最右线更被推出屏幕点不到。
        缩到 10px(与数量一致)+ 压掉 wrapper 左内边距,让整行塞进列内不溢出。 */
     .line-foot .actual-finish-wrap { height: 18px; padding: 0 0 0 1px; margin: 0; min-width: 0; }
-    .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; font-size: 10px; min-width: 0; }
+    .line-foot .foot-val.actual-finish { height: 18px; line-height: 18px; font-size: 9px; min-width: 0; }
     /* 数量默认 10px,过长(5位数+)时由 setFootVal 自动缩字号显示完整、不裁切。
        去掉 !important 才能让 setFootVal 的行内字号生效(否则被 important 锁死在 10px → overflow 裁切) */
     .line-foot .qty-total { font-size: 10px; }
@@ -5298,6 +5298,15 @@ function buildLine(num) {
   line.querySelector('.actual-finish').addEventListener('focus', () => { const w = line.querySelector('.actual-finish-wrap'); if (w) w.classList.remove('af-empty'); });
   line.querySelector('.actual-finish').addEventListener('input', () => { updateActualFinishEmpty(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('blur', () => updateActualFinishEmpty(line));
+  // 实结点击区太小(只有 ~29px 的时间输入框)→ 把整个「实结」行做成可点区:
+  // 点行内任意处(标签「实结」/空隙/输入框边上)都打开时间选择器。输入框本身仍走原生。
+  const afInput = line.querySelector('.actual-finish');
+  const afRow = afInput.closest('.foot-row');
+  if (afRow) afRow.addEventListener('click', (e) => {
+    if (e.target === afInput) return;               // 点在输入框上 → 原生处理
+    e.preventDefault();
+    try { afInput.showPicker(); } catch (_) { try { afInput.focus(); afInput.click(); } catch (__) {} }
+  });
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -6188,8 +6197,9 @@ function mirrorActualFinishSize(line) {
   requestAnimationFrame(() => {
     let fs = parseFloat(getComputedStyle(ft).fontSize) || 13;
     // 手机窄列(~64px):实结是 5 字符时间输入(--:--),结束为「—」时不缩放会停在 13px,
-    // 令实结溢出列右侧(最右线更被推出屏幕点不到)→ 封顶到能塞进列内的字号。
-    if (window.innerWidth <= 900) fs = Math.min(fs, 10);
+    // 令实结溢出列右侧被裁(最右线更被推出屏幕点不到)→ 封顶。原生时间控件实际比文本估算宽,
+    // 10px 真机仍被切,故封到 9px(实测有数据的线「结束」自动缩到 ~9px 能放下,与之一致)。
+    if (window.innerWidth <= 900) fs = Math.min(fs, 9);
     af.style.fontSize = fs + 'px';
   });
 }
