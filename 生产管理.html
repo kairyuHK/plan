@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-4">
+<html lang="zh-CN" data-appver="2026-09-23-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3060,6 +3060,8 @@ const Pages = (() => {
        实结仍被抬离右下圆角(抬升量 = divider 的 margin-top + 高度 ≈ 5+--sab),但现在有条线把留白切开、显得有意。 */
     .line-foot { padding: 8px 8px 6px; overflow: hidden; box-sizing: border-box; }
     .line-foot .foot-divider { display: flex; align-items: center; justify-content: center; margin-top: 5px; border-top: 1px solid var(--border-strong); height: var(--sab, 0px); color: var(--accent); font-family: "Kaiti SC", "STKaiti", "楷体", KaiTi, "华文楷体", serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; opacity: .9; white-space: nowrap; overflow: hidden; }
+    /* 手机端「卡数」行不显示(卡数已在分隔线下方显示;且底栏是固定 4 行紧凑布局,加行会溢出) */
+    .line-foot .card-count-row { display: none; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -3527,6 +3529,8 @@ const Pages = (() => {
       margin: 0 !important;
     }
 
+    /* 打印/导出:底栏固定 4 行高,「卡数」行不参与(屏幕统计栏专用) */
+    .line-foot .card-count-row { display: none !important; }
     /* --- line-foot / timeline-foot:固定 68px,容下「数量/耗时/结束/实结」四行 --- */
     .line-foot, .timeline-foot {
       height: 68px !important; min-height: 68px !important;
@@ -5274,6 +5278,10 @@ function buildLine(num) {
         <span class="foot-label">数量</span>
         <span class="foot-val qty-total">0</span>
       </div>
+      <div class="foot-row card-count-row">
+        <span class="foot-label">卡数</span>
+        <span class="foot-val card-count">0件</span>
+      </div>
       <div class="foot-row">
         <span class="foot-label">耗时</span>
         <span class="foot-val time time-total">—</span>
@@ -6173,9 +6181,12 @@ function recalc(line) {
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   mirrorActualFinishSize(line);
   updateActualFinishEmpty(line);
-  // 底栏分隔线下方:显示该生产线的品名卡数(不含休息卡)
+  // 品名卡数(不含休息卡):手机端显示在分隔线下方,PC 端显示在统计栏「数量」下方的「卡数」行
+  const _jobCount = grid.querySelectorAll('.card[data-type="job"]').length;
   const _fd = line.querySelector('.foot-divider');
-  if (_fd) _fd.textContent = grid.querySelectorAll('.card[data-type="job"]').length;
+  if (_fd) _fd.textContent = _jobCount;
+  const _cc = line.querySelector('.card-count');
+  if (_cc) _cc.textContent = _jobCount + '件';
   recalcGlobal();
 }
 
