@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-5">
+<html lang="zh-CN" data-appver="2026-09-23-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3442,6 +3442,9 @@ const Pages = (() => {
   /* 打印 / PDF 导出 共用样式（body.printing 类触发） */
   body.printing .export-wrap, body.printing .head-btns, body.printing .card-del, body.printing .compact-del, body.printing .drag-handle, body.printing .pager, body.printing .modal-mask,
   body.printing .line-config, body.printing .top-btn, body.printing .date-back-today, body.printing .cal-popover, body.printing::before { display: none !important; }
+  /* 卡数行是屏幕统计栏专用;打印/导出底栏按 4 行(数量/耗时/结束/实结)预算,隐藏卡数行避免撑高破坏版面。
+     printing-compact 由 setupPrintLayout 添加(打印+导出都走),比 body.printing 更可靠地覆盖两条路径。 */
+  body.printing .card-count-row, body.printing-compact .card-count-row { display: none !important; }
   body.printing .timeline-head { cursor: default !important; }
   body.printing #totalAll, body.printing .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
   body.printing #totalDur { color:var(--accent-dark) !important; }
@@ -6808,7 +6811,10 @@ function trimGridForExport(minVisH) {
     if (top + h > maxBottom) maxBottom = top + h;
   });
   if (maxBottom <= 0 || minTop === Infinity) return () => {};
-  const shift = Math.max(0, minTop - 4);
+  // 顶部对齐到「第一张卡之前最近的整点」,让打印顶部保留一个时间刻度(如卡片 10:30 起 → 从 10:00 起),
+  // 而不是从卡片正上方硬切、顶部看不到时间点。
+  const _hourPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-px')) || 140;
+  const shift = Math.max(0, Math.floor(minTop / _hourPx) * _hourPx - 2);
   // visH 至少撑到 minVisH(= 一页的卡片预算高度),否则卡片少的时候页面会比 Chrome 打印预览的
   // 纸面短一截,纸面下方留出深色背景(用户误以为页面里有黑条)。撑到预算高度后,
   // 多余空间填白,实际打印纸张是空白,不影响内容布局。
@@ -6899,14 +6905,23 @@ function setupPrintLayout() {
   });
   document.querySelectorAll('.line').forEach(l => recalc(l));
 
+  // 只算「真正排上时间的卡片」(t-start/t-end 非占位符),与 trimGridForExport 口径一致。
+  // 否则草稿卡(没填数量→结束「—」)会把范围撑大,缩放按含草稿的大范围算,而 trim 只裁到真卡→
+  // 真卡填不满一页、minVisH 兜底补白 → 底部打印出大片空时段。
+  const _isPlaceholder = s => !s || s === '' || s === '--:--' || s === '—' || s === '-' || /^[\-—]+$/.test(s.trim());
   let minTop = Infinity, maxBottom = 0;
   document.querySelectorAll('.card').forEach(c => {
+    const _ts = popupQ(c, '.t-start'), _te = popupQ(c, '.t-end');
+    if (_isPlaceholder(_ts ? _ts.textContent : '') || _isPlaceholder(_te ? _te.textContent : '')) return;
     const t = parseFloat(c.style.top) || 0;
     const h = parseFloat(c.style.height) || 0;
     if (t < minTop) minTop = t;
     if (t + h > maxBottom) maxBottom = t + h;
   });
-  const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - minTop) : 0;
+  // 范围顶端下探到最近整点(与 trimGridForExport 的顶部对齐一致),这样缩放已含顶部那段整点间隙,
+  // 缩放后正好填满一页,不会因 trim 额外加的顶部间隙导致整页被浏览器再缩一档。
+  const _snapTop = (minTop !== Infinity) ? Math.floor(minTop / PRINT_BASELINE_HOUR_PX) * PRINT_BASELINE_HOUR_PX : 0;
+  const cardRange = (maxBottom > 0 && minTop !== Infinity) ? (maxBottom - _snapTop) : 0;
 
   // A4 横向 6mm 边距 ≈ 748px 可用高:
   // A4 横向 6mm 边距 ≈ 748px 可用高:
