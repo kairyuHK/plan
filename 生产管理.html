@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-2">
+<html lang="zh-CN" data-appver="2026-09-23-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5242,8 +5242,6 @@ function buildLine(num) {
   line.className = 'line';
   line.dataset.line = num;
   const displayNum = num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
-  // 底栏分隔线下方:一个「~生产管理~」横跨 6 列,每列取一个字(~ 生 产 管 理 ~ 正好 6 字对 6 列)
-  const footChar = '~生产管理~'[num - 1] || '';
   const lineNumClass = num === 1 ? 'line-num xiusheng' : 'line-num';
   line.innerHTML = `
     <div class="line-head">
@@ -5290,7 +5288,7 @@ function buildLine(num) {
           <input class="foot-val actual-finish" type="time">
         </label>
       </div>
-      <div class="foot-divider">${footChar}</div>
+      <div class="foot-divider">0</div>
     </div>
   `;
   const grid = line.querySelector('.cards-grid');
@@ -6175,6 +6173,9 @@ function recalc(line) {
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   mirrorActualFinishSize(line);
   updateActualFinishEmpty(line);
+  // 底栏分隔线下方:显示该生产线的卡片数(含品名/休息,与模板「N卡」口径一致)
+  const _fd = line.querySelector('.foot-divider');
+  if (_fd) _fd.textContent = cards.length;
   recalcGlobal();
 }
 
