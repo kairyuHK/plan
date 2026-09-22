@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-6">
+<html lang="zh-CN" data-appver="2026-09-23-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6165,17 +6165,25 @@ function recalc(line) {
       prevVisualBottom = top + height;
       card.classList.toggle('error', cardStart < baseSec || cardEnd > TIME_END_HOUR * 3600);
     } else {
-      // 草稿卡片（无耗时）：定位在上一卡片视觉底部之下，无上一卡片则按起始时间放置
-      let top;
-      if (prevVisualBottom > -Infinity) top = prevVisualBottom + 2;
-      else if (startSec != null) top = secToPx(startSec);
-      else top = i * 28;
-      card.style.top = top + 'px'; card.style.height = '26px';
-      fitCardCompact(card, 26);
-      prevVisualBottom = top + 26;
+      // 草稿卡片(无耗时)。
       tStart.textContent = '—'; tEnd.textContent = '—';
       if (type === 'job') popupQ(card, '.duration').textContent = '耗时 —';
       card.classList.remove('error');
+      if (document.body.classList.contains('printing-compact')) {
+        // 打印/导出:草稿卡没有时间,无法按时间轴对齐 → 直接隐藏,且**不占 prevVisualBottom**。
+        // 否则草稿卡会把它下面的真卡往下挤(真卡像素位置与真实时间脱节)→ 打印范围算错、底部补白、卡片错位。
+        card.style.display = 'none';
+      } else {
+        // 屏幕上照常:定位在上一卡片视觉底部之下,无上一卡片则按起始时间放置
+        card.style.display = '';
+        let top;
+        if (prevVisualBottom > -Infinity) top = prevVisualBottom + 2;
+        else if (startSec != null) top = secToPx(startSec);
+        else top = i * 28;
+        card.style.top = top + 'px'; card.style.height = '26px';
+        fitCardCompact(card, 26);
+        prevVisualBottom = top + 26;
+      }
     }
     syncPopupState(card);
   });
