@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-2">
+<html lang="zh-CN" data-appver="2026-09-22-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2295,14 +2295,16 @@ const Pages = (() => {
   }
   .export-menu button:hover { background: rgba(255,255,255,0.05); color: var(--text); }
   /* 模板菜单 */
-  .tpl-head { padding: 7px 14px 4px; font-size: 10.5px; font-weight: 600; color: var(--text-mute); letter-spacing: .4px; }
+  #tplMenu { min-width: 210px; }
   #tplMenu .tpl-line-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #tplMenu .tpl-line-cnt { flex: 0 0 auto; margin-left: auto; font-size: 11px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
-  .tpl-empty { padding: 6px 14px 10px; font-size: 11.5px; color: var(--text-mute); }
+  .tpl-empty { padding: 8px 14px; font-size: 11.5px; color: var(--text-mute); }
   .tpl-row { display: flex; align-items: stretch; }
   .tpl-row .tpl-use { flex: 1 1 auto; min-width: 0; }
-  .tpl-row .tpl-del { flex: 0 0 auto; width: 40px; justify-content: center; padding: 9px 6px; gap: 0; color: var(--text-mute); }
+  .tpl-row .tpl-edit, .tpl-row .tpl-del { flex: 0 0 auto; width: 34px; justify-content: center; padding: 9px 4px; gap: 0; color: var(--text-mute); }
+  .tpl-row .tpl-edit:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
   .tpl-row .tpl-del:hover { color: #f87171; background: rgba(248,113,113,0.08); }
+  .tpl-add { border-top: 1px solid var(--border-strong); color: var(--accent) !important; font-weight: 600 !important; justify-content: center !important; }
   #teTableToggle { border-top: 1px solid var(--border-strong); margin-top: 3px; }
   #teTableToggle .te-caret { margin-left: auto; transition: transform .2s var(--ease); font-size: 10px; }
   #teTableToggle.open .te-caret { transform: rotate(180deg); }
@@ -6500,54 +6502,103 @@ function renderTemplatesMenu() {
   const menu = tplMenu;
   menu.innerHTML = '';
   const tpls = loadTemplates();
-  // —— 保存区:选一条源线存为模板 ——
-  const h1 = document.createElement('div'); h1.className = 'tpl-head'; h1.textContent = '保存生产线为模板'; menu.appendChild(h1);
-  for (let i = 1; i <= LINE_COUNT; i++) {
-    const lineEl = lineElByNum(i);
-    const cnt = lineEl ? lineEl.querySelectorAll('.card').length : 0;
-    const b = document.createElement('button');
-    b.innerHTML = `<span class="tpl-line-name">${lineDisplayName(i)}</span><span class="tpl-line-cnt">${cnt} 卡</span>`;
-    if (cnt === 0) { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'default'; }
-    else b.addEventListener('click', (e) => { e.stopPropagation(); startSaveTemplate(i); });
-    menu.appendChild(b);
-  }
-  // —— 套用区 ——
-  const h2 = document.createElement('div'); h2.className = 'tpl-head'; h2.style.borderTop = '1px solid var(--border-strong)'; h2.style.marginTop = '3px'; h2.textContent = '套用模板'; menu.appendChild(h2);
   if (!tpls.length) {
     const empty = document.createElement('div'); empty.className = 'tpl-empty'; empty.textContent = '还没有模板'; menu.appendChild(empty);
   } else {
     tpls.forEach(tpl => {
       const row = document.createElement('div'); row.className = 'tpl-row';
-      const use = document.createElement('button'); use.className = 'tpl-use';
+      const use = document.createElement('button'); use.className = 'tpl-use'; use.title = '套用到某条线';
       use.innerHTML = `<span class="tpl-line-name">${escapeHtml(tpl.name)}</span><span class="tpl-line-cnt">${(tpl.cards || []).length} 卡</span>`;
       use.addEventListener('click', (e) => { e.stopPropagation(); startApplyTemplate(tpl); });
+      const edit = document.createElement('button'); edit.className = 'tpl-edit'; edit.textContent = '✎'; edit.title = '改名 / 更新布局';
+      edit.addEventListener('click', (e) => { e.stopPropagation(); editTemplate(tpl); });
       const del = document.createElement('button'); del.className = 'tpl-del'; del.textContent = '🗑'; del.title = '删除模板';
       del.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteTemplate(tpl); });
-      row.appendChild(use); row.appendChild(del); menu.appendChild(row);
+      row.appendChild(use); row.appendChild(edit); row.appendChild(del); menu.appendChild(row);
     });
   }
+  const add = document.createElement('button'); add.className = 'tpl-add'; add.textContent = '＋ 新建模板';
+  add.addEventListener('click', (e) => { e.stopPropagation(); startNewTemplate(); });
+  menu.appendChild(add);
 }
 
-function startSaveTemplate(lineNum) {
-  const lineEl = lineElByNum(lineNum);
-  if (!lineEl) return;
-  const cards = captureLineCards(lineEl);
-  if (!cards.length) { showToast('该生产线没有卡片', 'error'); return; }
+// 非空生产线的下拉选项(value=线号,label=名称+卡数)
+function nonEmptyLineOptions() {
+  const opts = [];
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    const el = lineElByNum(i);
+    const cnt = el ? el.querySelectorAll('.card').length : 0;
+    if (cnt > 0) opts.push({ value: String(i), label: `${lineDisplayName(i)}（${cnt}卡）` });
+  }
+  return opts;
+}
+
+// 新建模板:选来源线(仅非空) → 命名 → 存
+function startNewTemplate() {
+  tplMenu.classList.remove('show');
+  const opts = nonEmptyLineOptions();
+  if (!opts.length) { showToast('没有可保存的生产线(都是空的)', 'error'); return; }
+  showConfirmPopover(tplBtn, {
+    text: '新建模板 · 选来源生产线',
+    input: { options: opts, value: opts[0].value },
+    confirmText: '下一步',
+    onConfirm: (v) => {
+      const lineNum = parseInt(v, 10);
+      const cards = captureLineCards(lineElByNum(lineNum) || document.createElement('div'));
+      if (!cards.length) { showToast('该生产线没有卡片', 'error'); return; }
+      showConfirmPopover(tplBtn, {
+        text: '模板名称',
+        sub: `来自「${lineDisplayName(lineNum)}」· ${cards.length} 张卡片`,
+        input: { type: 'text', placeholder: '模板名称', value: '' },
+        confirmText: '保存',
+        onConfirm: (name) => {
+          name = (name || '').trim();
+          if (!name) { showToast('请填模板名称', 'error'); return; }
+          const tpls = loadTemplates();
+          const exist = tpls.find(t => t.name === name);
+          if (exist) exist.cards = cards;                            // 同名 → 覆盖内容
+          else tpls.push({ id: 'tpl_' + Date.now().toString(36), name, cards });
+          saveTemplates(tpls);
+          showToast(`已保存模板「${name}」`);
+        }
+      });
+    }
+  });
+}
+
+// 编辑模板:改名(主按钮)/ 更新布局为某条线(附加按钮)
+function editTemplate(tpl) {
   tplMenu.classList.remove('show');
   showConfirmPopover(tplBtn, {
-    text: `把「${lineDisplayName(lineNum)}」存为模板`,
-    sub: `${cards.length} 张卡片`,
-    input: { type: 'text', placeholder: '模板名称', value: '' },
-    confirmText: '保存',
+    text: `编辑模板「${tpl.name}」`,
+    sub: `当前 ${(tpl.cards || []).length} 张卡片`,
+    input: { type: 'text', value: tpl.name, placeholder: '模板名称' },
+    confirmText: '改名',
+    extra: { text: '更新布局为某条线…', onClick: () => pickLineToUpdate(tpl) },
     onConfirm: (name) => {
       name = (name || '').trim();
-      if (!name) { showToast('请填模板名称', 'error'); return; }
+      if (!name) { showToast('名称不能为空', 'error'); return; }
       const tpls = loadTemplates();
-      const exist = tpls.find(t => t.name === name);
-      if (exist) exist.cards = cards;                              // 同名 → 覆盖内容
-      else tpls.push({ id: 'tpl_' + Date.now().toString(36), name, cards });
-      saveTemplates(tpls);
-      showToast(`已保存模板「${name}」`);
+      const t = tpls.find(x => x.id === tpl.id);
+      if (t) { t.name = name; saveTemplates(tpls); showToast('已改名'); }
+    }
+  });
+}
+
+// 把某模板的卡片内容更新为某条线的当前布局
+function pickLineToUpdate(tpl) {
+  const opts = nonEmptyLineOptions();
+  if (!opts.length) { showToast('没有可用的生产线(都是空的)', 'error'); return; }
+  showConfirmPopover(tplBtn, {
+    text: `把「${tpl.name}」更新为哪条线的布局?`,
+    input: { options: opts, value: opts[0].value },
+    confirmText: '更新',
+    onConfirm: (v) => {
+      const cards = captureLineCards(lineElByNum(parseInt(v, 10)) || document.createElement('div'));
+      if (!cards.length) return;
+      const tpls = loadTemplates();
+      const t = tpls.find(x => x.id === tpl.id);
+      if (t) { t.cards = cards; saveTemplates(tpls); showToast(`已更新「${t.name}」(${cards.length}卡)`); }
     }
   });
 }
