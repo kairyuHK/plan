@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-3">
+<html lang="zh-CN" data-appver="2026-09-22-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3055,10 +3055,10 @@ const Pages = (() => {
     .head-btn { width: 100%; justify-content: center; height: 20px; padding: 0 3px; gap: 2px; white-space: nowrap; }
     .head-btn .ic { font-size: 11px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
-    /* 底部 padding 额外加 --sab(壳层测得的 home 指示条/圆角安全区,iframe 内 env() 常年为 0 所以由父壳注入):
-       把最后一行「实结」抬离屏幕右下圆角/指示条,否则最右生产线的实结被圆角切掉、点不到也看不见。
-       背景仍铺满(padding 在元素内),不会露黑边。 */
-    .line-foot { padding: 8px 8px calc(8px + var(--sab, 0px)); overflow: hidden; box-sizing: border-box; }
+    /* 底部 padding 额外抬升,把最后一行「实结」抬离屏幕右下圆角,否则最右生产线的实结被圆角切掉、点不到也看不见。
+       抬升量 = min(--sab, 16px):圆角弧只占底部约 18px,清开它即可,不必抬满整个安全区(~34px)——抬满会在实结
+       下面留一条过空的暗带(用户嫌"空荡荡")。--sab 由父壳注入(iframe 内 env() 常年为 0)。背景仍铺满不露黑边。 */
+    .line-foot { padding: 8px 8px calc(8px + min(var(--sab, 0px), 16px)); overflow: hidden; box-sizing: border-box; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -11047,6 +11047,7 @@ const BUNDLE_KEYS_EXACT = [
   'productionBoardCurrentDate', // 计划板 当前日期
   'productionBoard_v1',         // 计划板 legacy 单日
   'bento-conveyor-v1',          // 配置表
+  'plan-line-templates',        // 计划板 生产线模板(全局,不按日期过滤)
 ];
 const BUNDLE_KEY_PREFIXES = ['productionBoard_v1_']; // 计划板 每日存档
 const STORAGE_LAST_EXPORT_AT = 'production-management-last-export-at';
