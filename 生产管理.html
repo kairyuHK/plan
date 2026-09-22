@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-4">
+<html lang="zh-CN" data-appver="2026-09-22-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2305,6 +2305,10 @@ const Pages = (() => {
   .tpl-row .tpl-edit:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
   .tpl-row .tpl-del:hover { color: #f87171; background: rgba(248,113,113,0.08); }
   .tpl-add { border-top: 1px solid var(--border-strong); color: var(--accent) !important; font-weight: 600 !important; justify-content: center !important; }
+  .tpl-io { display: flex; border-top: 1px solid var(--border-strong); }
+  .tpl-io .tpl-io-btn { flex: 1 1 0; justify-content: center !important; gap: 3px !important; font-size: 11.5px !important; color: var(--text-mute) !important; padding: 8px 6px !important; }
+  .tpl-io .tpl-io-btn:first-child { border-right: 1px solid var(--border-strong); }
+  .tpl-io .tpl-io-btn:hover { color: var(--text) !important; }
   #teTableToggle { border-top: 1px solid var(--border-strong); margin-top: 3px; }
   #teTableToggle .te-caret { margin-left: auto; transition: transform .2s var(--ease); font-size: 10px; }
   #teTableToggle.open .te-caret { transform: rotate(180deg); }
@@ -3055,10 +3059,13 @@ const Pages = (() => {
     .head-btn { width: 100%; justify-content: center; height: 20px; padding: 0 3px; gap: 2px; white-space: nowrap; }
     .head-btn .ic { font-size: 11px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
-    /* 底部 padding 额外抬升,把最后一行「实结」抬离屏幕右下圆角,否则最右生产线的实结被圆角切掉、点不到也看不见。
-       抬升量 = min(--sab, 16px):圆角弧只占底部约 18px,清开它即可,不必抬满整个安全区(~34px)——抬满会在实结
-       下面留一条过空的暗带(用户嫌"空荡荡")。--sab 由父壳注入(iframe 内 env() 常年为 0)。背景仍铺满不露黑边。 */
-    .line-foot { padding: 8px 8px calc(8px + min(var(--sab, 0px), 16px)); overflow: hidden; box-sizing: border-box; }
+    /* 底部 padding 额外抬升整段安全区(--sab,父壳注入;iframe 内 env() 常年为 0),把最后一行「实结」抬离屏幕
+       右下圆角/指示条,否则被圆角切掉、点不到也看不见。背景仍铺满 padding 区不露黑边。
+       (抬升量曾试封顶 16px 减小留白,但实结又难点到 → 恢复抬满,宁可留白也要好点。) */
+    .line-foot { padding: 8px 8px calc(8px + var(--sab, 0px)); overflow: hidden; box-sizing: border-box; }
+    /* 最右生产线(05=data-line 6)的底栏额外加右边距:实结右对齐、紧贴屏幕右边缘+右下圆角,很难点准。
+       整段行内容左移,让实结离开边缘/圆角好点(其他线不动,不浪费列宽)。 */
+    .line[data-line="6"] .line-foot { padding-right: 20px; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -6520,6 +6527,62 @@ function renderTemplatesMenu() {
   const add = document.createElement('button'); add.className = 'tpl-add'; add.textContent = '＋ 新建模板';
   add.addEventListener('click', (e) => { e.stopPropagation(); startNewTemplate(); });
   menu.appendChild(add);
+  // 模板单独导入导出(独立于「全部数据」导入导出,方便只搬模板)
+  const io = document.createElement('div'); io.className = 'tpl-io';
+  const exp = document.createElement('button'); exp.className = 'tpl-io-btn'; exp.textContent = '⬇ 导出模板';
+  exp.addEventListener('click', (e) => { e.stopPropagation(); exportTemplates(); });
+  const imp = document.createElement('button'); imp.className = 'tpl-io-btn'; imp.textContent = '⬆ 导入模板';
+  imp.addEventListener('click', (e) => { e.stopPropagation(); importTemplates(); });
+  io.appendChild(exp); io.appendChild(imp); menu.appendChild(io);
+}
+
+// 导出所有模板为一个 JSON 文件
+function exportTemplates() {
+  tplMenu.classList.remove('show');
+  const tpls = loadTemplates();
+  if (!tpls.length) { showToast('还没有模板可导出', 'error'); return; }
+  const bundle = { type: 'plan-line-templates', version: 1, exportedAt: new Date().toISOString(), templates: tpls };
+  try {
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '生产线模板.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast(`已导出 ${tpls.length} 个模板`);
+  } catch (e) { showToast('导出失败: ' + e.message, 'error'); }
+}
+
+// 从 JSON 文件导入模板(按名称合并:同名覆盖,新名追加)
+function importTemplates() {
+  tplMenu.classList.remove('show');
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      let data;
+      try { data = JSON.parse(r.result); } catch (e) { showToast('文件不是有效 JSON', 'error'); return; }
+      // 兼容:{type:'plan-line-templates',templates:[...]} 或直接 [...]
+      const incoming = Array.isArray(data) ? data : (data && Array.isArray(data.templates) ? data.templates : null);
+      if (!incoming) { showToast('不是模板导出文件', 'error'); return; }
+      const valid = incoming.filter(t => t && typeof t.name === 'string' && Array.isArray(t.cards));
+      if (!valid.length) { showToast('文件里没有有效模板', 'error'); return; }
+      const tpls = loadTemplates();
+      let added = 0, overwritten = 0;
+      valid.forEach(t => {
+        const exist = tpls.find(x => x.name === t.name);
+        if (exist) { exist.cards = t.cards; overwritten++; }
+        else { tpls.push({ id: 'tpl_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6), name: t.name, cards: t.cards }); added++; }
+      });
+      saveTemplates(tpls);
+      showToast(`导入完成:新增 ${added}、覆盖 ${overwritten}`);
+    };
+    r.readAsText(f);
+  };
+  inp.click();
 }
 
 // 非空生产线的下拉选项(value=线号,label=名称+卡数)
