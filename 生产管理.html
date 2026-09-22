@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-22-9">
+<html lang="zh-CN" data-appver="2026-09-22-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3059,7 +3059,7 @@ const Pages = (() => {
     /* 底部:实结下方的安全区留白改由 .foot-divider 承载(一条分隔线 + 其下 --sab 高的留白 = home 指示条/圆角安全区)。
        实结仍被抬离右下圆角(抬升量 = divider 的 margin-top + 高度 ≈ 5+--sab),但现在有条线把留白切开、显得有意。 */
     .line-foot { padding: 8px 8px 6px; overflow: hidden; box-sizing: border-box; }
-    .line-foot .foot-divider { display: flex; align-items: center; justify-content: center; margin-top: 5px; border-top: 1px solid var(--border-strong); height: var(--sab, 0px); color: var(--accent); font-size: 8px; letter-spacing: .5px; opacity: .85; white-space: nowrap; overflow: hidden; }
+    .line-foot .foot-divider { display: flex; align-items: center; justify-content: center; margin-top: 5px; border-top: 1px solid var(--border-strong); height: var(--sab, 0px); color: var(--accent); font-size: 11px; font-weight: 500; letter-spacing: 1px; opacity: .85; white-space: nowrap; overflow: hidden; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -5242,6 +5242,8 @@ function buildLine(num) {
   line.className = 'line';
   line.dataset.line = num;
   const displayNum = num === 1 ? '夕盛' : String(num - 1).padStart(2, '0');
+  // 底栏分隔线下方:一个「~生产管理~」横跨 6 列,每列取一个字(~ 生 产 管 理 ~ 正好 6 字对 6 列)
+  const footChar = '~生产管理~'[num - 1] || '';
   const lineNumClass = num === 1 ? 'line-num xiusheng' : 'line-num';
   line.innerHTML = `
     <div class="line-head">
@@ -5288,7 +5290,7 @@ function buildLine(num) {
           <input class="foot-val actual-finish" type="time">
         </label>
       </div>
-      <div class="foot-divider">~生产管理~</div>
+      <div class="foot-divider">${footChar}</div>
     </div>
   `;
   const grid = line.querySelector('.cards-grid');
