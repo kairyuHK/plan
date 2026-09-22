@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-12-1">
+<html lang="zh-CN" data-appver="2026-09-22-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
 <!-- 启动图:iOS 独立 App 启动时先显示与 App 底色一致的纯色,消除系统白屏(仅 430x932@3 iPhone 15/16 Plus·Max) -->
@@ -3044,7 +3044,10 @@ const Pages = (() => {
     .head-btn { width: 100%; justify-content: center; height: 20px; padding: 0 3px; gap: 2px; white-space: nowrap; }
     .head-btn .ic { font-size: 11px; }
     /* 竖屏底部统计栏：固定布局，不因数字过长而换行/竖排；数字过长时由 JS 缩放字号 */
-    .line-foot { padding: 8px 8px; overflow: hidden; box-sizing: border-box; }
+    /* 底部 padding 额外加 --sab(壳层测得的 home 指示条/圆角安全区,iframe 内 env() 常年为 0 所以由父壳注入):
+       把最后一行「实结」抬离屏幕右下圆角/指示条,否则最右生产线的实结被圆角切掉、点不到也看不见。
+       背景仍铺满(padding 在元素内),不会露黑边。 */
+    .line-foot { padding: 8px 8px calc(8px + var(--sab, 0px)); overflow: hidden; box-sizing: border-box; }
     /* 4 行各占固定 18px,行间距 2px;input 的原生高度被压到一致 */
     .line-foot .foot-row { gap: 2px; flex-wrap: nowrap; min-width: 0; align-items: center; height: 18px; margin-bottom: 2px; }
     .line-foot .foot-row:last-child { margin-bottom: 0; }
@@ -11461,12 +11464,32 @@ function attachSwipe(doc) {
 }
 // 父壳自身也挂一份(切到边界露出空白区时也能滑)
 attachSwipe(document);
+// 底部安全区(home 指示条/圆角)。iframe 内 env(safe-area-inset-bottom) 在 iOS 上基本恒为 0,
+// 只有顶层文档能可靠测量;测得后注入给各 iframe 的 :root --sab,子应用底栏据此把内容抬离圆角。
+function measureSab(){
+  var p = document.createElement('div');
+  p.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';
+  document.body.appendChild(p);
+  var h = parseFloat(getComputedStyle(p).height) || 0;
+  p.remove();
+  return h;
+}
+function applySab(frame){
+  var sab = measureSab() + 'px';
+  var list = frame ? [frame] : frames;
+  list.forEach(function(f){
+    try { var d = f.contentDocument; if (d && d.documentElement) d.documentElement.style.setProperty('--sab', sab); } catch (_) {}
+  });
+}
 // 每个 iframe 加载完成后给它的 document 挂监听;重载(导入时)会重置 __swipeAttached
 frames.forEach(f => {
   f.addEventListener('load', () => {
     try { attachSwipe(f.contentDocument); } catch (_) {}
+    applySab(f); // 注入底部安全区变量
   });
 });
+// 旋转/尺寸变化(安全区随之变)后重新注入所有已加载 iframe
+window.addEventListener('resize', () => applySab());
 window.addEventListener('hashchange', () => {
   const app = location.hash.slice(1);
   if(['schedule','plan','config'].includes(app)) activate(app);
