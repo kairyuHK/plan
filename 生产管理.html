@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-7">
+<html lang="zh-CN" data-appver="2026-09-23-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2827,6 +2827,10 @@ const Pages = (() => {
   /* 人数与配置表该线位置数比较:多于→红,等于→默认(白),少于→蓝 */
   .compact-people.people-over { color: var(--red); font-weight: 700; }
   .compact-people.people-under { color: var(--blue); font-weight: 700; }
+  /* PC 端品名卡显示全名(隐藏带圈头文字);手机端反之(见 @media max-width:900px) */
+  .card-compact .compact-name-letter { display: none; }
+  .card-compact .compact-job-name { display: block; flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-compact .compact-people { flex: 0 0 auto; }
   .compact-del {
     position: absolute;
     top: 2px;
@@ -2870,6 +2874,10 @@ const Pages = (() => {
     .card-compact .compact-del { display: none; }
     .compact-name-letter { width: 18px; height: 18px; font-size: 11px; }
     .compact-people { font-size: 11px; }
+    /* 手机端保持带圈头文字,不显示全名(与 PC 相反) */
+    .card-compact .compact-name-letter { display: inline-flex; }
+    .card-compact .compact-job-name { display: none; }
+    .card-compact .compact-people { flex: 1; }
   }
   .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
   .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
@@ -5369,6 +5377,7 @@ function addJobCard(grid, libItem, savedData) {
   node.innerHTML = `
     <div class="card-compact">
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
+      <span class="compact-job-name" style="color:${libItem.color}">${escapeHtml(libItem.name || '')}</span>
       <span class="compact-people">—</span>
       <span class="compact-time">—</span>
       <button class="compact-del" title="删除">×</button>
@@ -6126,6 +6135,11 @@ function recalc(line) {
       if (letterEl) {
         letterEl.textContent = (card.dataset.name || '').charAt(0);
         letterEl.style.color = card.dataset.color || '';
+      }
+      const jobNameEl = card.querySelector('.compact-job-name'); // PC 端显示的全名
+      if (jobNameEl) {
+        jobNameEl.textContent = card.dataset.name || '';
+        jobNameEl.style.color = card.dataset.color || '';
       }
       const peopleEl = card.querySelector('.compact-people');
       if (peopleEl) {
