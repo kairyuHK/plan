@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-3">
+<html lang="zh-CN" data-appver="2026-09-25-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -11618,11 +11618,13 @@ function applyMode(pref, persist){
     // iOS 27 液态玻璃状态栏只在 App 启动/视口重建时按主题采样一次,App 内热切主题不重采 → 顶部那条卡旧色。
     // 网页手段(重绘/几何/视口微扰)都逼不动那层玻璃。唯一可靠解法:生效主题真的变了时重载一次,
     // 让状态栏按新主题重新采样(偏好已存 localStorage,数据不丢;启动遮罩按新主题淡入,过渡平滑)。
-    if (effectiveMode(next) !== effectiveMode(cur)) {
+    // ⚠️ 只对 iOS 主屏 PWA(navigator.standalone)这么做 —— PC / 浏览器标签页无此坑,保持即时切换不重载。
+    const iosStandalone = window.navigator.standalone === true;
+    if (iosStandalone && effectiveMode(next) !== effectiveMode(cur)) {
       try { localStorage.setItem(MODE_KEY, next); } catch(_){}
       location.reload();
     } else {
-      applyMode(next, true);                                 // 生效主题没变(如 夜间→跟随系统且系统也是深色):只换图标,不必重载
+      applyMode(next, true);                                 // PC/标签页,或生效主题没变(夜间→跟随系统且系统也深色):即时切换,不重载
     }
   });
   applyMode(loadMode(), false);
