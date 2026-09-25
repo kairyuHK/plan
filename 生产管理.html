@@ -11597,15 +11597,18 @@ const MODE_ICONS = {
   dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
   system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>'
 };
-// iOS 独立模式:状态栏 black-translucent 透出父壳背景,切主题时顶部安全区那条不跟着重绘
-// (刷新/重启才恢复,和标签恢复残线同类合成 bug)。切主题后强制父壳 body 重绘一次(净零 translateZ,
-// body 未滚动故不移动任何东西、不影响 .tabs 定位),让安全区跟着变色。iOS 有时晚一拍画,补几拍兜底。
+// iOS 独立模式:状态栏 black-translucent 透出网页顶部,而顶部那条正是 .tabs 顶栏的背景
+// (.tabs 高度含 env(safe-area-inset-top)、padding-top 撑起安全区,渐变铺满整条)。切主题时 iOS 只重绘了
+// .tabs 按钮行,安全区那段(状态栏后面)保留旧色不刷新(刷新/重启才恢复,同类合成缓存 bug)。
+// 强制 .tabs 自己重绘:跨 rAF 加/撤净零 translateZ(0)(不闪、不移位),更新它的合成层后备缓存、含安全区那段。
+// 同步 display 切回易被 iOS 合并成空操作;跨帧 transform 是本项目 repaintActiveFrame 已验证可靠的手法。
+// iOS 有时晚一拍才画,补几拍兜底。
 function repaintShellTop(){
-  const b = document.body;
-  if (!b) return;
+  const bar = document.querySelector('.tabs');
+  if (!bar) return;
   const kick = () => {
-    b.style.transform = 'translateZ(0)';
-    requestAnimationFrame(() => { requestAnimationFrame(() => { b.style.transform = ''; }); });
+    bar.style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => { requestAnimationFrame(() => { bar.style.transform = ''; }); });
   };
   kick();
   setTimeout(kick, 120);
