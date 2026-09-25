@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-7">
+<html lang="zh-CN" data-appver="2026-09-26-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2897,7 +2897,9 @@ const Pages = (() => {
     /* 手机端保持带圈头文字,不显示全名(与 PC 相反) */
     .card-compact .compact-name-letter { display: inline-flex; }
     .card-compact .compact-job-name { display: none; }
-    .card-compact .compact-people { flex: 1; min-width: 0; text-align: left; }  /* 手机端保持:人数左对齐贴在圈右侧 */
+    /* 手机模式(无全名争空间):人数固定宽右对齐 → 末位对齐成一条竖列(窗口再小也对齐);耗时顶到最右 */
+    .card-compact .compact-people { flex: 0 0 auto; width: 1.7em; min-width: 1.7em; text-align: right; }
+    .card-compact .compact-time { margin-left: auto; }
   }
   .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
   .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
