@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-6">
+<html lang="zh-CN" data-appver="2026-09-26-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2843,9 +2843,14 @@ const Pages = (() => {
   /* PC 端品名卡显示全名(隐藏带圈头文字);手机端反之(见 @media max-width:900px) */
   .card-compact .compact-name-letter { display: none; }
   .card-compact .compact-job-name { display: block; flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* PC 端:人数、耗时各占固定宽、右对齐 → 跨卡片形成整齐竖直列,间隔统一(耗时长度 25:00/1:02:10 不再让人数左右乱跳) */
-  .card-compact .compact-people { flex: 0 0 auto; min-width: 1.9em; text-align: right; font-variant-numeric: tabular-nums; }
-  .card-compact .compact-time { flex: 0 0 auto; min-width: 4.4em; text-align: right; margin-left: 2px; }
+  /* PC 端:人数、耗时右对齐、等宽。列够宽时(容器查询 ≥180px)再给固定 min-width → 跨卡片形成整齐竖直列;
+     窄列(如手机横屏 6 列 ~148px)不加 min-width,把宽度让给便当名,避免名字被挤没(见容器查询) */
+  .card-compact .compact-people { flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; }
+  .card-compact .compact-time { flex: 0 0 auto; text-align: right; margin-left: 2px; }
+  @container (min-width: 180px) {
+    .card-compact .compact-people { min-width: 1.9em; }
+    .card-compact .compact-time { min-width: 4.4em; }
+  }
   .compact-del {
     position: absolute;
     top: 2px;
@@ -3442,9 +3447,10 @@ const Pages = (() => {
   body.mob-ls .main { overflow: auto !important; -webkit-overflow-scrolling: touch; align-items: flex-start; height: calc(100vh - 48px); }
   body.mob-ls .board {
     display: grid !important;
-    grid-template-columns: repeat(6, minmax(66px, 1fr)) !important;
+    /* 列数 = 当前可见生产线数(updateBoardLayout 设 --mobls-cols),隐藏线时随之重排,不再锁死 6 列留空/被切 */
+    grid-template-columns: repeat(var(--mobls-cols, 6), minmax(66px, 1fr)) !important;
     grid-auto-rows: auto !important;
-    min-width: 396px;
+    min-width: calc(66px * var(--mobls-cols, 6));
     overflow: visible !important;
     gap: 1px;
     background: var(--border);
@@ -6456,6 +6462,8 @@ function updateBoardLayout() {
   document.querySelectorAll('.line').forEach(line => {
     line.style.display = hiddenLines.has(+line.dataset.line) ? 'none' : '';
   });
+  // 手机横屏(mob-ls)的 board 列数由此变量驱动:隐藏线时重排,不锁死 6 列(见 CSS body.mob-ls .board)
+  if (visibleCount > 0) board.style.setProperty('--mobls-cols', String(visibleCount));
   if (visibleCount > 0) {
     const isMobile = window.innerWidth <= 900;
     if (isMobile) {
