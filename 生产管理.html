@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-2">
+<html lang="zh-CN" data-appver="2026-09-25-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -11597,30 +11597,10 @@ const MODE_ICONS = {
   dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
   system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>'
 };
-// iOS 27 液态玻璃(Liquid Glass)状态栏:打开 App 时按当前主题采样一次是对的,但 App 内切黑白天时
-// 玻璃层不重采样 → 顶部那条卡在旧色(刷新/重开才恢复)。合成层重绘(transform/translateZ)对它无效,
-// 它只在「布局/视口建立」时采样。故切主题后做一次真实几何 + 视口微扰,模拟打开时的重新布局,逼它重采样。
-function repaintShellTop(){
-  // ① 顶栏真实高度 +1px→还原(跨帧):真实布局变化,非纯合成重绘
-  const bar = document.querySelector('.tabs');
-  if (bar) {
-    const h = Math.round(bar.getBoundingClientRect().height);
-    bar.style.height = (h + 1) + 'px';
-    requestAnimationFrame(() => { requestAnimationFrame(() => { bar.style.height = ''; }); });
-  }
-  // ② 视口属性无害微扰(加/撤 shrink-to-fit=no,不改缩放):强触发 WebKit 重算视口/安全区 → 玻璃重采样
-  const vp = document.querySelector('meta[name="viewport"]');
-  if (vp) {
-    const c = vp.getAttribute('content');
-    vp.setAttribute('content', c + ',shrink-to-fit=no');
-    requestAnimationFrame(() => { vp.setAttribute('content', c); });
-  }
-}
 function applyMode(pref, persist){
   const eff = effectiveMode(pref);
   document.documentElement.dataset.theme = eff;
   broadcastMode(eff);
-  repaintShellTop();
   if (persist !== false) { try { localStorage.setItem(MODE_KEY, pref); } catch(_){} }
   const b = document.getElementById('modeBtn');
   if (b) {
@@ -11635,7 +11615,15 @@ function applyMode(pref, persist){
   if (b) b.addEventListener('click', () => {
     const cur = loadMode();                                  // 三态循环:白天→夜间→跟随系统→白天
     const next = cur === 'light' ? 'dark' : cur === 'dark' ? 'system' : 'light';
-    applyMode(next, true);
+    // iOS 27 液态玻璃状态栏只在 App 启动/视口重建时按主题采样一次,App 内热切主题不重采 → 顶部那条卡旧色。
+    // 网页手段(重绘/几何/视口微扰)都逼不动那层玻璃。唯一可靠解法:生效主题真的变了时重载一次,
+    // 让状态栏按新主题重新采样(偏好已存 localStorage,数据不丢;启动遮罩按新主题淡入,过渡平滑)。
+    if (effectiveMode(next) !== effectiveMode(cur)) {
+      try { localStorage.setItem(MODE_KEY, next); } catch(_){}
+      location.reload();
+    } else {
+      applyMode(next, true);                                 // 生效主题没变(如 夜间→跟随系统且系统也是深色):只换图标,不必重载
+    }
   });
   applyMode(loadMode(), false);
   // 「跟随系统」时,OS 深/浅色切换 → 实时更新生效主题(偏好仍是 system,不覆盖持久化值)
