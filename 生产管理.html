@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-3">
+<html lang="zh-CN" data-appver="2026-09-26-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2133,7 +2133,7 @@ const Pages = (() => {
     --radius: 8px;
     --radius-sm: 6px;
     --radius-lg: 12px;
-    --hour-px: 100px;  /* PC 端每小时高度(原 140):压缩后一屏能看约 8 小时的品名卡 */
+    --hour-px: 82px;  /* PC 端每小时高度(原 140):压缩后一屏能看约 8 小时的品名卡(可再调) */
     --time-col-w: 56px;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.32);
@@ -2538,7 +2538,7 @@ const Pages = (() => {
     .brand > span:nth-child(2) { display: none; }
     #undoBtn, #redoBtn, #copyDayBtn { padding: 0 6px; }
     #totalAll { display: none; }
-    :root { --time-col-w: 44px; --hour-px: 80px; }  /* 手机端每小时高度压到 80px:一屏能看更多小时(约 8h) */
+    :root { --time-col-w: 44px; --hour-px: 68px; }  /* 手机端每小时高度:一屏尽量看满 8h(可再调) */
 
     /* 日期栏：年绝对定位顶左,月日星期独立一组居中,可向下偏移 */
     .timeline-head {
@@ -6192,8 +6192,8 @@ function recalc(line) {
       // MIN_CARD_PX = 0:不再人为撑高,否则卡片很多 / 很短时会累加溢出到第二页;
       // MIN_GAP_PX  = 0:卡片相邻直接接续,不再硬留 1px 间隙累加成漂移。
       const isPrint = document.body.classList.contains('printing-compact');
-      // 手机端密排短卡下限压到 18px(一屏多看几张卡);PC 保持 24;打印按真实时长不撑高
-      const MIN_CARD_PX = isPrint ? 0 : (window.innerWidth <= 900 ? 18 : 24);
+      // 手机端密排短卡下限压到 15px(一屏多看几张卡);PC 压到 20;打印按真实时长不撑高
+      const MIN_CARD_PX = isPrint ? 0 : (window.innerWidth <= 900 ? 15 : 20);
       const MIN_GAP_PX = isPrint ? 0 : 1;
       let top = secToPx(cardStart);
       const height = Math.max(secToPx(cardEnd) - secToPx(cardStart), MIN_CARD_PX);
