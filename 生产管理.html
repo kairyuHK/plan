@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-8">
+<html lang="zh-CN" data-appver="2026-09-26-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6222,15 +6222,17 @@ function recalc(line) {
         // 否则草稿卡会把它下面的真卡往下挤(真卡像素位置与真实时间脱节)→ 打印范围算错、底部补白、卡片错位。
         card.style.display = 'none';
       } else {
-        // 屏幕上照常:定位在上一卡片视觉底部之下,无上一卡片则按起始时间放置
+        // 屏幕上照常:定位在上一卡片视觉底部之下,无上一卡片则按起始时间放置。
+        // 草稿卡无时间、无法落在时间轴刻度上,高度与真卡最小高度一致(手机15/PC20),避免虚高、少误导。
         card.style.display = '';
+        const draftH = window.innerWidth <= 900 ? 15 : 20;
         let top;
         if (prevVisualBottom > -Infinity) top = prevVisualBottom + 2;
         else if (startSec != null) top = secToPx(startSec);
-        else top = i * 28;
-        card.style.top = top + 'px'; card.style.height = '26px';
-        fitCardCompact(card, 26);
-        prevVisualBottom = top + 26;
+        else top = i * (draftH + 2);
+        card.style.top = top + 'px'; card.style.height = draftH + 'px';
+        fitCardCompact(card, draftH);
+        prevVisualBottom = top + draftH;
       }
     }
     syncPopupState(card);
