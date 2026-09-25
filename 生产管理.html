@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-4">
+<html lang="zh-CN" data-appver="2026-09-25-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5349,6 +5349,10 @@ timelineBody.addEventListener('scroll', () => {
 });
 window.addEventListener('scroll', repositionActivePopup, true);
 
+// 统计「品名卡数」时要排除的品名(非生产性作业):掃除 / 応援 / 段取り。休息卡另按 data-type='rest' 排除。
+const NONCOUNT_CARD_NAMES = new Set(['掃除', '応援', '段取り']);
+function isCountableCardName(name) { return !NONCOUNT_CARD_NAMES.has((name || '').trim()); }
+
 function addJobCard(grid, libItem, savedData) {
   const node = document.createElement('div');
   node.className = 'card';
@@ -6212,8 +6216,9 @@ function recalc(line) {
   setFootVal(line.querySelector('.finish-total'), (lastEnd != null) ? fmtClock(lastEnd) : '—');
   mirrorActualFinishSize(line);
   updateActualFinishEmpty(line);
-  // 品名卡数(不含休息卡):手机端显示在分隔线下方,PC 端显示在统计栏「数量」下方的「卡数」行
-  const _jobCount = grid.querySelectorAll('.card[data-type="job"]').length;
+  // 品名卡数(不含休息卡,也不含 掃除/応援/段取り):手机端显示在分隔线下方,PC 端显示在统计栏「数量」下方的「卡数」行
+  const _jobCount = [...grid.querySelectorAll('.card[data-type="job"]')]
+    .filter(c => isCountableCardName(c.dataset.name)).length;
   const _fd = line.querySelector('.foot-divider');
   if (_fd) _fd.textContent = _jobCount;
   const _cc = line.querySelector('.card-count');
@@ -6565,7 +6570,8 @@ function renderTemplatesMenu() {
     tpls.forEach(tpl => {
       const row = document.createElement('div'); row.className = 'tpl-row';
       const use = document.createElement('button'); use.className = 'tpl-use'; use.title = '套用到某条线';
-      use.innerHTML = `<span class="tpl-line-name">${escapeHtml(tpl.name)}</span><span class="tpl-line-cnt">${(tpl.cards || []).length} 卡</span>`;
+      const _tplCnt = (tpl.cards || []).filter(c => c.type === 'job' && isCountableCardName(c.name)).length;
+      use.innerHTML = `<span class="tpl-line-name">${escapeHtml(tpl.name)}</span><span class="tpl-line-cnt">${_tplCnt} 卡</span>`;
       use.addEventListener('click', (e) => { e.stopPropagation(); startApplyTemplate(tpl); });
       const edit = document.createElement('button'); edit.className = 'tpl-edit'; edit.textContent = '✎'; edit.title = '改名 / 更新布局';
       edit.addEventListener('click', (e) => { e.stopPropagation(); editTemplate(tpl); });
@@ -6584,8 +6590,9 @@ function nonEmptyLineOptions() {
   const opts = [];
   for (let i = 1; i <= LINE_COUNT; i++) {
     const el = lineElByNum(i);
-    const cnt = el ? el.querySelectorAll('.card').length : 0;
-    if (cnt > 0) opts.push({ value: String(i), label: `${lineDisplayName(i)}（${cnt}卡）` });
+    const cntTotal = el ? el.querySelectorAll('.card').length : 0;       // 是否可作模板来源:任何卡(含休息)都算「非空」
+    const cntJob = el ? [...el.querySelectorAll('.card[data-type="job"]')].filter(c => isCountableCardName(c.dataset.name)).length : 0; // 显示的「N卡」= 品名卡数
+    if (cntTotal > 0) opts.push({ value: String(i), label: `${lineDisplayName(i)}（${cntJob}卡）` });
   }
   return opts;
 }
