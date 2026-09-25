@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-23-8">
+<html lang="zh-CN" data-appver="2026-09-25-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -11597,10 +11597,25 @@ const MODE_ICONS = {
   dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
   system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>'
 };
+// iOS 独立模式:状态栏 black-translucent 透出父壳背景,切主题时顶部安全区那条不跟着重绘
+// (刷新/重启才恢复,和标签恢复残线同类合成 bug)。切主题后强制父壳 body 重绘一次(净零 translateZ,
+// body 未滚动故不移动任何东西、不影响 .tabs 定位),让安全区跟着变色。iOS 有时晚一拍画,补几拍兜底。
+function repaintShellTop(){
+  const b = document.body;
+  if (!b) return;
+  const kick = () => {
+    b.style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => { requestAnimationFrame(() => { b.style.transform = ''; }); });
+  };
+  kick();
+  setTimeout(kick, 120);
+  setTimeout(kick, 300);
+}
 function applyMode(pref, persist){
   const eff = effectiveMode(pref);
   document.documentElement.dataset.theme = eff;
   broadcastMode(eff);
+  repaintShellTop();
   if (persist !== false) { try { localStorage.setItem(MODE_KEY, pref); } catch(_){} }
   const b = document.getElementById('modeBtn');
   if (b) {
