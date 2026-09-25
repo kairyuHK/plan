@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-5">
+<html lang="zh-CN" data-appver="2026-09-25-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2623,6 +2623,19 @@ const Pages = (() => {
 
     /* iOS 防自动缩放：聚焦时字号 ≥ 16px 不触发 Safari auto-zoom */
     .field-input, .lib-add-form input, .lib-add-form select { font-size: 16px !important; }
+
+    /* 品名库弹窗手机端:压缩顶部固定表单区(标题/副标题/输入框/颜色/保存),露出更多便当名。
+       输入框字号保持 16px(上一条),只收内边距/间距,不触发 iOS 聚焦缩放。 */
+    #libModal .modal-head { padding: 9px 16px; }
+    #libModal .modal-sub { font-size: 10px; margin-top: 2px; line-height: 1.3; }
+    #libModal .modal-body { padding: 10px 14px; }
+    #libModal .lib-add-form { gap: 6px; margin-bottom: 8px; padding-bottom: 8px; }
+    #libModal .lib-add-form input[type=text],
+    #libModal .lib-add-form input[type=number] { padding: 6px 10px; }
+    #libModal .color-picker { padding: 4px 6px; gap: 4px; }
+    #libModal .color-swatch { width: 16px; height: 16px; }
+    #libModal .color-custom { width: 20px; height: 20px; }
+    #libModal .lib-add-btn { padding: 6px 10px; }
 
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
