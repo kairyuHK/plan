@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-5">
+<html lang="zh-CN" data-appver="2026-09-26-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2843,7 +2843,9 @@ const Pages = (() => {
   /* PC 端品名卡显示全名(隐藏带圈头文字);手机端反之(见 @media max-width:900px) */
   .card-compact .compact-name-letter { display: none; }
   .card-compact .compact-job-name { display: block; flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card-compact .compact-people { flex: 0 0 auto; }
+  /* PC 端:人数、耗时各占固定宽、右对齐 → 跨卡片形成整齐竖直列,间隔统一(耗时长度 25:00/1:02:10 不再让人数左右乱跳) */
+  .card-compact .compact-people { flex: 0 0 auto; min-width: 1.9em; text-align: right; font-variant-numeric: tabular-nums; }
+  .card-compact .compact-time { flex: 0 0 auto; min-width: 4.4em; text-align: right; margin-left: 2px; }
   .compact-del {
     position: absolute;
     top: 2px;
@@ -2890,7 +2892,7 @@ const Pages = (() => {
     /* 手机端保持带圈头文字,不显示全名(与 PC 相反) */
     .card-compact .compact-name-letter { display: inline-flex; }
     .card-compact .compact-job-name { display: none; }
-    .card-compact .compact-people { flex: 1; }
+    .card-compact .compact-people { flex: 1; min-width: 0; text-align: left; }  /* 手机端保持:人数左对齐贴在圈右侧 */
   }
   .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
   .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
