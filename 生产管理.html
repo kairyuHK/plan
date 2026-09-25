@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-7">
+<html lang="zh-CN" data-appver="2026-09-26-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4584,7 +4584,7 @@ function boardKey(date) { return STORAGE_BOARD_PREFIX + (date || currentDate); }
 })();
 const TIME_START_HOUR = 8;
 const TIME_END_HOUR = 22;
-const TIME_TICK_MIN = 10;
+const TIME_TICK_MIN = 15;   // 时间轴每小时分格:60/15 = 4 格(每格 15 分)
 
 const COLORS = [
   '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149',
