@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-1">
+<html lang="zh-CN" data-appver="2026-09-25-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -11597,10 +11597,30 @@ const MODE_ICONS = {
   dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
   system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>'
 };
+// iOS 27 液态玻璃(Liquid Glass)状态栏:打开 App 时按当前主题采样一次是对的,但 App 内切黑白天时
+// 玻璃层不重采样 → 顶部那条卡在旧色(刷新/重开才恢复)。合成层重绘(transform/translateZ)对它无效,
+// 它只在「布局/视口建立」时采样。故切主题后做一次真实几何 + 视口微扰,模拟打开时的重新布局,逼它重采样。
+function repaintShellTop(){
+  // ① 顶栏真实高度 +1px→还原(跨帧):真实布局变化,非纯合成重绘
+  const bar = document.querySelector('.tabs');
+  if (bar) {
+    const h = Math.round(bar.getBoundingClientRect().height);
+    bar.style.height = (h + 1) + 'px';
+    requestAnimationFrame(() => { requestAnimationFrame(() => { bar.style.height = ''; }); });
+  }
+  // ② 视口属性无害微扰(加/撤 shrink-to-fit=no,不改缩放):强触发 WebKit 重算视口/安全区 → 玻璃重采样
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp) {
+    const c = vp.getAttribute('content');
+    vp.setAttribute('content', c + ',shrink-to-fit=no');
+    requestAnimationFrame(() => { vp.setAttribute('content', c); });
+  }
+}
 function applyMode(pref, persist){
   const eff = effectiveMode(pref);
   document.documentElement.dataset.theme = eff;
   broadcastMode(eff);
+  repaintShellTop();
   if (persist !== false) { try { localStorage.setItem(MODE_KEY, pref); } catch(_){} }
   const b = document.getElementById('modeBtn');
   if (b) {
