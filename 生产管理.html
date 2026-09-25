@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-9">
+<html lang="zh-CN" data-appver="2026-09-26-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6111,12 +6111,13 @@ function fitCardCompact(card, height) {
   card.style.paddingBottom = height < 32 ? '1px' : '';
   const letterEl = card.querySelector('.compact-name-letter');
   if (letterEl) {
-    // 圆圈外径 = min(22, 卡片高度 - 2)，下限 10px 保证可读
-    const size = Math.max(10, Math.min(22, height - 2));
+    // 圆圈尺寸固定(不随卡高变化)→ 圆圈右边的人数起始 x 一致 → 人数能对齐成一列。
+    // 手机 16 / PC 18;矮卡(15px)时略溢出边框无碍。
+    const size = window.innerWidth <= 900 ? 16 : 18;
     letterEl.style.width = size + 'px';
     letterEl.style.height = size + 'px';
-    letterEl.style.fontSize = Math.max(7, Math.round(size * 0.62)) + 'px';
-    letterEl.style.borderWidth = size < 14 ? '1px' : '1.5px';
+    letterEl.style.fontSize = Math.round(size * 0.62) + 'px';
+    letterEl.style.borderWidth = '1.5px';
   }
   const restTag = card.querySelector('.rest-tag');
   if (restTag) {
