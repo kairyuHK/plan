@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-25-6">
+<html lang="zh-CN" data-appver="2026-09-25-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5362,8 +5362,8 @@ timelineBody.addEventListener('scroll', () => {
 });
 window.addEventListener('scroll', repositionActivePopup, true);
 
-// 统计「品名卡数」时要排除的品名(非生产性作业):掃除 / 応援 / 段取り。休息卡另按 data-type='rest' 排除。
-const NONCOUNT_CARD_NAMES = new Set(['掃除', '応援', '段取り']);
+// 统计「品名卡数」时要排除的品名(非生产性作业):掃除 / 応援 / 段取り / 不足 / 朝礼。休息卡另按 data-type='rest' 排除。
+const NONCOUNT_CARD_NAMES = new Set(['掃除', '応援', '段取り', '不足', '朝礼']);
 function isCountableCardName(name) { return !NONCOUNT_CARD_NAMES.has((name || '').trim()); }
 
 function addJobCard(grid, libItem, savedData) {
