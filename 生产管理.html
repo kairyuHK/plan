@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-18">
+<html lang="zh-CN" data-appver="2026-09-27-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -770,22 +770,32 @@ input:focus,select:focus{border-color:var(--accent)}
 .line-tabs{display:none;gap:4px;margin-bottom:12px;overflow-x:auto}
 .line-tabs button{flex:0 0 auto;padding:6px 14px;border-color:var(--border)}
 .line-tabs button.active{background:var(--c,var(--accent));border-color:var(--c,var(--accent));color:#fff}
-.line-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+/* 生产线卡片:定最小宽 340px、按窗口宽度自动排列(不再固定列数),保证「位号·名字·时间」一排放得下、名字不被挤没 */
+.line-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
 .line-card{margin-bottom:0}
 .assign-list{list-style:none;margin:0;padding:8px 16px 16px}
-.assign-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+/* 位号 · 名字 · 上班时间 同一排:位号与时间定宽,名字框自适应收缩(窄列时名字省略,时间不被切) */
+.assign-list li{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border)}
 .assign-list li:last-child{border-bottom:none}
-.assign-list .pos-name{flex:1;color:var(--muted);font-size:13px}
-.assign-btn{min-width:120px;text-align:left;font-size:13px;padding:6px 10px}
+.assign-list .pos-name{flex:0 0 auto;min-width:2em;max-width:4.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}
+.assign-btn{flex:1 1 0;min-width:0;text-align:left;font-size:13px;padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assign-btn.empty{border-style:dashed;color:var(--muted)}
 .borrowed{color:var(--accent);font-size:11px}
+/* 上班时间编辑:「开始 ~ 结束」,定宽不收缩,跟在名字右侧同一排 */
+.shift-cell{display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.shift-row{display:flex;align-items:center;gap:3px;font-size:12px}
+.shift-row .shift-who{color:var(--muted);min-width:2.6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:4.5em}
+.shift-row input[type=time]{flex:0 0 auto;width:74px;font-size:12px;padding:5px 4px;color:var(--text)}
+.shift-row .sh-sep{color:var(--muted)}
 
 @media (max-width: 1023px){
   .line-tabs{display:flex}
   .line-grid{grid-template-columns:1fr}
   .line-card{display:none}
   .line-card.mobile-active{display:block}
-  .assign-btn{min-width:0;flex:0 0 50%;min-height:44px}
+  .assign-btn{min-width:0;flex:1 1 0;min-height:44px}
+  /* 手机端:时间框加高到大触控区,但保持定宽(不撑走名字),方便点开原生时间选择器 */
+  .shift-row input[type=time]{min-height:40px;width:72px;padding:5px 3px}
   /* 手机端:排岗表顶栏(排岗/人员/设置)高度与配置表顶栏统一(原 padding 12px 偏高 → 60px,压到 ~43px) */
   .nav{padding:4px 8px;gap:4px}
   .nav button{padding:5px 7px;font-size:13px}
@@ -799,9 +809,6 @@ input:focus,select:focus{border-color:var(--accent)}
   }
   .sched-header .sched-bar{margin-bottom:8px}
   .sched-header .line-tabs{margin-bottom:0}
-}
-@media (min-width: 1600px){
-  .line-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
 }
 #picker-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
 #picker-host.hidden{display:none}
@@ -821,7 +828,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .picker .person-row.selected{background:rgba(124,92,255,.16)}
 .picker .ph-head .count{color:var(--muted);font-weight:400;font-size:12px;margin-left:6px}
 .picker .btn-row button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.assign-btn{white-space:normal;line-height:1.35}
+.assign-btn{white-space:nowrap;line-height:1.35}
 .picker .section-title{font-size:12px;color:var(--muted);margin:12px 4px 4px;text-transform:uppercase;letter-spacing:.5px}
 .picker .btn-row{display:flex;gap:8px;padding:8px 16px;border-top:1px solid var(--border)}
 .picker .btn-row .spacer{flex:1}
@@ -1122,7 +1129,7 @@ const Store = (() => {
   ];
   function emptyData(){
     const positions = {}; DEFAULT_LINES.forEach(l => positions[l.id]=[]);
-    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, people:[], schedules:{}, lastExportAt:null, lastChangeAt:null };
+    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, people:[], schedules:{}, shifts:{}, lastExportAt:null, lastChangeAt:null };
   }
   function sanitize(s){
     const d = emptyData();
@@ -1144,6 +1151,8 @@ const Store = (() => {
         }
       }
     }
+    // 上班时间:shifts[date][personId] = {s:"HH:MM", e:"HH:MM"}(与 schedules 分开存,避免打乱按线/岗位的遍历)
+    s.shifts = (s.shifts && typeof s.shifts === 'object') ? s.shifts : {};
     if(s.lastExportAt === undefined) s.lastExportAt = null;
     if(s.lastChangeAt === undefined) s.lastChangeAt = null;
     return s;
@@ -1165,6 +1174,12 @@ const Store = (() => {
     state.lastChangeAt = new Date().toISOString();
     try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
     listeners.forEach(fn => fn());
+    broadcastSchedule();
+  }
+  // 持久化 + 广播,但不通知本地监听器重渲染(用于上班时间编辑:重渲会打断正在输入的 time 控件)
+  function saveQuiet(){
+    state.lastChangeAt = new Date().toISOString();
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('save failed', e); }
     broadcastSchedule();
   }
   function broadcastSchedule(){
@@ -1279,14 +1294,34 @@ const Store = (() => {
   function clearDay(date){
     ensureDay(date);
     realLines().forEach(l => { state.schedules[date][l.id] = {}; });
+    if(state.shifts) delete state.shifts[date];
     save();
   }
   function copyDay(fromDate, toDate){
     if(!state.schedules[fromDate]) return false;
     ensureDay(toDate);
     state.schedules[toDate] = Util.clone(state.schedules[fromDate]);
+    if(!state.shifts) state.shifts = {};
+    if(state.shifts[fromDate]) state.shifts[toDate] = Util.clone(state.shifts[fromDate]);
+    else delete state.shifts[toDate];
     save();
     return true;
+  }
+  // 上班时间:setShift(date, personId, "HH:MM", "HH:MM");两者皆空则清除该人当天记录
+  function normTime(t){ t = (t==null?'':String(t)).trim(); return /^\d{1,2}:\d{2}$/.test(t) ? t : ''; }
+  function setShift(date, personId, s, e){
+    s = normTime(s); e = normTime(e);
+    if(!state.shifts) state.shifts = {};
+    if(!s && !e){
+      if(state.shifts[date]){ delete state.shifts[date][personId]; if(!Object.keys(state.shifts[date]).length) delete state.shifts[date]; }
+    } else {
+      if(!state.shifts[date]) state.shifts[date] = {};
+      state.shifts[date][personId] = { s, e };
+    }
+    saveQuiet();
+  }
+  function getShift(date, personId){
+    return (state.shifts && state.shifts[date] && state.shifts[date][personId]) || null;
   }
   function lastScheduledDate(beforeDate){
     const keys = Object.keys(state.schedules).filter(d => d < beforeDate).sort();
@@ -1313,6 +1348,7 @@ const Store = (() => {
     addPerson, updatePerson, deletePerson, findPersonUsage,
     addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
+    setShift, getShift,
     markExported, emptyData,
   };
 })();
@@ -1680,6 +1716,7 @@ const Pages = (() => {
     const lines = s.lines.filter(l => !l.virtual);
     if(!currentTabLine || !lines.find(l=>l.id===currentTabLine)) currentTabLine = lines[0].id;
     const day = Store.getDay(currentDate);
+    const dayShifts = (s.shifts && s.shifts[currentDate]) || {};
     const peopleById = Object.fromEntries(s.people.map(p => [p.id, p]));
     const html = [`
       <div class="sched-header">
@@ -1715,11 +1752,18 @@ const Pages = (() => {
                   const text = persons.length === 0
                     ? '未分配'
                     : persons.map(p => escapeHtml(p.name) + (!sameDept(p.homeLine, line.id) ? ' <span class="borrowed">⇄</span>' : '')).join('、');
+                  const shiftHtml = persons.length === 0 ? '' :
+                    `<div class="shift-cell">${persons.map(p => {
+                      const sh = dayShifts[p.id] || {};
+                      const who = persons.length > 1 ? `<span class="shift-who">${escapeHtml(p.name)}</span>` : '';
+                      return `<span class="shift-row" data-pid="${p.id}">${who}<input type="time" class="sh-s" value="${sh.s||''}" aria-label="上班"><span class="sh-sep">~</span><input type="time" class="sh-e" value="${sh.e||''}" aria-label="下班"></span>`;
+                    }).join('')}</div>`;
                   return `<li data-pos="${escapeHtml(pos)}">
                     <span class="pos-name">${escapeHtml(pos)}</span>
                     <button class="assign-btn ${persons.length?'':'empty'}" data-line="${line.id}" data-pos="${escapeHtml(pos)}">
                       ${text}
                     </button>
+                    ${shiftHtml}
                   </li>`;
                 }).join('')
               }
@@ -1748,6 +1792,14 @@ const Pages = (() => {
     document.getElementById('copy-day').addEventListener('click', () => openCopyDayHost());
     root.querySelectorAll('.assign-btn').forEach(b => {
       b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
+    });
+    root.querySelectorAll('.shift-row').forEach(row => {
+      const pid = row.dataset.pid;
+      const sInp = row.querySelector('.sh-s');
+      const eInp = row.querySelector('.sh-e');
+      const commit = () => Store.setShift(currentDate, pid, sInp.value, eInp.value);
+      sInp.addEventListener('change', commit);
+      eInp.addEventListener('change', commit);
     });
     updateAutosaveStatus();
   }
@@ -1974,6 +2026,8 @@ const Pages = (() => {
               merged.positions[l.id] = a;
             });
             Object.assign(merged.schedules, incoming.schedules||{});
+            if(!merged.shifts) merged.shifts = {};
+            Object.assign(merged.shifts, incoming.shifts||{});
             Store.replace(merged);
           }
           showToast('导入完成', 'success');
@@ -4427,20 +4481,6 @@ const STORAGE_CURRENT_DATE = 'productionBoardCurrentDate';
 // 配置表(便当库)使用的 localStorage 键 — 与 data-config iframe 中的 STORAGE_KEY 保持一致
 const BENTO_STORAGE_KEY = 'bento-conveyor-v1';
 let bentoMap = new Map();
-// 每条生产线「默认布局」的槽位数(来自配置表 lineTemplates[lineId].length)。
-// 计划板卡片人数着色时以此为基准:多于→红,等于→白,少于→蓝。
-let lineSlotCount = {};
-function refreshLineSlotFromStorage() {
-  lineSlotCount = {};
-  try {
-    const raw = localStorage.getItem(BENTO_STORAGE_KEY);
-    if (!raw) return;
-    const t = JSON.parse(raw).lineTemplates;
-    if (t && typeof t === 'object') {
-      for (const lid in t) lineSlotCount[lid] = Array.isArray(t[lid]) ? t[lid].length : 0;
-    }
-  } catch (e) { lineSlotCount = {}; }
-}
 function setBentoMapFromArray(bentos) {
   bentoMap = new Map();
   (Array.isArray(bentos) ? bentos : []).forEach(b => {
@@ -4454,7 +4494,6 @@ function refreshBentoMapFromStorage() {
     const s = JSON.parse(raw);
     setBentoMapFromArray(s && s.bentos);
   } catch (e) { bentoMap = new Map(); }
-  refreshLineSlotFromStorage();
 }
 // 把便当库的 名字 / LINE 速度 / 人数覆盖到品名库匹配项上;返回受影响 lib 项的 id 列表
 // 链接策略:优先 bentoId(可跟随便当改名);若无 bentoId 或失效则按 name 兜底匹配,并写入 bentoId 形成稳定链接
@@ -4672,6 +4711,42 @@ function getLineIdFromNode(node) {
   const lineEl = node.closest ? node.closest('.line') : null;
   const num = lineEl && parseInt(lineEl.dataset.line, 10);
   return num ? (LINE_NUM_TO_ID[num] || null) : null;
+}
+// === 排岗数据(卡片人数着色基准用)===
+// 计划板 iframe 与排岗表同源、共用 localStorage,直接读排岗 Store 的键(和读便当库一样),不走 postMessage。
+const SCHED_STORAGE_KEY = 'shift-schedule-data-v1';
+function readScheduleData() {
+  try { return JSON.parse(localStorage.getItem(SCHED_STORAGE_KEY)) || {}; } catch (e) { return {}; }
+}
+// 当日某线所有岗位上去重后的已排岗人员 id(含借调进来的人)
+function schedLineAssignedIds(sched, lineId) {
+  const set = new Set();
+  const day = sched && sched.schedules && sched.schedules[currentDate];
+  const lineSched = day && lineId && day[lineId];
+  if (!lineSched) return set;
+  const visit = v => { if (v == null) return; if (Array.isArray(v)) v.forEach(visit); else set.add(v); };
+  for (const key in lineSched) visit(lineSched[key]);
+  return set;
+}
+// 卡片人数着色基准 = 该线当日「在此卡时段内在岗」的分配人数 − 1。
+// 上班时间 shifts[date][pid]={s,e} 限定在岗时段;没填 = 全天在岗;草稿卡(cardStart/End 为 null)全算。
+// 当天完全没排岗(未开始排班)→ 返回 null(不着色);当天已开始排(哪怕这条线还没排人)→ 0 人也算基准 −1,
+// 需要人的卡片就标红(缺人),这样「没分配人的生产线」不会误显示成白色。
+function schedStandardForCard(sched, lineId, cardStart, cardEnd) {
+  const day = sched && sched.schedules && sched.schedules[currentDate];
+  if (!day) return null;
+  const ids = schedLineAssignedIds(sched, lineId);
+  const dayShifts = (sched.shifts && sched.shifts[currentDate]) || {};
+  let n = 0;
+  ids.forEach(id => {
+    const sh = dayShifts[id];
+    if (!sh || (!sh.s && !sh.e)) { n++; return; }            // 没填时间 → 全天在岗
+    if (cardStart == null || cardEnd == null) { n++; return; } // 草稿卡无时段 → 都算
+    const ss = sh.s ? parseClock(sh.s) : -Infinity;
+    const ee = sh.e ? parseClock(sh.e) : Infinity;
+    if (ss < cardEnd && ee > cardStart) n++;                  // 与卡片时段有重叠才算在岗
+  });
+  return n - 1;
 }
 // 按线解析品名速度(math 用):优先 speedByLine[lineId],回退到 item.speed
 function resolveItemSpeed(item, lineId) {
@@ -6199,6 +6274,7 @@ function isNoQtyName(name) {
 
 function recalc(line) {
   const grid = line.querySelector('.cards-grid');
+  const _sched = readScheduleData(); // 卡片人数着色基准用(当日该线排岗+上班时间)
   const startSec = parseClock(line.querySelector('.start-time').value);
   const gapMin = parseFloat(line.querySelector('.gap').value) || 0;
   const gapSec = gapMin * 60;
@@ -6241,10 +6317,10 @@ function recalc(line) {
       const peopleEl = card.querySelector('.compact-people');
       if (peopleEl) {
         peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
-        // 与配置表该线「默认布局」的槽位数比较着色:多于→红,等于→默认(白),少于→蓝
-        const _slotN = lineSlotCount[getLineIdFromNode(card)] || 0;
+        // 基准 = 排岗表该线在此卡时段内的在岗人数 − 1;多于→红,等于→默认(白),少于→蓝
+        const _slotN = schedStandardForCard(_sched, getLineIdFromNode(card), cardStart, cardEnd);
         peopleEl.classList.remove('people-over', 'people-under');
-        if (!peopleIsQ && people > 0 && _slotN > 0) {
+        if (!peopleIsQ && people > 0 && _slotN != null) {
           if (people > _slotN) peopleEl.classList.add('people-over');
           else if (people < _slotN) peopleEl.classList.add('people-under');
         }
@@ -7728,8 +7804,6 @@ window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type !== 'bento-changed') return;
   setBentoMapFromArray(e.data.bentos);
-  // 便当广播只带 bentos,不含 lineTemplates;槽位数改从存储补读(配置表 saveState 已落盘)
-  refreshLineSlotFromStorage();
   const affected = applyBentoOverlay();
   onBentoSynced(affected);
 });
@@ -7802,6 +7876,13 @@ recalcGlobal();
 syncMobLayout();
 lastSnapshot = snapshotStr();
 updateUndoButtons();
+// 排岗/上班时间在排岗表 iframe 里改动 → 同源 storage 事件 → 重算每条线卡片(recalc 才会重刷人数着色;
+// recalcGlobal 只算顶部总计、不碰卡片颜色)。
+window.addEventListener('storage', (e) => {
+  if (e.key === SCHED_STORAGE_KEY) {
+    try { document.querySelectorAll('.line').forEach(l => recalc(l)); } catch (_) {}
+  }
+});
 
 document.getElementById('undoBtn').addEventListener('click', doUndo);
 document.getElementById('redoBtn').addEventListener('click', doRedo);
