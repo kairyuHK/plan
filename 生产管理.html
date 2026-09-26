@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-15">
+<html lang="zh-CN" data-appver="2026-09-26-16">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5210,9 +5210,17 @@ document.querySelectorAll('.modal-mask').forEach(m => {
     const focused = window.innerWidth <= 900 && ae && mask.contains(ae)
       && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && !ae.readOnly && !ae.disabled;
     if (focused && kbLikelyUp()) {
-      const kbTop = stableScreenH() * KB_TOP_RATIO;
+      // 键盘顶(换算到本 iframe 的 fixed 坐标)= 父壳可视视口高 − iframe 在父中的 top(offsetTop 抵消,见卡片弹窗注释)。
+      // iOS 升级后键盘高度变化时,固定比例 0.58 会失准→底部输入框被盖;优先用真实 visualViewport,读不到再回落估算。
+      let kbTop = stableScreenH() * KB_TOP_RATIO;
+      try {
+        const vv = topVV();
+        let ifTop = 0; try { ifTop = window.frameElement ? window.frameElement.getBoundingClientRect().top : 0; } catch (e) {}
+        const real = vv.height - ifTop;
+        if (real > 120) kbTop = real; // 换算值合理才用
+      } catch (e) {}
       mask.classList.add('kb-fit');
-      modal.style.maxHeight = Math.round(kbTop - 24) + 'px'; // 顶部 padding(~20)+ 余量
+      modal.style.maxHeight = Math.round(kbTop - 28) + 'px'; // 顶部 mask padding(~20)+ 余量
       // 把聚焦的输入框滚进弹窗可视区(nearest:已可见则不动,避免「上滑两次」)
       ae.scrollIntoView({ block: 'nearest' });
     } else {
