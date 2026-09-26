@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-11">
+<html lang="zh-CN" data-appver="2026-09-26-12">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2143,20 +2143,21 @@ const Pages = (() => {
   /* === 白天模式:覆盖变量 === */
   :root[data-theme="light"]{
     color-scheme:light;
-    --bg:#efece7; --bg-2:#e7e2db; --line-bg:#f4f1ec;
-    --panel:#ffffff; --panel-solid:#ffffff; --panel-2:#f4f1ec; --panel-elevated:#ffffff;
-    --border:#e3ded7; --border-strong:#d4cec4; --border-line:#ece8e2;
+    /* 白天模式护眼:底色压暗、表面用柔和暖米白(不再纯白 #ffffff),降低整体亮度 */
+    --bg:#e6e0d6; --bg-2:#ddd6ca; --line-bg:#ece7de;
+    --panel:#f4f0e9; --panel-solid:#f4f0e9; --panel-2:#ebe6dd; --panel-elevated:#f7f4ee;
+    --border:#ded8cf; --border-strong:#cec7bc; --border-line:#e6e1d8;
     --text:#22201d; --text-dim:#6f6a62; --text-mute:#9a958c;
     --shadow-sm:0 1px 2px rgba(43,37,30,.08); --shadow-md:0 2px 8px rgba(43,37,30,.10); --shadow-lg:0 8px 28px rgba(43,37,30,.16);
   }
   /* 白天模式:写死深色的组件逐一覆盖 */
-  :root[data-theme="light"] .card{background:#ffffff}
-  :root[data-theme="light"] .card:hover{background:#f6f3ef;border-color:var(--border-strong)}
+  :root[data-theme="light"] .card{background:#f4f0e9}
+  :root[data-theme="light"] .card:hover{background:#ede8e0;border-color:var(--border-strong)}
   :root[data-theme="light"] .card.error{background:#fdecec}
   :root[data-theme="light"] .card.rest{background:#f1eefc}
   :root[data-theme="light"] .card.rest:hover{background:#e9e4fb}
   :root[data-theme="light"] .timeline-head:hover{background:#ece6df}
-  :root[data-theme="light"] .line-head,:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-foot{background:#ffffff}
+  :root[data-theme="light"] .line-head,:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-foot{background:#f0ebe3}
 
   html, body {
     height: 100%;
@@ -3905,8 +3906,8 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
   background:linear-gradient(180deg,rgba(28,28,32,.95) 0%,rgba(16,16,18,.98) 100%)!important;
 }
 /* === 白天模式:压过上面 !important 的深色精修(二级工具栏 / 头尾栏 / 分隔 / 阴影) === */
-:root[data-theme="light"] .topbar{background:linear-gradient(180deg,#ffffff 0%,#efece7 100%)!important;border-bottom-color:#e3ded7!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 16px rgba(43,37,30,.08)!important}
-:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-body,:root[data-theme="light"] .line-head{background:#ffffff!important}
+:root[data-theme="light"] .topbar{background:linear-gradient(180deg,#f2ede5 0%,#e6e0d6 100%)!important;border-bottom-color:#ded8cf!important;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 4px 16px rgba(43,37,30,.08)!important}
+:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-body,:root[data-theme="light"] .line-head{background:#f0ebe3!important}
 :root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot{border-top-color:#e3ded7!important;box-shadow:0 -1px 0 rgba(255,255,255,.6) inset,0 -6px 14px rgba(43,37,30,.06)}
 :root[data-theme="light"] .timeline-head,:root[data-theme="light"] .line-head{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 14px rgba(43,37,30,.06)}
 :root[data-theme="light"] .line-head{border-bottom-color:#e3ded7!important}
