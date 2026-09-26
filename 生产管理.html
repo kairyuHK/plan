@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-10">
+<html lang="zh-CN" data-appver="2026-09-26-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2734,9 +2734,11 @@ const Pages = (() => {
   .line:last-child .cards-wrap { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
   .line:last-child .cards-wrap::-webkit-scrollbar { width: 4px; }
   .cards-grid { position: relative; width: 100%; }
-  .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--border); pointer-events: none; }
+  /* 15 分格虚线:弄到几乎看不见(用户嫌乱);整点实线保留做结构参考 */
+  .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255,255,255,0.035); pointer-events: none; }
   .grid-line.hour { border-top: 1px solid var(--border-strong); }
   .grid-line.hour-20 { border-top: 1px solid var(--accent); opacity: 0.3; }
+  :root[data-theme="light"] .grid-line:not(.hour):not(.hour-20) { border-top-color: rgba(0,0,0,0.045); }
 
   .card {
     position: absolute; left: 6px; right: 6px;
