@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-13">
+<html lang="zh-CN" data-appver="2026-09-26-14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2144,7 +2144,7 @@ const Pages = (() => {
   :root[data-theme="light"]{
     color-scheme:light;
     /* 白天模式护眼:画板底色明显压暗当"画布",卡片保持较亮暖白 → 靠对比拉层次,不刺眼也不糊成一片 */
-    --bg:#dbd2c3; --bg-2:#d0c7b6; --line-bg:#ded5c7;
+    --bg:#dbd2c3; --bg-2:#d0c7b6; --line-bg:#ece5da;
     --panel:#f6f2ea; --panel-solid:#f6f2ea; --panel-2:#e7e1d6; --panel-elevated:#f9f6f0;
     --border:#d3ccbe; --border-strong:#c4bcac; --border-line:#e0dacf;
     --text:#22201d; --text-dim:#6f6a62; --text-mute:#9a958c;
@@ -3907,7 +3907,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 }
 /* === 白天模式:压过上面 !important 的深色精修(二级工具栏 / 头尾栏 / 分隔 / 阴影) === */
 :root[data-theme="light"] .topbar{background:linear-gradient(180deg,#f2ede5 0%,#e6e0d6 100%)!important;border-bottom-color:#ded8cf!important;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 4px 16px rgba(43,37,30,.08)!important}
-:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-body,:root[data-theme="light"] .line-head{background:#ece5da!important}
+:root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot,:root[data-theme="light"] .timeline-head,:root[data-theme="light"] .timeline-body,:root[data-theme="light"] .line-head{background:#ded5c7!important}
 :root[data-theme="light"] .line-foot,:root[data-theme="light"] .timeline-foot{border-top-color:#e3ded7!important;box-shadow:0 -1px 0 rgba(255,255,255,.6) inset,0 -6px 14px rgba(43,37,30,.06)}
 :root[data-theme="light"] .timeline-head,:root[data-theme="light"] .line-head{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 14px rgba(43,37,30,.06)}
 :root[data-theme="light"] .line-head{border-bottom-color:#e3ded7!important}
