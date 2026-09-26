@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-16">
+<html lang="zh-CN" data-appver="2026-09-26-17">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -714,9 +714,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .card-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:2px solid var(--border);font-weight:600}
 .card .muted{color:var(--muted);font-weight:400;font-size:13px}
 .pos-list{list-style:none;margin:0;padding:8px 16px}
-.pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);background:var(--card)}
 .pos-list li:last-child{border-bottom:none}
 .pos-name{flex:1}
+.pos-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:18px;line-height:1;padding:4px 4px;touch-action:none;-webkit-user-select:none;user-select:none;border-radius:4px}
+.pos-drag:active{cursor:grabbing;background:rgba(255,255,255,.06)}
+.pos-list li.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:8px;border-bottom-color:transparent}
 .pos-list button{padding:4px 10px;font-size:12px}
 .pos-list button.danger{border-color:var(--danger);color:var(--danger)}
 .pos-list button:disabled{opacity:.4;cursor:not-allowed}
@@ -1233,6 +1236,12 @@ const Store = (() => {
     if(j<0 || j>=arr.length) return;
     [arr[idx], arr[j]] = [arr[j], arr[idx]]; save();
   }
+  // 拖拽排序:order 是「原下标」按新顺序排列的数组;按它重排(排岗数据按岗位名存,重排下标不影响分配)
+  function reorderPositions(lineId, order){
+    const arr = state.positions[lineId]; if(!Array.isArray(arr)) return;
+    if(order.length !== arr.length) return;
+    state.positions[lineId] = order.map(i => arr[i]); save();
+  }
 
   // Schedules
   function realLines(){ return state.lines.filter(l => !l.virtual); }
@@ -1302,7 +1311,7 @@ const Store = (() => {
   return {
     load, save, subscribe, get, replace, reset,
     addPerson, updatePerson, deletePerson, findPersonUsage,
-    addPosition, renamePosition, deletePosition, movePosition,
+    addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
     markExported, emptyData,
   };
@@ -1327,7 +1336,8 @@ const Pages = (() => {
         </div>
         <ul class="pos-list">
           ${positions.map((p,i)=>`
-            <li>
+            <li data-oi="${i}">
+              <span class="pos-drag" title="拖动排序" aria-label="拖动排序">⠿</span>
               <span class="pos-name">${escapeHtml(p)}</span>
               <button data-act="rename" data-i="${i}">改名</button>
               <button data-act="del" data-i="${i}" class="danger">删</button>
@@ -1376,6 +1386,45 @@ const Pages = (() => {
         const input = form.querySelector('input');
         const v = input.value.trim(); if(!v) return;
         Store.addPosition(lineId, v); input.value='';
+      });
+      enablePosDrag(card.querySelector('.pos-list'), lineId);
+    });
+  }
+
+  // 岗位列表拖拽排序(触摸/鼠标通用,用 Pointer Events + 指针捕获)。拖手柄 .pos-drag 才触发,不影响改名/删/滚动。
+  function enablePosDrag(ul, lineId){
+    if(!ul) return;
+    ul.querySelectorAll('li').forEach(li => {
+      const handle = li.querySelector('.pos-drag');
+      if(!handle) return;
+      handle.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        try { handle.setPointerCapture(e.pointerId); } catch(_){}
+        li.classList.add('dragging');
+        const onMove = ev => {
+          const y = ev.clientY;
+          const sibs = [...ul.querySelectorAll('li:not(.dragging)')];
+          let after = null;
+          for(const s of sibs){
+            const r = s.getBoundingClientRect();
+            if(y < r.top + r.height/2){ after = s; break; }
+          }
+          if(after) ul.insertBefore(li, after); else ul.appendChild(li);
+        };
+        const onUp = () => {
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', onUp);
+          handle.removeEventListener('pointercancel', onUp);
+          try { handle.releasePointerCapture(e.pointerId); } catch(_){}
+          li.classList.remove('dragging');
+          // 按最终 DOM 顺序读「原下标」序列,持久化(save 会触发重渲染)
+          const order = [...ul.querySelectorAll('li')].map(el => +el.dataset.oi);
+          const changed = order.some((v,idx) => v !== idx);
+          if(changed) Store.reorderPositions(lineId, order);
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onUp);
       });
     });
   }
