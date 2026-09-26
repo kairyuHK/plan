@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-26-17">
+<html lang="zh-CN" data-appver="2026-09-26-18">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -717,8 +717,8 @@ input:focus,select:focus{border-color:var(--accent)}
 .pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);background:var(--card)}
 .pos-list li:last-child{border-bottom:none}
 .pos-name{flex:1}
-.pos-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:18px;line-height:1;padding:4px 4px;touch-action:none;-webkit-user-select:none;user-select:none;border-radius:4px}
-.pos-drag:active{cursor:grabbing;background:rgba(255,255,255,.06)}
+.pos-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:20px;line-height:1;padding:12px 14px;margin:-8px -6px -8px -8px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;border-radius:6px}
+.pos-drag:active{cursor:grabbing;background:rgba(255,255,255,.08)}
 .pos-list li.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:8px;border-bottom-color:transparent}
 .pos-list button{padding:4px 10px;font-size:12px}
 .pos-list button.danger{border-color:var(--danger);color:var(--danger)}
@@ -1391,17 +1391,21 @@ const Pages = (() => {
     });
   }
 
-  // 岗位列表拖拽排序(触摸/鼠标通用,用 Pointer Events + 指针捕获)。拖手柄 .pos-drag 才触发,不影响改名/删/滚动。
+  // 岗位列表拖拽排序(触摸/鼠标通用)。手柄 .pos-drag 是整行高的大热区(touch-action:none 防滚动);
+  // move/up 监听挂在 document 捕获阶段(即使 setPointerCapture 在 srcdoc iframe 里不稳也能跟住),move 里 preventDefault 进一步防滚动误判成 pointercancel。
   function enablePosDrag(ul, lineId){
     if(!ul) return;
+    const doc = ul.ownerDocument;
     ul.querySelectorAll('li').forEach(li => {
       const handle = li.querySelector('.pos-drag');
       if(!handle) return;
       handle.addEventListener('pointerdown', e => {
-        e.preventDefault();
+        if(e.button && e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
         try { handle.setPointerCapture(e.pointerId); } catch(_){}
         li.classList.add('dragging');
         const onMove = ev => {
+          if(ev.cancelable) ev.preventDefault();
           const y = ev.clientY;
           const sibs = [...ul.querySelectorAll('li:not(.dragging)')];
           let after = null;
@@ -1412,9 +1416,9 @@ const Pages = (() => {
           if(after) ul.insertBefore(li, after); else ul.appendChild(li);
         };
         const onUp = () => {
-          handle.removeEventListener('pointermove', onMove);
-          handle.removeEventListener('pointerup', onUp);
-          handle.removeEventListener('pointercancel', onUp);
+          doc.removeEventListener('pointermove', onMove, true);
+          doc.removeEventListener('pointerup', onUp, true);
+          doc.removeEventListener('pointercancel', onUp, true);
           try { handle.releasePointerCapture(e.pointerId); } catch(_){}
           li.classList.remove('dragging');
           // 按最终 DOM 顺序读「原下标」序列,持久化(save 会触发重渲染)
@@ -1422,9 +1426,9 @@ const Pages = (() => {
           const changed = order.some((v,idx) => v !== idx);
           if(changed) Store.reorderPositions(lineId, order);
         };
-        handle.addEventListener('pointermove', onMove);
-        handle.addEventListener('pointerup', onUp);
-        handle.addEventListener('pointercancel', onUp);
+        doc.addEventListener('pointermove', onMove, true);
+        doc.addEventListener('pointerup', onUp, true);
+        doc.addEventListener('pointercancel', onUp, true);
       });
     });
   }
