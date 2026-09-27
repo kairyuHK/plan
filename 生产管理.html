@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-27-13">
+<html lang="zh-CN" data-appver="2026-09-27-14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6332,16 +6332,16 @@ function recalc(line) {
         peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
         // 该卡时段内排岗在岗人数;卡片显示「(在岗数)」,着色基准 = 在岗数 − 1(多于→红,等于→白,少于→蓝)
         const _onlineN = schedOnlineCount(_sched, getLineIdFromNode(card), cardStart, cardEnd);
-        const _slotN = _onlineN - 1;
+        const _slotN = Math.max(0, _onlineN - 1); // 判色基准=在岗−1;0 人时钳到 0(不显示 -1,着色结果不变)
         peopleEl.classList.remove('people-over', 'people-under');
         if (!peopleIsQ && people > 0) {
           if (people > _slotN) peopleEl.classList.add('people-over');
           else if (people < _slotN) peopleEl.classList.add('people-under');
         }
         const onlineEl = card.querySelector('.compact-online');
-        // 括号用正文本、数字包在 .co-n 里下移一点点 → 数字在括号里居中(不再偏上)。
-        // 在岗人数「(N)」始终显示(不管人数/耗时是不是「—」);无时段的草稿卡按全线当日分配数显示。
-        if (onlineEl) onlineEl.innerHTML = '(<span class="co-n">' + _onlineN + '</span>)';
+        // 括号里显示「判色基准 = 在岗人数 − 1」(用户要的就是这个比较基准:人数 > 它红、= 白、< 蓝)。
+        // 始终显示(不管人数/耗时是不是「—」);数字包 .co-n 下移一点点在括号里居中。
+        if (onlineEl) onlineEl.innerHTML = '(<span class="co-n">' + _slotN + '</span>)';
       }
       const timeEl = card.querySelector('.compact-time');
       if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
