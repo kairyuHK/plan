@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-27-6">
+<html lang="zh-CN" data-appver="2026-09-27-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2891,17 +2891,17 @@ const Pages = (() => {
   }
   /* 弹出窗口：JS 将其移到 body 下，固定定位避免被任何祖先 overflow 裁切 */
   .card-expanded.popup-detached {
-    display: flex; flex-direction: column; gap: 8px;
+    display: flex; flex-direction: column; gap: 6px;
     position: fixed; z-index: 1000;
-    width: 288px; max-width: calc(100vw - 16px);
+    width: 244px; max-width: calc(100vw - 16px);
     max-height: calc(100vh - 16px); overflow-y: auto;
     background: var(--panel-elevated);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
-    padding: 12px 14px;
+    padding: 10px 12px;
     box-shadow: var(--shadow-lg);
     color: var(--text);
-    font-family: inherit; font-size: 13px;
+    font-family: inherit; font-size: 12px;
     animation: popupIn 0.16s var(--ease);
   }
   @keyframes popupIn {
@@ -2946,9 +2946,13 @@ const Pages = (() => {
     font-variant-numeric: tabular-nums;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  /* 人数与配置表该线位置数比较:多于→红,等于→默认(白),少于→蓝 */
+  /* 人数与排岗在岗数-1比较:多于→红,等于→默认(白),少于→蓝 */
   .compact-people.people-over { color: var(--red); font-weight: 700; }
   .compact-people.people-under { color: var(--blue); font-weight: 700; }
+  /* 卡片时段在岗人数「(N)」,跟在人数右侧(颜色沿用正文色,同人数;用户要求保持原色) */
+  .compact-online { flex: 0 0 auto; color: var(--text); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+  /* 括号里的数字下移一点点,视觉上在括号中间(否则数字坐在基线上、括号有下沿→数字显得偏上) */
+  .compact-online .co-n { position: relative; top: 0.1em; }
   /* PC 端品名卡显示全名(隐藏带圈头文字);手机端反之(见 @media max-width:900px) */
   .card-compact .compact-name-letter { display: none; }
   .card-compact .compact-job-name { display: block; flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3051,7 +3055,7 @@ const Pages = (() => {
     display: flex; justify-content: space-between; align-items: center;
     font-size: 12px; font-variant-numeric: tabular-nums;
     color: var(--accent); font-weight: 600; flex-shrink: 0;
-    padding-top: 8px; margin-top: 2px;
+    padding-top: 6px; margin-top: 0;
     border-top: 1px solid var(--border); gap: 8px;
   }
   .card-meta .duration {
@@ -3063,8 +3067,8 @@ const Pages = (() => {
   .card-meta .range { color: var(--blue); font-size: 11px; white-space: nowrap; letter-spacing: 0.2px; font-weight: 500; }
 
   .card-next-btn {
-    width: 100%; margin-top: 4px;
-    padding: 9px 12px;
+    width: 100%; margin-top: 2px;
+    padding: 7px 10px;
     background: var(--accent-soft); color: var(--accent);
     border: 1px solid rgba(249,115,22,0.30);
     border-radius: var(--radius-sm);
@@ -4728,14 +4732,13 @@ function schedLineAssignedIds(sched, lineId) {
   for (const key in lineSched) visit(lineSched[key]);
   return set;
 }
-// 卡片人数着色基准 = 该线当日「在此卡时段内在岗」的分配人数 − 1。
-// 上班时间 shifts[date][pid]={s,e} 限定在岗时段;没填 = 全天在岗;草稿卡(cardStart/End 为 null)全算。
-// 当天完全没排岗(未开始排班)→ 返回 null(不着色);当天已开始排(哪怕这条线还没排人)→ 0 人也算基准 −1,
-// 需要人的卡片就标红(缺人),这样「没分配人的生产线」不会误显示成白色。
-function schedStandardForCard(sched, lineId, cardStart, cardEnd) {
-  const day = sched && sched.schedules && sched.schedules[currentDate];
-  if (!day) return null;
+// 卡片时段内「在岗人数」= 该线当日分配、且上班时段与本卡时段重叠的人数(含借调)。
+// 没填上班时间 = 全天在岗;草稿卡(cardStart/End 为 null)= 全部分配的人都算。
+// 没排岗 / 该线 0 人 → 0(卡片显示「(0)」、着色基准 0−1=−1 → 需要人的卡标红,不再显示白色)。
+// 卡片显示这个「在岗人数」;着色基准 = 在岗人数 − 1。
+function schedOnlineCount(sched, lineId, cardStart, cardEnd) {
   const ids = schedLineAssignedIds(sched, lineId);
+  if (!ids.size) return 0;
   const dayShifts = (sched.shifts && sched.shifts[currentDate]) || {};
   let n = 0;
   ids.forEach(id => {
@@ -4746,7 +4749,7 @@ function schedStandardForCard(sched, lineId, cardStart, cardEnd) {
     const ee = sh.e ? parseClock(sh.e) : Infinity;
     if (ss < cardEnd && ee > cardStart) n++;                  // 与卡片时段有重叠才算在岗
   });
-  return n - 1;
+  return n;
 }
 // 按线解析品名速度(math 用):优先 speedByLine[lineId],回退到 item.speed
 function resolveItemSpeed(item, lineId) {
@@ -5550,6 +5553,7 @@ function addJobCard(grid, libItem, savedData) {
       <span class="compact-name-letter" style="color:${libItem.color}">${escapeHtml((libItem.name || '').charAt(0))}</span>
       <span class="compact-job-name" style="color:${libItem.color}">${escapeHtml(libItem.name || '')}</span>
       <span class="compact-people">—</span>
+      <span class="compact-online"></span>
       <span class="compact-time">—</span>
       <button class="compact-del" title="删除">×</button>
     </div>
@@ -6317,13 +6321,17 @@ function recalc(line) {
       const peopleEl = card.querySelector('.compact-people');
       if (peopleEl) {
         peopleEl.textContent = peopleIsQ ? '?' : (people > 0 ? String(people) : '—');
-        // 基准 = 排岗表该线在此卡时段内的在岗人数 − 1;多于→红,等于→默认(白),少于→蓝
-        const _slotN = schedStandardForCard(_sched, getLineIdFromNode(card), cardStart, cardEnd);
+        // 该卡时段内排岗在岗人数;卡片显示「(在岗数)」,着色基准 = 在岗数 − 1(多于→红,等于→白,少于→蓝)
+        const _onlineN = schedOnlineCount(_sched, getLineIdFromNode(card), cardStart, cardEnd);
+        const _slotN = _onlineN - 1;
         peopleEl.classList.remove('people-over', 'people-under');
-        if (!peopleIsQ && people > 0 && _slotN != null) {
+        if (!peopleIsQ && people > 0) {
           if (people > _slotN) peopleEl.classList.add('people-over');
           else if (people < _slotN) peopleEl.classList.add('people-under');
         }
+        const onlineEl = card.querySelector('.compact-online');
+        // 括号用正文本、数字包在 .co-n 里下移一点点 → 数字在括号里居中(不再偏上)
+        if (onlineEl) onlineEl.innerHTML = (peopleIsQ || people > 0) ? ('(<span class="co-n">' + _onlineN + '</span>)') : '';
       }
       const timeEl = card.querySelector('.compact-time');
       if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
