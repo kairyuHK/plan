@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-27-9">
+<html lang="zh-CN" data-appver="2026-09-27-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2951,8 +2951,8 @@ const Pages = (() => {
   .compact-people.people-under { color: var(--blue); font-weight: 700; }
   /* 卡片时段在岗人数「(N)」,跟在人数右侧(颜色沿用正文色,同人数;用户要求保持原色) */
   .compact-online { flex: 0 0 auto; color: var(--text); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
-  /* 括号里的数字下移一点点,视觉上在括号中间(否则数字坐在基线上、括号有下沿→数字显得偏上) */
-  .compact-online .co-n { position: relative; top: 0.1em; }
+  /* 括号里的数字下移一点点,视觉上在括号中间(0.1em 在 iOS 上偏下,收到 0.05em) */
+  .compact-online .co-n { position: relative; top: 0.05em; }
   /* PC 端品名卡显示全名(隐藏带圈头文字);手机端反之(见 @media max-width:900px) */
   .card-compact .compact-name-letter { display: none; }
   .card-compact .compact-job-name { display: block; flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3013,6 +3013,15 @@ const Pages = (() => {
     /* 手机模式(无全名争空间):人数固定宽右对齐 → 末位对齐成一条竖列(窗口再小也对齐);耗时顶到最右 */
     .card-compact .compact-people { flex: 0 0 auto; width: 1.7em; min-width: 1.7em; text-align: right; }
     .card-compact .compact-time { margin-left: auto; }
+    /* 6 条线(列 ~55-58px)极窄:进一步收紧圈/间距/人数,让「圈 + 人数 + (在岗人数)」也塞得下不被切。
+       5 条线(列 ~69px)不进此块,保持上面的原大小。放在本 @media 块末尾才能盖过上面的规则。 */
+    @container (max-width: 66px) {
+      .card { left: 1px; right: 1px; padding-left: 2px; padding-right: 1px; }
+      .card-compact { gap: 1px; padding: 0 1px; }
+      .compact-name-letter { width: 13px; height: 13px; font-size: 9px; }
+      .card-compact .compact-people { width: auto; min-width: 0; font-size: 9.5px; }
+      .compact-online { font-size: 8.5px; }
+    }
   }
   .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
   .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
