@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-09-27-12">
+<html lang="zh-CN" data-appver="2026-09-27-13">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6340,10 +6340,8 @@ function recalc(line) {
         }
         const onlineEl = card.querySelector('.compact-online');
         // 括号用正文本、数字包在 .co-n 里下移一点点 → 数字在括号里居中(不再偏上)。
-        // 仅在卡片有真实时段(cardStart/End 非空,即耗时>0、时间不是「—」)时才显示在岗人数;
-        // 草稿卡(没填数量/无时段)不显示——那时「该时段在岗人数」无意义(否则会显示全线分配总数,易误解)。
-        const _showOnline = (peopleIsQ || people > 0) && cardStart != null && cardEnd != null;
-        if (onlineEl) onlineEl.innerHTML = _showOnline ? ('(<span class="co-n">' + _onlineN + '</span>)') : '';
+        // 在岗人数「(N)」始终显示(不管人数/耗时是不是「—」);无时段的草稿卡按全线当日分配数显示。
+        if (onlineEl) onlineEl.innerHTML = '(<span class="co-n">' + _onlineN + '</span>)';
       }
       const timeEl = card.querySelector('.compact-time');
       if (timeEl) timeEl.textContent = duration > 0 ? fmtDuration(duration) : '—';
