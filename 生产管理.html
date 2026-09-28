@@ -5162,7 +5162,10 @@ function startEditLib(id) {
   libAddBtn.textContent = '保存修改';
   libAddBtn.classList.add('editing');
   updateBentoLinkUI(libNameInput.value);
-  libNameInput.focus();
+  const linkedBento = findLinkedBento(item);
+  setLibNameLock(!!linkedBento);
+  // 名字锁定时把焦点落到第一个可改的字段(品名速度),别停在改不了的名字框上
+  if (linkedBento) libSpeedInput.focus(); else libNameInput.focus();
 }
 function cancelEditLib() {
   editingLibId = null;
@@ -5174,6 +5177,7 @@ function cancelEditLib() {
   libAddBtn.textContent = '添加';
   libAddBtn.classList.remove('editing');
   updateBentoLinkUI('');
+  setLibNameLock(false);
 }
 // 当输入的名字命中便当库时,锁定 LINE 速度与人数输入,并填入便当数据
 function updateBentoLinkUI(name) {
@@ -5197,6 +5201,22 @@ function updateBentoLinkUI(name) {
     libLineSpeedInput.placeholder = '流水线速度';
     libPeopleInput.placeholder = '人数 (可输入?)';
   }
+}
+// 找出该品名当前链接的配置表便当:优先 bentoId,失效则按名字兜底(与 applyBentoOverlay 的链接策略一致)
+function findLinkedBento(item) {
+  if (!item) return null;
+  if (item.bentoId) {
+    for (const b of bentoMap.values()) { if (b && b.id === item.bentoId) return b; }
+  }
+  const key = (item.name || '').trim();
+  return key ? (bentoMap.get(key) || null) : null;
+}
+// 已链接配置表便当的品名:名字由配置表 · 便当库同步。锁定名字框,避免「输入新名 → 保存瞬间被 applyBentoOverlay 还原」的假象。
+function setLibNameLock(locked) {
+  libNameInput.readOnly = locked;
+  libNameInput.style.opacity = locked ? '.55' : '';
+  libNameInput.style.cursor = locked ? 'not-allowed' : '';
+  libNameInput.title = locked ? '便当名由配置表 · 便当库同步,请到配置表改名' : '';
 }
 
 libAddBtn.addEventListener('click', () => {
@@ -5225,6 +5245,10 @@ libAddBtn.addEventListener('click', () => {
   libNameInput.focus();
 });
 libNameInput.addEventListener('input', () => updateBentoLinkUI(libNameInput.value));
+// 名字被锁定(已链接配置表便当)时,点/聚焦给出提示 —— 移动端没有 hover tooltip
+libNameInput.addEventListener('focus', () => {
+  if (libNameInput.readOnly) showToast('便当名由配置表 · 便当库同步,请到配置表改名');
+});
 
 // 同步「弹窗便当名」的可点状态:只有当 libItem 已链接到配置表的便当(有 bentoId)时,
 // 才显示成可点的链接样式 + tooltip;否则就是普通文本,点了也不响应。
@@ -10604,8 +10628,19 @@ function renderEdit() {
 
   const tb = document.createElement("div"); tb.className = "edit-toolbar";
   const nameInp = document.createElement("input"); nameInp.value = b.name;
+  // 实时提交(与下面 speedInp 一致):移动端软键盘/视口变化会触发 render() 重建工具栏,
+  // 只在 onblur 提交的话,编辑中的名字会被 render 用旧 b.name 刷回 → 表现为「改完点完成又变回来」。
+  // 改成每次输入就把合法值写进 b.name,任何中途 render 都会用新值重建,不再丢失。
+  nameInp.oninput = () => { renameBento(b.id, nameInp.value); };
   nameInp.onblur = () => {
-    if (!renameBento(b.id, nameInp.value)) nameInp.value = b.name;
+    if (renameBento(b.id, nameInp.value)) return;
+    // 改名失败必须给出原因:否则只是悄悄把名字弹回旧值,用户会以为「删不掉 / 改不了」(如去掉末尾的 2 撞上已存在的同名便当)。
+    const v = nameInp.value.trim();
+    if (!v) showBanner("便当名不能为空", "err");
+    else if (state.bentos.some(x => x.id !== b.id && x.name === v))
+      showBanner(`已存在便当「${v}」,不能重名。请先到「便当库」删除或改掉那个重复的便当,再改这里。`, "err");
+    nameInp.value = b.name;
+    setTimeout(() => { const bn = document.getElementById("banner"); if (bn && bn.classList.contains("err")) bn.className = ""; }, 6000);
   };
   // 复制排序:把当前生产线(b.lineId)的卡片布局(位置+材料+量)复制到另一条生产线
   const copyBtn = document.createElement("span");
@@ -11163,9 +11198,17 @@ document.addEventListener("wheel", (e) => {
   e.preventDefault();
 }, { passive: false });
 
-window.matchMedia("(orientation:portrait)").addEventListener("change", () => render());
+// 正在编辑 #content 里的输入框时,跳过因视口变化触发的整屏 render():
+// 否则移动端软键盘弹出/收起引发的 resize / 旋转 会把编辑中的字段重建、打断输入(名字见上面的实时提交兜底)。
+function _isEditingField() {
+  const a = document.activeElement;
+  if (!a || (a.tagName !== "INPUT" && a.tagName !== "TEXTAREA" && a.tagName !== "SELECT")) return false;
+  const content = document.getElementById("content");
+  return !!(content && content.contains(a));
+}
+window.matchMedia("(orientation:portrait)").addEventListener("change", () => { if (!_isEditingField()) render(); });
 let _resizeT;
-window.addEventListener("resize", () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => render(), 200); });
+window.addEventListener("resize", () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => { if (!_isEditingField()) render(); }, 200); });
 
 function loadHtml2Canvas() {
   // 父壳已通过 srcdoc 注入 html2canvas;旧版残留的 CDN 兜底已移除
