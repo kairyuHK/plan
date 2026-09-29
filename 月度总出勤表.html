@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-appver="2026-09-29-1">
+<html lang="ja" data-appver="2026-09-29-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -1728,7 +1728,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.09.29-1';
+const APP_BUILD = '2026.09.29-2';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
@@ -2654,7 +2654,7 @@ const App = (() => {
 
         const monthTag = Array.from(table.querySelectorAll('th.month-label'))
           .map(e => e.textContent.trim()).join('-') || '';
-        const fname = deptName + (monthTag ? '_' + monthTag : '') + '.xlsx';
+        const fname = deptName + '出勤表' + monthTag + '.xlsx';
         const buf = await wb.xlsx.writeBuffer();
         const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
