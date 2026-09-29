@@ -4200,7 +4200,7 @@ button:active{transform:scale(.97)}
         <input type="number" id="libSpeed" min="0" step="0.01" placeholder="品名速度★" inputmode="decimal">
         <input type="number" id="libLineSpeed" min="0" step="0.01" placeholder="流水线速度" inputmode="decimal">
         <input type="text" id="libPeople" placeholder="人数 (可输入?)" maxlength="6">
-        <input type="number" id="libMeterPeople" min="0.5" step="0.5" placeholder="计量人数★" inputmode="decimal">
+        <input type="number" id="libMeterPeople" min="0.1" step="0.1" placeholder="计量人数★" inputmode="decimal">
         <div class="color-picker" id="libColorPicker"></div>
         <button class="lib-add-btn" id="libAddBtn">添加</button>
       </div>
@@ -4839,6 +4839,12 @@ function parsePeople(raw) {
   const n = parseInt(s);
   return n > 0 ? n : 0;
 }
+// 計量人数:允许 <1 的小数(如 0.6 表示该工位常有人离席,产能按 60% 计,耗时相应变长)。
+// 只把非正数 / 空 / NaN 兜底为 1,不再向上取整到 1(旧代码的 Math.max(1,…) 会把 0.6 当成 1)。
+function normMeter(v) {
+  const n = parseFloat(v);
+  return n > 0 ? n : 1;
+}
 function saveLibrary() {
   // 持久化时剔除运行时字段(_bentoLinked)
   const toStore = library.map(({ _bentoLinked, ...rest }) => rest);
@@ -4973,7 +4979,7 @@ function getDaySnapshotForLib(libId) {
     if (card.dataset.libId !== libId) return;
     const s = parseFloat(card.dataset.speed) || 0;
     const meterInp = popupQ(card, '.meter-people');
-    const m = Math.max(1, parseFloat(meterInp && meterInp.value) || 1);
+    const m = normMeter(meterInp && meterInp.value);
     const lid = getLineIdFromNode(card);
     if (lid) lineIds.add(lid);
     if (count === 0) { speed = s; mp = m; }
@@ -5224,7 +5230,7 @@ libAddBtn.addEventListener('click', () => {
   const speed = parseFloat(libSpeedInput.value);
   const lineSpeed = parseFloat(libLineSpeedInput.value) || 0;
   const people = parsePeople(libPeopleInput.value);
-  const meterPeople = Math.max(1, parseFloat(libMeterPeopleInput.value) || 1);
+  const meterPeople = normMeter(libMeterPeopleInput.value);
   if (!name) { libNameInput.focus(); return; }
   if (!speed || speed <= 0) { libSpeedInput.focus(); return; }
   if (editingLibId) {
@@ -5570,7 +5576,7 @@ function addJobCard(grid, libItem, savedData) {
   node.style.borderLeftColor = libItem.color;
   // 计量人数同理:历史卡优先快照,新增卡取库默认值。
   const meterPeopleVal = (savedData && savedData.meterPeople != null && savedData.meterPeople !== '')
-    ? (Math.max(1, parseFloat(savedData.meterPeople) || 1))
+    ? normMeter(savedData.meterPeople)
     : (libItem.meterPeople > 0 ? libItem.meterPeople : 1);
   // 流水线速度也按线解析:lineSpeedByLine[lineId] 优先,否则 item.lineSpeed 默认值
   const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
@@ -5598,7 +5604,7 @@ function addJobCard(grid, libItem, savedData) {
       <div class="card-fields">
         <div class="field name-spd">
           <span class="field-label">计量人数★</span>
-          <input class="field-input meter-people" type="number" min="0.5" step="0.5" value="${meterPeopleVal}" inputmode="decimal">
+          <input class="field-input meter-people" type="number" min="0.1" step="0.1" value="${meterPeopleVal}" inputmode="decimal">
         </div>
         <div class="field">
           <span class="field-label">流水线速度</span>
@@ -6334,7 +6340,7 @@ function recalc(line) {
       const peopleIsQ = (peopleRaw === '?' || peopleRaw === '？');
       const people = peopleIsQ ? 0 : (parseFloat(peopleRaw) || 0);
       const meterPeopleInp = popupQ(card, '.meter-people');
-      let meterPeople = Math.max(1, parseFloat(meterPeopleInp && meterPeopleInp.value) || 1);
+      let meterPeople = normMeter(meterPeopleInp && meterPeopleInp.value);
       // 单卡修改计量人数不再回写品名库,避免影响其它卡片(尤其是之前日期的快照)。
       if (speed > 0 && qty > 0 && meterPeople > 0) duration = (qty / (speed * meterPeople)) * 60;
       popupQ(card, '.duration').textContent = '耗时 ' + fmtDuration(duration);
@@ -6491,7 +6497,7 @@ function recalcGlobal() {
       const _cardSpeed = parseFloat(card.dataset.speed);
       const speed = (_cardSpeed > 0) ? _cardSpeed : ((libItem && libItem.speed > 0) ? libItem.speed : 0);
       const qty = parseFloat(popupQ(card, '.qty').value) || 0;
-      const mp = Math.max(1, parseFloat(popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
+      const mp = normMeter((popupQ(card, '.meter-people') && popupQ(card, '.meter-people').value) || (libItem && libItem.meterPeople) || 1);
       cnt++; if (!isNoQtyName(card.dataset.name)) q += qty;
       if (speed > 0 && qty > 0) s += (qty / (speed * mp)) * 60;
     });
@@ -7369,7 +7375,7 @@ function teCollectRows(lineNum) {
     const cardSpeed = parseFloat(card.dataset.speed);
     const libItem = findLibItem(card.dataset.libId);
     const speed = cardSpeed > 0 ? cardSpeed : (libItem && libItem.speed > 0 ? libItem.speed : 0);
-    const meterPeople = Math.max(1, parseFloat(popupQ(card, '.meter-people').value) || 1);
+    const meterPeople = normMeter(popupQ(card, '.meter-people').value);
     const durSec = (speed > 0 && meterPeople > 0) ? (qty / (speed * meterPeople)) * 60 : 0;
     const tS = popupQ(card, '.t-start').textContent.trim();
     const tE = popupQ(card, '.t-end').textContent.trim();
