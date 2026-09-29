@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-appver="2026-09-29-2">
+<html lang="ja" data-appver="2026-09-29-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -1728,7 +1728,7 @@ body.hours-mode .nav button[data-route="#/data"]{display:none!important}
 'use strict';
 
 // 应用构建版本 —— 每次改完部署时手动改这里(如日期+序号),数据页「当前版本」会显示它,用于确认新版本已生效。
-const APP_BUILD = '2026.09.29-2';
+const APP_BUILD = '2026.09.29-3';
 
 const Util = (() => {
   const pad2 = n => String(n).padStart(2,'0');
@@ -2602,9 +2602,23 @@ const App = (() => {
         const ws = wb.addWorksheet(deptName.slice(0, 28) || 'Sheet1', {
           views: [{ state: 'frozen', xSplit: 5, ySplit: 3 }] // 冻结前 5 列(役職~残)+ 前 3 行表头
         });
-        const bd = { style: 'thin', color: { argb: 'FFBBBBBB' } };
+        const bd = { style: 'thin', color: { argb: 'FF595959' } }; // 深灰边框,打印清晰(旧 BBBBBB 太淡)
         const allBd = { top: bd, left: bd, bottom: bd, right: bd };
         const occ = Object.create(null); // 占位矩阵,处理 rowspan/colspan
+        // 打印增强:屏幕上「减噪」的浅灰中性文字(○/姓名/数字)加深成黑;有意义的彩色(早橙/値绿/必要蓝/過不足红)保留。
+        // 深色/彩色底上的浅字(深色主题导出、或自定义色格白字)不动,避免黑字压在深底上看不见。
+        const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+        const printFg = (fgArgb, bgArgb) => {
+          if (!fgArgb) return undefined;
+          const r = parseInt(fgArgb.slice(2, 4), 16), g = parseInt(fgArgb.slice(4, 6), 16), b = parseInt(fgArgb.slice(6, 8), 16);
+          const neutral = (Math.max(r, g, b) - Math.min(r, g, b)) < 40; // 近灰(低彩度)=中性文字
+          let onDarkFill = false;
+          if (bgArgb) {
+            const br = parseInt(bgArgb.slice(2, 4), 16), bgc = parseInt(bgArgb.slice(4, 6), 16), bb = parseInt(bgArgb.slice(6, 8), 16);
+            onDarkFill = lum(br, bgc, bb) < 140;
+          }
+          return (neutral && !onDarkFill) ? 'FF000000' : fgArgb;
+        };
 
         Array.from(table.querySelectorAll('tr')).forEach((tr, ri) => {
           const cells = Array.from(tr.children).filter(el => el.tagName === 'TD' || el.tagName === 'TH');
@@ -2621,13 +2635,14 @@ const App = (() => {
             const ex = ws.getCell(ri + 1, ci + 1);
             ex.value = (text !== '' && /^-?\d+(\.\d+)?$/.test(text)) ? Number(text) : text;
             const fg = cssToArgb(fcs.color);
+            const bg = cssToArgb(bcs.backgroundColor);
+            const fgP = printFg(fg, bg); // 打印增强后的字色
             ex.font = {
               name: 'Yu Gothic',
               size: 10,
               bold: (parseInt(fcs.fontWeight, 10) || 400) >= 600,
-              color: fg ? { argb: fg } : undefined
+              color: fgP ? { argb: fgP } : undefined
             };
-            const bg = cssToArgb(bcs.backgroundColor);
             if (bg) ex.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
             ex.alignment = {
               horizontal: bcs.textAlign === 'left' ? 'left' : bcs.textAlign === 'right' ? 'right' : 'center',
