@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-01-4">
+<html lang="zh-CN" data-appver="2026-10-01-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7873,7 +7873,7 @@ window.addEventListener('message', (e) => {
   }
 });
 // iOS Safari 导出后计划板下半截漏画(数据没丢,刷新即恢复):iframe 内的重建/重排、乃至只重载本 iframe 都压不住
-// 这个卡在父壳层的合成 bug,最终由父壳在「导出后回到前台」整页 location.reload()(= 用户手动刷新)来解决,见父壳 _reloadAfterExport。
+// 这个卡在父壳层的合成 bug,最终由父壳在「导出后回到前台稳定后」整页 location.reload()(= 用户手动刷新↻)来解决,见父壳 _doExportReload。
 // 启动时广播一次当前日期
 setTimeout(broadcastPlanDate, 0);
 renderTimeline();
@@ -11434,18 +11434,23 @@ function checkExportReminder() {
   b.querySelector('#reminderClose').onclick = () => b.remove();
 }
 
-// iOS Safari 导出(下载 JSON)会把页面切走再切回,回来时很高的计划板下半截常没重绘 → 看着像被切(数据没丢,刷新即恢复)。
-// 只重载 plan iframe 压不住(实测仍切)—— 这个漏画卡在父壳层的合成,必须「整页刷新」(= 用户手动刷新,已确认有效)。
-// 导出后标记 pending,回到前台(从下载返回)时 location.reload();并加兜底定时器。数据已 flush-save + 存在 localStorage,刷新不丢。
-// 用 pending 标志 + 刷新本身天然只会执行一次。
-let _reloadAfterExportPending = false;
-function _reloadAfterExport() {
-  if (!_reloadAfterExportPending) return;
-  _reloadAfterExportPending = false;
+// iOS Safari 导出(下载 JSON)后计划板下半截被切(内容真没渲染,滚动也不出;整页刷新=顶栏↻键 100% 恢复,↻键就是 location.reload())。
+// 之前 blind 2s 定时器有竞态:iOS 弹「存到文件/分享」面板会把页面切到后台,定时器被节流,回前台时在过渡中触发一次「无效刷新」还清了标志,
+// 导致真正该刷的那次没刷 → 表现为有时成功有时失败。改法:区分「切过后台」vs「静默下载」:
+//   - 切过后台 → 回前台后等 500ms(让 iOS 前台稳定,刷新才真正生效,等同用户手动按↻的时机)再 location.reload()
+//   - 从没切后台(静默下载)→ 2.5s 后在前台直接刷新
+// 刷新前已 flush-save 落盘、数据在 localStorage,刷新不丢。
+let _exportReloadPending = false;
+let _exportWentHidden = false;
+function _doExportReload() {
+  if (!_exportReloadPending) return;
+  _exportReloadPending = false;
   try { location.reload(); } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') _reloadAfterExport();
+  if (!_exportReloadPending) return;
+  if (document.visibilityState === 'hidden') { _exportWentHidden = true; return; }
+  if (_exportWentHidden) setTimeout(_doExportReload, 500); // 回前台稳定一拍再刷,避免过渡中刷新被 iOS 忽略
 });
 
 function exportAll() {
@@ -11455,9 +11460,12 @@ function exportAll() {
     try { f.contentWindow && f.contentWindow.postMessage({ type: 'flush-save' }, '*'); } catch (_) {}
   });
   setTimeout(exportAllNow, 80);
-  // iOS 导出后整页刷新补画:回到前台时刷;若下载没把页面切走(不触发 visibilitychange),2s 兜底也刷。
-  _reloadAfterExportPending = true;
-  setTimeout(_reloadAfterExport, 2000);
+  _exportReloadPending = true;
+  _exportWentHidden = false;
+  // 静默下载(没切后台、不触发 visibilitychange)兜底:2.5s 后仍在前台且没切过后台 → 直接刷新。
+  setTimeout(() => {
+    if (_exportReloadPending && !_exportWentHidden && document.visibilityState === 'visible') _doExportReload();
+  }, 2500);
 }
 function exportAllNow() {
   const entries = collectBundleEntries();
