@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-01-2">
+<html lang="zh-CN" data-appver="2026-10-01-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7872,23 +7872,8 @@ window.addEventListener('message', (e) => {
     try { saveBoard(); } catch (_) {}
   }
 });
-// iOS Safari:顶栏「导出」下载 JSON 会把页面切走再切回,回来时这块很高的计划板下半截常没被重绘,
-// 看着像「分割线下方被切」(数据没丢,刷新即恢复)。只做 CSS 重排不够 —— 改为「等价刷新」:
-// 从已保存状态整块重建卡片 DOM,iOS 就会重新绘制。由父壳在「导出后 / 回到前台」发 rerender-board 触发;
-// 此刻父壳已先 flush-save,loadBoard 读到的就是当前状态,不会丢改动。
-function _rerenderBoardHard() {
-  try {
-    loadBoard();       // 清掉旧卡、按已保存状态重建卡片 DOM(= 刷新对板子做的事)
-    renderTimeline();
-    // 再逼 iOS 合成层重绘:提升成独立层再撤掉。用 transform(即便清除的定时器被推迟也不会隐藏内容,
-    // 不像 display/visibility 那样有"卡在隐藏"的风险)。
-    const el = document.querySelector('.main') || document.body;
-    if (el) { el.style.transform = 'translateZ(0)'; setTimeout(() => { el.style.transform = ''; }, 60); }
-  } catch (_) {}
-}
-window.addEventListener('message', (e) => {
-  if (e && e.data && e.data.type === 'rerender-board') _rerenderBoardHard();
-});
+// iOS Safari 导出后计划板下半截漏画(数据没丢,刷新即恢复):iframe 内的重建/重排都压不住这个
+// 底层合成 bug,最终由父壳在「导出后」直接重载本 iframe(= 整份文档刷新)来解决,见父壳 _reloadPlanBoard。
 // 启动时广播一次当前日期
 setTimeout(broadcastPlanDate, 0);
 renderTimeline();
@@ -11450,17 +11435,18 @@ function checkExportReminder() {
 }
 
 // iOS Safari 导出(下载 JSON)会把页面切走再切回,回来时很高的计划板下半截常没重绘 → 看着像被切(数据没丢,刷新即恢复)。
-// 记下导出时刻,回到前台(或稍后)让计划板整块重建一次(= 刷新的效果)。此刻已 flush-save 落盘,重建不丢改动。
-let _lastExportAt = 0;
-function _rerenderPlanBoard() {
+// iframe 内的重排/重建都压不住 iOS 这个底层合成 bug,只有「整份文档刷新」有效 —— 所以导出后直接重载计划板 iframe
+// (= 等价刷新那一块)。此刻已 flush-save 落盘 + 只在"导出后"触发,重载读的是当前状态,不丢改动。
+// 用 pending 标志确保只重载一次(visibilitychange 与兜底定时器谁先到都行)。
+let _reloadPlanPending = false;
+function _reloadPlanBoard() {
+  if (!_reloadPlanPending) return;
+  _reloadPlanPending = false;
   const pf = document.querySelector('iframe[data-app="plan"]');
-  if (pf && pf.contentWindow) { try { pf.contentWindow.postMessage({ type: 'rerender-board' }, '*'); } catch (_) {} }
+  if (pf) { try { pf.srcdoc = getHtml('plan'); } catch (_) {} }
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && _lastExportAt && Date.now() - _lastExportAt < 20000) {
-    _lastExportAt = 0;
-    _rerenderPlanBoard();
-  }
+  if (document.visibilityState === 'visible') _reloadPlanBoard();
 });
 
 function exportAll() {
@@ -11470,10 +11456,9 @@ function exportAll() {
     try { f.contentWindow && f.contentWindow.postMessage({ type: 'flush-save' }, '*'); } catch (_) {}
   });
   setTimeout(exportAllNow, 80);
-  _lastExportAt = Date.now();
-  // 兜底:即使 iOS 没触发 visibilitychange(下载没把页面切走),也在稍后重建一次。
-  // 此时用户刚点导出、还没来得及改动,重建读的是刚落盘的状态,安全。
-  setTimeout(_rerenderPlanBoard, 800);
+  // iOS 导出后重载计划板补画:回到前台时重载;若下载没把页面切走(不触发 visibilitychange),1.5s 兜底也重载。
+  _reloadPlanPending = true;
+  setTimeout(_reloadPlanBoard, 1500);
 }
 function exportAllNow() {
   const entries = collectBundleEntries();
