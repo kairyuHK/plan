@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-01-3">
+<html lang="zh-CN" data-appver="2026-10-01-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7872,8 +7872,8 @@ window.addEventListener('message', (e) => {
     try { saveBoard(); } catch (_) {}
   }
 });
-// iOS Safari 导出后计划板下半截漏画(数据没丢,刷新即恢复):iframe 内的重建/重排都压不住这个
-// 底层合成 bug,最终由父壳在「导出后」直接重载本 iframe(= 整份文档刷新)来解决,见父壳 _reloadPlanBoard。
+// iOS Safari 导出后计划板下半截漏画(数据没丢,刷新即恢复):iframe 内的重建/重排、乃至只重载本 iframe 都压不住
+// 这个卡在父壳层的合成 bug,最终由父壳在「导出后回到前台」整页 location.reload()(= 用户手动刷新)来解决,见父壳 _reloadAfterExport。
 // 启动时广播一次当前日期
 setTimeout(broadcastPlanDate, 0);
 renderTimeline();
@@ -11435,18 +11435,17 @@ function checkExportReminder() {
 }
 
 // iOS Safari 导出(下载 JSON)会把页面切走再切回,回来时很高的计划板下半截常没重绘 → 看着像被切(数据没丢,刷新即恢复)。
-// iframe 内的重排/重建都压不住 iOS 这个底层合成 bug,只有「整份文档刷新」有效 —— 所以导出后直接重载计划板 iframe
-// (= 等价刷新那一块)。此刻已 flush-save 落盘 + 只在"导出后"触发,重载读的是当前状态,不丢改动。
-// 用 pending 标志确保只重载一次(visibilitychange 与兜底定时器谁先到都行)。
-let _reloadPlanPending = false;
-function _reloadPlanBoard() {
-  if (!_reloadPlanPending) return;
-  _reloadPlanPending = false;
-  const pf = document.querySelector('iframe[data-app="plan"]');
-  if (pf) { try { pf.srcdoc = getHtml('plan'); } catch (_) {} }
+// 只重载 plan iframe 压不住(实测仍切)—— 这个漏画卡在父壳层的合成,必须「整页刷新」(= 用户手动刷新,已确认有效)。
+// 导出后标记 pending,回到前台(从下载返回)时 location.reload();并加兜底定时器。数据已 flush-save + 存在 localStorage,刷新不丢。
+// 用 pending 标志 + 刷新本身天然只会执行一次。
+let _reloadAfterExportPending = false;
+function _reloadAfterExport() {
+  if (!_reloadAfterExportPending) return;
+  _reloadAfterExportPending = false;
+  try { location.reload(); } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') _reloadPlanBoard();
+  if (document.visibilityState === 'visible') _reloadAfterExport();
 });
 
 function exportAll() {
@@ -11456,9 +11455,9 @@ function exportAll() {
     try { f.contentWindow && f.contentWindow.postMessage({ type: 'flush-save' }, '*'); } catch (_) {}
   });
   setTimeout(exportAllNow, 80);
-  // iOS 导出后重载计划板补画:回到前台时重载;若下载没把页面切走(不触发 visibilitychange),1.5s 兜底也重载。
-  _reloadPlanPending = true;
-  setTimeout(_reloadPlanBoard, 1500);
+  // iOS 导出后整页刷新补画:回到前台时刷;若下载没把页面切走(不触发 visibilitychange),2s 兜底也刷。
+  _reloadAfterExportPending = true;
+  setTimeout(_reloadAfterExport, 2000);
 }
 function exportAllNow() {
   const entries = collectBundleEntries();
