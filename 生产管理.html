@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-01-5">
+<html lang="zh-CN" data-appver="2026-10-01-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3024,6 +3024,8 @@ const Pages = (() => {
     }
   }
   .card-name-display.is-bento-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.28); text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
+  /* 白天模式:卡片底色是浅色,白色下划线看不见 → 改成深色半透明 */
+  :root[data-theme="light"] .card-name-display.is-bento-link { text-decoration-color: rgba(0,0,0,0.32); }
   .card-name-display.is-bento-link:hover { text-decoration-color: var(--accent); color: var(--accent); }
   .card-del {
     background: transparent; border: 1px solid transparent;
