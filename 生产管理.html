@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-01-7">
+<html lang="zh-CN" data-appver="2026-10-03-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2609,6 +2609,9 @@ const Pages = (() => {
     color: var(--text-mute);
     font-size: 10px; font-variant-numeric: tabular-nums;
   }
+  /* 15 分格线改虚线:用 repeating-linear-gradient 画(与板子区 .grid-line 同样的浅浓淡),避免 iOS Safari 把 1px dashed 渲染成实线 */
+  .tick:not(.hour) { border-top: 0; height: 1px; background-image: repeating-linear-gradient(to right, rgba(255,255,255,0.035) 0 4px, transparent 4px 8px); }
+  :root[data-theme="light"] .tick:not(.hour) { background-image: repeating-linear-gradient(to right, rgba(0,0,0,0.045) 0 4px, transparent 4px 8px); }
   .tick.hour { border-top-color: var(--border-strong); color: var(--text-dim); font-size: 11px; font-weight: 500; }
   .tick.hour-20 { border-top: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600; }
   .tick .label { background: transparent; padding: 1px 4px; border-radius: 0; }
@@ -2841,11 +2844,13 @@ const Pages = (() => {
   .line:last-child .cards-wrap { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
   .line:last-child .cards-wrap::-webkit-scrollbar { width: 4px; }
   .cards-grid { position: relative; width: 100%; }
-  /* 15 分格虚线:弄到几乎看不见(用户嫌乱);整点实线保留做结构参考 */
-  .grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255,255,255,0.035); pointer-events: none; }
-  .grid-line.hour { border-top: 1px solid var(--border-strong); }
+  /* 15 分格虚线:弄到几乎看不见(用户嫌乱);整点实线保留做结构参考。
+     虚线用 repeating-linear-gradient 画(浓淡保持很淡),避免 iOS Safari 把 1px dashed 细边框渲染成实线。 */
+  .grid-line { position: absolute; left: 0; right: 0; height: 0; pointer-events: none; }
+  .grid-line:not(.hour) { height: 1px; background-image: repeating-linear-gradient(to right, rgba(255,255,255,0.035) 0 4px, transparent 4px 8px); }
+  .grid-line.hour { height: 0; background-image: none; border-top: 1px solid var(--border-strong); }
   .grid-line.hour-20 { border-top: 1px solid var(--accent); opacity: 0.3; }
-  :root[data-theme="light"] .grid-line:not(.hour):not(.hour-20) { border-top-color: rgba(0,0,0,0.045); }
+  :root[data-theme="light"] .grid-line:not(.hour) { background-image: repeating-linear-gradient(to right, rgba(0,0,0,0.045) 0 4px, transparent 4px 8px); }
 
   .card {
     position: absolute; left: 6px; right: 6px;
