@@ -1,0 +1,1372 @@
+<!doctype html>
+<html lang="zh-CN" data-appver="2026-10-02-1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日语学习工作台</title>
+<style>
+:root{
+  --paper:#faf6ef; --paper2:#f3ecdf; --card:#fffdf8;
+  --ink:#201e1a; --ink-soft:#4a463d; --ink-faint:#8c8578;
+  --shu:#c8453b; --shu-deep:#9e2b23; --gold:#b08d3f; --gold-soft:#cbb27a;
+  --green:#5a7d55; --line:#e4dccb; --line-soft:#efe8da;
+  --ok:#4f7d4a; --bad:#c04a3f;
+  --serif:"Yu Mincho","Hiragino Mincho ProN","Songti SC","SimSun",serif;
+  --sans:"Hiragino Sans","Yu Gothic","Microsoft YaHei",system-ui,sans-serif;
+  --shadow:0 2px 10px rgba(60,45,20,.08), 0 1px 2px rgba(60,45,20,.06);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 500px at 80% -10%, #fdf3e6 0%, transparent 60%),
+    var(--paper);
+  color:var(--ink); font-family:var(--sans);
+  font-size:16px; line-height:1.7; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 80px}
+
+/* ---------- header ---------- */
+header.top{
+  position:sticky;top:0;z-index:30;
+  background:linear-gradient(var(--paper),rgba(250,246,239,.9));
+  backdrop-filter:saturate(1.1) blur(6px);
+  border-bottom:1px solid var(--line);
+}
+.top-in{max-width:900px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.brand h1{
+  font-family:var(--serif);font-weight:600;font-size:21px;margin:0;letter-spacing:.04em;
+  display:flex;align-items:center;gap:10px;
+}
+.brand h1 .mark{color:var(--shu)}
+.brand .date{font-size:12.5px;color:var(--ink-faint);letter-spacing:.06em}
+.ring{width:52px;height:52px;flex:0 0 auto;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:13px;font-weight:600;color:var(--shu-deep)}
+
+/* ---------- nav ---------- */
+nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;border:1px solid var(--line);background:var(--card);
+  color:var(--ink-soft);border-radius:999px;padding:7px 14px;font-size:13.5px;
+  cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;
+  transition:all .15s ease;
+}
+.tab .i{font-size:15px}
+.tab:hover{border-color:var(--gold-soft);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--shu);border-color:var(--shu);color:#fff;box-shadow:var(--shadow)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);margin-left:2px;display:none}
+.tab[data-done="1"] .dot{display:inline-block}
+.tab[aria-selected="true"] .dot{background:#fff}
+
+/* ---------- panels ---------- */
+main{padding-top:18px}
+.panel{display:none;animation:fade .25s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.phead h2{font-family:var(--serif);font-size:24px;margin:0;font-weight:600;letter-spacing:.03em}
+.phead h2 small{display:block;font-family:var(--sans);font-size:12px;color:var(--ink-faint);
+  letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px;font-weight:600}
+.phead .sub{color:var(--ink-soft);font-size:13px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:18px 18px;margin-bottom:16px}
+.card.flat{box-shadow:none;background:var(--paper2);border-style:dashed}
+
+.lvl{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;
+  padding:2px 8px;border-radius:6px;background:var(--shu);color:#fff;vertical-align:middle}
+.lvl.n2{background:var(--gold)} .lvl.n1{background:var(--shu-deep)}
+.cat-tag{font-size:11.5px;color:var(--ink-faint);letter-spacing:.1em;font-weight:600}
+
+.jp{font-family:var(--serif);font-size:19px;line-height:1.9;color:var(--ink)}
+.cn{color:var(--ink-soft);font-size:14px}
+.muted{color:var(--ink-faint)}
+
+button.btn{font-family:var(--sans);cursor:pointer;border-radius:10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);padding:8px 14px;font-size:13.5px;transition:all .15s}
+button.btn:hover{border-color:var(--gold-soft)}
+button.btn.primary{background:var(--shu);color:#fff;border-color:var(--shu)}
+button.btn.primary:hover{background:var(--shu-deep);border-color:var(--shu-deep)}
+button.btn.ghost{background:transparent}
+button.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spread{justify-content:space-between}
+
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.speed{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft)}
+.speed input{accent-color:var(--shu)}
+
+.listen-line{padding:10px 0;border-bottom:1px dashed var(--line-soft)}
+.listen-line:last-child{border-bottom:0}
+.listen-line .lrow{display:flex;gap:10px;align-items:flex-start}
+.listen-line .play{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card);cursor:pointer;color:var(--shu);font-size:13px;display:flex;align-items:center;justify-content:center}
+.listen-line .play:hover{background:var(--shu);color:#fff;border-color:var(--shu)}
+.hidden-cn{display:none}
+.show-cn .hidden-cn{display:block}
+
+.vocab-chip{display:inline-block;background:var(--paper2);border:1px solid var(--line);border-radius:8px;
+  padding:3px 9px;margin:3px 4px 0 0;font-size:13px}
+.vocab-chip b{font-family:var(--serif);color:var(--ink)}
+.vocab-chip .k{color:var(--shu-deep);font-size:12px;margin-left:4px}
+.vocab-chip .c{color:var(--ink-faint);font-size:12px;margin-left:6px}
+
+/* word flashcard */
+.flash{text-align:center;padding:26px 16px}
+.flash .word{font-family:var(--serif);font-size:40px;line-height:1.2}
+.flash .kana{color:var(--shu-deep);font-size:16px;margin-top:6px}
+.flash .accent{color:var(--ink-faint);font-size:12px;margin-left:8px}
+.flash .back{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;display:none}
+.flash.flip .back{display:block}
+.flash .pos{display:inline-block;font-size:11px;background:var(--paper2);border:1px solid var(--line);
+  border-radius:6px;padding:1px 7px;color:var(--ink-soft)}
+.flash .mean{font-size:19px;margin:8px 0}
+.flash .ex{font-family:var(--serif);font-size:16px;color:var(--ink)}
+.flash .exc{font-size:13px;color:var(--ink-faint)}
+.progressbar{height:6px;background:var(--line-soft);border-radius:4px;overflow:hidden;margin:8px 0 2px}
+.progressbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--shu));width:0}
+
+.gram{margin-bottom:14px}
+.gram .pt{font-family:var(--serif);font-size:22px;color:var(--shu-deep)}
+.gram .con{font-size:12.5px;color:var(--ink-faint);margin:2px 0 8px}
+.gram .ex{font-family:var(--serif);font-size:16px;margin-top:6px}
+
+.q{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
+.q .opt{display:block;width:100%;text-align:left;margin:6px 0;padding:9px 12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);cursor:pointer;font-size:14px;transition:all .12s}
+.q .opt:hover{border-color:var(--gold-soft)}
+.q .opt.ok{background:#eaf4e8;border-color:var(--ok);color:#2f5e2a}
+.q .opt.bad{background:#f8e9e7;border-color:var(--bad);color:#8f2e25}
+.q .exp{margin-top:8px;font-size:13px;color:var(--ink-soft);display:none}
+.q.answered .exp{display:block}
+
+textarea.write{width:100%;min-height:150px;border:1px solid var(--line);border-radius:10px;padding:12px;
+  font-family:var(--serif);font-size:16px;line-height:1.8;background:var(--card);color:var(--ink);resize:vertical}
+textarea.write:focus{outline:2px solid var(--gold-soft);border-color:var(--gold-soft)}
+.wc{font-size:12px;color:var(--ink-faint);text-align:right;margin-top:4px}
+details.model{margin-top:12px;border:1px dashed var(--line);border-radius:10px;padding:0 12px;background:var(--paper2)}
+details.model summary{cursor:pointer;padding:10px 0;font-size:13.5px;color:var(--shu-deep);font-weight:600}
+details.model .jp{font-size:16px;margin:4px 0 10px}
+
+/* speaking */
+.dlg{padding:10px 0;border-bottom:1px dashed var(--line-soft)}
+.dlg:last-child{border-bottom:0}
+.dlg .role{font-size:12px;color:var(--shu);font-weight:700;letter-spacing:.06em}
+.rec-box{text-align:center;padding:10px}
+.rec-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:6px;
+  animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* kanji */
+.kanji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.kcell{text-align:center;border:1px solid var(--line);border-radius:12px;padding:12px 8px;background:var(--card)}
+.kbox{width:92px;height:92px;margin:0 auto 8px;position:relative;border:1px solid var(--gold-soft);border-radius:8px;
+  background:
+    linear-gradient(var(--line-soft),var(--line-soft)) center/100% 1px no-repeat,
+    linear-gradient(var(--line-soft),var(--line-soft)) center/1px 100% no-repeat,
+    var(--paper)}
+.kbox span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:62px;color:var(--ink)}
+.kcell .read{font-size:12px;color:var(--shu-deep);margin:2px 0}
+.kcell .mean{font-size:13px;color:var(--ink-soft)}
+.kcell .kw{font-size:12px;color:var(--ink-faint);margin-top:4px;font-family:var(--serif)}
+
+/* game */
+.match-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mtile{border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;cursor:pointer;
+  background:var(--card);font-size:15px;transition:all .12s;min-height:48px;display:flex;align-items:center;justify-content:center}
+.mtile.jp{font-family:var(--serif);font-size:17px}
+.mtile:hover{border-color:var(--gold-soft)}
+.mtile.sel{background:var(--shu);color:#fff;border-color:var(--shu)}
+.mtile.done{opacity:.35;pointer-events:none;background:#eaf4e8;border-color:var(--ok)}
+.mtile.wrong{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.scorebar{display:flex;gap:16px;align-items:center;font-size:13px;color:var(--ink-soft)}
+.scorebar b{font-family:var(--serif);color:var(--shu-deep);font-size:18px}
+
+.culture .c-emoji{font-size:40px}
+.culture h3{font-family:var(--serif);margin:6px 0;font-size:21px}
+.culture .term{color:var(--shu-deep);font-family:var(--serif)}
+
+.done-btn.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.timer{font-family:var(--serif);font-size:30px;color:var(--shu-deep);letter-spacing:.04em}
+.foot{text-align:center;color:var(--ink-faint);font-size:12px;margin-top:30px}
+.pill{font-size:11px;background:var(--paper2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--ink-soft)}
+@media(max-width:480px){
+  .brand h1{font-size:18px} .jp{font-size:17px} .flash .word{font-size:34px}
+  .phead h2{font-size:21px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <h1><span class="mark">日</span>本語 学習ワークベンチ</h1>
+      <span class="date" id="dateLabel"></span>
+    </div>
+    <div class="ring" title="今日达成">
+      <svg width="52" height="52"><circle cx="26" cy="26" r="22" fill="none" stroke="#e4dccb" stroke-width="5"></circle>
+        <circle id="ringFg" cx="26" cy="26" r="22" fill="none" stroke="#c8453b" stroke-width="5"
+          stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2"></circle></svg>
+      <div class="num" id="ringNum">0/7</div>
+    </div>
+  </div>
+  <div class="top-in" style="padding-top:0">
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <main id="main"></main>
+  <div class="foot">
+    日本語学習ワークベンチ · 离线单文件 · N2–N1 · 每日自动轮换内容<br>
+    <span class="muted">听力/口语为浏览器合成语音 · 进度保存在本机浏览器</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   日语学习工作台  —  单文件离线 App (N2–N1)
+   模块: 听力 / 单词语法 / 阅读写作 / 口语 / 汉字 / 闯关 / 文化
+   ============================================================ */
+
+/* ---------- 工具: 日期种子 & 伪随机 ---------- */
+function todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function hashStr(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function seededShuffle(arr,seed){
+  const a=arr.slice(),rng=mulberry32(seed);
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+let BATCH=0; // “换一批”偏移
+function pickN(arr,n,salt){
+  const seed=hashStr(todayKey()+'|'+salt+'|'+BATCH);
+  return seededShuffle(arr,seed).slice(0,n);
+}
+function pickOne(arr,salt){return pickN(arr,1,salt)[0];}
+
+/* ---------- 工具: 本地存储 ---------- */
+const _mem={}; // 内存兜底: 当 localStorage 不可用(隐私模式/file://被拦)时仍能在会话内工作
+const DB={
+  get(k,d){
+    if(k in _mem)return _mem[k];
+    try{const v=localStorage.getItem('jpwb_'+k);if(v!=null){const o=JSON.parse(v);_mem[k]=o;return o;}}catch(e){}
+    return d;
+  },
+  set(k,v){_mem[k]=v;try{localStorage.setItem('jpwb_'+k,JSON.stringify(v));}catch(e){}}
+};
+BATCH=DB.get('batch',0);
+
+/* 今日完成状态 */
+function doneState(){const all=DB.get('done',{});return all[todayKey()]||{};}
+function markDone(mod,on){
+  const all=DB.get('done',{});const t=all[todayKey()]||{};
+  t[mod]=on?1:0;all[todayKey()]=t;DB.set('done',all);renderRing();syncTabDots();
+}
+
+/* ---------- 工具: TTS 日语朗读 ---------- */
+let jaVoice=null;
+function loadVoices(){
+  const vs=speechSynthesis.getVoices();
+  jaVoice=vs.find(v=>/ja(-|_)?JP/i.test(v.lang))||vs.find(v=>/ja/i.test(v.lang))||null;
+}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+let speakRate=DB.get('rate',0.9);
+function speak(text){
+  if(!('speechSynthesis' in window)){alert('当前浏览器不支持语音朗读');return;}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ja-JP';u.rate=speakRate;if(jaVoice)u.voice=jaVoice;
+  speechSynthesis.speak(u);
+}
+function stopSpeak(){if('speechSynthesis' in window)speechSynthesis.cancel();}
+
+/* ---------- 真人音频挂载接口 ----------
+   给每段听力/场景挂一个真人音频(URL 持久保存 / 本地文件仅本次会话),
+   挂载后出现播放器;TTS 合成音仍可随时作为后备。 */
+function audioMap(){return DB.get('audiomap',{});}
+function audioMountHTML(key){
+  const url=audioMap()[key]||'';
+  return `<div class="card flat audio-mount" data-key="${encodeURIComponent(key)}" style="margin:14px 0 0">
+    <div class="row spread" style="margin-bottom:6px">
+      <b style="font-size:13px">🎵 真人音频（可选）</b>
+      <span class="am-status muted" style="font-size:12px">${url?'已挂载 URL':'未挂载'}</span>
+    </div>
+    <audio class="am-player" controls ${url?'':'style="display:none"'} ${url?`src="${url}"`:''} style="width:100%;margin-bottom:8px"></audio>
+    <div class="row" style="gap:6px">
+      <input class="am-url" type="url" placeholder="粘贴音频直链 (mp3/m4a/ogg …)" value="${url.replace(/"/g,'&quot;')}"
+        style="flex:1;min-width:140px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--card);color:var(--ink)">
+      <button class="btn sm am-set">设置</button>
+      <button class="btn sm ghost am-file">📁 本地文件</button>
+      <button class="btn sm ghost am-clear" ${url?'':'style="display:none"'}>清除</button>
+    </div>
+    <input class="am-fileinput" type="file" accept="audio/*" style="display:none">
+    <div class="muted" style="font-size:11.5px;margin-top:6px">URL 会保存在本机;本地文件仅本次会话有效。请使用你有权使用的音频。</div>
+  </div>`;
+}
+function setupAudioMount(scope){
+  scope.querySelectorAll('.audio-mount').forEach(box=>{
+    const key=decodeURIComponent(box.dataset.key);
+    const player=box.querySelector('.am-player');
+    const urlInput=box.querySelector('.am-url');
+    const status=box.querySelector('.am-status');
+    const clearBtn=box.querySelector('.am-clear');
+    const fileInput=box.querySelector('.am-fileinput');
+    const show=(src,label)=>{player.src=src;player.style.display='block';status.textContent=label;clearBtn.style.display='inline-block';};
+    box.querySelector('.am-set').onclick=()=>{
+      const u=urlInput.value.trim();if(!u)return;
+      const m=audioMap();m[key]=u;DB.set('audiomap',m);show(u,'已挂载 URL');
+    };
+    box.querySelector('.am-file').onclick=()=>fileInput.click();
+    fileInput.onchange=()=>{const f=fileInput.files[0];if(!f)return;
+      show(URL.createObjectURL(f),'本地文件（本次会话）');};
+    clearBtn.onclick=()=>{const m=audioMap();delete m[key];DB.set('audiomap',m);
+      player.pause();player.removeAttribute('src');player.style.display='none';
+      urlInput.value='';status.textContent='未挂载';clearBtn.style.display='none';};
+  });
+}
+
+/* ============================================================
+   内置语料库
+   ============================================================ */
+const DATA={};
+
+/* ---- 听力: 新闻 / 动漫 / 日剧 ---- */
+DATA.listening=[
+ {cat:'ニュース',catcn:'新闻',level:'n2',title:'再生可能エネルギーの拡大',
+  lines:[
+   {jp:'政府は来年度、再生可能エネルギーの導入をさらに加速させる方針を明らかにしました。',cn:'政府明确表示,下一年度将进一步加快可再生能源的引进。'},
+   {jp:'特に太陽光と風力発電の割合を、現在の二割から三割へ引き上げることを目指しています。',cn:'尤其力求将太阳能和风力发电的比例从目前的两成提升到三成。'},
+   {jp:'一方で、送電網の整備が追いつかず、課題も少なくないと専門家は指摘しています。',cn:'另一方面,专家指出输电网建设跟不上,问题也不少。'},
+   {jp:'政府は民間企業への補助金を拡充し、投資を促す考えです。',cn:'政府打算扩充对民营企业的补贴,以促进投资。'}
+  ],
+  vocab:[{w:'再生可能',k:'さいせいかのう',cn:'可再生'},{w:'送電網',k:'そうでんもう',cn:'输电网'},{w:'補助金',k:'ほじょきん',cn:'补贴'},{w:'促す',k:'うながす',cn:'促使'}]},
+
+ {cat:'ニュース',catcn:'新闻',level:'n1',title:'少子化対策の新制度',
+  lines:[
+   {jp:'深刻化する少子化を背景に、政府は子育て世帯への支援を抜本的に見直すと発表しました。',cn:'以日益严峻的少子化为背景,政府宣布将从根本上重新审视对育儿家庭的支援。'},
+   {jp:'児童手当の所得制限を撤廃し、支給対象を高校生まで広げる方針です。',cn:'方针是取消儿童补贴的收入限制,并将发放对象扩大到高中生。'},
+   {jp:'財源の確保をめぐっては、与野党の間で依然として調整が難航しています。',cn:'围绕财源的确保,执政党与在野党之间的协调依然困难重重。'},
+   {jp:'効果が表れるには時間を要するとの見方が大勢を占めています。',cn:'多数看法认为,要显现效果尚需时日。'}
+  ],
+  vocab:[{w:'抜本的',k:'ばっぽんてき',cn:'根本性的'},{w:'撤廃',k:'てっぱい',cn:'废除'},{w:'財源',k:'ざいげん',cn:'财源'},{w:'難航',k:'なんこう',cn:'进展困难'}]},
+
+ {cat:'アニメ',catcn:'动漫对话',level:'n2',title:'部活の帰り道',
+  lines:[
+   {jp:'なあ、お前さ、最近ちょっと無理しすぎじゃね?',cn:'喂,你啊,最近是不是有点太逞强了?'},
+   {jp:'別に。やれるうちにやっとかないと、後悔するだけだろ。',cn:'没什么。能做的时候不做,到头来只会后悔吧。'},
+   {jp:'……まあ、気持ちは分かるけどさ。倒れたら元も子もないぞ。',cn:'……嘛,你的心情我懂。可要是累倒了就全完了啊。'},
+   {jp:'心配すんなって。ここで止まったら、今までの自分に顔向けできねえんだ。',cn:'别担心啦。要是在这里停下,我就没脸面对过去的自己了。'},
+   {jp:'かっこつけちゃって。……ま、せいぜい頑張れよ。',cn:'还装帅呢。……行吧,你就尽管加油吧。'}
+  ],
+  vocab:[{w:'無理する',k:'むりする',cn:'勉强/逞强'},{w:'元も子もない',k:'もともこもない',cn:'得不偿失/全完了'},{w:'顔向け',k:'かおむけ',cn:'有脸见人'},{w:'せいぜい',k:'せいぜい',cn:'尽量/充其量'}]},
+
+ {cat:'アニメ',catcn:'动漫对话',level:'n1',title:'決意の場面',
+  lines:[
+   {jp:'逃げたところで、何も変わりはしない。それくらい、お前だって分かっているはずだ。',cn:'就算逃避,也什么都改变不了。这道理你应该也明白。'},
+   {jp:'分かってるさ。だからこそ、怖いんだよ。',cn:'我明白。正因为明白,才害怕啊。'},
+   {jp:'怖くて当然だ。恐れを知らぬ者に、本当の覚悟など持てるものか。',cn:'害怕是理所当然的。不知恐惧的人,又怎能拥有真正的觉悟。'},
+   {jp:'……ああ。もう、迷わない。この手で、終わらせてみせる。',cn:'……嗯。我不再迷茫了。我会亲手了结这一切。'}
+  ],
+  vocab:[{w:'逃げる',k:'にげる',cn:'逃跑'},{w:'覚悟',k:'かくご',cn:'觉悟'},{w:'恐れ',k:'おそれ',cn:'恐惧'},{w:'迷う',k:'まよう',cn:'迷茫'}]},
+
+ {cat:'ドラマ',catcn:'日剧片段',level:'n2',title:'オフィスでの一幕',
+  lines:[
+   {jp:'課長、例の企画書、やはり一度練り直した方がよろしいかと。',cn:'课长,那份企划书,我觉得还是重新打磨一次比较好。'},
+   {jp:'練り直す?締め切りまであと三日だぞ。間に合うのか。',cn:'重新打磨?离截止只剩三天了啊。来得及吗?'},
+   {jp:'だからこそです。中途半端なもので勝負して、後で悔やみたくありません。',cn:'正因如此。我不想拿半吊子的东西去拼,然后事后后悔。'},
+   {jp:'……いいだろう。お前がそこまで言うなら、任せる。やってみろ。',cn:'……好吧。既然你都说到这份上了,交给你。去试试吧。'}
+  ],
+  vocab:[{w:'練り直す',k:'ねりなおす',cn:'重新琢磨'},{w:'締め切り',k:'しめきり',cn:'截止日'},{w:'中途半端',k:'ちゅうとはんぱ',cn:'半途而废/半吊子'},{w:'悔やむ',k:'くやむ',cn:'后悔'}]},
+
+ {cat:'ドラマ',catcn:'日剧片段',level:'n1',title:'別れ際の会話',
+  lines:[
+   {jp:'今さらこんなことを言うのも、虫がいい話だとは分かっている。',cn:'事到如今才说这种话,我也知道是厚脸皮。'},
+   {jp:'それでも、どうしても伝えておきたかったんだ。',cn:'即便如此,我还是无论如何都想告诉你。'},
+   {jp:'……言葉なんて、もういいよ。全部、その顔に書いてある。',cn:'……话什么的,已经够了。全都写在你那张脸上了。'},
+   {jp:'そうか。……じゃあ、達者でな。',cn:'是吗。……那么,多保重。'}
+  ],
+  vocab:[{w:'今さら',k:'いまさら',cn:'事到如今'},{w:'虫がいい',k:'むしがいい',cn:'自私/厚脸皮'},{w:'達者',k:'たっしゃ',cn:'健康/保重'},{w:'伝える',k:'つたえる',cn:'传达'}]},
+
+ {cat:'ニュース',catcn:'新闻',level:'n2',title:'AIの普及と働き方',
+  lines:[
+   {jp:'人工知能の急速な普及により、私たちの働き方は大きく変わろうとしています。',cn:'随着人工智能的迅速普及,我们的工作方式正发生巨大变化。'},
+   {jp:'単純な作業の多くは自動化され、人間はより創造的な仕事に集中できるとされています。',cn:'许多简单作业被自动化,据说人类可以更专注于创造性的工作。'},
+   {jp:'しかし、一部の職業が消えるのではないかという不安の声も少なくありません。',cn:'然而,担心部分职业会消失的声音也不少。'},
+   {jp:'専門家は、技術に使われるのではなく、使いこなす力こそが重要だと強調しています。',cn:'专家强调,重要的不是被技术使用,而是驾驭技术的能力。'}
+  ],
+  vocab:[{w:'普及',k:'ふきゅう',cn:'普及'},{w:'自動化',k:'じどうか',cn:'自动化'},{w:'創造的',k:'そうぞうてき',cn:'创造性的'},{w:'使いこなす',k:'つかいこなす',cn:'熟练驾驭'}]},
+
+ {cat:'ニュース',catcn:'新闻',level:'n1',title:'観光公害への対策',
+  lines:[
+   {jp:'人気観光地では、訪れる旅行者の急増が深刻な問題を引き起こしています。',cn:'在热门景点,游客激增引发了严重问题。'},
+   {jp:'ゴミの散乱や騒音、交通渋滞など、地元住民の生活が脅かされているのです。',cn:'垃圾乱扔、噪音、交通堵塞等,当地居民的生活正受到威胁。'},
+   {jp:'こうした「観光公害」への対策として、入場制限や宿泊税の導入が進められています。',cn:'作为对这种“观光公害”的对策,入场限制和住宿税的引进正在推进。'},
+   {jp:'観光振興と住民の生活、その両立をいかに図るかが問われています。',cn:'如何兼顾观光振兴与居民生活,成为被追问的课题。'}
+  ],
+  vocab:[{w:'急増',k:'きゅうぞう',cn:'激增'},{w:'脅かす',k:'おびやかす',cn:'威胁'},{w:'両立',k:'りょうりつ',cn:'兼顾'},{w:'図る',k:'はかる',cn:'谋求'}]},
+
+ {cat:'アニメ',catcn:'动漫对话',level:'n2',title:'弁当をめぐる攻防',
+  lines:[
+   {jp:'おい、俺の弁当知らね?確かにここに置いたはずなんだけど。',cn:'喂,你知道我便当吗?我明明放这儿了啊。'},
+   {jp:'ああ、それならさっきお前が「いらない」って言うから、食べといたぞ。',cn:'啊,那个啊,刚才你说“不要了”,我就吃掉了。'},
+   {jp:'言ってねえよ!?なんでそうなるんだよ!',cn:'我没说过啊!?怎么会变成那样!'},
+   {jp:'まあまあ、細かいこと気にすんなって。',cn:'好啦好啦,别在意那些小事嘛。'},
+   {jp:'細かくねえ!俺の昼飯の話だぞ!',cn:'才不是小事!那可是我的午饭!'}
+  ],
+  vocab:[{w:'弁当',k:'べんとう',cn:'便当'},{w:'確かに',k:'たしかに',cn:'的确'},{w:'細かい',k:'こまかい',cn:'细小/琐碎'},{w:'昼飯',k:'ひるめし',cn:'午饭'}]},
+
+ {cat:'アニメ',catcn:'动漫对话',level:'n1',title:'師匠と弟子',
+  lines:[
+   {jp:'お前の剣には、まだ迷いがある。それでは何も斬れはしない。',cn:'你的剑里还有迷惘。那样什么都斩不断。'},
+   {jp:'迷い……ですか。自分では、無心のつもりでした。',cn:'迷惘……吗。我自以为已是无心了。'},
+   {jp:'無心を装うことと、真に無心であることは、天と地ほど違う。',cn:'假装无心,与真正的无心,有天壤之别。'},
+   {jp:'まだまだ修行が足りん。だが、焦ることはない。',cn:'修行还远远不够。不过,不必焦急。'}
+  ],
+  vocab:[{w:'迷い',k:'まよい',cn:'迷惘'},{w:'斬る',k:'きる',cn:'斩'},{w:'装う',k:'よそおう',cn:'假装'},{w:'修行',k:'しゅぎょう',cn:'修行'}]},
+
+ {cat:'ドラマ',catcn:'日剧片段',level:'n2',title:'家族の食卓',
+  lines:[
+   {jp:'ねえ、あなた。最近、あの子とちゃんと話してる?',cn:'我说,孩子他爸。最近你有好好跟那孩子聊吗?'},
+   {jp:'話すも何も、帰ってくりゃ部屋に閉じこもってばっかりだろう。',cn:'聊什么啊,一回来就老把自己关在房间里。'},
+   {jp:'だからこそよ。親から歩み寄らなきゃ、いつまでたっても。',cn:'正因如此啊。做父母的不主动靠近,那就永远……'},
+   {jp:'……分かったよ。今度の休み、あいつを釣りにでも誘ってみる。',cn:'……知道了。下次休息,我试着约他去钓鱼吧。'}
+  ],
+  vocab:[{w:'閉じこもる',k:'とじこもる',cn:'闭门不出'},{w:'歩み寄る',k:'あゆみよる',cn:'靠近/让步'},{w:'誘う',k:'さそう',cn:'邀请'},{w:'今度',k:'こんど',cn:'下次'}]},
+
+ {cat:'ドラマ',catcn:'日剧片段',level:'n1',title:'医療現場の決断',
+  lines:[
+   {jp:'先生、助かる見込みは、正直なところ、どのくらいなんでしょうか。',cn:'医生,说实话,得救的希望大概有多少?'},
+   {jp:'……楽観はできません。ですが、ゼロではない。可能性に賭ける価値はあります。',cn:'……不能乐观。但也不是零。有赌一把的价值。'},
+   {jp:'手術のリスクを承知の上で、それでも、私は前に進みたいんです。',cn:'在知晓手术风险的前提下,即便如此,我也想往前走。'},
+   {jp:'分かりました。その覚悟、無駄にはしません。全力を尽くします。',cn:'明白了。您的觉悟,我绝不辜负。我会竭尽全力。'}
+  ],
+  vocab:[{w:'見込み',k:'みこみ',cn:'希望/预估'},{w:'賭ける',k:'かける',cn:'押注'},{w:'承知',k:'しょうち',cn:'知晓/同意'},{w:'尽くす',k:'つくす',cn:'竭尽'}]}
+];
+
+/* ---- 单词 (N2–N1) ---- */
+DATA.words=[
+ {w:'相変わらず',k:'あいかわらず',a:'0',pos:'副',cn:'一如既往,照旧',ej:'彼は相変わらず忙しそうだ。',ec:'他还是老样子,一副很忙的样子。',lv:'n2'},
+ {w:'曖昧',k:'あいまい',a:'0',pos:'形動',cn:'暧昧,含糊',ej:'曖昧な返事では困ります。',ec:'含糊的答复让人为难。',lv:'n2'},
+ {w:'相次ぐ',k:'あいつぐ',a:'0',pos:'自五',cn:'相继,接连',ej:'事故が相次いで発生した。',ec:'事故接连发生。',lv:'n1'},
+ {w:'扱う',k:'あつかう',a:'0',pos:'他五',cn:'处理,对待,经营',ej:'この店は高級品を扱っている。',ec:'这家店经营高档商品。',lv:'n2'},
+ {w:'案の定',k:'あんのじょう',a:'3',pos:'副',cn:'果然,不出所料',ej:'案の定、彼は遅刻した。',ec:'果然,他迟到了。',lv:'n1'},
+ {w:'著しい',k:'いちじるしい',a:'5',pos:'形',cn:'显著的',ej:'技術が著しく進歩した。',ec:'技术有了显著进步。',lv:'n1'},
+ {w:'促す',k:'うながす',a:'0',pos:'他五',cn:'促使,催促',ej:'反省を促す。',ec:'促其反省。',lv:'n1'},
+ {w:'円滑',k:'えんかつ',a:'0',pos:'形動',cn:'圆满,顺利',ej:'交渉が円滑に進んだ。',ec:'谈判顺利地进行了。',lv:'n1'},
+ {w:'応じる',k:'おうじる',a:'0',pos:'自上一',cn:'响应,根据',ej:'要求に応じる。',ec:'回应要求。',lv:'n2'},
+ {w:'陥る',k:'おちいる',a:'0',pos:'自五',cn:'陷入',ej:'危機に陥る。',ec:'陷入危机。',lv:'n1'},
+ {w:'顧みる',k:'かえりみる',a:'4',pos:'他上一',cn:'回顾,顾及',ej:'家庭を顧みない。',ec:'不顾家庭。',lv:'n1'},
+ {w:'画期的',k:'かっきてき',a:'0',pos:'形動',cn:'划时代的',ej:'画期的な発明だ。',ec:'划时代的发明。',lv:'n2'},
+ {w:'兼ねる',k:'かねる',a:'2',pos:'他下一',cn:'兼,难以',ej:'賛成しかねる。',ec:'难以赞成。',lv:'n1'},
+ {w:'几帳面',k:'きちょうめん',a:'0',pos:'形動',cn:'一丝不苟',ej:'几帳面な性格だ。',ec:'一丝不苟的性格。',lv:'n1'},
+ {w:'極端',k:'きょくたん',a:'3',pos:'形動',cn:'极端',ej:'極端な例を挙げる。',ec:'举极端的例子。',lv:'n2'},
+ {w:'食い違う',k:'くいちがう',a:'3',pos:'自五',cn:'分歧,不一致',ej:'意見が食い違う。',ec:'意见有分歧。',lv:'n1'},
+ {w:'心当たり',k:'こころあたり',a:'4',pos:'名',cn:'线索,头绪',ej:'心当たりはありますか。',ec:'有头绪吗?',lv:'n1'},
+ {w:'強いて',k:'しいて',a:'1',pos:'副',cn:'强行,勉强',ej:'強いて言えば賛成だ。',ec:'硬要说的话是赞成。',lv:'n1'},
+ {w:'覆す',k:'くつがえす',a:'3',pos:'他五',cn:'推翻',ej:'定説を覆す。',ec:'推翻定论。',lv:'n1'},
+ {w:'携わる',k:'たずさわる',a:'4',pos:'自五',cn:'从事,参与',ej:'教育に携わる。',ec:'从事教育工作。',lv:'n1'},
+ {w:'妥当',k:'だとう',a:'0',pos:'形動',cn:'妥当,恰当',ej:'妥当な判断だ。',ec:'恰当的判断。',lv:'n2'},
+ {w:'培う',k:'つちかう',a:'0',pos:'他五',cn:'培养',ej:'実力を培う。',ec:'培养实力。',lv:'n1'},
+ {w:'滞る',k:'とどこおる',a:'0',pos:'自五',cn:'停滞,拖欠',ej:'支払いが滞る。',ec:'拖欠付款。',lv:'n1'},
+ {w:'和らげる',k:'やわらげる',a:'4',pos:'他下一',cn:'缓和',ej:'痛みを和らげる。',ec:'缓解疼痛。',lv:'n2'},
+ {w:'一概に',k:'いちがいに',a:'0',pos:'副',cn:'一概,笼统地',ej:'一概に悪いとは言えない。',ec:'不能一概而论说是坏的。',lv:'n1'},
+ {w:'露骨',k:'ろこつ',a:'0',pos:'形動',cn:'露骨,毫不掩饰',ej:'露骨な表現を避ける。',ec:'避免露骨的表达。',lv:'n1'},
+ {w:'手がかり',k:'てがかり',a:'2',pos:'名',cn:'线索',ej:'事件の手がかりをつかむ。',ec:'抓住案件的线索。',lv:'n2'},
+ {w:'を踏まえ',k:'をふまえ',a:'',pos:'連語',cn:'基于,根据',ej:'現状を踏まえて考える。',ec:'基于现状来思考。',lv:'n1'},
+ {w:'辛うじて',k:'かろうじて',a:'2',pos:'副',cn:'勉强,好不容易',ej:'辛うじて間に合った。',ec:'勉强赶上了。',lv:'n1'},
+ {w:'紛らわしい',k:'まぎらわしい',a:'5',pos:'形',cn:'容易混淆的',ej:'紛らわしい名前だ。',ec:'容易混淆的名字。',lv:'n1'},
+ {w:'怠る',k:'おこたる',a:'3',pos:'他五',cn:'懈怠,疏忽',ej:'注意を怠る。',ec:'疏于注意。',lv:'n1'},
+ {w:'損なう',k:'そこなう',a:'3',pos:'他五',cn:'损害',ej:'健康を損なう。',ec:'损害健康。',lv:'n1'},
+ {w:'阻む',k:'はばむ',a:'2',pos:'他五',cn:'阻挡',ej:'行く手を阻む。',ec:'阻挡去路。',lv:'n1'},
+ {w:'慕う',k:'したう',a:'2',pos:'他五',cn:'爱慕,敬仰',ej:'恩師を慕う。',ec:'敬仰恩师。',lv:'n1'},
+ {w:'遮る',k:'さえぎる',a:'3',pos:'他五',cn:'遮挡,打断',ej:'話を遮る。',ec:'打断话头。',lv:'n1'},
+ {w:'滑らか',k:'なめらか',a:'2',pos:'形動',cn:'光滑,流畅',ej:'滑らかな口調で話す。',ec:'以流畅的语气说话。',lv:'n2'},
+ {w:'円満',k:'えんまん',a:'0',pos:'形動',cn:'圆满,和睦',ej:'円満に解決する。',ec:'圆满解决。',lv:'n2'},
+ {w:'顕著',k:'けんちょ',a:'1',pos:'形動',cn:'显著',ej:'効果が顕著に表れる。',ec:'效果显著显现。',lv:'n1'},
+ {w:'速やか',k:'すみやか',a:'2',pos:'形動',cn:'迅速',ej:'速やかに対応する。',ec:'迅速应对。',lv:'n1'},
+ {w:'漠然',k:'ばくぜん',a:'0',pos:'形動',cn:'含糊,模糊',ej:'漠然とした不安を抱く。',ec:'怀有隐约的不安。',lv:'n1'},
+ {w:'克服',k:'こくふく',a:'0',pos:'名他サ',cn:'克服',ej:'困難を克服する。',ec:'克服困难。',lv:'n2'},
+ {w:'把握',k:'はあく',a:'0',pos:'名他サ',cn:'把握,掌握',ej:'状況を把握する。',ec:'掌握状况。',lv:'n2'},
+ {w:'是正',k:'ぜせい',a:'0',pos:'名他サ',cn:'纠正',ej:'格差を是正する。',ec:'纠正差距。',lv:'n1'},
+ {w:'浸透',k:'しんとう',a:'0',pos:'名自サ',cn:'渗透,普及',ej:'新しい考えが社会に浸透する。',ec:'新观念渗透到社会。',lv:'n1'},
+ {w:'矛盾',k:'むじゅん',a:'0',pos:'名自サ',cn:'矛盾',ej:'話が矛盾している。',ec:'话自相矛盾。',lv:'n2'},
+ {w:'もはや',k:'もはや',a:'1',pos:'副',cn:'已经(不再)',ej:'もはや手遅れだ。',ec:'已经为时已晚。',lv:'n1'},
+ {w:'とっさに',k:'とっさに',a:'0',pos:'副',cn:'瞬间,当即',ej:'とっさに身をかわした。',ec:'瞬间闪身躲开了。',lv:'n1'},
+ {w:'ひたすら',k:'ひたすら',a:'0',pos:'副',cn:'一味地,只顾',ej:'ひたすら謝るばかりだ。',ec:'只是一个劲地道歉。',lv:'n1'},
+ {w:'あえて',k:'あえて',a:'1',pos:'副',cn:'敢于,特意',ej:'あえて苦言を呈する。',ec:'特意进忠言。',lv:'n1'},
+ {w:'てっきり',k:'てっきり',a:'3',pos:'副',cn:'(满以为)一定',ej:'てっきり休みだと思っていた。',ec:'还满以为一定放假呢。',lv:'n1'}
+];
+
+/* ---- 语法 (N2–N1) ---- */
+DATA.grammar=[
+ {pt:'〜を禁じ得ない',con:'名詞＋を〜',cn:'不禁…(抑制不住某种感情)',ej:'彼の努力には感動を禁じ得ない。',ec:'对他的努力,我不禁感动。',lv:'n1'},
+ {pt:'〜ずにはいられない',con:'動ない形(去ない)＋ずに〜',cn:'不由得,忍不住…',ej:'真相を知って、驚かずにはいられなかった。',ec:'得知真相,不禁大吃一惊。',lv:'n2'},
+ {pt:'〜に即して',con:'名詞＋に即して',cn:'依据,按照(事实/规则)',ej:'実情に即して対応する。',ec:'根据实情来应对。',lv:'n1'},
+ {pt:'〜を余儀なくされる',con:'名詞＋を余儀なくされる',cn:'被迫,不得已…',ej:'台風で中止を余儀なくされた。',ec:'因台风而被迫取消。',lv:'n1'},
+ {pt:'〜といえども',con:'名/普通形＋といえども',cn:'即便…也',ej:'専門家といえども間違えることはある。',ec:'即便是专家也会出错。',lv:'n1'},
+ {pt:'〜きらいがある',con:'動辞書形/名の＋きらいがある',cn:'有…的(不好)倾向',ej:'彼は物事を悲観的に考えるきらいがある。',ec:'他有把事情往坏处想的倾向。',lv:'n1'},
+ {pt:'〜ならでは',con:'名詞＋ならでは(の)',cn:'只有…才有的',ej:'ここならではの味が楽しめる。',ec:'能品尝到只有这里才有的味道。',lv:'n2'},
+ {pt:'〜をもって',con:'名詞＋をもって',cn:'以…;于(某时间)为止',ej:'本日をもって閉店いたします。',ec:'本店于今日起结束营业。',lv:'n1'},
+ {pt:'〜べく',con:'動辞書形＋べく(する→すべく)',cn:'为了…(书面)',ej:'真相を究明すべく調査を始めた。',ec:'为查明真相,开始了调查。',lv:'n1'},
+ {pt:'〜始末だ',con:'動辞書形＋始末だ',cn:'落得…地步(负面结果)',ej:'借金を重ね、ついに夜逃げする始末だ。',ec:'债务累累,最后落得连夜逃走的地步。',lv:'n1'},
+ {pt:'〜とあって',con:'名/普通形＋とあって',cn:'由于(特殊情况)…',ej:'連休とあって、どこも混んでいる。',ec:'由于是连休,到处都很拥挤。',lv:'n2'},
+ {pt:'〜ところを',con:'動/形＋ところを',cn:'正当…之时(多用于寒暄)',ej:'お忙しいところをありがとうございます。',ec:'百忙之中,非常感谢。',lv:'n2'},
+ {pt:'〜ないまでも',con:'名/動ない形＋までも',cn:'即使不…至少也',ej:'毎日とは言わないまでも、週に一度は運動したい。',ec:'即使不是每天,至少想每周运动一次。',lv:'n1'},
+ {pt:'〜がごとく／ごとき',con:'名の/動＋(が)ごとく',cn:'如同…(书面)',ej:'彼は飛ぶがごとく走り去った。',ec:'他如飞一般跑开了。',lv:'n1'},
+ {pt:'〜に難くない',con:'名/動辞書形＋に難くない',cn:'不难…(想象等)',ej:'その苦労は想像に難くない。',ec:'那份辛劳不难想象。',lv:'n1'},
+ {pt:'〜であれ〜であれ',con:'名＋であれ、名＋であれ',cn:'无论…还是…都',ej:'晴れであれ雨であれ、大会は決行する。',ec:'无论晴雨,大会都照常举行。',lv:'n1'},
+ {pt:'〜もさることながら',con:'名＋もさることながら',cn:'…自不必说,而且',ej:'味もさることながら、見た目も美しい。',ec:'味道自不必说,外观也很美。',lv:'n1'},
+ {pt:'〜ずくめ',con:'名＋ずくめ',cn:'净是…,清一色',ej:'今年はいいことずくめの一年だった。',ec:'今年是净是好事的一年。',lv:'n1'},
+ {pt:'〜にひきかえ',con:'名/動形の＋にひきかえ',cn:'与…相反/相比',ej:'兄にひきかえ、弟はおとなしい。',ec:'与哥哥相反,弟弟很老实。',lv:'n1'},
+ {pt:'〜まみれ',con:'名＋まみれ',cn:'沾满…,满是',ej:'転んで泥まみれになった。',ec:'摔倒弄得满身是泥。',lv:'n2'}
+];
+
+/* ---- 阅读 ---- */
+DATA.reading=[
+ {title:'「便利さ」の代償',level:'n1',
+  paras:[
+   {jp:'私たちの生活は、かつてないほど便利になった。スマートフォン一つあれば、買い物も支払いも、遠く離れた人との会話さえ、指先一つで済んでしまう。',cn:'我们的生活变得前所未有地便利。只要一部智能手机,购物、支付,甚至与远方的人交谈,动动指尖就能搞定。'},
+   {jp:'しかし、その便利さは決してただで手に入るものではない。私たちは知らず知らずのうちに、自らの行動の記録を差し出しているのだ。',cn:'然而,这份便利绝非免费得来。我们在不知不觉中,交出了自己行动的记录。'},
+   {jp:'何を買い、どこへ行き、誰と連絡を取ったか——そうした情報が蓄積され、時に本人の意思とは無関係に利用される。利便性と引き換えに、私たちは何を失っているのか。一度立ち止まって考える必要があるだろう。',cn:'买了什么、去了哪里、与谁联系——这些信息被不断积累,有时会在与本人意愿无关的情况下被利用。以便利为代价,我们失去了什么?或许有必要停下来想一想。'}
+  ],
+  vocab:[{w:'代償',k:'だいしょう',cn:'代价'},{w:'知らず知らず',k:'しらずしらず',cn:'不知不觉'},{w:'蓄積',k:'ちくせき',cn:'积累'},{w:'引き換えに',k:'ひきかえに',cn:'作为交换'}],
+  qs:[
+   {q:'筆者が言う「便利さの代償」とは何か。',opts:['お金を多く払うこと','自分の行動記録を差し出すこと','時間がかかること','機械が苦手になること'],ans:1,exp:'第二段「自らの行動の記録を差し出している」が代償の中身。'},
+   {q:'筆者の主張に最も近いものはどれか。',opts:['便利な生活はやめるべきだ','情報は決して利用されない','便利さの代償を一度考えるべきだ','スマホは買うべきでない'],ans:2,exp:'最終文「一度立ち止まって考える必要がある」が筆者の主張。'}
+  ]},
+
+ {title:'「わかる」ということ',level:'n1',
+  paras:[
+   {jp:'何かを「わかった」と感じる瞬間ほど、危ういものはない。わかったと思った途端、人は考えることをやめてしまうからだ。',cn:'没有什么比感到自己“懂了”的那一刻更危险了。因为人一旦以为懂了,就会停止思考。'},
+   {jp:'真に理解の深い人ほど、むしろ「まだわからない」と口にする。問いが増えていくことこそ、理解が進んでいる証なのである。',cn:'越是真正理解深刻的人,反而越会说“还不明白”。问题不断增多,恰恰是理解在深入的证据。'},
+   {jp:'わからなさを抱え続ける力。それは知識の量よりも、はるかに貴重な能力なのかもしれない。',cn:'持续承受“不明白”的能力——它或许比知识的多寡更为珍贵。'}
+  ],
+  vocab:[{w:'危うい',k:'あやうい',cn:'危险的'},{w:'途端',k:'とたん',cn:'…的瞬间'},{w:'証',k:'あかし',cn:'证据/证明'},{w:'抱える',k:'かかえる',cn:'怀抱/承担'}],
+  qs:[
+   {q:'筆者は「わかった」と感じることをどう捉えているか。',opts:['最も望ましい状態だ','考えを止めてしまう危うさがある','知識が増えた証拠だ','他人に自慢できる'],ans:1,exp:'第一段「考えることをやめてしまう」が理由。'},
+   {q:'筆者が最も貴重だとする能力は何か。',opts:['多くの知識を持つこと','わからなさを抱え続ける力','早く答えを出す力','他人に教える力'],ans:1,exp:'最終段で明確に述べられている。'}
+  ]},
+
+ {title:'忙しさの正体',level:'n2',
+  paras:[
+   {jp:'「忙しい、忙しい」と口にする人ほど、実は時間の使い方が下手なのかもしれない。',cn:'越是把“忙、忙”挂在嘴边的人,或许其实越不会利用时间。'},
+   {jp:'本当に大切なことは何か。それを見極めずにただ動き回っても、疲れだけが残る。',cn:'真正重要的是什么?不看清这一点而只是四处奔忙,只会留下疲惫。'},
+   {jp:'忙しさを自慢するのではなく、何をしないかを決める勇気こそ、今の私たちに必要なのだ。',cn:'需要的不是炫耀忙碌,而是决定“不做什么”的勇气,这才是如今的我们所需要的。'}
+  ],
+  vocab:[{w:'口にする',k:'くちにする',cn:'说出口'},{w:'見極める',k:'みきわめる',cn:'看清'},{w:'自慢',k:'じまん',cn:'炫耀'},{w:'勇気',k:'ゆうき',cn:'勇气'}],
+  qs:[
+   {q:'筆者によると、「忙しい」と言う人はどうかもしれないのか。',opts:['最も有能だ','時間の使い方が下手だ','周りに好かれる','仕事が多すぎる'],ans:1,exp:'第一文「時間の使い方が下手なのかもしれない」。'},
+   {q:'筆者が今の私たちに必要だとするものは何か。',opts:['もっと働くこと','忙しさを自慢すること','何をしないかを決める勇気','他人を助けること'],ans:2,exp:'最終文に明記されている。'}
+  ]},
+
+ {title:'言葉が思考を作る',level:'n1',
+  paras:[
+   {jp:'私たちは言葉で考える。だとすれば、持っている言葉の数が、そのまま思考の幅を決めることになる。',cn:'我们用语言思考。如此说来,拥有的词汇量,便直接决定了思维的广度。'},
+   {jp:'語彙が乏しければ、感じたことを大雑把にしか捉えられない。',cn:'词汇一旦贫乏,就只能粗略地把握自己所感受到的东西。'},
+   {jp:'豊かな言葉を身につけることは、世界をより細やかに見る目を養うことにほかならない。',cn:'掌握丰富的语言,无异于培养一双更细腻地观察世界的眼睛。'}
+  ],
+  vocab:[{w:'語彙',k:'ごい',cn:'词汇'},{w:'乏しい',k:'とぼしい',cn:'贫乏'},{w:'大雑把',k:'おおざっぱ',cn:'粗略'},{w:'細やか',k:'こまやか',cn:'细腻'}],
+  qs:[
+   {q:'筆者は、思考の幅を決めるものは何だと述べているか。',opts:['生まれつきの才能','持っている言葉の数','経験の量','育った環境'],ans:1,exp:'第一段「言葉の数が、そのまま思考の幅を決める」。'},
+   {q:'「豊かな言葉を身につける」ことは、何と同じだと言っているか。',opts:['試験に合格すること','世界を細やかに見る目を養うこと','速く話せるようになること','外国語を学ぶこと'],ans:1,exp:'最終段「〜にほかならない」で言い換えている。'}
+  ]}
+];
+
+/* ---- 写作题 ---- */
+DATA.writing=[
+ {type:'作文',topic:'科学技術の進歩は、人間を本当に幸せにするだろうか。あなたの考えを400字程度で述べなさい。',
+  topiccn:'科技进步真的让人类更幸福了吗?请用约400字阐述你的看法。',
+  hints:['先亮明立场(肯定/否定/辩证)','用一个具体例子支撑','承认反面观点后再反驳(〜とはいえ/とはいうものの)','结尾回扣主张'],
+  mj:'科学技術の進歩が、私たちの生活を便利にしたことは否めない。しかし、それが即座に幸福を意味するとは限らない。例えばスマートフォンは人と人をつなぐ一方で、常に連絡に追われる息苦しさも生んだ。とはいえ、技術そのものに罪があるわけではない。要は、それをどう使いこなすかという私たちの姿勢次第なのである。',
+  mc:'科技进步让生活变得便利,这一点不可否认。但便利并不等于幸福。例如智能手机在连接人与人的同时,也带来了随时被联络追赶的压抑感。话虽如此,技术本身并无罪过,关键在于我们如何去驾驭它。'},
+
+ {type:'翻訳(中→日)',topic:'次の文を自然な日本語に訳しなさい:「无论做什么事,最重要的不是有没有才能,而是能否坚持到最后。」',
+  topiccn:'把这句中文译成自然的日语。',
+  hints:['「无论…」→「何を〜(する)にせよ/しても」','「最重要的是…」→「最も大切なのは〜だ」','「不是A而是B」→「AではなくB」','「坚持到最后」→「最後までやり抜く」'],
+  mj:'何をするにせよ、最も大切なのは才能の有無ではなく、最後までやり抜けるかどうかだ。',
+  mc:'(参考译法)无论做什么,最重要的不是有无才能,而是能否坚持到最后。'},
+
+ {type:'作文',topic:'「失敗から学んだこと」について、具体的な経験を挙げて300〜400字で書きなさい。',
+  topiccn:'以“从失败中学到的东西”为题,举具体经历写300~400字。',
+  hints:['开头简述失败的经历(过去形叙事)','描写当时的心情','转折:そこから学んだこと','结尾:今后如何活用(〜ようにしている)'],
+  mj:'かつて私は、準備を怠ったまま大事な発表に臨み、惨めな失敗をした。頭が真っ白になり、言葉が出てこなかった。あの悔しさは今も忘れられない。しかしその経験から、自信とは才能ではなく準備の量に支えられるものだと学んだ。以来、どんなに小さな場でも、必ず入念に備えるようにしている。',
+  mc:'我曾经毫无准备就上了重要的发表,结果惨败。脑子一片空白,说不出话。那份懊悔至今难忘。但从那次经历中我明白了,自信并非来自才能,而是由准备的量支撑的。从那以后,无论多小的场合,我都一定会精心准备。'},
+
+ {type:'作文',topic:'SNSは、人と人を近づけたのか、それとも遠ざけたのか。あなたの考えを400字程度で述べなさい。',
+  topiccn:'社交媒体究竟拉近了人与人,还是疏远了?请用约400字阐述你的看法。',
+  hints:['先明确立场,别骑墙','举一个身边的具体现象(点赞/已读不回/炫耀)','用「一方で」展开另一面','结尾落到“如何使用”而非“工具好坏”'],
+  mj:'SNSは、遠く離れた人とも一瞬でつながれる点で、確かに距離を縮めた。しかし一方で、画面越しのやり取りに慣れるほど、面と向かって心を通わせる機会はむしろ減っているように思う。問題は道具そのものではなく、それに頼りすぎる私たちの姿勢にある。つながる手段が増えた今こそ、誰と、どう向き合うかを選ぶ力が問われているのではないだろうか。',
+  mc:'社交媒体在能与远方的人瞬间相连这一点上,确实拉近了距离。但另一方面,越是习惯隔着屏幕的往来,面对面交心的机会反而似乎在减少。问题不在工具本身,而在我们过度依赖它的态度。正是在连接手段变多的今天,我们更被考验着“选择与谁、如何相处”的能力。'},
+
+ {type:'翻訳(中→日)',topic:'次の文を自然な日本語に訳しなさい:「比起结果,我更看重为之努力的过程。」',
+  topiccn:'把这句中文译成自然的日语。',
+  hints:['「比起A,更…B」→「AよりもB(のほう)を〜」','「看重」→「重んじる／大切にする」','「为之努力的过程」→「それに向けて努力する過程」','注意助词「を」的搭配'],
+  mj:'結果よりも、それに向けて努力する過程のほうを、私は重んじている。',
+  mc:'(参考译法)比起结果,我更看重为此而努力的过程。'},
+
+ {type:'作文',topic:'あなたにとって「本当の豊かさ」とは何か。具体例を挙げて300〜400字で述べなさい。',
+  topiccn:'对你而言“真正的富足”是什么?举具体例子写300~400字。',
+  hints:['开头给出你的定义(金钱?时间?关系?)','用一个具体场景说明','对比“物质的富足”与“心灵的富足”','结尾回扣你的定义'],
+  mj:'私にとっての本当の豊かさとは、お金の多さではなく、心に余裕があることだ。どれほど収入が増えても、常に時間に追われ、大切な人と過ごす余裕すらなければ、それは豊かとは言えまい。休日に家族と何気ない会話を交わす——そんな当たり前の時間こそが、私にとっては何よりの財産なのである。',
+  mc:'对我而言,真正的富足并非金钱之多,而是内心有余裕。无论收入增加多少,若总是被时间追赶,连与重要的人相处的余裕都没有,那便称不上富足。假日里与家人闲话家常——这样再平常不过的时光,对我来说才是最宝贵的财富。'}
+];
+
+/* ---- 口语场景 ---- */
+DATA.speaking=[
+ {scene:'ビジネス電話をかける',scenecn:'打商务电话',
+  dlg:[
+   {role:'自分',jp:'お世話になっております。山田商事の佐藤と申します。',cn:'承蒙关照。我是山田商事的佐藤。'},
+   {role:'相手',jp:'いつもお世話になっております。どういったご用件でしょうか。',cn:'一直承蒙关照。请问有什么事?'},
+   {role:'自分',jp:'先日お送りした見積もりの件で、ご確認いただけましたでしょうか。',cn:'关于前几天发的报价,不知您确认过了吗?'},
+   {role:'相手',jp:'はい、拝見しました。一点だけ伺いたいことがございまして。',cn:'是的,我看过了。只有一点想请教。'}
+  ],
+  patterns:['お世話になっております','〜と申します','〜の件で','〜いただけましたでしょうか']},
+
+ {scene:'レストランを予約する',scenecn:'预订餐厅',
+  dlg:[
+   {role:'自分',jp:'恐れ入りますが、今週の金曜の夜、二名で予約をお願いしたいのですが。',cn:'不好意思,我想预订这周五晚上两位。'},
+   {role:'店員',jp:'かしこまりました。お時間は何時ごろがよろしいでしょうか。',cn:'好的。时间大概几点方便呢?'},
+   {role:'自分',jp:'七時でお願いします。できれば窓際の席だと助かります。',cn:'麻烦七点。可以的话,靠窗的座位就太好了。'},
+   {role:'店員',jp:'承知いたしました。では、七時に二名様でご用意いたします。',cn:'明白了。那么为您安排七点两位。'}
+  ],
+  patterns:['恐れ入りますが','〜をお願いしたいのですが','できれば〜と助かります','〜でよろしいでしょうか']},
+
+ {scene:'面接で自己紹介する',scenecn:'面试中自我介绍',
+  dlg:[
+   {role:'面接官',jp:'それでは、簡単に自己紹介をお願いします。',cn:'那么,请简单自我介绍一下。'},
+   {role:'自分',jp:'本日は貴重なお時間をいただき、ありがとうございます。李と申します。',cn:'感谢今天给我宝贵的时间。我姓李。'},
+   {role:'自分',jp:'前職では三年間、海外営業に携わってまいりました。',cn:'前一份工作中,我从事了三年海外营销。'},
+   {role:'自分',jp:'この経験を御社でも活かせるものと確信しております。',cn:'我确信这份经验在贵公司也能发挥作用。'}
+  ],
+  patterns:['〜に携わってまいりました','〜と確信しております','貴重なお時間をいただき','活かせるものと']},
+
+ {scene:'道を尋ねる',scenecn:'向路人问路',
+  dlg:[
+   {role:'自分',jp:'すみません、ちょっとお尋ねしたいのですが。',cn:'不好意思,我想打听一下。'},
+   {role:'相手',jp:'はい、どちらをお探しですか。',cn:'好的,您找哪里?'},
+   {role:'自分',jp:'この近くに郵便局はありますか。歩いて行ける距離だといいんですが。',cn:'这附近有邮局吗?最好是走得到的距离。'},
+   {role:'相手',jp:'ええ、この道をまっすぐ行って、二つ目の角を右に曲がればすぐですよ。',cn:'有的,顺着这条路直走,在第二个路口右拐马上就到。'}
+  ],
+  patterns:['ちょっとお尋ねしたいのですが','〜はありますか','まっすぐ行って','〜を右に曲がれば']},
+
+ {scene:'ホテルでクレームを伝える',scenecn:'向酒店委婉投诉',
+  dlg:[
+   {role:'自分',jp:'恐れ入りますが、隣の部屋の物音が気になって、よく眠れないのですが。',cn:'不好意思,隔壁房间的声响让我在意,睡不太好。'},
+   {role:'店員',jp:'大変申し訳ございません。すぐに確認いたします。',cn:'非常抱歉。我马上去确认。'},
+   {role:'自分',jp:'できれば、静かな階のお部屋に替えていただけると助かるのですが。',cn:'可以的话,能帮我换到安静楼层的房间就太好了。'},
+   {role:'店員',jp:'かしこまりました。空室を確認の上、折り返しご連絡いたします。',cn:'好的。确认空房后,我会回头与您联系。'}
+  ],
+  patterns:['恐れ入りますが','〜が気になって','替えていただけると助かる','確認の上、折り返しご連絡']},
+
+ {scene:'会議で意見を述べる',scenecn:'会议中发表意见',
+  dlg:[
+   {role:'司会',jp:'では、この案について、何かご意見はありますか。',cn:'那么,关于这个方案,大家有什么意见吗?'},
+   {role:'自分',jp:'よろしいでしょうか。私としては、基本的に賛成です。',cn:'我可以说吗?我个人基本上是赞成的。'},
+   {role:'自分',jp:'ただ、一点だけ懸念がございます。コストの見積もりが甘いのではないかと。',cn:'只是,有一点担忧。我觉得成本估算或许过于乐观。'},
+   {role:'司会',jp:'なるほど、貴重なご指摘ありがとうございます。検討させてください。',cn:'原来如此,感谢您宝贵的指正。请容我们研究一下。'}
+  ],
+  patterns:['よろしいでしょうか','私としては〜','一点だけ懸念がございます','〜のではないかと']}
+];
+
+/* ---- 汉字特训 ---- */
+DATA.kanji=[
+ {k:'占',on:'セン',kun:'し-める・うらな-う',cn:'占据;占卜',words:[{w:'占領',r:'せんりょう'},{w:'占い',r:'うらない'}]},
+ {k:'幅',on:'フク',kun:'はば',cn:'宽度',words:[{w:'大幅',r:'おおはば'},{w:'幅広い',r:'はばひろい'}]},
+ {k:'需',on:'ジュ',kun:'—',cn:'需要',words:[{w:'需要',r:'じゅよう'},{w:'必需品',r:'ひつじゅひん'}]},
+ {k:'促',on:'ソク',kun:'うなが-す',cn:'催促',words:[{w:'促進',r:'そくしん'},{w:'催促',r:'さいそく'}]},
+ {k:'慎',on:'シン',kun:'つつし-む',cn:'谨慎',words:[{w:'慎重',r:'しんちょう'},{w:'慎む',r:'つつしむ'}]},
+ {k:'稼',on:'カ',kun:'かせ-ぐ',cn:'挣(钱)',words:[{w:'稼働',r:'かどう'},{w:'稼ぐ',r:'かせぐ'}]},
+ {k:'滞',on:'タイ',kun:'とどこお-る',cn:'停滞',words:[{w:'滞在',r:'たいざい'},{w:'渋滞',r:'じゅうたい'}]},
+ {k:'貫',on:'カン',kun:'つらぬ-く',cn:'贯穿',words:[{w:'貫通',r:'かんつう'},{w:'貫く',r:'つらぬく'}]},
+ {k:'隔',on:'カク',kun:'へだ-てる',cn:'相隔',words:[{w:'間隔',r:'かんかく'},{w:'隔離',r:'かくり'}]},
+ {k:'伴',on:'ハン・バン',kun:'ともな-う',cn:'伴随',words:[{w:'同伴',r:'どうはん'},{w:'伴う',r:'ともなう'}]},
+ {k:'妨',on:'ボウ',kun:'さまた-げる',cn:'妨碍',words:[{w:'妨害',r:'ぼうがい'},{w:'妨げる',r:'さまたげる'}]},
+ {k:'慮',on:'リョ',kun:'—',cn:'思虑',words:[{w:'考慮',r:'こうりょ'},{w:'遠慮',r:'えんりょ'}]},
+ {k:'遂',on:'スイ',kun:'と-げる',cn:'完成;终于',words:[{w:'遂行',r:'すいこう'},{w:'遂げる',r:'とげる'}]},
+ {k:'憂',on:'ユウ',kun:'うれ-える・う-い',cn:'忧愁',words:[{w:'憂鬱',r:'ゆううつ'},{w:'憂慮',r:'ゆうりょ'}]},
+ {k:'惜',on:'セキ',kun:'お-しい・お-しむ',cn:'可惜',words:[{w:'惜別',r:'せきべつ'},{w:'惜しい',r:'おしい'}]},
+ {k:'魅',on:'ミ',kun:'—',cn:'魅力,迷住',words:[{w:'魅力',r:'みりょく'},{w:'魅了',r:'みりょう'}]},
+ {k:'却',on:'キャク',kun:'—',cn:'退;反而',words:[{w:'却下',r:'きゃっか'},{w:'返却',r:'へんきゃく'}]},
+ {k:'粋',on:'スイ',kun:'いき',cn:'精粹;潇洒',words:[{w:'純粋',r:'じゅんすい'},{w:'粋',r:'いき'}]},
+ {k:'掲',on:'ケイ',kun:'かか-げる',cn:'揭示;刊登',words:[{w:'掲載',r:'けいさい'},{w:'掲げる',r:'かかげる'}]},
+ {k:'枠',on:'—',kun:'わく',cn:'框;范围',words:[{w:'枠組み',r:'わくぐみ'},{w:'別枠',r:'べつわく'}]},
+ {k:'繕',on:'ゼン',kun:'つくろ-う',cn:'修补;掩饰',words:[{w:'修繕',r:'しゅうぜん'},{w:'繕う',r:'つくろう'}]},
+ {k:'唆',on:'サ',kun:'そそのか-す',cn:'唆使;暗示',words:[{w:'示唆',r:'しさ'},{w:'唆す',r:'そそのかす'}]},
+ {k:'阻',on:'ソ',kun:'はば-む',cn:'阻挡',words:[{w:'阻止',r:'そし'},{w:'阻む',r:'はばむ'}]},
+ {k:'慰',on:'イ',kun:'なぐさ-める',cn:'安慰',words:[{w:'慰安',r:'いあん'},{w:'慰める',r:'なぐさめる'}]},
+ {k:'嘆',on:'タン',kun:'なげ-く',cn:'感叹;叹息',words:[{w:'感嘆',r:'かんたん'},{w:'嘆く',r:'なげく'}]},
+ {k:'遭',on:'ソウ',kun:'あ-う',cn:'遭遇',words:[{w:'遭遇',r:'そうぐう'},{w:'遭う',r:'あう'}]},
+ {k:'粘',on:'ネン',kun:'ねば-る',cn:'黏;坚持',words:[{w:'粘着',r:'ねんちゃく'},{w:'粘る',r:'ねばる'}]},
+ {k:'滅',on:'メツ',kun:'ほろ-びる',cn:'灭亡',words:[{w:'滅亡',r:'めつぼう'},{w:'滅びる',r:'ほろびる'}]},
+ {k:'潔',on:'ケツ',kun:'いさぎよ-い',cn:'清白;干脆',words:[{w:'清潔',r:'せいけつ'},{w:'潔い',r:'いさぎよい'}]},
+ {k:'赴',on:'フ',kun:'おもむ-く',cn:'前往',words:[{w:'赴任',r:'ふにん'},{w:'赴く',r:'おもむく'}]}
+];
+
+/* ---- 文化小知识 ---- */
+DATA.culture=[
+ {e:'👹',t:'節分と豆まき',term:'節分(せつぶん)',body:'立春前日,人们一边喊「鬼は外、福は内」(鬼出去,福进来)一边撒炒黄豆,把灾厄赶出家门。还会按年龄吃等量的豆子祈求健康,近年也流行朝向当年「恵方」默默吃一整根「恵方巻」寿司卷。'},
+ {e:'🏮',t:'お盆と先祖供养',term:'お盆(ぼん)',body:'多在8月中旬,是迎接祖先灵魂回家的节日。人们扫墓、点「迎え火」接灵,结束时以「送り火」送灵,各地还会跳「盆踊り」。京都的「五山送り火」尤为著名。'},
+ {e:'⛩️',t:'聖地巡礼',term:'聖地巡礼(せいちじゅんれい)',body:'指动漫/影视迷造访作品取景地的文化,如《你的名字。》的飞驒、《幸运星》的鹫宫神社。许多地方因此带动了地方观光振兴(「地域おこし」)。'},
+ {e:'🌸',t:'花見のマナー',term:'花見(はなみ)',body:'赏樱不只看花,更是席地野餐聚会。为占好位置常一早去「場所取り」。赏完要把垃圾全部带走,这种「立つ鳥跡を濁さず」(鸟飞不留污)的意识是基本礼仪。'},
+ {e:'🎏',t:'端午の節句と鯉のぼり',term:'鯉のぼり(こいのぼり)',body:'5月5日男孩节,家家挂起鲤鱼旗。源自「鯉の滝登り」(鲤鱼跃龙门)的传说,寄托孩子出人头地、健康成长的愿望。也会摆武士人偶、吃柏饼。'},
+ {e:'🎋',t:'七夕と短冊',term:'七夕(たなばた)',body:'7月7日,人们把愿望写在五色「短冊」上挂到竹枝,祈愿实现。源自牛郎织女传说,仙台的七夕祭规模最盛大。'},
+ {e:'🍜',t:'土用の丑の日',term:'土用の丑の日(どようのうしのひ)',body:'盛夏的这一天有吃鳗鱼饭补身的习俗。相传由江户学者平贺源内为鳗鱼店想出的宣传语所流行开来,是营销造节的经典案例。'},
+ {e:'🧧',t:'お年玉',term:'お年玉(としだま)',body:'新年时长辈装在小红包「ポチ袋」里发给孩子的压岁钱。金额常按年龄递增,是孩子们最期待的年节活动之一。'},
+ {e:'🙇',t:'謙譲語の世界',term:'謙譲語(けんじょうご)',body:'敬语分尊敬语、谦让语、丁宁语三类。谦让语通过降低自己来抬高对方,如「見る→拝見する」「言う→申す」。用对敬语是日本社会的重要素养。'},
+ {e:'🏷️',t:'判子(はんこ)文化',term:'印鑑(いんかん)',body:'日本长期以盖章代替签名,重要文件需「実印」并配「印鑑証明」。近年政府推进「脱はんこ」数字化,但印章文化仍根深蒂固。'},
+ {e:'🐈',t:'招き猫',term:'招き猫(まねきねこ)',body:'举右手招财、举左手招客。相传发源于东京豪德寺。常见于店铺门口,是生意兴隆的吉祥物。'},
+ {e:'🎐',t:'風鈴の音',term:'風鈴(ふうりん)',body:'夏日挂在屋檐下的小铃铛,随风发出清脆声响。日本人通过这种「涼を感じる」的听觉体验,在心理上消暑,体现独特的季节美学。'},
+ {e:'🍵',t:'一期一会',term:'一期一会(いちごいちえ)',body:'源自茶道的理念:每一次相会都是一生仅此一次,应以全心相待。表达了珍惜当下、敬重缘分的精神。'},
+ {e:'🗻',t:'初夢と縁起',term:'初夢(はつゆめ)',body:'新年第一个梦,梦到「一富士二鷹三茄子」(富士山、鹰、茄子)被视为大吉。这些意象分别谐音/象征「平安」「高飞」「成就」。'},
+ {e:'🎎',t:'ひな祭り',term:'雛祭り(ひなまつり)',body:'3月3日女孩节,摆「雛人形」祈愿女孩健康幸福。有「早く片付けないと婚期が遅れる」的趣味说法。会喝白酒、吃菱饼和散寿司。'},
+ {e:'🎑',t:'お月見と団子',term:'月見(つきみ)',body:'农历八月十五赏「中秋の名月」,摆上「すすき」(芒草)和「月見団子」供月。日本传说月亮上有兔子在捣年糕(「餅つき」),与中国的玉兔捣药异曲同工。'},
+ {e:'♨️',t:'温泉のマナー',term:'温泉(おんせん)',body:'入浴前必须先在「洗い場」把身体冲洗干净才进汤池;毛巾不可泡进池水,通常顶在头上。多数温泉对纹身仍有限制。泡汤是日本人重要的「癒やし」(疗愈)文化。'},
+ {e:'🤝',t:'本音と建前',term:'本音と建前(ほんねとたてまえ)',body:'「本音」是真心话,「建前」是顾及场合的场面话。日本社会重视和谐,常以建前维持人际圆滑,读懂言外之意(「空気を読む」)是重要社交能力。'},
+ {e:'🍱',t:'駅弁の楽しみ',term:'駅弁(えきべん)',body:'在车站或列车上售卖的便当,各地用当地特产制作,如仙台的牛舌便当、横滨的烧卖便当。坐新干线吃駅弁,是日本旅行的一大乐趣。'},
+ {e:'🚃',t:'満員電車のマナー',term:'満員電車(まんいんでんしゃ)',body:'通勤高峰的电车极度拥挤。车内手机需设「マナーモード」(静音),一般不打电话;优先席附近常被要求关机,以免影响心脏起搏器。安静是基本礼貌。'},
+ {e:'🗾',t:'方言の多様性',term:'方言(ほうげん)',body:'日本各地方言差异很大,关西腔(「関西弁」)尤其鲜明,如「ありがとう→おおきに」。近年因动漫影视,方言也成为角色魅力的一部分。'},
+ {e:'🎏',t:'祭りと神輿',term:'神輿(みこし)',body:'祭典时众人齐声「わっしょい」抬着「神輿」(神轿)巡游,象征请神出游、祈求丰收与平安。浅草三社祭、京都祇园祭等都极为盛大热闹。'},
+ {e:'💮',t:'花火大会',term:'花火(はなび)',body:'夏季各地举办花火大会,人们穿「浴衣」赏烟花、逛「屋台」(小吃摊)。隅田川花火大会历史悠久,是江户时代慰灵与祈福传统的延续。'},
+ {e:'🧧',t:'年賀状の習慣',term:'年賀状(ねんがじょう)',body:'新年互寄贺年卡,邮局保证元旦当天统一送达。生肖图案是常见主题。近年因社交媒体普及,寄卡数量逐年减少,成为时代变迁的缩影。'}
+];
+
+/* ============================================================
+   渲染骨架
+   ============================================================ */
+const MODULES=[
+ {id:'listen', icon:'🎧', name:'听力训练'},
+ {id:'words',  icon:'📘', name:'单词语法'},
+ {id:'read',   icon:'📖', name:'阅读写作'},
+ {id:'speak',  icon:'🗣️', name:'口语练习'},
+ {id:'kanji',  icon:'🖌️', name:'汉字特训'},
+ {id:'game',   icon:'🎮', name:'闯关游戏'},
+ {id:'culture',icon:'🏯', name:'文化小知识'}
+];
+let current='listen';
+
+function buildTabs(){
+  const nav=document.getElementById('tabs');
+  nav.innerHTML='';
+  MODULES.forEach(m=>{
+    const b=document.createElement('button');
+    b.className='tab';b.dataset.id=m.id;
+    b.setAttribute('role','tab');
+    b.innerHTML=`<span class="i">${m.icon}</span>${m.name}<span class="dot"></span>`;
+    b.onclick=()=>switchTo(m.id);
+    nav.appendChild(b);
+  });
+}
+function switchTo(id){
+  current=id;stopSpeak();
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.id===id?'true':'false'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function syncTabDots(){
+  const d=doneState();
+  document.querySelectorAll('.tab').forEach(t=>t.dataset.done=d[t.dataset.id]?'1':'0');
+}
+function renderRing(){
+  const d=doneState();const n=MODULES.filter(m=>d[m.id]).length;
+  const C=2*Math.PI*22;
+  document.getElementById('ringFg').style.strokeDashoffset=C*(1-n/7);
+  document.getElementById('ringNum').textContent=n+'/7';
+}
+
+/* 公共: 完成按钮 */
+function doneBtn(mod){
+  const on=!!doneState()[mod];
+  return `<button class="btn done-btn ${on?'on':''}" data-done-mod="${mod}">${on?'✓ 今日已完成':'标记今日完成'}</button>`;
+}
+function bindDoneBtns(scope){
+  scope.querySelectorAll('[data-done-mod]').forEach(b=>{
+    b.onclick=()=>{const mod=b.dataset.doneMod;const now=!doneState()[mod];markDone(mod,now);
+      b.classList.toggle('on',now);b.textContent=now?'✓ 今日已完成':'标记今日完成';};
+  });
+}
+
+/* 速度滑块(听力/口语共用) */
+function speedControl(){
+  return `<div class="speed">语速
+    <input type="range" min="0.5" max="1.2" step="0.05" value="${speakRate}" oninput="window.setRate(this.value)">
+    <span id="rateVal">${speakRate.toFixed(2)}x</span></div>`;
+}
+window.setRate=function(v){speakRate=parseFloat(v);DB.set('rate',speakRate);
+  const el=document.getElementById('rateVal');if(el)el.textContent=speakRate.toFixed(2)+'x';};
+
+function lvlTag(lv){return `<span class="lvl ${lv}">${lv.toUpperCase()}</span>`;}
+
+/* ============================================================
+   模块 1: 听力训练
+   ============================================================ */
+function renderListen(){
+  const item=pickOne(DATA.listening,'listen');
+  const fullText=item.lines.map(l=>l.jp).join(' ');
+  const html=`
+   <div class="phead">
+     <h2><small>Listening · 30 min</small>听力训练</h2>
+     <div class="sub"><span class="cat-tag">${item.catcn} / ${item.cat}</span> ${lvlTag(item.level)}</div>
+   </div>
+   <div class="card">
+     <div class="row spread" style="margin-bottom:6px">
+       <b class="jp" style="font-size:18px">「${item.title}」</b>
+       <div class="row">
+         <button class="btn primary sm" id="playAll">▶ 全文朗读</button>
+         <button class="btn ghost sm" id="stopAll">■ 停止</button>
+       </div>
+     </div>
+     <div class="toolbar">${speedControl()}
+       <label class="pill"><input type="checkbox" id="toggleCn"> 显示中文对照</label>
+     </div>
+     <div id="lines"></div>
+     ${audioMountHTML('listen:'+item.title)}
+     <div class="card flat" style="margin-top:14px;margin-bottom:0">
+       <div class="muted" style="font-size:12px;margin-bottom:4px">重点词注音</div>
+       ${item.vocab.map(v=>`<span class="vocab-chip"><b>${v.w}</b><span class="k">${v.k}</span><span class="c">${v.cn}</span></span>`).join('')}
+     </div>
+   </div>
+   <div class="card">
+     <div class="row spread">
+       <div><div class="muted" style="font-size:13px">30 分钟精听计时</div>
+         <div class="timer" id="timer">30:00</div></div>
+       <div class="row">
+         <button class="btn sm" id="tStart">开始</button>
+         <button class="btn sm" id="tPause">暂停</button>
+         <button class="btn sm ghost" id="tReset">重置</button>
+       </div>
+     </div>
+   </div>
+   <div class="row spread">
+     ${doneBtn('listen')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button>
+   </div>`;
+  const p=document.getElementById('panel-listen');p.innerHTML=html;
+
+  const lines=p.querySelector('#lines');
+  item.lines.forEach(l=>{
+    const div=document.createElement('div');div.className='listen-line';
+    div.innerHTML=`<div class="lrow">
+        <button class="play" title="朗读本句">▶</button>
+        <div><div class="jp">${l.jp}</div><div class="cn hidden-cn">${l.cn}</div></div>
+      </div>`;
+    div.querySelector('.play').onclick=()=>speak(l.jp);
+    lines.appendChild(div);
+  });
+  p.querySelector('#toggleCn').onchange=e=>p.querySelector('#lines').classList.toggle('show-cn',e.target.checked);
+  p.querySelector('#playAll').onclick=()=>speak(fullText);
+  p.querySelector('#stopAll').onclick=stopSpeak;
+  setupAudioMount(p);
+  setupTimer(p);
+  bindDoneBtns(p);
+}
+
+/* 计时器 */
+let timerState={left:1800,h:null};
+function setupTimer(p){
+  timerState.left=1800;timerState.h&&clearInterval(timerState.h);timerState.h=null;
+  const disp=p.querySelector('#timer');
+  const paint=()=>{const m=Math.floor(timerState.left/60),s=timerState.left%60;
+    disp.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');};
+  paint();
+  p.querySelector('#tStart').onclick=()=>{if(timerState.h)return;
+    timerState.h=setInterval(()=>{if(timerState.left>0){timerState.left--;paint();}
+      else{clearInterval(timerState.h);timerState.h=null;disp.textContent='完了!';}},1000);};
+  p.querySelector('#tPause').onclick=()=>{if(timerState.h){clearInterval(timerState.h);timerState.h=null;}};
+  p.querySelector('#tReset').onclick=()=>{if(timerState.h){clearInterval(timerState.h);timerState.h=null;}timerState.left=1800;paint();};
+}
+
+/* ============================================================
+   模块 2: 单词与语法 (含 SRS)
+   ============================================================ */
+function srsMap(){return DB.get('srs',{});}
+const SRS_INTERVALS=[1,2,4,7,15,30];
+function dayIndex(){return Math.floor(Date.now()/86400000);}
+function srsAdd(word){const m=srsMap();if(!m[word]){m[word]={stage:0,due:dayIndex()};DB.set('srs',m);}}
+function srsReview(word,ok){const m=srsMap();const s=m[word]||{stage:0,due:dayIndex()};
+  s.stage=ok?Math.min(s.stage+1,SRS_INTERVALS.length-1):0;
+  s.due=dayIndex()+SRS_INTERVALS[s.stage];m[word]=s;DB.set('srs',m);}
+function srsDue(){const m=srsMap();const di=dayIndex();
+  return DATA.words.filter(w=>m[w.w]&&m[w.w].due<=di);}
+
+function renderWords(){
+  const todayWords=pickN(DATA.words,10,'words');
+  const grams=pickN(DATA.grammar,3,'gram');
+  const p=document.getElementById('panel-words');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Vocabulary & Grammar</small>单词与语法</h2>
+     <div class="sub">今日 10 词 · ${grams.length} 语法点</div></div>
+   <div class="card">
+     <div class="row spread" style="margin-bottom:10px">
+       <b>📇 今日单词卡 <span class="muted" id="wIdx"></span></b>
+       <div class="row"><button class="btn sm" id="wSpeak">🔊 发音</button>
+         <button class="btn sm" id="wFlip">翻卡</button></div>
+     </div>
+     <div class="progressbar"><i id="wBar"></i></div>
+     <div class="flash" id="flash"></div>
+     <div class="row spread" style="margin-top:12px">
+       <button class="btn sm ghost" id="wPrev">← 上一张</button>
+       <div class="row">
+         <button class="btn sm" id="wForgot" style="border-color:var(--bad);color:var(--bad)">忘记</button>
+         <button class="btn sm" id="wKnow" style="border-color:var(--ok);color:var(--ok)">记得 →</button>
+       </div>
+     </div>
+   </div>
+   <div class="card" id="dueCard"></div>
+   <div class="card">
+     <b>📐 今日语法</b>
+     <div id="gramBox" style="margin-top:12px"></div>
+   </div>
+   <div class="row spread">${doneBtn('words')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+
+  // 单词卡
+  let idx=0;
+  const flash=p.querySelector('#flash');
+  function paintCard(){
+    const w=todayWords[idx];srsAdd(w.w);
+    flash.classList.remove('flip');
+    flash.innerHTML=`<div class="word">${w.w}</div>
+      <div class="kana">${w.k}<span class="accent">［${w.pos}${w.a!==''?' · '+w.a:''}］</span></div>
+      <div class="back">
+        <div class="mean">${w.cn}</div>
+        <div class="ex">${w.ej}</div><div class="exc">${w.ec}</div>
+      </div>`;
+    p.querySelector('#wIdx').textContent=`${idx+1} / ${todayWords.length}`;
+    p.querySelector('#wBar').style.width=((idx+1)/todayWords.length*100)+'%';
+  }
+  p.querySelector('#wFlip').onclick=()=>flash.classList.toggle('flip');
+  flash.onclick=()=>flash.classList.toggle('flip');
+  p.querySelector('#wSpeak').onclick=()=>speak(todayWords[idx].w);
+  p.querySelector('#wPrev').onclick=()=>{idx=(idx-1+todayWords.length)%todayWords.length;paintCard();};
+  p.querySelector('#wKnow').onclick=()=>{srsReview(todayWords[idx].w,true);next();};
+  p.querySelector('#wForgot').onclick=()=>{srsReview(todayWords[idx].w,false);next();};
+  function next(){if(idx<todayWords.length-1){idx++;paintCard();}else{paintCard();renderDue();}}
+  paintCard();
+
+  // SRS 复习区
+  function renderDue(){
+    const due=srsDue();const dc=p.querySelector('#dueCard');
+    if(!due.length){dc.innerHTML=`<b>🔁 待复习</b><div class="muted" style="margin-top:8px">暂无到期需要复习的单词,继续加油!</div>`;return;}
+    dc.innerHTML=`<div class="row spread"><b>🔁 待复习 (${due.length})</b>
+       <button class="btn sm" id="revStart">开始复习</button></div>
+       <div class="muted" style="font-size:12.5px;margin-top:6px">根据记忆曲线,这些词今天该再看一遍。</div>`;
+    dc.querySelector('#revStart').onclick=()=>runReview(due.slice());
+  }
+  function runReview(queue){
+    const dc=p.querySelector('#dueCard');
+    const step=()=>{
+      if(!queue.length){dc.innerHTML=`<b>🔁 复习完成</b><div class="muted" style="margin-top:8px">今日复习全部清空 👏</div>`;return;}
+      const w=queue[0];
+      dc.innerHTML=`<div class="flash flip" style="padding:18px">
+          <div class="word" style="font-size:32px">${w.w}</div>
+          <div class="kana">${w.k}</div>
+          <div class="back"><div class="mean">${w.cn}</div><div class="ex">${w.ej}</div><div class="exc">${w.ec}</div></div>
+        </div>
+        <div class="row spread" style="margin-top:10px">
+          <button class="btn sm" id="rSpeak">🔊</button>
+          <div class="row"><button class="btn sm" id="rNo" style="border-color:var(--bad);color:var(--bad)">忘记</button>
+            <button class="btn sm" id="rYes" style="border-color:var(--ok);color:var(--ok)">记得</button></div>
+        </div>`;
+      dc.querySelector('#rSpeak').onclick=()=>speak(w.w);
+      dc.querySelector('#rYes').onclick=()=>{srsReview(w.w,true);queue.shift();step();};
+      dc.querySelector('#rNo').onclick=()=>{srsReview(w.w,false);queue.shift();step();};
+    };
+    step();
+  }
+  renderDue();
+
+  // 语法
+  const gb=p.querySelector('#gramBox');
+  gb.innerHTML=grams.map(g=>`<div class="gram">
+     <div class="row" style="gap:8px;align-items:center"><span class="pt">${g.pt}</span>${lvlTag(g.lv)}
+       <button class="btn sm ghost" onclick="window.speakJP('${g.ej.replace(/'/g,"\\'")}')">🔊</button></div>
+     <div class="con">接续: ${g.con}</div>
+     <div class="cn">${g.cn}</div>
+     <div class="ex">例) ${g.ej}</div><div class="exc muted" style="font-size:13px">${g.ec}</div>
+   </div>`).join('<hr style="border:0;border-top:1px dashed var(--line-soft);margin:14px 0">');
+
+  bindDoneBtns(p);
+}
+window.speakJP=function(t){speak(t);};
+
+/* ============================================================
+   模块 3: 阅读与写作
+   ============================================================ */
+function renderRead(){
+  const art=pickOne(DATA.reading,'read');
+  const wr=pickOne(DATA.writing,'write');
+  const p=document.getElementById('panel-read');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Reading & Writing</small>阅读与写作</h2>
+     <div class="sub">${lvlTag(art.level)}</div></div>
+   <div class="card">
+     <div class="row spread" style="margin-bottom:10px">
+       <b class="jp" style="font-size:18px">${art.title}</b>
+       <label class="pill"><input type="checkbox" id="rToggleCn"> 显示中文</label>
+     </div>
+     <div id="paras"></div>
+     <div class="card flat" style="margin:14px 0 0">
+       <div class="muted" style="font-size:12px;margin-bottom:4px">重点词</div>
+       ${art.vocab.map(v=>`<span class="vocab-chip"><b>${v.w}</b><span class="k">${v.k}</span><span class="c">${v.cn}</span></span>`).join('')}
+     </div>
+   </div>
+   <div class="card"><b>❓ 読解問題</b><div id="qbox" style="margin-top:8px"></div></div>
+   <div class="card">
+     <div class="row spread"><b>✍️ 今日写作 · ${wr.type}</b></div>
+     <div class="jp" style="font-size:16px;margin:8px 0">${wr.topic}</div>
+     <div class="cn muted" style="font-size:13px;margin-bottom:10px">${wr.topiccn}</div>
+     <div class="card flat" style="margin-bottom:10px"><div class="muted" style="font-size:12px;margin-bottom:4px">写作要点</div>
+       <ul style="margin:0;padding-left:18px">${wr.hints.map(h=>`<li style="font-size:13.5px;color:var(--ink-soft)">${h}</li>`).join('')}</ul></div>
+     <textarea class="write" id="draft" placeholder="在这里用日语写作…(自动保存在本机)"></textarea>
+     <div class="wc"><span id="wcNum">0</span> 字</div>
+     <details class="model"><summary>查看参考范文(写完再看)</summary>
+       <div class="jp">${wr.mj}</div><div class="cn muted" style="font-size:13px;padding-bottom:10px">${wr.mc}</div></details>
+   </div>
+   <div class="row spread">${doneBtn('read')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+
+  const paras=p.querySelector('#paras');
+  paras.innerHTML=art.paras.map(x=>`<p class="jp" style="font-size:17px">${x.jp}
+     <span class="cn hidden-cn" style="display:block;margin-top:2px">${x.cn}</span></p>`).join('');
+  p.querySelector('#rToggleCn').onchange=e=>paras.classList.toggle('show-cn',e.target.checked);
+
+  // 问题
+  const qbox=p.querySelector('#qbox');
+  art.qs.forEach((q,qi)=>{
+    const div=document.createElement('div');div.className='q';
+    div.innerHTML=`<div style="font-weight:600;margin-bottom:4px">問${qi+1}. ${q.q}</div>`+
+      q.opts.map((o,oi)=>`<button class="opt" data-oi="${oi}">${'ABCD'[oi]}. ${o}</button>`).join('')+
+      `<div class="exp">✔ 正解: ${'ABCD'[q.ans]}　${q.exp}</div>`;
+    div.querySelectorAll('.opt').forEach(btn=>{
+      btn.onclick=()=>{if(div.classList.contains('answered'))return;
+        div.classList.add('answered');
+        const oi=+btn.dataset.oi;
+        if(oi===q.ans)btn.classList.add('ok');
+        else{btn.classList.add('bad');div.querySelectorAll('.opt')[q.ans].classList.add('ok');}
+      };
+    });
+    qbox.appendChild(div);
+  });
+
+  // 写作草稿自动保存
+  const key='draft_'+todayKey()+'_'+wr.type;
+  const ta=p.querySelector('#draft');const wcNum=p.querySelector('#wcNum');
+  ta.value=DB.get(key,'');
+  const upd=()=>{wcNum.textContent=ta.value.replace(/\s/g,'').length;};
+  upd();
+  ta.oninput=()=>{DB.set(key,ta.value);upd();};
+  bindDoneBtns(p);
+}
+
+/* ============================================================
+   模块 4: 口语练习 (TTS 示范 + 影子跟读录音)
+   ============================================================ */
+let rec={mr:null,chunks:[],stream:null};
+function renderSpeak(){
+  const sc=pickOne(DATA.speaking,'speak');
+  const p=document.getElementById('panel-speak');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Speaking · Shadowing</small>口语练习</h2>
+     <div class="sub"><span class="cat-tag">${sc.scenecn} / ${sc.scene}</span></div></div>
+   <div class="card">
+     <div class="toolbar">${speedControl()}
+       <button class="btn primary sm" id="spPlayAll">▶ 整段示范</button>
+       <button class="btn ghost sm" id="spStop">■ 停止</button></div>
+     <div id="dlg"></div>
+     ${audioMountHTML('speak:'+sc.scene)}
+   </div>
+   <div class="card">
+     <b>🎙️ 影子跟读录音</b>
+     <div class="muted" style="font-size:12.5px;margin:4px 0 10px">听示范 → 自己跟读录音 → 回放对比。录音仅存在本页,不上传。</div>
+     <div class="rec-box" id="recBox">
+       <button class="btn primary" id="recBtn">● 开始录音</button>
+       <div id="recStatus" class="muted" style="margin-top:8px;font-size:13px"></div>
+       <audio id="recAudio" controls style="display:none;width:100%;margin-top:10px"></audio>
+     </div>
+   </div>
+   <div class="card flat"><div class="muted" style="font-size:12px;margin-bottom:6px">今日重点句型</div>
+     ${sc.patterns.map(x=>`<span class="vocab-chip"><b>${x}</b></span>`).join('')}</div>
+   <div class="row spread">${doneBtn('speak')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+
+  const dlg=p.querySelector('#dlg');
+  sc.dlg.forEach(d=>{
+    const div=document.createElement('div');div.className='dlg';
+    div.innerHTML=`<div class="role">${d.role==='自分'?'🙋 自分':(d.role==='相手'?'🧑 相手':'🧑 '+d.role)}</div>
+      <div class="lrow" style="display:flex;gap:10px;align-items:flex-start;margin-top:2px">
+        <button class="play" title="朗读">▶</button>
+        <div><div class="jp" style="font-size:17px">${d.jp}</div><div class="cn">${d.cn}</div></div>
+      </div>`;
+    div.querySelector('.play').onclick=()=>speak(d.jp);
+    dlg.appendChild(div);
+  });
+  p.querySelector('#spPlayAll').onclick=()=>speak(sc.dlg.map(d=>d.jp).join(' '));
+  p.querySelector('#spStop').onclick=stopSpeak;
+  setupAudioMount(p);
+  setupRecorder(p);
+  bindDoneBtns(p);
+}
+function setupRecorder(p){
+  const btn=p.querySelector('#recBtn');const status=p.querySelector('#recStatus');const audio=p.querySelector('#recAudio');
+  if(!navigator.mediaDevices||!window.MediaRecorder){
+    btn.disabled=true;status.textContent='当前浏览器不支持录音功能。';return;}
+  let recording=false;
+  btn.onclick=async()=>{
+    if(!recording){
+      try{
+        rec.stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        rec.mr=new MediaRecorder(rec.stream);rec.chunks=[];
+        rec.mr.ondataavailable=e=>{if(e.data.size)rec.chunks.push(e.data);};
+        rec.mr.onstop=()=>{
+          const blob=new Blob(rec.chunks,{type:rec.chunks[0]?.type||'audio/webm'});
+          audio.src=URL.createObjectURL(blob);audio.style.display='block';
+          rec.stream.getTracks().forEach(t=>t.stop());
+        };
+        rec.mr.start();recording=true;
+        btn.innerHTML='<span class="rec-dot"></span>停止录音';btn.classList.remove('primary');
+        status.textContent='录音中…请跟读。';
+      }catch(e){status.textContent='无法访问麦克风:'+(e.name||e.message);}
+    }else{
+      rec.mr&&rec.mr.state!=='inactive'&&rec.mr.stop();recording=false;
+      btn.innerHTML='● 重新录音';btn.classList.add('primary');status.textContent='录音完成,可回放对比。';
+    }
+  };
+}
+
+/* ============================================================
+   模块 5: 汉字特训
+   ============================================================ */
+function renderKanji(){
+  const list=pickN(DATA.kanji,5,'kanji');
+  const p=document.getElementById('panel-kanji');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Kanji Drill</small>汉字特训</h2>
+     <div class="sub">今日 5 字 · 音训·组词·读音测验</div></div>
+   <div class="card"><div class="kanji-grid" id="kgrid"></div></div>
+   <div class="card"><div class="row spread"><b>🧪 读音小测</b>
+       <button class="btn sm" id="quizNew">换一题</button></div>
+     <div id="kquiz" style="margin-top:10px"></div></div>
+   <div class="row spread">${doneBtn('kanji')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+
+  const grid=p.querySelector('#kgrid');
+  list.forEach(k=>{
+    const div=document.createElement('div');div.className='kcell';
+    div.innerHTML=`<div class="kbox"><span>${k.k}</span></div>
+      <div class="read">音: ${k.on}</div><div class="read">训: ${k.kun}</div>
+      <div class="mean">${k.cn}</div>
+      <div class="kw">${k.words.map(w=>w.w+'（'+w.r+'）').join(' · ')}</div>
+      <button class="btn sm ghost" style="margin-top:8px">🔊 组词</button>`;
+    div.querySelector('button').onclick=()=>speak(k.words.map(w=>w.w).join('、'));
+    grid.appendChild(div);
+  });
+
+  // 读音测验: 从今日 5 字的词里出题,选读音
+  function newQuiz(){
+    const pool=[];list.forEach(k=>k.words.forEach(w=>pool.push(w)));
+    const q=pool[Math.floor(Math.random()*pool.length)];
+    const wrong=pool.filter(x=>x.r!==q.r);
+    const opts=seededShuffle([q,...seededShuffle(wrong,Math.random()*1e9|0).slice(0,3)],Math.random()*1e9|0);
+    const box=p.querySelector('#kquiz');
+    box.innerHTML=`<div class="q"><div style="font-weight:600;margin-bottom:6px">「<span class="jp" style="font-size:20px">${q.w}</span>」的正确读音是?</div>
+      ${opts.map(o=>`<button class="opt" data-r="${o.r}">${o.r}</button>`).join('')}
+      <div class="exp">✔ ${q.w} = ${q.r}</div></div>`;
+    box.querySelectorAll('.opt').forEach(b=>{
+      b.onclick=()=>{const qd=box.querySelector('.q');if(qd.classList.contains('answered'))return;
+        qd.classList.add('answered');
+        if(b.dataset.r===q.r)b.classList.add('ok');
+        else{b.classList.add('bad');box.querySelectorAll('.opt').forEach(x=>{if(x.dataset.r===q.r)x.classList.add('ok');});}
+        speak(q.w);
+      };
+    });
+  }
+  p.querySelector('#quizNew').onclick=newQuiz;
+  newQuiz();
+  bindDoneBtns(p);
+}
+
+/* ============================================================
+   模块 6: 互动闯关游戏
+   ============================================================ */
+function gameScore(){return DB.get('gameScore',{total:0,streak:0,best:0});}
+function addScore(pts,win){
+  const s=gameScore();s.total+=pts;
+  if(win){s.streak++;s.best=Math.max(s.best,s.streak);}else{s.streak=0;}
+  DB.set('gameScore',s);paintScore();
+}
+function paintScore(){const s=gameScore();const el=document.getElementById('scoreBar');
+  if(el)el.innerHTML=`总分 <b>${s.total}</b>　连胜 <b>${s.streak}</b>　最高连胜 <b>${s.best}</b>`;}
+
+function renderGame(){
+  const p=document.getElementById('panel-game');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Challenge</small>互动闯关游戏</h2></div>
+   <div class="card"><div class="scorebar" id="scoreBar"></div></div>
+   <div class="card">
+     <div class="row" style="gap:8px;margin-bottom:12px">
+       <button class="btn sm primary" data-g="match">词义配对</button>
+       <button class="btn sm" data-g="listen">听音选词</button>
+       <button class="btn sm" data-g="grammar">语法填空</button>
+     </div>
+     <div id="gameArea"></div>
+   </div>
+   <div class="row spread">${doneBtn('game')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+  paintScore();
+  const area=p.querySelector('#gameArea');
+  p.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{
+    p.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('primary',x===b));
+    ({match:gMatch,listen:gListen,grammar:gGrammar})[b.dataset.g](area);
+  });
+  gMatch(area);
+  bindDoneBtns(p);
+}
+
+/* 游戏1: 词义配对 */
+function gMatch(area){
+  const words=seededShuffle(DATA.words,Math.random()*1e9|0).slice(0,5);
+  const left=seededShuffle(words,Math.random()*1e9|0);
+  const right=seededShuffle(words,Math.random()*1e9|0);
+  area.innerHTML=`<div class="muted" style="font-size:13px;margin-bottom:10px">点击左右两边,把单词和释义配对。</div>
+    <div class="match-col"><div id="mL"></div><div id="mR"></div></div>
+    <div id="mMsg" class="muted" style="margin-top:10px;font-size:13px"></div>`;
+  const L=area.querySelector('#mL'),R=area.querySelector('#mR');
+  left.forEach(w=>{const t=document.createElement('div');t.className='mtile jp';t.textContent=w.w;t.dataset.w=w.w;t.dataset.side='L';L.appendChild(t);});
+  right.forEach(w=>{const t=document.createElement('div');t.className='mtile';t.textContent=w.cn;t.dataset.w=w.w;t.dataset.side='R';R.appendChild(t);});
+  let sel=null,matched=0;
+  area.querySelectorAll('.mtile').forEach(t=>t.onclick=()=>{
+    if(t.classList.contains('done'))return;
+    if(!sel){sel=t;t.classList.add('sel');return;}
+    if(sel===t){sel.classList.remove('sel');sel=null;return;}
+    if(sel.dataset.side===t.dataset.side){sel.classList.remove('sel');sel=t;t.classList.add('sel');return;}
+    if(sel.dataset.w===t.dataset.w){
+      sel.classList.add('done');t.classList.add('done');sel.classList.remove('sel');sel=null;matched++;
+      addScore(10,true);
+      if(matched===left.length)area.querySelector('#mMsg').textContent='🎉 全部配对成功!+'+(left.length*10)+'分';
+    }else{
+      const a=sel,b=t;a.classList.add('wrong');b.classList.add('wrong');addScore(0,false);
+      setTimeout(()=>{a.classList.remove('wrong','sel');b.classList.remove('wrong');},300);sel=null;
+    }
+  });
+}
+
+/* 游戏2: 听音选词 */
+function gListen(area){
+  const words=seededShuffle(DATA.words,Math.random()*1e9|0);
+  const ans=words[0];const opts=seededShuffle(words.slice(0,4),Math.random()*1e9|0);
+  area.innerHTML=`<div class="muted" style="font-size:13px;margin-bottom:10px">点喇叭听发音,选出正确的单词。</div>
+    <div class="row" style="justify-content:center;margin:10px 0"><button class="btn primary" id="lPlay">🔊 再听一次</button></div>
+    <div id="lOpts"></div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm ghost" id="lNext" style="display:none">下一题 →</button></div>`;
+  area.querySelector('#lPlay').onclick=()=>speak(ans.w);
+  speak(ans.w);
+  const box=area.querySelector('#lOpts');
+  opts.forEach(o=>{const b=document.createElement('button');b.className='opt';
+    b.innerHTML=`<b class="jp" style="font-size:17px">${o.w}</b>　<span class="muted" style="font-size:13px">${o.cn}</span>`;
+    b.onclick=()=>{if(box.dataset.done)return;box.dataset.done='1';
+      if(o.w===ans.w){b.classList.add('ok');addScore(15,true);}
+      else{b.classList.add('bad');addScore(0,false);
+        box.querySelectorAll('.opt').forEach(x=>{if(x.textContent.includes(ans.w))x.classList.add('ok');});}
+      area.querySelector('#lNext').style.display='inline-block';
+    };box.appendChild(b);});
+  area.querySelector('#lNext').onclick=()=>gListen(area);
+}
+
+/* 游戏3: 语法填空 */
+function gGrammar(area){
+  const g=seededShuffle(DATA.grammar,Math.random()*1e9|0)[0];
+  const others=seededShuffle(DATA.grammar.filter(x=>x.pt!==g.pt),Math.random()*1e9|0).slice(0,3);
+  const opts=seededShuffle([g,...others],Math.random()*1e9|0);
+  // 把例句中的语法核心词挖空
+  const blankEj=g.ej;
+  area.innerHTML=`<div class="muted" style="font-size:13px;margin-bottom:10px">根据句意和释义,选出最合适的语法。</div>
+    <div class="card flat"><div class="jp" style="font-size:17px">${blankEj}</div>
+      <div class="cn muted" style="font-size:13px">${g.ec}</div>
+      <div style="margin-top:6px;font-size:13px">语意提示: <b>${g.cn}</b></div></div>
+    <div id="gOpts" style="margin-top:10px"></div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm ghost" id="gNext" style="display:none">下一题 →</button></div>`;
+  const box=area.querySelector('#gOpts');
+  opts.forEach(o=>{const b=document.createElement('button');b.className='opt';
+    b.innerHTML=`<b class="pt" style="font-family:var(--serif);font-size:16px;color:var(--shu-deep)">${o.pt}</b>`;
+    b.onclick=()=>{if(box.dataset.done)return;box.dataset.done='1';
+      if(o.pt===g.pt){b.classList.add('ok');addScore(15,true);}
+      else{b.classList.add('bad');addScore(0,false);
+        box.querySelectorAll('.opt').forEach(x=>{if(x.textContent.trim()===g.pt)x.classList.add('ok');});}
+      area.querySelector('#gNext').style.display='inline-block';
+    };box.appendChild(b);});
+  area.querySelector('#gNext').onclick=()=>gGrammar(area);
+}
+
+/* ============================================================
+   模块 7: 文化小知识
+   ============================================================ */
+function renderCulture(){
+  const todayC=pickOne(DATA.culture,'culture');
+  const more=pickN(DATA.culture.filter(c=>c.t!==todayC.t),3,'culture-more');
+  const p=document.getElementById('panel-culture');
+  p.innerHTML=`
+   <div class="phead"><h2><small>Japanese Culture</small>文化小知识</h2>
+     <div class="sub">每日一则 · 日本文化 & 冷知识</div></div>
+   <div class="card culture">
+     <div class="c-emoji">${todayC.e}</div>
+     <h3>${todayC.t}</h3>
+     <div class="muted" style="font-size:13px">キーワード: <span class="term">${todayC.term}</span>
+       <button class="btn sm ghost" onclick="window.speakJP('${todayC.term.replace(/\(.*\)/,'')}')">🔊</button></div>
+     <p style="margin-top:10px;line-height:1.85">${todayC.body}</p>
+   </div>
+   <div class="card">
+     <b>📚 延伸阅读</b>
+     <div id="moreC" style="margin-top:10px"></div>
+   </div>
+   <div class="row spread">${doneBtn('culture')}
+     <button class="btn ghost sm" onclick="window.shuffleDay()">🔀 换一批内容</button></div>`;
+  const mc=p.querySelector('#moreC');
+  mc.innerHTML=more.map(c=>`<details class="model" style="background:var(--card)">
+     <summary>${c.e} ${c.t}　<span class="muted" style="font-weight:400">${c.term}</span></summary>
+     <p style="padding-bottom:10px;line-height:1.8">${c.body}</p></details>`).join('');
+  bindDoneBtns(p);
+}
+
+/* ============================================================
+   启动
+   ============================================================ */
+function buildPanels(){
+  const main=document.getElementById('main');
+  main.innerHTML=MODULES.map((m,i)=>`<section class="panel ${i===0?'active':''}" id="panel-${m.id}"></section>`).join('');
+}
+const RENDERERS={listen:renderListen,words:renderWords,read:renderRead,speak:renderSpeak,kanji:renderKanji,game:renderGame,culture:renderCulture};
+function renderAll(){Object.values(RENDERERS).forEach(fn=>{try{fn();}catch(e){console.error(e);}});}
+
+window.shuffleDay=function(){
+  BATCH++;DB.set('batch',BATCH);
+  renderAll();switchTo(current);
+  const el=document.querySelector('.panel.active');
+  if(el){el.style.animation='none';void el.offsetWidth;el.style.animation='';}
+};
+
+function init(){
+  const d=new Date();
+  const wk=['日','月','火','水','木','金','土'][d.getDay()];
+  document.getElementById('dateLabel').textContent=
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${wk}）· 今日のメニュー`;
+  buildTabs();buildPanels();renderAll();
+  document.querySelector('.tab').setAttribute('aria-selected','true');
+  renderRing();syncTabDots();
+}
+init();
+</script>
+</body>
+</html>
