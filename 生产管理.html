@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-05-1">
+<html lang="zh-CN" data-appver="2026-10-05-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3390,6 +3390,15 @@ const Pages = (() => {
   /* 录入弹框比列表弹框窄一些,更像对话框 */
   #libFormModal .modal { max-width: 460px; }
   #libFormModal .lib-add-form { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  /* 选择品名弹窗:顶部颜色筛选固定,只滚动下方列表 */
+  #pickModal .modal-body { display: flex; flex-direction: column; overflow: hidden; }
+  #pickModal .lib-color-filter { flex: 0 0 auto; }
+  #pickModal .pick-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  #pickModal .pick-list::-webkit-scrollbar { width: 4px; }
+  #pickModal .pick-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  /* 品名库 / 选择品名:顶部对齐,筛选后内容变少也不跑到屏幕中央(与满列表时同一位置) */
+  #libModal, #pickModal { align-items: flex-start; padding-top: 7.5vh; }
+  #libModal.kb-fit, #pickModal.kb-fit { padding-top: 20px; }
   /* 手机端:弹窗内输入框聚焦(软键盘弹起)时,把弹窗顶部对齐并由 JS 限高到键盘上方,避免底部输入框被遮挡。
      iframe 内 visualViewport/innerHeight 不随键盘可靠变化,故沿用本项目卡片弹窗的做法:screen.height 估键盘顶 + focusin 触发。 */
   .modal-mask.kb-fit { align-items: flex-start; }
@@ -4285,6 +4294,7 @@ button:active{transform:scale(.97)}
       <button class="modal-close" data-close>×</button>
     </div>
     <div class="modal-body">
+      <div class="lib-color-filter" id="pickColorFilter"></div>
       <div class="pick-list" id="pickList"></div>
     </div>
   </div>
@@ -5519,12 +5529,77 @@ document.querySelectorAll('.modal-mask').forEach(m => {
 const pickModal = document.getElementById('pickModal');
 const pickList = document.getElementById('pickList');
 const pickSub = document.getElementById('pickSub');
+const pickColorFilterEl = document.getElementById('pickColorFilter');
+let pickColorFilter = null; // 选择品名弹窗当前按颜色筛选的颜色值(null = 全部)
+// 颜色筛选条(同品名库那套):只有 ≥2 种颜色才显示
+function renderPickColorFilter() {
+  if (!pickColorFilterEl) return;
+  const colors = [...new Set(library.map(i => i && i.color).filter(Boolean))];
+  if (colors.length < 2) {
+    pickColorFilter = null;
+    pickColorFilterEl.innerHTML = '';
+    pickColorFilterEl.style.display = 'none';
+    return;
+  }
+  if (pickColorFilter && !colors.includes(pickColorFilter)) pickColorFilter = null;
+  pickColorFilterEl.style.display = '';
+  let html = `<button class="lib-cf-all${pickColorFilter ? '' : ' active'}" data-all>全部</button>`;
+  colors.forEach(c => {
+    const act = c === pickColorFilter ? ' active' : '';
+    html += `<button class="lib-cf-dot${act}" data-color="${escapeHtml(c)}" style="--cf:${escapeHtml(c)}" title="只看此颜色"></button>`;
+  });
+  pickColorFilterEl.innerHTML = html;
+  pickColorFilterEl.querySelector('[data-all]').addEventListener('click', () => { pickColorFilter = null; renderPickColorFilter(); renderPickList(); });
+  pickColorFilterEl.querySelectorAll('.lib-cf-dot').forEach(d => {
+    d.addEventListener('click', () => {
+      pickColorFilter = (pickColorFilter === d.dataset.color) ? null : d.dataset.color;
+      renderPickColorFilter();
+      renderPickList();
+    });
+  });
+}
+// 渲染品名候选列表(按当前颜色筛选)
+function renderPickList() {
+  const _targetLineId = getLineIdFromNode(currentPickTargetLine);
+  let items = [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+  if (pickColorFilter) items = items.filter(it => it.color === pickColorFilter);
+  if (items.length === 0) {
+    pickList.innerHTML = '<div class="pick-empty">该颜色下没有品名</div>';
+    return;
+  }
+  pickList.innerHTML = '';
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'pick-item';
+    row.style.setProperty('--lib-color', item.color);
+    // 按目标线解析人数(同一便当在不同线上卡片数可能不同)
+    const peopleText = fmtPeople(resolveItemPeople(item, _targetLineId));
+    const resSpd = resolveItemSpeed(item, _targetLineId);
+    const resLineSpd = resolveItemLineSpeed(item, _targetLineId);
+    // 用 † 标记一下:该值来自按线覆盖,而非默认
+    const spdMark = (resSpd > 0 && item.speedByLine && item.speedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
+    const lspMark = (resLineSpd > 0 && item.lineSpeedByLine && item.lineSpeedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
+    const spdText = resSpd > 0 ? resSpd : (item.speed || '—');
+    const lineSpdText = resLineSpd > 0 ? resLineSpd : '—';
+    const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
+    row.innerHTML = `
+      <div class="pick-item-name">${escapeHtml(item.name)}</div>
+      <div class="pick-item-info">品名 <span class="ns">${spdText}</span>${spdMark} · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}${lspMark}<br>${peopleText}</div>`;
+    row.addEventListener('click', () => {
+      addJobCard(currentPickTargetLine.querySelector('.cards-grid'), item);
+      pickModal.classList.remove('show');
+    });
+    pickList.appendChild(row);
+  });
+}
 function openPicker(line) {
   setActiveCard(null);     // 收起任何已打开的卡片弹窗+背景层(背景层 z-index:999 高于选品名弹窗,不收起会挡住点击)
   cleanupDetachedPopups(); // 兜底:清掉任何残留孤儿浮层(z-index:1000)
   currentPickTargetLine = line;
   pickSub.textContent = `添加到 ${line.querySelector('.line-num').textContent} 号线`;
+  pickColorFilter = null; // 每次打开重置颜色筛选
   if (library.length === 0) {
+    pickColorFilterEl.style.display = 'none';
     pickList.innerHTML = `<div class="pick-empty">品名库是空的<br><button id="goLibBtn">先去添加品名</button></div>`;
     document.getElementById('goLibBtn').addEventListener('click', () => {
       pickModal.classList.remove('show');
@@ -5532,32 +5607,8 @@ function openPicker(line) {
       openAddLibForm();
     });
   } else {
-    pickList.innerHTML = '';
-    // 这个挑选弹窗是要把品名放到 currentPickTargetLine 上。按目标线解析速度,让用户看到的就是真实写到卡片上的值。
-    const _targetLineId = getLineIdFromNode(currentPickTargetLine);
-    [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'pick-item';
-      row.style.setProperty('--lib-color', item.color);
-      // 按目标线解析人数(同一便当在不同线上卡片数可能不同)
-      const peopleText = fmtPeople(resolveItemPeople(item, _targetLineId));
-      const resSpd = resolveItemSpeed(item, _targetLineId);
-      const resLineSpd = resolveItemLineSpeed(item, _targetLineId);
-      // 用 † 标记一下:该值来自按线覆盖,而非默认
-      const spdMark = (resSpd > 0 && item.speedByLine && item.speedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
-      const lspMark = (resLineSpd > 0 && item.lineSpeedByLine && item.lineSpeedByLine[_targetLineId] > 0) ? '<sup style="color:var(--accent);font-size:9px" title="按此线的覆盖值">†</sup>' : '';
-      const spdText = resSpd > 0 ? resSpd : (item.speed || '—');
-      const lineSpdText = resLineSpd > 0 ? resLineSpd : '—';
-      const meterText = item.meterPeople > 0 ? `${item.meterPeople}` : '1';
-      row.innerHTML = `
-        <div class="pick-item-name">${escapeHtml(item.name)}</div>
-        <div class="pick-item-info">品名 <span class="ns">${spdText}</span>${spdMark} · 计量 <span class="ns">${meterText}</span><br>流水线 ${lineSpdText}${lspMark}<br>${peopleText}</div>`;
-      row.addEventListener('click', () => {
-        addJobCard(currentPickTargetLine.querySelector('.cards-grid'), item);
-        pickModal.classList.remove('show');
-      });
-      pickList.appendChild(row);
-    });
+    renderPickColorFilter();
+    renderPickList();
   }
   pickModal.classList.add('show');
 }
