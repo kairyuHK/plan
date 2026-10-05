@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-03-1">
+<html lang="zh-CN" data-appver="2026-10-05-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2736,16 +2736,16 @@ const Pages = (() => {
 
     /* 品名库弹窗手机端:压缩顶部固定表单区(标题/副标题/输入框/颜色/保存),露出更多便当名。
        输入框字号保持 16px(上一条),只收内边距/间距,不触发 iOS 聚焦缩放。 */
-    #libModal .modal-head { padding: 9px 16px; }
-    #libModal .modal-sub { font-size: 10px; margin-top: 2px; line-height: 1.3; }
-    #libModal .modal-body { padding: 10px 14px; }
-    #libModal .lib-add-form { gap: 6px; margin-bottom: 8px; padding-bottom: 8px; }
-    #libModal .lib-add-form input[type=text],
-    #libModal .lib-add-form input[type=number] { padding: 6px 10px; }
-    #libModal .color-picker { padding: 4px 6px; gap: 4px; }
-    #libModal .color-swatch { width: 16px; height: 16px; }
-    #libModal .color-custom { width: 20px; height: 20px; }
-    #libModal .lib-add-btn { padding: 6px 10px; }
+    #libModal .modal-head, #libFormModal .modal-head { padding: 9px 16px; }
+    #libModal .modal-sub, #libFormModal .modal-sub { font-size: 10px; margin-top: 2px; line-height: 1.3; }
+    #libModal .modal-body, #libFormModal .modal-body { padding: 10px 14px; }
+    #libFormModal .lib-add-form { gap: 6px; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+    #libFormModal .lib-add-form input[type=text],
+    #libFormModal .lib-add-form input[type=number] { padding: 6px 10px; }
+    #libFormModal .color-picker { padding: 4px 6px; gap: 4px; }
+    #libFormModal .color-swatch { width: 16px; height: 16px; }
+    #libFormModal .color-custom { width: 20px; height: 20px; }
+    #libFormModal .lib-add-btn { padding: 6px 10px; }
 
     .main::-webkit-scrollbar { height: 3px; }
     .main::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
@@ -3362,12 +3362,34 @@ const Pages = (() => {
   .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
   .modal-body::-webkit-scrollbar { width: 4px; }
   .modal-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
-  /* 品名库弹窗:顶部表单区固定不滚动,只滚动下方品名列表 */
+  /* 品名库弹窗:顶部颜色筛选固定不滚动,只滚动下方品名列表 */
   #libModal .modal-body { display: flex; flex-direction: column; overflow: hidden; }
-  #libModal .lib-add-form { flex: 0 0 auto; }
+  #libModal .lib-color-filter { flex: 0 0 auto; }
   #libModal .lib-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   #libModal .lib-list::-webkit-scrollbar { width: 4px; }
   #libModal .lib-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  /* 标题栏右侧操作区:+ 添加 / × 关闭 */
+  .modal-head-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .modal-head-actions .modal-close { margin-left: 0; }
+  .lib-add-open {
+    width: 30px; height: 30px;
+    background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.4);
+    color: var(--accent); cursor: pointer; font-size: 20px; line-height: 1;
+    font-family: inherit; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .lib-add-open:hover { background: rgba(var(--accent-rgb),0.22); border-color: var(--accent); }
+  /* 按颜色筛选便当名:一排「在用颜色」圆点,点一个=只看该色,再点=取消 */
+  .lib-color-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
+  .lib-cf-all { height: 22px; padding: 0 10px; border-radius: 11px; font-size: 11px; font-family: inherit; cursor: pointer; background: transparent; border: 1px solid var(--border); color: var(--text-mute); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .lib-cf-all.active { color: var(--accent); border-color: rgba(var(--accent-rgb),0.5); background: rgba(var(--accent-rgb),0.08); }
+  .lib-cf-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; background: var(--cf); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border) inset; padding: 0; transition: transform 0.1s, box-shadow 0.15s; }
+  .lib-cf-dot:hover { transform: scale(1.12); }
+  .lib-cf-dot.active { box-shadow: 0 0 0 2px var(--panel-elevated) inset, 0 0 0 2px var(--accent); }
+  /* 录入弹框比列表弹框窄一些,更像对话框 */
+  #libFormModal .modal { max-width: 460px; }
+  #libFormModal .lib-add-form { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
   /* 手机端:弹窗内输入框聚焦(软键盘弹起)时,把弹窗顶部对齐并由 JS 限高到键盘上方,避免底部输入框被遮挡。
      iframe 内 visualViewport/innerHeight 不随键盘可靠变化,故沿用本项目卡片弹窗的做法:screen.height 估键盘顶 + focusin 触发。 */
   .modal-mask.kb-fit { align-items: flex-start; }
@@ -4198,6 +4220,25 @@ button:active{transform:scale(.97)}
         <div class="modal-title">品名库管理</div>
         <div class="modal-sub">耗时 = 数量 / (品名速度 × 计量人数) · 人数可填 ? · 🍱 表示已与配置表便当库同步</div>
       </div>
+      <div class="modal-head-actions">
+        <button class="lib-add-open" id="libAddOpen" title="添加品名" aria-label="添加品名">+</button>
+        <button class="modal-close" data-close>×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="lib-color-filter" id="libColorFilter"></div>
+      <div class="lib-list" id="libList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="libFormModal">
+  <div class="modal lib-form-modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="libFormTitle">添加品名</div>
+        <div class="modal-sub">耗时 = 数量 / (品名速度 × 计量人数) · 人数可填 ? · 🍱 已与配置表便当库同步</div>
+      </div>
       <button class="modal-close" data-close>×</button>
     </div>
     <div class="modal-body">
@@ -4210,7 +4251,6 @@ button:active{transform:scale(.97)}
         <div class="color-picker" id="libColorPicker"></div>
         <button class="lib-add-btn" id="libAddBtn">添加</button>
       </div>
-      <div class="lib-list" id="libList"></div>
     </div>
   </div>
 </div>
@@ -4952,7 +4992,11 @@ const libPeopleInput = document.getElementById('libPeople');
 const libMeterPeopleInput = document.getElementById('libMeterPeople');
 const libColorPicker = document.getElementById('libColorPicker');
 const libAddBtn = document.getElementById('libAddBtn');
+const libFormModal = document.getElementById('libFormModal');
+const libFormTitle = document.getElementById('libFormTitle');
+const libColorFilterEl = document.getElementById('libColorFilter');
 let selectedColor = COLORS[0];
+let libColorFilter = null; // 当前按颜色筛选的颜色值(null = 全部)
 
 function renderColorPicker() {
   libColorPicker.innerHTML = '';
@@ -4995,9 +5039,37 @@ function getDaySnapshotForLib(libId) {
   const singleLineId = lineIds.size === 1 ? Array.from(lineIds)[0] : null;
   return { speed, mp, divergent, count, lineIds, singleLineId };
 }
+// 颜色筛选条:列出库中在用的颜色圆点,点一个=只看该色,再点=取消。只有 ≥2 种颜色才显示。
+function renderLibColorFilter() {
+  if (!libColorFilterEl) return;
+  const colors = [...new Set(library.map(i => i && i.color).filter(Boolean))];
+  if (colors.length < 2) {
+    libColorFilter = null;
+    libColorFilterEl.innerHTML = '';
+    libColorFilterEl.style.display = 'none';
+    return;
+  }
+  // 当前筛选色已不存在(被删/改色)→ 自动回到全部
+  if (libColorFilter && !colors.includes(libColorFilter)) libColorFilter = null;
+  libColorFilterEl.style.display = '';
+  let html = `<button class="lib-cf-all${libColorFilter ? '' : ' active'}" data-all>全部</button>`;
+  colors.forEach(c => {
+    const act = c === libColorFilter ? ' active' : '';
+    html += `<button class="lib-cf-dot${act}" data-color="${escapeHtml(c)}" style="--cf:${escapeHtml(c)}" title="只看此颜色"></button>`;
+  });
+  libColorFilterEl.innerHTML = html;
+  libColorFilterEl.querySelector('[data-all]').addEventListener('click', () => { libColorFilter = null; renderLibList(); });
+  libColorFilterEl.querySelectorAll('.lib-cf-dot').forEach(d => {
+    d.addEventListener('click', () => {
+      libColorFilter = (libColorFilter === d.dataset.color) ? null : d.dataset.color;
+      renderLibList();
+    });
+  });
+}
 function renderLibList() {
+  renderLibColorFilter();
   if (library.length === 0) {
-    libList.innerHTML = '<div class="lib-empty">还没有品名，添加你的第一个品名</div>';
+    libList.innerHTML = '<div class="lib-empty">还没有品名，点右上角 + 添加你的第一个品名</div>';
     return;
   }
   // 统计每个 bentoId 被多少个品名库项链接,用于处理"重复共享项"
@@ -5005,8 +5077,15 @@ function renderLibList() {
   library.forEach(it => {
     if (it && it.bentoId) linkCount.set(it.bentoId, (linkCount.get(it.bentoId) || 0) + 1);
   });
+  // 按颜色筛选(libColorFilter 为 null 时显示全部)
+  let items = [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+  if (libColorFilter) items = items.filter(it => it.color === libColorFilter);
+  if (items.length === 0) {
+    libList.innerHTML = '<div class="lib-empty">该颜色下没有品名</div>';
+    return;
+  }
   libList.innerHTML = '';
-  [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN')).forEach(item => {
+  items.forEach(item => {
     const row = document.createElement('div');
     row.className = 'lib-item';
     row.style.setProperty('--lib-color', item.color);
@@ -5176,8 +5255,20 @@ function startEditLib(id) {
   updateBentoLinkUI(libNameInput.value);
   const linkedBento = findLinkedBento(item);
   setLibNameLock(!!linkedBento);
+  libFormTitle.textContent = '修改品名';
+  openLibFormModal();
   // 名字锁定时把焦点落到第一个可改的字段(品名速度),别停在改不了的名字框上
-  if (linkedBento) libSpeedInput.focus(); else libNameInput.focus();
+  setTimeout(() => { if (linkedBento) libSpeedInput.focus(); else libNameInput.focus(); }, 100);
+}
+// ── 录入弹框开/关 ──
+function openLibFormModal() { libFormModal.classList.add('show'); }
+function closeLibFormModal() { libFormModal.classList.remove('show'); cancelEditLib(); }
+function openAddLibForm() {
+  cancelEditLib();            // 清空字段、按钮回「添加」
+  renderColorPicker();
+  libFormTitle.textContent = '添加品名';
+  openLibFormModal();
+  setTimeout(() => libNameInput.focus(), 100);
 }
 function cancelEditLib() {
   editingLibId = null;
@@ -5243,18 +5334,16 @@ libAddBtn.addEventListener('click', () => {
     const item = findLibItem(editingLibId);
     if (item) { item.name = name; item.speed = speed; item.lineSpeed = lineSpeed; item.people = people; item.meterPeople = meterPeople; item.color = selectedColor; }
     const editedId = editingLibId;
-    cancelEditLib();
+    closeLibFormModal();
     applyBentoOverlay();
     propagateLibChange(editedId);
   } else {
     library.push({ id: uid(), name, speed, lineSpeed, people, meterPeople, color: selectedColor });
-    libNameInput.value = ''; libSpeedInput.value = ''; libLineSpeedInput.value = ''; libPeopleInput.value = ''; libMeterPeopleInput.value = '';
+    closeLibFormModal();
     applyBentoOverlay();
-    updateBentoLinkUI('');
   }
   saveLibrary();
   renderLibList();
-  libNameInput.focus();
 });
 libNameInput.addEventListener('input', () => updateBentoLinkUI(libNameInput.value));
 // 名字被锁定(已链接配置表便当)时,点/聚焦给出提示 —— 移动端没有 hover tooltip
@@ -5343,23 +5432,28 @@ libLineSpeedInput.addEventListener('keydown', e => { if (e.key === 'Enter') libP
 libPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libMeterPeopleInput.focus(); });
 libMeterPeopleInput.addEventListener('keydown', e => { if (e.key === 'Enter') libAddBtn.click(); });
 document.getElementById('openLib').addEventListener('click', () => {
-  cancelEditLib(); renderColorPicker(); renderLibList();
+  cancelEditLib(); libFormModal.classList.remove('show'); renderColorPicker(); renderLibList();
   libModal.classList.add('show');
-  setTimeout(() => libNameInput.focus(), 100);
 });
+document.getElementById('libAddOpen').addEventListener('click', openAddLibForm);
 
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => {
     const mask = btn.closest('.modal-mask');
     mask.classList.remove('show');
-    if (mask.id === 'libModal') cancelEditLib();
+    if (mask.id === 'libFormModal') cancelEditLib();
+    if (mask.id === 'libModal') { cancelEditLib(); libFormModal.classList.remove('show'); }
   });
 });
 document.querySelectorAll('.modal-mask').forEach(m => {
   let downOnMask = false;
   m.addEventListener('mousedown', e => { downOnMask = (e.target === m); });
   m.addEventListener('click', e => {
-    if (downOnMask && e.target === m) { m.classList.remove('show'); if (m.id === 'libModal') cancelEditLib(); }
+    if (downOnMask && e.target === m) {
+      m.classList.remove('show');
+      if (m.id === 'libFormModal') cancelEditLib();
+      if (m.id === 'libModal') { cancelEditLib(); libFormModal.classList.remove('show'); }
+    }
     downOnMask = false;
   });
 });
@@ -5435,6 +5529,7 @@ function openPicker(line) {
     document.getElementById('goLibBtn').addEventListener('click', () => {
       pickModal.classList.remove('show');
       document.getElementById('openLib').click();
+      openAddLibForm();
     });
   } else {
     pickList.innerHTML = '';
