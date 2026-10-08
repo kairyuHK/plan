@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-2">
+<html lang="zh-CN" data-appver="2026-10-09-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10020,12 +10020,14 @@ function renderMaterialsDrawer() {
       title.style.cssText = "color:var(--muted);font-size:11px;margin-bottom:3px";
       title.textContent = `${usageRows.length} 个便当使用 (点击进入编辑):`;
       usageBox.appendChild(title);
+      const _lib = loadSharedLib(); // 便当名按统一颜色(品名库)着色
       for (const u of usageRows) {
         const btn = document.createElement("button");
         btn.style.cssText = "display:flex;justify-content:space-between;gap:8px;background:transparent;border:none;color:var(--accent);font:inherit;font-size:12px;padding:2px 0;cursor:pointer;text-align:left;width:100%";
         const nm = document.createElement("span");
         nm.textContent = u.name;
         nm.style.textDecoration = "underline";
+        nm.style.color = bentoSharedColor(u, _lib) || "var(--accent)";
         btn.appendChild(nm);
         // 需求4:便当名旁显示该材料所需量 = 卡片右上角量 × 便当数量;卡片没填量则不显示
         if (u.hasQty) {
