@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-1">
+<html lang="zh-CN" data-appver="2026-10-09-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8187,6 +8187,18 @@ window.addEventListener('storage', (e) => {
     try { document.querySelectorAll('.line').forEach(l => recalc(l)); } catch (_) {}
   }
 });
+// 配置表便当库改了便当颜色(写共享 productLibrary_v3)→ 把颜色同步进内存 library,刷新品名库列表(若开着)。
+// 已放置的卡片是独立快照(card.dataset.color),按既有设计不回改;新卡会用更新后的颜色。
+window.addEventListener('storage', (e) => {
+  if (e.key !== STORAGE_LIB || window.skipAutoSave) return;
+  let stored; try { stored = JSON.parse(e.newValue || '[]') || []; } catch (_) { return; }
+  const cById = new Map(stored.filter(x => x && x.id).map(x => [x.id, x.color]));
+  let changed = false;
+  library.forEach(it => { const c = cById.get(it.id); if (cById.has(it.id) && c !== it.color) { it.color = c; changed = true; } });
+  if (!changed) return;
+  const libModalEl = document.getElementById('libModal');
+  if (libModalEl && libModalEl.classList.contains('show')) renderLibList();
+});
 
 document.getElementById('undoBtn').addEventListener('click', doUndo);
 document.getElementById('redoBtn').addEventListener('click', doRedo);
@@ -9489,6 +9501,10 @@ window.addEventListener('message', (e) => {
     saveState();
     render();
   }
+});
+// 计划板改了便当颜色(写共享的 productLibrary_v3)→ 正看便当库时重渲,反映统一颜色
+window.addEventListener('storage', (e) => {
+  if (e.key === 'productLibrary_v3' && state && state.current && state.current.screen === 'bentos') render();
 });
 
 let state = loadState();
@@ -11147,16 +11163,36 @@ function renderEdit() {
 // 包含:预设色板 / hex 输入 / EyeDropper API(取色时 popover 自身先隐藏)/ 重置默认。
 // 7 色精简预设(覆盖主要色相):ivory · 橙 · 黄 · 绿 · 青绿 · 蓝 · 紫
 // 想要其它颜色用「更多颜色」开系统拾色器,或针管取色
+// 统一调色板:与计划板 COLORS 完全一致(便当颜色体系已统一,以计划板·品名库为准)
 const BENTO_COLOR_PRESETS = [
-  '#ede6d3','#fb923c','#facc15','#34d399','#5eead4','#60a5fa','#a78bfa'
+  '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149','#8b949e','#79c0ff','#d2a8ff',
+  '#ff7b72','#7ee787','#ffa657'
 ];
-// ===== 便当库颜色筛选 + 可拖拽排序(独立存一份;配置表便当色用 BENTO_COLOR_PRESETS,与计划板那套不同) =====
+// ===== 便当唯一颜色 = 计划板品名库(productLibrary_v3)里对应 item 的 color(按 bentoId→名字 关联) =====
+function loadSharedLib() { try { return JSON.parse(localStorage.getItem('productLibrary_v3') || '[]') || []; } catch (_) { return []; } }
+function findLibForBento(lib, b) {
+  return lib.find(it => it && it.bentoId === b.id) || lib.find(it => it && it.name === (b.name || '').trim()) || null;
+}
+function bentoSharedColor(b, lib) { const it = findLibForBento(lib || loadSharedLib(), b); return (it && it.color) || b.color || null; }
+// 写入便当统一颜色:改品名库 item.color(同源 storage 事件会让计划板 iframe 同步);无对应项时退回便当自身
+function setBentoSharedColor(b, color) {
+  const lib = loadSharedLib();
+  const it = findLibForBento(lib, b);
+  if (it) {
+    if (color) it.color = color; else delete it.color;
+    try { localStorage.setItem('productLibrary_v3', JSON.stringify(lib)); } catch (_) {}
+  } else {
+    if (color) b.color = color; else delete b.color;
+    saveState();
+  }
+}
+// ===== 便当库颜色筛选 + 可拖拽排序(顺序与计划板共用 productColorOrder_v1,调色板共用上面的 11 色) =====
 let bentoColorFilter = null; // 当前筛选色(null = 全部)
 let bentoColorOrder = (function () {
-  try { const a = JSON.parse(localStorage.getItem('bentoColorOrder_v1') || 'null'); return Array.isArray(a) && a.length ? a : null; }
+  try { const a = JSON.parse(localStorage.getItem('productColorOrder_v1') || 'null'); return Array.isArray(a) && a.length ? a : null; }
   catch (e) { return null; }
 })();
-function saveBentoColorOrder() { try { localStorage.setItem('bentoColorOrder_v1', JSON.stringify(bentoColorOrder || [])); } catch (e) {} }
+function saveBentoColorOrder() { try { localStorage.setItem('productColorOrder_v1', JSON.stringify(bentoColorOrder || [])); } catch (e) {} }
 function bentoPaletteRank(c) {
   if (bentoColorOrder) { const i = bentoColorOrder.indexOf(c); if (i >= 0) return i; }
   const base = bentoColorOrder ? bentoColorOrder.length : 0;
@@ -11221,7 +11257,7 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
   closeBentoColorPopover();
   const pop = document.createElement('div');
   pop.className = 'bento-color-popover';
-  const current = bento.color || '#ede6d3';
+  const current = bentoSharedColor(bento) || '#ffb000';
   pop.innerHTML = `
     <div class="bcp-row">
       <div class="bcp-current"></div>
@@ -11264,11 +11300,10 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
     hexInp.value = c;
   }
   function apply(c) {
-    bento.color = c;
+    setBentoSharedColor(bento, c);
     paint(c);
     anchorEl.style.background = c;
     anchorEl.classList.remove('default');
-    saveState();
     if (onChange) onChange();
   }
   paint(current);
@@ -11310,14 +11345,11 @@ function openBentoColorPopover(anchorEl, bento, onChange) {
   nativeInp.value = current;
   nativeInp.addEventListener('input', () => apply(nativeInp.value));
 
-  // 重置
+  // 重置:清掉该便当的统一颜色(品名库 item.color 一并清空)
   resetBtn.onclick = (e) => {
     e.stopPropagation();
-    if (bento.color) {
-      delete bento.color;
-      saveState();
-      if (onChange) onChange();
-    }
+    setBentoSharedColor(bento, null);
+    if (onChange) onChange();
     closeBentoColorPopover();
   };
 
@@ -11413,8 +11445,13 @@ function renderBentos() {
   tb.appendChild(inp); tb.appendChild(add);
   wrap.appendChild(tb);
 
-  // 颜色筛选条:列出库中在用的便当色圆点(按保存顺序排);点=只看该色,按住拖动可改顺序
-  const inUse = sortBentoColors([...new Set(state.bentos.map(b => b.color).filter(Boolean))]);
+  // 便当统一颜色取自计划板品名库(按 bentoId→名字 关联);本次渲染读一份,顺序也刷新成计划板最新
+  const sharedLib = loadSharedLib();
+  const colorOf = (b) => bentoSharedColor(b, sharedLib);
+  try { const o = JSON.parse(localStorage.getItem('productColorOrder_v1') || 'null'); bentoColorOrder = Array.isArray(o) && o.length ? o : bentoColorOrder; } catch (_) {}
+
+  // 颜色筛选条:列出库中在用的便当色圆点(按共享顺序排);点=只看该色,按住拖动可改顺序
+  const inUse = sortBentoColors([...new Set(state.bentos.map(b => colorOf(b)).filter(Boolean))]);
   if (bentoColorFilter && !inUse.includes(bentoColorFilter)) bentoColorFilter = null;
   if (inUse.length >= 2) {
     const cf = document.createElement("div"); cf.className = "bento-cf";
@@ -11441,32 +11478,25 @@ function renderBentos() {
     wrap.appendChild(e);
   } else {
     let list = state.bentos.slice().sort((a,b) => a.name.localeCompare(b.name, "zh"));
-    if (bentoColorFilter) list = list.filter(b => b.color === bentoColorFilter);
+    if (bentoColorFilter) list = list.filter(b => colorOf(b) === bentoColorFilter);
     if (list.length === 0) {
       const e = document.createElement("div"); e.className = "empty"; e.textContent = "该颜色下没有便当。";
       wrap.appendChild(e);
     }
     for (const b of list) {
+      const bcol = colorOf(b);
       const it = document.createElement("div"); it.className = "item";
-      // 颜色 swatch:点 = 打开自定义 popover(支持针管 eyedropper / hex / 预设),双击 = 重置回默认
+      // 颜色 swatch:点 = 打开调色 popover(统一色板/针管/hex);颜色统一来自计划板品名库
       const sw = document.createElement("span");
-      sw.className = "bento-color-sw" + (b.color ? "" : " default");
-      sw.title = b.color ? `便当名颜色 ${b.color} · 双击重置` : "设置便当名颜色 · 双击重置";
-      if (b.color) sw.style.background = b.color;
+      sw.className = "bento-color-sw" + (bcol ? "" : " default");
+      sw.title = bcol ? `便当名颜色 ${bcol}` : "设置便当名颜色";
+      if (bcol) sw.style.background = bcol;
       sw.onclick = (e) => {
         e.stopPropagation();
         openBentoColorPopover(sw, b, () => render());
       };
-      sw.ondblclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!b.color) return;
-        delete b.color;
-        saveState();
-        render();
-      };
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = b.name;
-      if (b.color) nm.style.color = b.color;
+      if (bcol) nm.style.color = bcol;
       nm.onclick = () => { state.current = { ...state.current, screen: "edit", editingBentoId: b.id }; saveState(); render(); };
       const ed = document.createElement("button"); ed.textContent = "改";
       ed.onclick = () => nm.click();
