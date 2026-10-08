@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-08-6">
+<html lang="zh-CN" data-appver="2026-10-09-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8376,6 +8376,14 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .bentos-screen .toolbar{display:flex;gap:8px;margin-bottom:12px}
   .bentos-screen .toolbar input{flex:1;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:6px 10px;border-radius:4px;font:inherit}
   .bentos-screen .toolbar button{background:var(--accent);color:#000;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font:inherit}
+  /* 便当库按颜色筛选:一排在用颜色圆点,点=只看该色再点取消;按住横向拖动可改顺序 */
+  .bento-cf{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:12px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .bento-cf-all{height:24px;padding:0 10px;border-radius:12px;font:inherit;font-size:12px;cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--muted);transition:background .15s,color .15s,border-color .15s}
+  .bento-cf-all.active{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.08)}
+  .bento-cf-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;background:var(--cf);border:2px solid transparent;box-shadow:0 0 0 1px var(--line) inset;padding:0;transition:transform .1s,box-shadow .15s;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .bento-cf-dot:hover{transform:scale(1.12)}
+  .bento-cf-dot.active{box-shadow:0 0 0 2px var(--bg) inset,0 0 0 2px var(--accent)}
+  .bento-cf-dot.cf-dragging{transform:scale(1.35) !important;opacity:.85;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.45),0 0 0 2px var(--accent);transition:none;cursor:grabbing;position:relative}
   .bentos-screen .item{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
   .bentos-screen .item .name{flex:1;cursor:pointer;font-size:16px}
   .bentos-screen .item .name:hover{color:var(--accent)}
@@ -11142,6 +11150,70 @@ function renderEdit() {
 const BENTO_COLOR_PRESETS = [
   '#ede6d3','#fb923c','#facc15','#34d399','#5eead4','#60a5fa','#a78bfa'
 ];
+// ===== 便当库颜色筛选 + 可拖拽排序(独立存一份;配置表便当色用 BENTO_COLOR_PRESETS,与计划板那套不同) =====
+let bentoColorFilter = null; // 当前筛选色(null = 全部)
+let bentoColorOrder = (function () {
+  try { const a = JSON.parse(localStorage.getItem('bentoColorOrder_v1') || 'null'); return Array.isArray(a) && a.length ? a : null; }
+  catch (e) { return null; }
+})();
+function saveBentoColorOrder() { try { localStorage.setItem('bentoColorOrder_v1', JSON.stringify(bentoColorOrder || [])); } catch (e) {} }
+function bentoPaletteRank(c) {
+  if (bentoColorOrder) { const i = bentoColorOrder.indexOf(c); if (i >= 0) return i; }
+  const base = bentoColorOrder ? bentoColorOrder.length : 0;
+  const ci = BENTO_COLOR_PRESETS.indexOf(c);
+  return ci < 0 ? base + BENTO_COLOR_PRESETS.length : base + ci;
+}
+function sortBentoColors(colors) { return [...colors].sort((a, b) => bentoPaletteRank(a) - bentoPaletteRank(b)); }
+function commitBentoColorOrder(visible) {
+  const merged = [...visible];
+  (bentoColorOrder || BENTO_COLOR_PRESETS).forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  BENTO_COLOR_PRESETS.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  bentoColorOrder = merged; saveBentoColorOrder();
+}
+// 触摸+鼠标拖拽排序(与计划板同款;iOS 走 Touch 事件最稳)。轻点仍触发筛选。
+function enableBentoDotDrag(container, onCommit) {
+  let dragEl = null, sx = 0, sy = 0, moved = false;
+  const items = () => [...container.querySelectorAll('.bento-cf-dot')];
+  function begin(x, y, el) { dragEl = el; sx = x; sy = y; moved = false; }
+  function to(x, y) {
+    if (!dragEl) return;
+    if (!moved) { if (Math.hypot(x - sx, y - sy) < 6) return; moved = true; dragEl.classList.add('cf-dragging'); }
+    let target = null, best = Infinity, after = false;
+    items().forEach(d => {
+      if (d === dragEl) return;
+      const r = d.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dist = Math.hypot(x - cx, y - cy);
+      if (dist < best) { best = dist; target = d; after = x > cx; }
+    });
+    if (target) { after ? target.after(dragEl) : target.before(dragEl); }
+  }
+  function finish() {
+    if (!dragEl) return;
+    const el = dragEl, was = moved;
+    el.classList.remove('cf-dragging'); dragEl = null; moved = false;
+    if (was) { el._cfWasDrag = true; onCommit(items().map(d => d.dataset.color)); }
+  }
+  function onMouseMove(e) { to(e.clientX, e.clientY); }
+  function onMouseUp() { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); finish(); }
+  items().forEach(el => {
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; begin(t.clientX, t.clientY, el); }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (!dragEl) return;
+      const t = e.touches[0];
+      if (moved || Math.hypot(t.clientX - sx, t.clientY - sy) >= 6) e.preventDefault();
+      to(t.clientX, t.clientY);
+    }, { passive: false });
+    el.addEventListener('touchend', finish);
+    el.addEventListener('touchcancel', finish);
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      begin(e.clientX, e.clientY, el); e.preventDefault();
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+    el.addEventListener('click', e => { if (el._cfWasDrag) { e.stopImmediatePropagation(); e.preventDefault(); el._cfWasDrag = false; } }, true);
+  });
+}
 function closeBentoColorPopover() {
   document.querySelectorAll('.bento-color-popover').forEach(p => p.remove());
 }
@@ -11341,11 +11413,40 @@ function renderBentos() {
   tb.appendChild(inp); tb.appendChild(add);
   wrap.appendChild(tb);
 
+  // 颜色筛选条:列出库中在用的便当色圆点(按保存顺序排);点=只看该色,按住拖动可改顺序
+  const inUse = sortBentoColors([...new Set(state.bentos.map(b => b.color).filter(Boolean))]);
+  if (bentoColorFilter && !inUse.includes(bentoColorFilter)) bentoColorFilter = null;
+  if (inUse.length >= 2) {
+    const cf = document.createElement("div"); cf.className = "bento-cf";
+    const allBtn = document.createElement("button");
+    allBtn.className = "bento-cf-all" + (bentoColorFilter ? "" : " active");
+    allBtn.textContent = "全部";
+    allBtn.onclick = () => { bentoColorFilter = null; render(); };
+    cf.appendChild(allBtn);
+    inUse.forEach(c => {
+      const dot = document.createElement("button");
+      dot.className = "bento-cf-dot" + (c === bentoColorFilter ? " active" : "");
+      dot.dataset.color = c;
+      dot.style.setProperty("--cf", c);
+      dot.title = "只看此颜色";
+      dot.onclick = () => { bentoColorFilter = (bentoColorFilter === c) ? null : c; render(); };
+      cf.appendChild(dot);
+    });
+    wrap.appendChild(cf);
+    enableBentoDotDrag(cf, (order) => { commitBentoColorOrder(order); render(); });
+  }
+
   if (state.bentos.length === 0) {
     const e = document.createElement("div"); e.className = "empty"; e.textContent = "还没有便当,在上面输入名字新建。";
     wrap.appendChild(e);
   } else {
-    for (const b of state.bentos.slice().sort((a,b) => a.name.localeCompare(b.name, "zh"))) {
+    let list = state.bentos.slice().sort((a,b) => a.name.localeCompare(b.name, "zh"));
+    if (bentoColorFilter) list = list.filter(b => b.color === bentoColorFilter);
+    if (list.length === 0) {
+      const e = document.createElement("div"); e.className = "empty"; e.textContent = "该颜色下没有便当。";
+      wrap.appendChild(e);
+    }
+    for (const b of list) {
       const it = document.createElement("div"); it.className = "item";
       // 颜色 swatch:点 = 打开自定义 popover(支持针管 eyedropper / hex / 预设),双击 = 重置回默认
       const sw = document.createElement("span");
