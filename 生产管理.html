@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-07-1">
+<html lang="zh-CN" data-appver="2026-10-08-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4760,9 +4760,16 @@ const TIME_END_HOUR = 22;
 const TIME_TICK_MIN = 15;   // 时间轴每小时分格:60/15 = 4 格(每格 15 分)
 
 const COLORS = [
-  '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149',
-  '#ff7b72','#79c0ff','#d2a8ff','#7ee787','#ffa657','#8b949e',
+  '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149','#8b949e','#79c0ff','#d2a8ff',
+  '#ff7b72','#7ee787','#ffa657',
 ];
+// 颜色展示顺序:按调色板 COLORS 的次序排;不在 COLORS 里的自定义色排到最后(保持原相对次序)
+function sortByPaletteOrder(colors) {
+  return [...colors].sort((a, b) => {
+    const ia = COLORS.indexOf(a), ib = COLORS.indexOf(b);
+    return (ia < 0 ? COLORS.length : ia) - (ib < 0 ? COLORS.length : ib);
+  });
+}
 
 let library = [];
 let currentPickTargetLine = null;
@@ -5052,7 +5059,7 @@ function getDaySnapshotForLib(libId) {
 // 颜色筛选条:列出库中在用的颜色圆点,点一个=只看该色,再点=取消。只有 ≥2 种颜色才显示。
 function renderLibColorFilter() {
   if (!libColorFilterEl) return;
-  const colors = [...new Set(library.map(i => i && i.color).filter(Boolean))];
+  const colors = sortByPaletteOrder([...new Set(library.map(i => i && i.color).filter(Boolean))]);
   if (colors.length < 2) {
     libColorFilter = null;
     libColorFilterEl.innerHTML = '';
@@ -5534,7 +5541,7 @@ let pickColorFilter = null; // 选择品名弹窗当前按颜色筛选的颜色�
 // 颜色筛选条(同品名库那套):只有 ≥2 种颜色才显示
 function renderPickColorFilter() {
   if (!pickColorFilterEl) return;
-  const colors = [...new Set(library.map(i => i && i.color).filter(Boolean))];
+  const colors = sortByPaletteOrder([...new Set(library.map(i => i && i.color).filter(Boolean))]);
   if (colors.length < 2) {
     pickColorFilter = null;
     pickColorFilterEl.innerHTML = '';
