@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-08-2">
+<html lang="zh-CN" data-appver="2026-10-08-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3387,8 +3387,8 @@ const Pages = (() => {
   .lib-cf-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; background: var(--cf); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border) inset; padding: 0; transition: transform 0.1s, box-shadow 0.15s; touch-action: none; }
   .lib-cf-dot:hover { transform: scale(1.12); }
   .lib-cf-dot.active { box-shadow: 0 0 0 2px var(--panel-elevated) inset, 0 0 0 2px var(--accent); }
-  /* 拖拽排序中的圆点:放大提起、半透明,盖在别的圆点上方 */
-  .lib-cf-dot.cf-dragging { transform: scale(1.35); opacity: 0.85; z-index: 5; box-shadow: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 2px var(--accent); transition: none; cursor: grabbing; }
+  /* 拖拽排序中的圆点/色块:放大提起、半透明,盖在别的之上 */
+  .cf-dragging { transform: scale(1.35) !important; opacity: 0.85; z-index: 5; box-shadow: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 2px var(--accent); transition: none; cursor: grabbing; position: relative; }
   /* 录入弹框比列表弹框窄一些,更像对话框 */
   #libFormModal .modal { max-width: 460px; }
   #libFormModal .lib-add-form { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
@@ -3436,7 +3436,7 @@ const Pages = (() => {
     background: var(--bg); border: 1px solid var(--border);
     padding: 6px 8px; border-radius: 6px;
   }
-  .color-swatch { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-swatch { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; touch-action: none; }
   .color-swatch:hover { transform: scale(1.2); }
   .color-swatch.selected { border-color: var(--text); }
   .color-custom {
@@ -4798,46 +4798,57 @@ function commitColorOrder(visible) {
   colorOrder = merged;
   saveColorOrder();
 }
-// 给一排颜色圆点(.lib-cf-dot)加触摸/鼠标拖拽排序。轻点仍触发原来的筛选点击;横移超过阈值才算拖动。
-function enableDotDragSort(container, onCommit) {
-  container.querySelectorAll('.lib-cf-dot').forEach(dot => {
-    let pid = null, sx = 0, sy = 0, moved = false;
-    dot.addEventListener('pointerdown', e => {
-      if (e.button != null && e.button > 0) return;
-      pid = e.pointerId; sx = e.clientX; sy = e.clientY; moved = false;
-      try { dot.setPointerCapture(pid); } catch (_) {}
+// 给一排颜色方块/圆点加触摸+鼠标拖拽排序。itemSel = 可拖项的选择器(如 '.lib-cf-dot' / '.color-swatch')。
+// 轻点仍触发原来的点击(筛选/选色);横移超过阈值才算拖动。iOS 用 Touch 事件最稳(Pointer 事件会被手势仲裁吞掉)。
+function enableDotDragSort(container, itemSel, onCommit) {
+  let dragEl = null, sx = 0, sy = 0, moved = false;
+  const items = () => [...container.querySelectorAll(itemSel)];
+  function begin(x, y, el) { dragEl = el; sx = x; sy = y; moved = false; }
+  function to(x, y) {
+    if (!dragEl) return;
+    if (!moved) {
+      if (Math.hypot(x - sx, y - sy) < 6) return;
+      moved = true; dragEl.classList.add('cf-dragging');
+    }
+    let target = null, best = Infinity, after = false;
+    items().forEach(d => {
+      if (d === dragEl) return;
+      const r = d.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dist = Math.hypot(x - cx, y - cy);
+      if (dist < best) { best = dist; target = d; after = x > cx; }
     });
-    dot.addEventListener('pointermove', e => {
-      if (pid === null) return;
-      if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
-      moved = true;
-      dot.classList.add('cf-dragging');
-      e.preventDefault();
-      const dots = [...container.querySelectorAll('.lib-cf-dot')];
-      let target = null, best = Infinity, after = false;
-      dots.forEach(d => {
-        if (d === dot) return;
-        const r = d.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-        if (dist < best) { best = dist; target = d; after = e.clientX > cx; }
-      });
-      if (target) { after ? target.after(dot) : target.before(dot); }
+    if (target) { after ? target.after(dragEl) : target.before(dragEl); }
+  }
+  function finish() {
+    if (!dragEl) return;
+    const el = dragEl, was = moved;
+    el.classList.remove('cf-dragging');
+    dragEl = null; moved = false;
+    if (was) { el._cfWasDrag = true; onCommit(items().map(d => d.dataset.color)); }
+  }
+  // 桌面:鼠标移动/松开挂在 document 上(拖动结束即解绑,避免重复渲染累积监听)
+  function onMouseMove(e) { to(e.clientX, e.clientY); }
+  function onMouseUp() { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); finish(); }
+  items().forEach(el => {
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; begin(t.clientX, t.clientY, el); }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (!dragEl) return;
+      const t = e.touches[0];
+      // 一旦判定为拖动,阻止页面滚动
+      if (moved || Math.hypot(t.clientX - sx, t.clientY - sy) >= 6) e.preventDefault();
+      to(t.clientX, t.clientY);
+    }, { passive: false });
+    el.addEventListener('touchend', finish);
+    el.addEventListener('touchcancel', finish);
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      begin(e.clientX, e.clientY, el); e.preventDefault();
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
-    const end = () => {
-      if (pid === null) return;
-      try { dot.releasePointerCapture(pid); } catch (_) {}
-      pid = null;
-      dot.classList.remove('cf-dragging');
-      if (moved) {
-        dot._cfWasDrag = true;
-        onCommit([...container.querySelectorAll('.lib-cf-dot')].map(d => d.dataset.color));
-      }
-    };
-    dot.addEventListener('pointerup', end);
-    dot.addEventListener('pointercancel', end);
-    // 拖动结束后紧跟的那次 click 不应触发筛选 —— 捕获阶段拦掉
-    dot.addEventListener('click', e => {
-      if (dot._cfWasDrag) { e.stopImmediatePropagation(); e.preventDefault(); dot._cfWasDrag = false; }
+    // 拖动后紧跟的那次 click 不应触发筛选/选色 —— 捕获阶段拦掉
+    el.addEventListener('click', e => {
+      if (el._cfWasDrag) { e.stopImmediatePropagation(); e.preventDefault(); el._cfWasDrag = false; }
     }, true);
   });
 }
@@ -5095,6 +5106,7 @@ function renderColorPicker() {
     const sw = document.createElement('div');
     sw.className = 'color-swatch' + (c === selectedColor ? ' selected' : '');
     sw.style.background = c;
+    sw.dataset.color = c;
     sw.addEventListener('click', () => { selectedColor = c; renderColorPicker(); });
     libColorPicker.appendChild(sw);
   });
@@ -5105,6 +5117,8 @@ function renderColorPicker() {
   custom.title = '更多颜色';
   custom.addEventListener('change', () => { selectedColor = custom.value; renderColorPicker(); });
   libColorPicker.appendChild(custom);
+  // 按住色块拖动即可改颜色顺序(与选择品名/品名库筛选条共用一套保存顺序)
+  enableDotDragSort(libColorPicker, '.color-swatch', (order) => { commitColorOrder(order); renderColorPicker(); });
 }
 // 扫描当前显示日期(currentDate)板子上所有 libId 卡片的快照,
 // 返回 {speed, mp, divergent, count, lineIds, singleLineId}。
@@ -5153,6 +5167,8 @@ function renderLibColorFilter() {
       renderLibList();
     });
   });
+  // 按住圆点横向拖动即可改颜色顺序(与选择品名/品名管理调色板共用一套保存顺序)
+  enableDotDragSort(libColorFilterEl, '.lib-cf-dot', (order) => { commitColorOrder(order); renderLibColorFilter(); });
 }
 function renderLibList() {
   renderLibColorFilter();
@@ -5636,7 +5652,7 @@ function renderPickColorFilter() {
     });
   });
   // 按住圆点横向拖动即可改颜色顺序(存本地,品名库筛选条/品名管理调色板同步跟随)
-  enableDotDragSort(pickColorFilterEl, (order) => { commitColorOrder(order); renderPickColorFilter(); });
+  enableDotDragSort(pickColorFilterEl, '.lib-cf-dot', (order) => { commitColorOrder(order); renderPickColorFilter(); });
 }
 // 渲染品名候选列表(按当前颜色筛选)
 function renderPickList() {
