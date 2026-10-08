@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-08-1">
+<html lang="zh-CN" data-appver="2026-10-08-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3384,9 +3384,11 @@ const Pages = (() => {
   .lib-color-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--border); }
   .lib-cf-all { height: 22px; padding: 0 10px; border-radius: 11px; font-size: 11px; font-family: inherit; cursor: pointer; background: transparent; border: 1px solid var(--border); color: var(--text-mute); transition: background 0.15s, color 0.15s, border-color 0.15s; }
   .lib-cf-all.active { color: var(--accent); border-color: rgba(var(--accent-rgb),0.5); background: rgba(var(--accent-rgb),0.08); }
-  .lib-cf-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; background: var(--cf); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border) inset; padding: 0; transition: transform 0.1s, box-shadow 0.15s; }
+  .lib-cf-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; background: var(--cf); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border) inset; padding: 0; transition: transform 0.1s, box-shadow 0.15s; touch-action: none; }
   .lib-cf-dot:hover { transform: scale(1.12); }
   .lib-cf-dot.active { box-shadow: 0 0 0 2px var(--panel-elevated) inset, 0 0 0 2px var(--accent); }
+  /* 拖拽排序中的圆点:放大提起、半透明,盖在别的圆点上方 */
+  .lib-cf-dot.cf-dragging { transform: scale(1.35); opacity: 0.85; z-index: 5; box-shadow: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 2px var(--accent); transition: none; cursor: grabbing; }
   /* 录入弹框比列表弹框窄一些,更像对话框 */
   #libFormModal .modal { max-width: 460px; }
   #libFormModal .lib-add-form { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
@@ -4547,6 +4549,7 @@ const STORAGE_LIB = 'productLibrary_v3';
 const STORAGE_BOARD_PREFIX = 'productionBoard_v1_';
 const STORAGE_BOARD_LEGACY = 'productionBoard_v1';
 const STORAGE_CURRENT_DATE = 'productionBoardCurrentDate';
+const STORAGE_COLOR_ORDER = 'productColorOrder_v1'; // 用户拖拽自定义的颜色展示顺序
 // 配置表(便当库)使用的 localStorage 键 — 与 data-config iframe 中的 STORAGE_KEY 保持一致
 const BENTO_STORAGE_KEY = 'bento-conveyor-v1';
 let bentoMap = new Map();
@@ -4763,11 +4766,79 @@ const COLORS = [
   '#ffb000','#3fb950','#58a6ff','#a371f7','#f85149','#8b949e','#79c0ff','#d2a8ff',
   '#ff7b72','#7ee787','#ffa657',
 ];
-// 颜色展示顺序:按调色板 COLORS 的次序排;不在 COLORS 里的自定义色排到最后(保持原相对次序)
+// ============ 颜色展示顺序(可拖拽自定义,存本地) ============
+// colorOrder:用户拖出来的主顺序(hex 数组)。没存过时为 null,回退到 COLORS 原顺序。
+let colorOrder = (function () {
+  try {
+    const a = JSON.parse(localStorage.getItem(STORAGE_COLOR_ORDER) || 'null');
+    return Array.isArray(a) && a.length ? a : null;
+  } catch (e) { return null; }
+})();
+function saveColorOrder() {
+  try { localStorage.setItem(STORAGE_COLOR_ORDER, JSON.stringify(colorOrder || [])); } catch (e) {}
+}
+// 某颜色的排序权重:优先用保存的 colorOrder,其次 COLORS 原顺序,都没有的排最后
+function paletteRank(c) {
+  if (colorOrder) {
+    const i = colorOrder.indexOf(c);
+    if (i >= 0) return i;
+  }
+  const base = colorOrder ? colorOrder.length : 0;
+  const ci = COLORS.indexOf(c);
+  return ci < 0 ? base + COLORS.length : base + ci;
+}
 function sortByPaletteOrder(colors) {
-  return [...colors].sort((a, b) => {
-    const ia = COLORS.indexOf(a), ib = COLORS.indexOf(b);
-    return (ia < 0 ? COLORS.length : ia) - (ib < 0 ? COLORS.length : ib);
+  return [...colors].sort((a, b) => paletteRank(a) - paletteRank(b));
+}
+// 拖拽提交:visible = 筛选条里拖出来的可见颜色新顺序。把它放前面,其余颜色按原顺序补到后面,存起来。
+function commitColorOrder(visible) {
+  const merged = [...visible];
+  (colorOrder || COLORS).forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  COLORS.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  colorOrder = merged;
+  saveColorOrder();
+}
+// 给一排颜色圆点(.lib-cf-dot)加触摸/鼠标拖拽排序。轻点仍触发原来的筛选点击;横移超过阈值才算拖动。
+function enableDotDragSort(container, onCommit) {
+  container.querySelectorAll('.lib-cf-dot').forEach(dot => {
+    let pid = null, sx = 0, sy = 0, moved = false;
+    dot.addEventListener('pointerdown', e => {
+      if (e.button != null && e.button > 0) return;
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY; moved = false;
+      try { dot.setPointerCapture(pid); } catch (_) {}
+    });
+    dot.addEventListener('pointermove', e => {
+      if (pid === null) return;
+      if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
+      moved = true;
+      dot.classList.add('cf-dragging');
+      e.preventDefault();
+      const dots = [...container.querySelectorAll('.lib-cf-dot')];
+      let target = null, best = Infinity, after = false;
+      dots.forEach(d => {
+        if (d === dot) return;
+        const r = d.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+        if (dist < best) { best = dist; target = d; after = e.clientX > cx; }
+      });
+      if (target) { after ? target.after(dot) : target.before(dot); }
+    });
+    const end = () => {
+      if (pid === null) return;
+      try { dot.releasePointerCapture(pid); } catch (_) {}
+      pid = null;
+      dot.classList.remove('cf-dragging');
+      if (moved) {
+        dot._cfWasDrag = true;
+        onCommit([...container.querySelectorAll('.lib-cf-dot')].map(d => d.dataset.color));
+      }
+    };
+    dot.addEventListener('pointerup', end);
+    dot.addEventListener('pointercancel', end);
+    // 拖动结束后紧跟的那次 click 不应触发筛选 —— 捕获阶段拦掉
+    dot.addEventListener('click', e => {
+      if (dot._cfWasDrag) { e.stopImmediatePropagation(); e.preventDefault(); dot._cfWasDrag = false; }
+    }, true);
   });
 }
 
@@ -5017,7 +5088,7 @@ let libColorFilter = null; // 当前按颜色筛选的颜色值(null = 全部)
 
 function renderColorPicker() {
   libColorPicker.innerHTML = '';
-  const all = [...COLORS];
+  const all = sortByPaletteOrder([...COLORS]);
   const isCustom = selectedColor && !COLORS.includes(selectedColor);
   if (isCustom) all.push(selectedColor);
   all.forEach(c => {
@@ -5564,6 +5635,8 @@ function renderPickColorFilter() {
       renderPickList();
     });
   });
+  // 按住圆点横向拖动即可改颜色顺序(存本地,品名库筛选条/品名管理调色板同步跟随)
+  enableDotDragSort(pickColorFilterEl, (order) => { commitColorOrder(order); renderPickColorFilter(); });
 }
 // 渲染品名候选列表(按当前颜色筛选)
 function renderPickList() {
