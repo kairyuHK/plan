@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-4">
+<html lang="zh-CN" data-appver="2026-10-09-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1484,6 +1484,8 @@ const Pages = (() => {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   const byName = (a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN');
+  // 人员自定义顺序(人员库拖拽写的 p.ord):有 ord 的按 ord 升序,其余按名字兜底
+  const byOrder = (a, b) => { const ao = a.ord ?? 1e9, bo = b.ord ?? 1e9; return ao !== bo ? ao - bo : byName(a, b); };
 
   // ---- People ----
   function renderPeople(){
@@ -1500,7 +1502,7 @@ const Pages = (() => {
     s.lines.forEach(line => {
       const list = s.people
         .filter(p => !p.deleted && p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
-        .sort((a,b) => { const ao = a.ord ?? 1e9, bo = b.ord ?? 1e9; return ao !== bo ? ao - bo : byName(a,b); });
+        .sort(byOrder);
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
           <span class="line-name">${line.name}</span>
@@ -1975,8 +1977,11 @@ const Pages = (() => {
       const used = Store.assignedPeopleOnDay(currentDate, lineId, posName);
       const q = query.trim().toLowerCase();
       const match = p => !q || p.name.toLowerCase().includes(q);
-      const home = s.people.filter(p => !p.deleted && sameDept(p.homeLine, lineId) && match(p)).sort(byName);
-      const others = s.people.filter(p => !p.deleted && !sameDept(p.homeLine, lineId) && match(p)).sort(byName);
+      // 本部门/调动都跨多条线(如 A=夕盛+01):先按线序分组,组内沿用人员库自定义顺序(p.ord)
+      const lineIdx = id => { const i = s.lines.findIndex(l => l.id === id); return i < 0 ? 1e9 : i; };
+      const byLineOrder = (a, b) => { const la = lineIdx(a.homeLine), lb = lineIdx(b.homeLine); return la !== lb ? la - lb : byOrder(a, b); };
+      const home = s.people.filter(p => !p.deleted && sameDept(p.homeLine, lineId) && match(p)).sort(byLineOrder);
+      const others = s.people.filter(p => !p.deleted && !sameDept(p.homeLine, lineId) && match(p)).sort(byLineOrder);
       const row = (p) => {
         const selected = currentIds.includes(p.id);
         const full = currentIds.length >= 3 && !selected;
