@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-1">
+<html lang="zh-CN" data-appver="2026-10-10-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2958,6 +2958,24 @@ const Pages = (() => {
   .cards-wrap::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
   .line:last-child .cards-wrap { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
   .line:last-child .cards-wrap::-webkit-scrollbar { width: 4px; }
+
+  /* iPad 等触摸设备 + 桌面宽度(≥901):整块「单一滚动」,取代每列各自滚 + JS 同步 scrollTop。
+     后者在触摸惯性下每次滚动都要写 6 个容器的 scrollTop → 严重卡顿;单一滚动走浏览器原生,顺滑。
+     仅 pointer:coarse(触摸主指针=iPad)命中,PC 鼠标 pointer:fine 保持原每列滚动不变;字号尺寸沿用桌面不缩。
+     时间轴列 sticky-left、线头/时间轴头 sticky-top、统计栏 sticky-bottom → 滚动时三者常驻可见。
+     (getScrollContainer 自动改用 .main;cards-wrap 不再滚 → syncScroll 自然失效) */
+  @media (min-width: 901px) and (pointer: coarse) {
+    .main { overflow: auto; -webkit-overflow-scrolling: touch; align-items: flex-start; }
+    .board { grid-template-rows: auto; grid-auto-rows: auto; overflow: visible; }
+    .line { flex: unset; width: auto; overflow: visible; }
+    .cards-wrap { overflow: visible; height: auto; flex: none; }
+    .timeline { overflow: visible; position: sticky; left: 0; z-index: 6; align-self: flex-start; }
+    .timeline-body { overflow: visible; flex: none; height: auto; }
+    .timeline-head { position: sticky; top: 0; z-index: 7; }
+    .line-head { position: sticky; top: 0; z-index: 5; }
+    .line-foot { position: sticky; bottom: 0; z-index: 5; }
+    .timeline-foot { position: sticky; bottom: 0; z-index: 7; }
+  }
   .cards-grid { position: relative; width: 100%; }
   /* 15 分格虚线:弄到几乎看不见(用户嫌乱);整点实线保留做结构参考。
      虚线用 repeating-linear-gradient 画(浓淡保持很淡),避免 iOS Safari 把 1px dashed 细边框渲染成实线。 */
