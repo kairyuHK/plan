@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-6">
+<html lang="zh-CN" data-appver="2026-10-09-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10285,6 +10285,8 @@ function startCellPressVertical(e, cell, wrap, bento) {
   const origin = cell.getBoundingClientRect();
   const startX = e.clientX, startY = e.clientY;
   let dragging = false, ghost = null, indicator = null, drop = null, highlightedCell = null;
+  let lastX = e.clientX, lastY = e.clientY, scrollRAF = null;
+  const docS = document.scrollingElement || document.documentElement;
   const blockTouch = ev => { if (dragging) ev.preventDefault(); };
   document.addEventListener("touchmove", blockTouch, { passive: false });
 
@@ -10303,31 +10305,23 @@ function startCellPressVertical(e, cell, wrap, bento) {
     indicator.className = "drop-indicator";
     document.body.appendChild(indicator);
     try { cell.setPointerCapture(e.pointerId); } catch(_) {}
+    startAutoScroll();
   }, 350);
 
-  function onMove(ev) {
-    if (!dragging) {
-      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8) clearTimeout(timer);
-      return;
-    }
-    ev.preventDefault();
-    ghost.style.left = (ev.clientX - origin.width/2) + "px";
-    ghost.style.top = (ev.clientY - origin.height/2) + "px";
-
+  // 落点计算(抽出来,便于拖动中和「边缘自动滚动」后按同一坐标重算)
+  function updateDrop(cx, cy) {
     // Suppress indicator when finger is still inside the dragged cell's original rect
-    if (ev.clientX >= origin.left && ev.clientX <= origin.right &&
-        ev.clientY >= origin.top && ev.clientY <= origin.bottom) {
+    if (cx >= origin.left && cx <= origin.right && cy >= origin.top && cy <= origin.bottom) {
       if (highlightedCell) { highlightedCell.classList.remove("drop-target"); highlightedCell = null; }
       indicator.style.display = "none";
       drop = null;
       return;
     }
-
     const allCells = [...wrap.querySelectorAll(".cell[data-slot]")].filter(c => c !== cell);
     let hitCell = null;
     for (const c of allCells) {
       const r = c.getBoundingClientRect();
-      if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
+      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
         hitCell = c; break;
       }
     }
@@ -10361,7 +10355,7 @@ function startCellPressVertical(e, cell, wrap, bento) {
         for (let i = 0; i < slots.length; i++) {
           const [s, ext] = slots[i];
           const mid = (ext.top + ext.bottom) / 2;
-          if (ev.clientY < mid) { targetCol = s; indicatorY = ext.top - 4; placed = true; break; }
+          if (cy < mid) { targetCol = s; indicatorY = ext.top - 4; placed = true; break; }
         }
         if (!placed) {
           const [lastS, lastExt] = slots[slots.length - 1];
@@ -10369,7 +10363,7 @@ function startCellPressVertical(e, cell, wrap, bento) {
         }
       }
       const wrapMidX = wrapRect.left + wrapRect.width / 2;
-      const row = ev.clientX < wrapMidX ? "bottom" : "top";
+      const row = cx < wrapMidX ? "bottom" : "top";
       drop = { mode:"insert", slot:targetCol, row };
       indicator.style.left = wrapRect.left + "px";
       indicator.style.top = indicatorY + "px";
@@ -10378,8 +10372,35 @@ function startCellPressVertical(e, cell, wrap, bento) {
     }
   }
 
+  // 边缘自动滚动:手指靠近视口上/下边缘就持续纵向滚动,并按当前坐标重算落点(ghost 为 fixed,位置不变)
+  function startAutoScroll() {
+    const EDGE = 72, MAX = 16;
+    const tick = () => {
+      scrollRAF = requestAnimationFrame(tick);
+      const vh = window.innerHeight;
+      let dy = 0;
+      if (lastY < EDGE) dy = -Math.ceil(MAX * Math.min(1, (EDGE - lastY) / EDGE));
+      else if (lastY > vh - EDGE) dy = Math.ceil(MAX * Math.min(1, (lastY - (vh - EDGE)) / EDGE));
+      if (dy) { const before = docS.scrollTop; docS.scrollTop = before + dy; if (docS.scrollTop !== before) updateDrop(lastX, lastY); }
+    };
+    scrollRAF = requestAnimationFrame(tick);
+  }
+
+  function onMove(ev) {
+    if (!dragging) {
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8) clearTimeout(timer);
+      return;
+    }
+    ev.preventDefault();
+    lastX = ev.clientX; lastY = ev.clientY;
+    ghost.style.left = (ev.clientX - origin.width/2) + "px";
+    ghost.style.top = (ev.clientY - origin.height/2) + "px";
+    updateDrop(ev.clientX, ev.clientY);
+  }
+
   function cleanup() {
     clearTimeout(timer);
+    if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     document.removeEventListener("pointercancel", onUp);
