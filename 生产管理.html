@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-7">
+<html lang="zh-CN" data-appver="2026-10-10-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2317,8 +2317,8 @@ const Pages = (() => {
       if(e.ctrlKey || e.defaultPrevented) return;
       if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
       var el=scroller(e.target); if(!el) return;
-      el.scrollTop  += e.deltaY;
-      el.scrollLeft += e.deltaX;
+      el.scrollTop  += e.deltaY * 3;   // 放大慢滑增量,接近手指/普通网页的跟手感
+      el.scrollLeft += e.deltaX * 3;
     }, {passive:true});
   }catch(_){}
 })();
@@ -8395,8 +8395,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
       if(e.ctrlKey || e.defaultPrevented) return;
       if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
       var el=scroller(e.target); if(!el) return;
-      el.scrollTop  += e.deltaY;
-      el.scrollLeft += e.deltaX;
+      el.scrollTop  += e.deltaY * 3;   // 放大慢滑增量,接近手指/普通网页的跟手感
+      el.scrollLeft += e.deltaX * 3;
     }, {passive:true});
   }catch(_){}
 })();
@@ -11950,8 +11950,8 @@ init();
       if(e.ctrlKey || e.defaultPrevented) return;
       if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
       var el=scroller(e.target); if(!el) return;
-      el.scrollTop  += e.deltaY;
-      el.scrollLeft += e.deltaX;
+      el.scrollTop  += e.deltaY * 3;   // 放大慢滑增量,接近手指/普通网页的跟手感
+      el.scrollLeft += e.deltaX * 3;
     }, {passive:true});
   }catch(_){}
 })();
