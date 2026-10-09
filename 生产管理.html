@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-3">
+<html lang="zh-CN" data-appver="2026-10-09-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -723,9 +723,9 @@ select option:checked{background:#2b2f3a}
 .pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);background:var(--card)}
 .pos-list li:last-child{border-bottom:none}
 .pos-name{flex:1}
-.pos-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:20px;line-height:1;padding:12px 14px;margin:-8px -6px -8px -8px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;border-radius:6px}
-.pos-drag:active{cursor:grabbing;background:rgba(255,255,255,.08)}
-.pos-list li.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:8px;border-bottom-color:transparent}
+.pos-drag,.person-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:20px;line-height:1;padding:12px 14px;margin:-8px -6px -8px -8px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;border-radius:6px}
+.pos-drag:active,.person-drag:active{cursor:grabbing;background:rgba(255,255,255,.08)}
+.pos-list li.dragging,.people-list li.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:8px;border-bottom-color:transparent}
 .pos-list button{padding:4px 10px;font-size:12px}
 .pos-list button.danger{border-color:var(--danger);color:var(--danger)}
 .pos-list button:disabled{opacity:.4;cursor:not-allowed}
@@ -1263,6 +1263,11 @@ const Store = (() => {
     if(order.length !== arr.length) return;
     state.positions[lineId] = order.map(i => arr[i]); save();
   }
+  // 人员拖拽排序:orderedIds = 该 homeLine 下按新显示顺序排列的 person id 序列;写入 p.ord(渲染按 ord 排)
+  function reorderPeople(lineId, orderedIds){
+    orderedIds.forEach((id, i) => { const p = state.people.find(x => x.id === id); if (p && p.homeLine === lineId) p.ord = i; });
+    save();
+  }
 
   // Schedules
   function realLines(){ return state.lines.filter(l => !l.virtual); }
@@ -1351,7 +1356,7 @@ const Store = (() => {
 
   return {
     load, save, subscribe, get, replace, reset,
-    addPerson, updatePerson, deletePerson, findPersonUsage,
+    addPerson, updatePerson, deletePerson, findPersonUsage, reorderPeople,
     addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
     setShift, getShift,
@@ -1495,7 +1500,7 @@ const Pages = (() => {
     s.lines.forEach(line => {
       const list = s.people
         .filter(p => !p.deleted && p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
-        .sort(byName);
+        .sort((a,b) => { const ao = a.ord ?? 1e9, bo = b.ord ?? 1e9; return ao !== bo ? ao - bo : byName(a,b); });
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
           <span class="line-name">${line.name}</span>
@@ -1503,6 +1508,7 @@ const Pages = (() => {
         </div>
         <ul class="people-list">
           ${list.map(p => `<li data-pid="${p.id}">
+            ${query ? '' : '<span class="person-drag" title="拖动排序" aria-label="拖动排序">⠿</span>'}
             <span class="pname">${escapeHtml(p.name)}</span>
             <select data-act="move">
               ${s.lines.map(l => `<option value="${l.id}" ${l.id===p.homeLine?'selected':''}>${l.name}</option>`).join('')}
@@ -1580,6 +1586,49 @@ const Pages = (() => {
       });
       li.querySelector('[data-act="move"]').addEventListener('change', e => {
         Store.updatePerson(pid, {homeLine: e.target.value});
+      });
+    });
+    // 搜索时不挂拖拽(过滤子集重排会乱序);无搜索时每个部门列表可拖动排序
+    if(!query) root.querySelectorAll('.card[data-line]').forEach(card => {
+      enablePeopleDrag(card.querySelector('.people-list'), card.dataset.line);
+    });
+  }
+
+  // 人员列表拖拽排序(镜像岗位拖拽:Pointer + document 捕获阶段 move/up,move 里 preventDefault 防滚动误判)
+  function enablePeopleDrag(ul, lineId){
+    if(!ul) return;
+    const doc = ul.ownerDocument;
+    ul.querySelectorAll('li[data-pid]').forEach(li => {
+      const handle = li.querySelector('.person-drag');
+      if(!handle) return;
+      handle.addEventListener('pointerdown', e => {
+        if(e.button && e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        try { handle.setPointerCapture(e.pointerId); } catch(_){}
+        li.classList.add('dragging');
+        const onMove = ev => {
+          if(ev.cancelable) ev.preventDefault();
+          const y = ev.clientY;
+          const sibs = [...ul.querySelectorAll('li[data-pid]:not(.dragging)')];
+          let after = null;
+          for(const sib of sibs){
+            const r = sib.getBoundingClientRect();
+            if(y < r.top + r.height/2){ after = sib; break; }
+          }
+          if(after) ul.insertBefore(li, after); else ul.appendChild(li);
+        };
+        const onUp = () => {
+          doc.removeEventListener('pointermove', onMove, true);
+          doc.removeEventListener('pointerup', onUp, true);
+          doc.removeEventListener('pointercancel', onUp, true);
+          try { handle.releasePointerCapture(e.pointerId); } catch(_){}
+          li.classList.remove('dragging');
+          const orderedIds = [...ul.querySelectorAll('li[data-pid]')].map(el => el.dataset.pid);
+          Store.reorderPeople(lineId, orderedIds);
+        };
+        doc.addEventListener('pointermove', onMove, true);
+        doc.addEventListener('pointerup', onUp, true);
+        doc.addEventListener('pointercancel', onUp, true);
       });
     });
   }
