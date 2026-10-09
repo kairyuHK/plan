@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-2">
+<html lang="zh-CN" data-appver="2026-10-10-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2965,7 +2965,9 @@ const Pages = (() => {
      时间轴列 sticky-left、线头/时间轴头 sticky-top、统计栏 sticky-bottom → 滚动时三者常驻可见。
      (getScrollContainer 自动改用 .main;cards-wrap 不再滚 → syncScroll 自然失效) */
   @media (min-width: 901px) and (pointer: coarse) {
-    .main { overflow: auto; -webkit-overflow-scrolling: touch; align-items: flex-start; }
+    /* 不加 -webkit-overflow-scrolling:touch:它在 iPad 触控板下只认快速惯性滑、吞掉慢速精确滚动
+       (现象:两指慢滑不动、快滑才动)。现代 iOS 原生滚动本就带惯性,去掉后触控板与手指都顺。 */
+    .main { overflow: auto; align-items: flex-start; }
     .board { grid-template-rows: auto; grid-auto-rows: auto; overflow: visible; }
     .line { flex: unset; width: auto; overflow: visible; }
     .cards-wrap { overflow: visible; height: auto; flex: none; }
