@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-11">
+<html lang="zh-CN" data-appver="2026-10-09-12">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -741,6 +741,9 @@ select option:checked{background:#2b2f3a}
 .people-list button{padding:4px 10px;font-size:12px}
 .people-list button.danger{border-color:var(--danger);color:var(--danger)}
 .people-list button:disabled{opacity:.4;cursor:not-allowed}
+/* 线卡片栅格:窄屏自动单列,够宽时并排多列(min(320,100%) 防窄屏溢出;align-items:start 让矮卡保持自身高度) */
+.line-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px;align-items:start}
+.line-grid .card{margin-bottom:0}
 .sched-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .sched-bar input[type=date]{font-family:var(--font-mono)}
 .sched-bar .danger-btn{border-color:var(--danger);color:var(--danger)}
@@ -1374,7 +1377,7 @@ const Pages = (() => {
   function renderSettings(){
     const root = $('#page-settings');
     const s = Store.get();
-    const html = ['<h2>设置 — 岗位</h2>'];
+    const html = ['<h2>设置 — 岗位</h2>', '<div class="line-grid">'];
     // 虚拟线(如「短期」)不参与排岗,所以不在此处配置岗位
     s.lines.filter(l => !l.virtual).forEach(line => {
       const positions = s.positions[line.id] || [];
@@ -1397,6 +1400,7 @@ const Pages = (() => {
         </form>
       </div>`);
     });
+    html.push('</div>');
     root.innerHTML = html.join('');
 
     root.querySelectorAll('[data-line]').forEach(card => {
@@ -1567,6 +1571,7 @@ const Pages = (() => {
         <button class="primary" id="people-add">+ 新增人员</button>
       </div>
     `];
+    html.push('<div class="line-grid">');
     s.lines.forEach(line => {
       const list = s.people
         .filter(p => !p.deleted && p.homeLine===line.id && (!query || p.name.toLowerCase().includes(query)))
@@ -1588,6 +1593,7 @@ const Pages = (() => {
         </ul>
       </div>`);
     });
+    html.push('</div>');
     root.innerHTML = html.join('');
 
     const searchEl = root.querySelector('#people-search');
