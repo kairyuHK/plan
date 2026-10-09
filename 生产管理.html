@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-5">
+<html lang="zh-CN" data-appver="2026-10-09-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1438,6 +1438,32 @@ const Pages = (() => {
     });
   }
 
+  // 拖拽时边缘自动滚动:手指靠近滚动容器上/下边缘就持续滚动,并按最新 Y 重定位插入点
+  // (解决「拖到可视区最上/下就到头、屏幕外的位置放不进去」)。getY 返回当前指针 clientY,reposition(y) 重排插入点。
+  function startDragAutoScroll(refEl, getY, reposition){
+    const doc = refEl.ownerDocument, win = doc.defaultView;
+    const docScroller = doc.scrollingElement || doc.documentElement;
+    let sc = refEl.parentElement;
+    while(sc){ const s = win.getComputedStyle(sc); if(/(auto|scroll)/.test(s.overflowY) && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; }
+    if(!sc) sc = docScroller;
+    const isDoc = (sc === docScroller || sc === doc.documentElement || sc === doc.body);
+    const EDGE = 72, MAX = 16;
+    let raf = null;
+    const tick = () => {
+      raf = win.requestAnimationFrame(tick);
+      const y = getY(); if(y == null) return;
+      let top, bottom;
+      if(isDoc){ top = 0; bottom = win.innerHeight; }
+      else { const r = sc.getBoundingClientRect(); top = r.top; bottom = r.bottom; }
+      let dy = 0;
+      if(y < top + EDGE) dy = -Math.ceil(MAX * Math.min(1, (top + EDGE - y) / EDGE));
+      else if(y > bottom - EDGE) dy = Math.ceil(MAX * Math.min(1, (y - (bottom - EDGE)) / EDGE));
+      if(dy){ const before = sc.scrollTop; sc.scrollTop = before + dy; if(sc.scrollTop !== before) reposition(y); }
+    };
+    raf = win.requestAnimationFrame(tick);
+    return () => { if(raf) win.cancelAnimationFrame(raf); raf = null; };
+  }
+
   // 岗位列表拖拽排序(触摸/鼠标通用)。手柄 .pos-drag 是整行高的大热区(touch-action:none 防滚动);
   // move/up 监听挂在 document 捕获阶段(即使 setPointerCapture 在 srcdoc iframe 里不稳也能跟住),move 里 preventDefault 进一步防滚动误判成 pointercancel。
   function enablePosDrag(ul, lineId){
@@ -1451,9 +1477,8 @@ const Pages = (() => {
         e.preventDefault(); e.stopPropagation();
         try { handle.setPointerCapture(e.pointerId); } catch(_){}
         li.classList.add('dragging');
-        const onMove = ev => {
-          if(ev.cancelable) ev.preventDefault();
-          const y = ev.clientY;
+        let lastY = e.clientY;
+        const reposition = (y) => {
           const sibs = [...ul.querySelectorAll('li:not(.dragging)')];
           let after = null;
           for(const s of sibs){
@@ -1462,7 +1487,10 @@ const Pages = (() => {
           }
           if(after) ul.insertBefore(li, after); else ul.appendChild(li);
         };
+        const stopScroll = startDragAutoScroll(li, () => lastY, reposition);
+        const onMove = ev => { if(ev.cancelable) ev.preventDefault(); lastY = ev.clientY; reposition(lastY); };
         const onUp = () => {
+          if(stopScroll) stopScroll(); lastY = null;
           doc.removeEventListener('pointermove', onMove, true);
           doc.removeEventListener('pointerup', onUp, true);
           doc.removeEventListener('pointercancel', onUp, true);
@@ -1608,9 +1636,8 @@ const Pages = (() => {
         e.preventDefault(); e.stopPropagation();
         try { handle.setPointerCapture(e.pointerId); } catch(_){}
         li.classList.add('dragging');
-        const onMove = ev => {
-          if(ev.cancelable) ev.preventDefault();
-          const y = ev.clientY;
+        let lastY = e.clientY;
+        const reposition = (y) => {
           const sibs = [...ul.querySelectorAll('li[data-pid]:not(.dragging)')];
           let after = null;
           for(const sib of sibs){
@@ -1619,7 +1646,10 @@ const Pages = (() => {
           }
           if(after) ul.insertBefore(li, after); else ul.appendChild(li);
         };
+        const stopScroll = startDragAutoScroll(li, () => lastY, reposition);
+        const onMove = ev => { if(ev.cancelable) ev.preventDefault(); lastY = ev.clientY; reposition(lastY); };
         const onUp = () => {
+          if(stopScroll) stopScroll(); lastY = null;
           doc.removeEventListener('pointermove', onMove, true);
           doc.removeEventListener('pointerup', onUp, true);
           doc.removeEventListener('pointercancel', onUp, true);
