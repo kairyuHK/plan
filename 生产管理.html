@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-7">
+<html lang="zh-CN" data-appver="2026-10-09-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10438,6 +10438,13 @@ function startCellPress(e, cell, wrap, bento) {
   let ghost = null, indicator = null;
   let drop = null; // { mode:"cell"|"insert", slot, row } or null
   let highlightedCell = null;
+  let lastX = e.clientX, lastY = e.clientY, scrollRAF = null;
+  const docS = document.scrollingElement || document.documentElement;
+  // 横向传送带:找可横向滚动的容器(内层 overflow-x 优先,否则文档)
+  let hScroller = wrap;
+  while (hScroller) { const cs = getComputedStyle(hScroller); if (/(auto|scroll)/.test(cs.overflowX) && hScroller.scrollWidth > hScroller.clientWidth) break; hScroller = hScroller.parentElement; }
+  if (!hScroller) hScroller = docS;
+  const hIsDoc = (hScroller === docS || hScroller === document.documentElement || hScroller === document.body);
   const blockTouch = ev => { if (dragging) ev.preventDefault(); };
   document.addEventListener("touchmove", blockTouch, { passive: false });
 
@@ -10458,23 +10465,17 @@ function startCellPress(e, cell, wrap, bento) {
     document.body.appendChild(indicator);
 
     try { cell.setPointerCapture(e.pointerId); } catch(_) {}
+    startAutoScroll();
   }, 350);
 
-  function onMove(ev) {
-    if (!dragging) {
-      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8) clearTimeout(timer);
-      return;
-    }
-    ev.preventDefault();
-    ghost.style.left = (ev.clientX - origin.width/2) + "px";
-    ghost.style.top = (ev.clientY - origin.height/2) + "px";
-
+  // 落点计算(抽出来,便于拖动中和「边缘自动横滚」后按同一坐标重算)
+  function updateDrop(cx, cy) {
     // Hit-test: is pointer inside any cell (occupied or empty) besides dragged?
     const allCells = [...wrap.querySelectorAll(".cell[data-slot]")].filter(c => c !== cell);
     let hitCell = null;
     for (const c of allCells) {
       const r = c.getBoundingClientRect();
-      if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
+      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
         hitCell = c; break;
       }
     }
@@ -10514,7 +10515,7 @@ function startCellPress(e, cell, wrap, bento) {
         for (let i = 0; i < slots.length; i++) {
           const [s, ext] = slots[i];
           const mid = (ext.left + ext.right) / 2;
-          if (ev.clientX < mid) { targetCol = s; indicatorX = ext.left - 6; placed = true; break; }
+          if (cx < mid) { targetCol = s; indicatorX = ext.left - 6; placed = true; break; }
         }
         if (!placed) {
           const [lastS, lastExt] = slots[slots.length - 1];
@@ -10523,7 +10524,7 @@ function startCellPress(e, cell, wrap, bento) {
       }
       // Row by pointer Y relative to belt midline
       const beltMid = wrapRect.top + wrapRect.height / 2;
-      const row = ev.clientY < beltMid ? "top" : "bottom";
+      const row = cy < beltMid ? "top" : "bottom";
       drop = { mode: "insert", slot: targetCol, row };
       indicator.style.left = indicatorX + "px";
       indicator.style.top = wrapRect.top + "px";
@@ -10531,8 +10532,37 @@ function startCellPress(e, cell, wrap, bento) {
     }
   }
 
+  // 边缘自动横滚:手指靠近左/右边缘就持续横向滚动,并按当前坐标重算落点(ghost 为 fixed,位置不变)
+  function startAutoScroll() {
+    const EDGE = 72, MAX = 16;
+    const tick = () => {
+      scrollRAF = requestAnimationFrame(tick);
+      let left, right;
+      if (hIsDoc) { left = 0; right = window.innerWidth; }
+      else { const r = hScroller.getBoundingClientRect(); left = r.left; right = r.right; }
+      let dx = 0;
+      if (lastX < left + EDGE) dx = -Math.ceil(MAX * Math.min(1, (left + EDGE - lastX) / EDGE));
+      else if (lastX > right - EDGE) dx = Math.ceil(MAX * Math.min(1, (lastX - (right - EDGE)) / EDGE));
+      if (dx) { const before = hScroller.scrollLeft; hScroller.scrollLeft = before + dx; if (hScroller.scrollLeft !== before) updateDrop(lastX, lastY); }
+    };
+    scrollRAF = requestAnimationFrame(tick);
+  }
+
+  function onMove(ev) {
+    if (!dragging) {
+      if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8) clearTimeout(timer);
+      return;
+    }
+    ev.preventDefault();
+    lastX = ev.clientX; lastY = ev.clientY;
+    ghost.style.left = (ev.clientX - origin.width/2) + "px";
+    ghost.style.top = (ev.clientY - origin.height/2) + "px";
+    updateDrop(ev.clientX, ev.clientY);
+  }
+
   function cleanup() {
     clearTimeout(timer);
+    if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
     document.removeEventListener("pointercancel", onUp);
