@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-6">
+<html lang="zh-CN" data-appver="2026-10-10-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2295,6 +2295,32 @@ const Pages = (() => {
   try{ _initRoute = sessionStorage.getItem('sched-route-v1') || ''; }catch(_){}
   if(!_initRoute) _initRoute = (location.hash.match(/^#\/(\w+)/)||[])[1];
   route(_initRoute);
+})();
+<\/script>
+<script>
+/* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
+   的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
+   被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
+   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
+(function(){
+  try{
+    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    function scroller(node){
+      for(var el=node; el && el.nodeType===1; el=el.parentNode){
+        var oy=getComputedStyle(el).overflowY;
+        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
+      }
+      return document.scrollingElement || document.body;
+    }
+    addEventListener('wheel', function(e){
+      if(e.ctrlKey || e.defaultPrevented) return;
+      if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
+      var el=scroller(e.target); if(!el) return;
+      el.scrollTop  += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    }, {passive:true});
+  }catch(_){}
 })();
 <\/script>
 </body>
@@ -8349,6 +8375,32 @@ window.addEventListener('pagehide', () => { if (window.skipAutoSave) return; try
 window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 
 <\/script>
+<script>
+/* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
+   的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
+   被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
+   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
+(function(){
+  try{
+    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    function scroller(node){
+      for(var el=node; el && el.nodeType===1; el=el.parentNode){
+        var oy=getComputedStyle(el).overflowY;
+        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
+      }
+      return document.scrollingElement || document.body;
+    }
+    addEventListener('wheel', function(e){
+      if(e.ctrlKey || e.defaultPrevented) return;
+      if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
+      var el=scroller(e.target); if(!el) return;
+      el.scrollTop  += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    }, {passive:true});
+  }catch(_){}
+})();
+<\/script>
 
 </body>
 </html>
@@ -11877,6 +11929,32 @@ function init() {
   try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'config-ready' }, '*'); } catch (_) {}
 }
 init();
+<\/script>
+<script>
+/* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
+   的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
+   被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
+   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
+(function(){
+  try{
+    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    function scroller(node){
+      for(var el=node; el && el.nodeType===1; el=el.parentNode){
+        var oy=getComputedStyle(el).overflowY;
+        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
+      }
+      return document.scrollingElement || document.body;
+    }
+    addEventListener('wheel', function(e){
+      if(e.ctrlKey || e.defaultPrevented) return;
+      if(Math.max(Math.abs(e.deltaY), Math.abs(e.deltaX)) > 24) return; // 快滑交给原生
+      var el=scroller(e.target); if(!el) return;
+      el.scrollTop  += e.deltaY;
+      el.scrollLeft += e.deltaX;
+    }, {passive:true});
+  }catch(_){}
+})();
 <\/script>
 </body>
 </html>
