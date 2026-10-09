@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-5">
+<html lang="zh-CN" data-appver="2026-10-10-6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2295,32 +2295,6 @@ const Pages = (() => {
   try{ _initRoute = sessionStorage.getItem('sched-route-v1') || ''; }catch(_){}
   if(!_initRoute) _initRoute = (location.hash.match(/^#\/(\w+)/)||[])[1];
   route(_initRoute);
-})();
-<\/script>
-<script>
-/* iPad 触控板慢速(精确)滚动修复:iframe 内滚动容器在 iPadOS 下,触控板慢滑产生的
-   wheel 事件不被原生嵌套滚动处理(只有快滑的动量事件能触发)——手动接管滚动。
-   仅在 pointer:coarse(iPad 等触摸设备)启用,PC 鼠标(pointer:fine)不受影响;
-   已被其它处理器接管(如 .line-wrap 横向滚动)的事件直接让行。 */
-(function(){
-  try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
-    function scroller(node){
-      for(var el=node; el && el.nodeType===1; el=el.parentNode){
-        var oy=getComputedStyle(el).overflowY;
-        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
-      }
-      return document.scrollingElement || document.body;
-    }
-    addEventListener('wheel', function(e){
-      if(e.ctrlKey || e.defaultPrevented) return;
-      var el=scroller(e.target); if(!el) return;
-      var f = e.deltaMode===1 ? 16 : e.deltaMode===2 ? el.clientHeight : 1;
-      el.scrollTop  += e.deltaY * f;
-      el.scrollLeft += e.deltaX * f;
-      e.preventDefault();
-    }, {passive:false});
-  }catch(_){}
 })();
 <\/script>
 </body>
@@ -8375,32 +8349,6 @@ window.addEventListener('pagehide', () => { if (window.skipAutoSave) return; try
 window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 
 <\/script>
-<script>
-/* iPad 触控板慢速(精确)滚动修复:iframe 内滚动容器在 iPadOS 下,触控板慢滑产生的
-   wheel 事件不被原生嵌套滚动处理(只有快滑的动量事件能触发)——手动接管滚动。
-   仅在 pointer:coarse(iPad 等触摸设备)启用,PC 鼠标(pointer:fine)不受影响;
-   已被其它处理器接管(如 .line-wrap 横向滚动)的事件直接让行。 */
-(function(){
-  try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
-    function scroller(node){
-      for(var el=node; el && el.nodeType===1; el=el.parentNode){
-        var oy=getComputedStyle(el).overflowY;
-        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
-      }
-      return document.scrollingElement || document.body;
-    }
-    addEventListener('wheel', function(e){
-      if(e.ctrlKey || e.defaultPrevented) return;
-      var el=scroller(e.target); if(!el) return;
-      var f = e.deltaMode===1 ? 16 : e.deltaMode===2 ? el.clientHeight : 1;
-      el.scrollTop  += e.deltaY * f;
-      el.scrollLeft += e.deltaX * f;
-      e.preventDefault();
-    }, {passive:false});
-  }catch(_){}
-})();
-<\/script>
 
 </body>
 </html>
@@ -11929,32 +11877,6 @@ function init() {
   try { window.parent && window.parent !== window && window.parent.postMessage({ type: 'config-ready' }, '*'); } catch (_) {}
 }
 init();
-<\/script>
-<script>
-/* iPad 触控板慢速(精确)滚动修复:iframe 内滚动容器在 iPadOS 下,触控板慢滑产生的
-   wheel 事件不被原生嵌套滚动处理(只有快滑的动量事件能触发)——手动接管滚动。
-   仅在 pointer:coarse(iPad 等触摸设备)启用,PC 鼠标(pointer:fine)不受影响;
-   已被其它处理器接管(如 .line-wrap 横向滚动)的事件直接让行。 */
-(function(){
-  try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
-    function scroller(node){
-      for(var el=node; el && el.nodeType===1; el=el.parentNode){
-        var oy=getComputedStyle(el).overflowY;
-        if((oy==='auto'||oy==='scroll') && el.scrollHeight>el.clientHeight) return el;
-      }
-      return document.scrollingElement || document.body;
-    }
-    addEventListener('wheel', function(e){
-      if(e.ctrlKey || e.defaultPrevented) return;
-      var el=scroller(e.target); if(!el) return;
-      var f = e.deltaMode===1 ? 16 : e.deltaMode===2 ? el.clientHeight : 1;
-      el.scrollTop  += e.deltaY * f;
-      el.scrollLeft += e.deltaX * f;
-      e.preventDefault();
-    }, {passive:false});
-  }catch(_){}
-})();
 <\/script>
 </body>
 </html>
