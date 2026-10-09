@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-19">
+<html lang="zh-CN" data-appver="2026-10-09-20">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8582,7 +8582,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .picker .empty{padding:10px;color:var(--muted);font-size:13px}
   /* 材料选择弹窗顶部固定条:标题 + 「完成」关闭按钮(没有空白处也能收起) */
   .picker .picker-head{position:sticky;top:-6px;display:flex;align-items:center;gap:8px;margin:-6px -6px 4px;padding:8px 10px;background:#0a0c10;border-bottom:1px solid var(--line);z-index:2}
-  .picker .picker-head .picker-title{flex:1;font-size:12px;color:var(--muted)}
+  .picker .picker-head .picker-title{flex:0 0 auto;font-size:12px;color:var(--muted)}
+  .picker .picker-search{flex:1;min-width:0;background:#1a1d22;border:1px solid var(--line);color:var(--fg);padding:5px 8px;border-radius:5px;font:inherit;font-size:12px;min-height:28px;box-sizing:border-box}
   .picker .picker-done{padding:5px 14px;background:var(--accent);color:#14181f;border:none;border-radius:5px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;min-height:28px}
   .picker .picker-done:hover{background:var(--accent-light,var(--accent))}
   :root[data-theme="light"] .picker .picker-head{background:#ffffff}
@@ -10998,12 +10999,23 @@ function openPicker(anchor, bentoId, posId) {
   const head = document.createElement("div"); head.className = "picker-head";
   const headTitle = document.createElement("span"); headTitle.className = "picker-title"; headTitle.textContent = "选择材料";
   const doneBtn = document.createElement("button"); doneBtn.type = "button"; doneBtn.className = "picker-done"; doneBtn.textContent = "完成";
-  head.appendChild(headTitle); head.appendChild(doneBtn);
+  head.appendChild(headTitle);
+  // 标题与「完成」之间放搜索框,实时过滤下方材料列表(无材料时放占位撑满中间)
+  let searchInput = null;
+  if (state.materials.length > 0) {
+    searchInput = document.createElement("input");
+    searchInput.type = "search"; searchInput.className = "picker-search"; searchInput.placeholder = "搜索材料…";
+    head.appendChild(searchInput);
+  } else {
+    const spacer = document.createElement("span"); spacer.style.flex = "1"; head.appendChild(spacer);
+  }
+  head.appendChild(doneBtn);
   p.appendChild(head);
   if (state.materials.length === 0) {
     const em = document.createElement("div"); em.className = "empty"; em.textContent = "先在「材料库」中添加材料"; p.appendChild(em);
   } else {
     const sortedMats = [...state.materials].sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+    const opts = [];
     for (const m of sortedMats) {
       const opt = document.createElement("div");
       opt.className = "opt" + (sel.has(m.id) ? " sel" : "");
@@ -11017,8 +11029,14 @@ function openPicker(anchor, bentoId, posId) {
         opt.classList.toggle("sel", nowSel);
         renderEdit();
       };
+      opt._q = m.name.toLowerCase();
+      opts.push(opt);
       p.appendChild(opt);
     }
+    if (searchInput) searchInput.addEventListener("input", () => {
+      const q = searchInput.value.trim().toLowerCase();
+      opts.forEach(o => { o.style.display = (!q || o._q.includes(q)) ? "" : "none"; });
+    });
   }
   const r = anchor.getBoundingClientRect();
   const isMobilePortrait = window.matchMedia("(max-width:720px) and (orientation:portrait)").matches;
