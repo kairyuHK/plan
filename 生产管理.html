@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-9">
+<html lang="zh-CN" data-appver="2026-10-09-10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -723,8 +723,8 @@ select option:checked{background:#2b2f3a}
 .pos-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);background:var(--card)}
 .pos-list li:last-child{border-bottom:none}
 .pos-name{flex:1}
-.pos-drag,.person-drag{flex:0 0 auto;cursor:grab;color:var(--muted);font-size:20px;line-height:1;padding:12px 14px;margin:-8px -6px -8px -8px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;border-radius:6px}
-.pos-drag:active,.person-drag:active{cursor:grabbing;background:rgba(255,255,255,.08)}
+.pos-list .pos-name,.people-list .pname{cursor:grab}
+.pos-list li,.people-list li{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .pos-list li.dragging,.people-list li.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.35);border-radius:8px;border-bottom-color:transparent}
 .pos-list button{padding:4px 10px;font-size:12px}
 .pos-list button.danger{border-color:var(--danger);color:var(--danger)}
@@ -1386,7 +1386,6 @@ const Pages = (() => {
         <ul class="pos-list">
           ${positions.map((p,i)=>`
             <li data-oi="${i}">
-              <span class="pos-drag" title="拖动排序" aria-label="拖动排序">⠿</span>
               <span class="pos-name">${escapeHtml(p)}</span>
               <button data-act="rename" data-i="${i}">改名</button>
               <button data-act="del" data-i="${i}" class="danger">删</button>
@@ -1466,47 +1465,86 @@ const Pages = (() => {
     return () => { if(raf) win.cancelAnimationFrame(raf); raf = null; };
   }
 
-  // 岗位列表拖拽排序(触摸/鼠标通用)。手柄 .pos-drag 是整行高的大热区(touch-action:none 防滚动);
-  // move/up 监听挂在 document 捕获阶段(即使 setPointerCapture 在 srcdoc iframe 里不稳也能跟住),move 里 preventDefault 进一步防滚动误判成 pointercancel。
-  function enablePosDrag(ul, lineId){
+  // 行长按拖拽排序(无握把图标,整行名字即拖拽热区):
+  //   手机——长按约 0.45s 进入拖拽,其余手指滑动当作正常滚动列表;按到按钮/下拉等控件(skipSel)不触发。
+  //   PC——鼠标按住拖动,或按住超移动阈值即进入拖拽。
+  // touchstart 走 passive(不拦滚动),进入拖拽后 touchmove preventDefault 接管;边缘自动滚动沿用 startDragAutoScroll。
+  function enableRowLongPressDrag(ul, itemSel, skipSel, onDrop){
     if(!ul) return;
     const doc = ul.ownerDocument;
-    ul.querySelectorAll('li').forEach(li => {
-      const handle = li.querySelector('.pos-drag');
-      if(!handle) return;
-      handle.addEventListener('pointerdown', e => {
-        if(e.button && e.button !== 0) return;
-        e.preventDefault(); e.stopPropagation();
-        try { handle.setPointerCapture(e.pointerId); } catch(_){}
+    const HOLD = 450, MOVE = 8;
+    ul.querySelectorAll(itemSel).forEach(li => {
+      let holdTimer = null, holdReady = false, dragMode = false, startX = 0, startY = 0, lastY = 0, stopScroll = null;
+      const reposition = (y) => {
+        const sibs = [...ul.querySelectorAll(itemSel + ':not(.dragging)')];
+        let after = null;
+        for(const s of sibs){ const r = s.getBoundingClientRect(); if(y < r.top + r.height/2){ after = s; break; } }
+        if(after) ul.insertBefore(li, after); else ul.appendChild(li);
+      };
+      const begin = () => {
+        holdTimer = null; holdReady = true;
         li.classList.add('dragging');
-        let lastY = e.clientY;
-        const reposition = (y) => {
-          const sibs = [...ul.querySelectorAll('li:not(.dragging)')];
-          let after = null;
-          for(const s of sibs){
-            const r = s.getBoundingClientRect();
-            if(y < r.top + r.height/2){ after = s; break; }
+        if(navigator.vibrate) try { navigator.vibrate(20); } catch(_){}
+        stopScroll = startDragAutoScroll(li, () => lastY, reposition);
+      };
+      const cleanup = () => {
+        if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+        if(stopScroll){ stopScroll(); stopScroll = null; }
+        lastY = null;
+      };
+      const end = () => {
+        cleanup();
+        if(holdReady || dragMode) li.classList.remove('dragging');
+        if(dragMode) onDrop(ul);
+        holdReady = false; dragMode = false;
+      };
+      // 触摸:长按进入拖拽
+      li.addEventListener('touchstart', e => {
+        if(e.touches.length !== 1){ cleanup(); if(holdReady || dragMode) li.classList.remove('dragging'); holdReady = false; dragMode = false; return; }
+        if(e.target.closest(skipSel)) return;
+        const t = e.touches[0]; startX = t.clientX; startY = t.clientY; lastY = t.clientY;
+        holdReady = false; dragMode = false;
+        holdTimer = setTimeout(begin, HOLD);
+      }, { passive: true });
+      li.addEventListener('touchmove', e => {
+        if(!holdTimer && !holdReady) return;
+        const t = e.touches[0];
+        if(!holdReady){
+          if(Math.hypot(t.clientX - startX, t.clientY - startY) > MOVE){ clearTimeout(holdTimer); holdTimer = null; }
+          return;
+        }
+        e.preventDefault();
+        dragMode = true; lastY = t.clientY; reposition(lastY);
+      }, { passive: false });
+      li.addEventListener('touchend', end);
+      li.addEventListener('touchcancel', () => { cleanup(); if(holdReady || dragMode) li.classList.remove('dragging'); holdReady = false; dragMode = false; });
+      // 鼠标(PC):按住拖,或移动超阈值即进入拖拽
+      li.addEventListener('mousedown', e => {
+        if(e.button !== 0) return;
+        if(e.target.closest(skipSel)) return;
+        startX = e.clientX; startY = e.clientY; lastY = e.clientY;
+        holdReady = false; dragMode = false;
+        holdTimer = setTimeout(begin, HOLD);
+        const onMove = me => {
+          if(!holdReady){
+            if(Math.hypot(me.clientX - startX, me.clientY - startY) > MOVE){ clearTimeout(holdTimer); holdTimer = null; begin(); }
+            else return;
           }
-          if(after) ul.insertBefore(li, after); else ul.appendChild(li);
+          dragMode = true; lastY = me.clientY; reposition(lastY);
         };
-        const stopScroll = startDragAutoScroll(li, () => lastY, reposition);
-        const onMove = ev => { if(ev.cancelable) ev.preventDefault(); lastY = ev.clientY; reposition(lastY); };
-        const onUp = () => {
-          if(stopScroll) stopScroll(); lastY = null;
-          doc.removeEventListener('pointermove', onMove, true);
-          doc.removeEventListener('pointerup', onUp, true);
-          doc.removeEventListener('pointercancel', onUp, true);
-          try { handle.releasePointerCapture(e.pointerId); } catch(_){}
-          li.classList.remove('dragging');
-          // 按最终 DOM 顺序读「原下标」序列,持久化(save 会触发重渲染)
-          const order = [...ul.querySelectorAll('li')].map(el => +el.dataset.oi);
-          const changed = order.some((v,idx) => v !== idx);
-          if(changed) Store.reorderPositions(lineId, order);
-        };
-        doc.addEventListener('pointermove', onMove, true);
-        doc.addEventListener('pointerup', onUp, true);
-        doc.addEventListener('pointercancel', onUp, true);
+        const onUp = () => { doc.removeEventListener('mousemove', onMove); doc.removeEventListener('mouseup', onUp); end(); };
+        doc.addEventListener('mousemove', onMove);
+        doc.addEventListener('mouseup', onUp);
+        e.preventDefault();
       });
+    });
+  }
+
+  function enablePosDrag(ul, lineId){
+    enableRowLongPressDrag(ul, 'li', 'button, input', (list) => {
+      // 按最终 DOM 顺序读「原下标」序列,持久化(save 会触发重渲染)
+      const order = [...list.querySelectorAll('li')].map(el => +el.dataset.oi);
+      if(order.some((v, idx) => v !== idx)) Store.reorderPositions(lineId, order);
     });
   }
 
@@ -1540,7 +1578,6 @@ const Pages = (() => {
         </div>
         <ul class="people-list">
           ${list.map(p => `<li data-pid="${p.id}">
-            ${query ? '' : '<span class="person-drag" title="拖动排序" aria-label="拖动排序">⠿</span>'}
             <span class="pname">${escapeHtml(p.name)}</span>
             <select data-act="move">
               ${s.lines.map(l => `<option value="${l.id}" ${l.id===p.homeLine?'selected':''}>${l.name}</option>`).join('')}
@@ -1626,44 +1663,11 @@ const Pages = (() => {
     });
   }
 
-  // 人员列表拖拽排序(镜像岗位拖拽:Pointer + document 捕获阶段 move/up,move 里 preventDefault 防滚动误判)
+  // 人员列表拖拽排序(长按整行,复用 enableRowLongPressDrag;按钮/下拉不触发)
   function enablePeopleDrag(ul, lineId){
-    if(!ul) return;
-    const doc = ul.ownerDocument;
-    ul.querySelectorAll('li[data-pid]').forEach(li => {
-      const handle = li.querySelector('.person-drag');
-      if(!handle) return;
-      handle.addEventListener('pointerdown', e => {
-        if(e.button && e.button !== 0) return;
-        e.preventDefault(); e.stopPropagation();
-        try { handle.setPointerCapture(e.pointerId); } catch(_){}
-        li.classList.add('dragging');
-        let lastY = e.clientY;
-        const reposition = (y) => {
-          const sibs = [...ul.querySelectorAll('li[data-pid]:not(.dragging)')];
-          let after = null;
-          for(const sib of sibs){
-            const r = sib.getBoundingClientRect();
-            if(y < r.top + r.height/2){ after = sib; break; }
-          }
-          if(after) ul.insertBefore(li, after); else ul.appendChild(li);
-        };
-        const stopScroll = startDragAutoScroll(li, () => lastY, reposition);
-        const onMove = ev => { if(ev.cancelable) ev.preventDefault(); lastY = ev.clientY; reposition(lastY); };
-        const onUp = () => {
-          if(stopScroll) stopScroll(); lastY = null;
-          doc.removeEventListener('pointermove', onMove, true);
-          doc.removeEventListener('pointerup', onUp, true);
-          doc.removeEventListener('pointercancel', onUp, true);
-          try { handle.releasePointerCapture(e.pointerId); } catch(_){}
-          li.classList.remove('dragging');
-          const orderedIds = [...ul.querySelectorAll('li[data-pid]')].map(el => el.dataset.pid);
-          Store.reorderPeople(lineId, orderedIds);
-        };
-        doc.addEventListener('pointermove', onMove, true);
-        doc.addEventListener('pointerup', onUp, true);
-        doc.addEventListener('pointercancel', onUp, true);
-      });
+    enableRowLongPressDrag(ul, 'li[data-pid]', 'button, select, input', (list) => {
+      const orderedIds = [...list.querySelectorAll('li[data-pid]')].map(el => el.dataset.pid);
+      Store.reorderPeople(lineId, orderedIds);
     });
   }
 
