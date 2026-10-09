@@ -1,12 +1,15 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-18">
+<html lang="zh-CN" data-appver="2026-10-09-19">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- 状态栏跟随主题实验:black-translucent(透明)+ 动态 theme-color(切昼夜时 JS 改 content)。
+     iOS26/27 若认 theme-color → 顶部跟随变色且不重载不闪;不认则回落「不跟随但不闪」。见 applyMode。 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta id="metaThemeColor" name="theme-color" content="#14161d">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
 <!-- 启动图:iOS 独立 App 启动时先显示与 App 底色一致的纯色,消除系统白屏(仅 430x932@3 iPhone 15/16 Plus·Max) -->
@@ -12417,6 +12420,9 @@ const MODE_ICONS = {
 function applyMode(pref, persist){
   const eff = effectiveMode(pref);
   document.documentElement.dataset.theme = eff;
+  // 动态 theme-color:匹配顶栏 .tabs 顶部色(深 #14161d / 浅 #ffffff),让 iOS 状态栏跟随主题(若系统认此 meta)
+  const _tc = document.getElementById('metaThemeColor');
+  if (_tc) _tc.setAttribute('content', eff === 'light' ? '#ffffff' : '#14161d');
   broadcastMode(eff);
   if (persist !== false) { try { localStorage.setItem(MODE_KEY, pref); } catch(_){} }
   const b = document.getElementById('modeBtn');
@@ -12432,16 +12438,8 @@ function applyMode(pref, persist){
   if (b) b.addEventListener('click', () => {
     const cur = loadMode();                                  // 三态循环:白天→夜间→跟随系统→白天
     const next = cur === 'light' ? 'dark' : cur === 'dark' ? 'system' : 'light';
-    // iOS 27 液态玻璃状态栏只在 App 启动/视口重建时按主题采样一次,App 内热切主题不重采 → 顶部那条卡旧色。
-    // 唯一可靠解法:生效主题真的变了时重载一次让状态栏按新主题重新采样(偏好已存 localStorage,数据不丢)。
-    // ⚠️ 只对 iOS 主屏 PWA(navigator.standalone)这么做 —— PC / 浏览器标签页无此坑,保持即时切换不重载。
-    const iosStandalone = window.navigator.standalone === true;
-    if (iosStandalone && effectiveMode(next) !== effectiveMode(cur)) {
-      try { localStorage.setItem(MODE_KEY, next); } catch(_){}
-      location.reload();
-    } else {
-      applyMode(next, true);
-    }
+    // 纯主题切换,不重载 → 不闪。顶部状态栏靠动态 theme-color meta(applyMode 内更新)跟随主题。
+    applyMode(next, true);
   });
   applyMode(loadMode(), false);
   // 「跟随系统」时,OS 深/浅色切换 → 实时更新生效主题(偏好仍是 system,不覆盖持久化值)
