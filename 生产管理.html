@@ -1,12 +1,15 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-16">
+<html lang="zh-CN" data-appver="2026-10-09-17">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- black-translucent:状态栏透明、透出页面顶部内容→切昼夜时顶部背景实时跟随变色(iOS26/27 液态玻璃按内容自适应)。
+     勿改回 black:black 是不透明条,只在启动采样一次主题色,热切不更新→当初被迫 location.reload 才导致闪屏。
+     .tabs 已 padding:env(safe-area-inset-top) 适配本模式。 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
 <!-- 启动图:iOS 独立 App 启动时先显示与 App 底色一致的纯色,消除系统白屏(仅 430x932@3 iPhone 15/16 Plus·Max) -->
@@ -12432,17 +12435,9 @@ function applyMode(pref, persist){
   if (b) b.addEventListener('click', () => {
     const cur = loadMode();                                  // 三态循环:白天→夜间→跟随系统→白天
     const next = cur === 'light' ? 'dark' : cur === 'dark' ? 'system' : 'light';
-    // iOS 27 液态玻璃状态栏只在 App 启动/视口重建时按主题采样一次,App 内热切主题不重采 → 顶部那条卡旧色。
-    // 网页手段(重绘/几何/视口微扰)都逼不动那层玻璃。唯一可靠解法:生效主题真的变了时重载一次,
-    // 让状态栏按新主题重新采样(偏好已存 localStorage,数据不丢;启动遮罩按新主题淡入,过渡平滑)。
-    // ⚠️ 只对 iOS 主屏 PWA(navigator.standalone)这么做 —— PC / 浏览器标签页无此坑,保持即时切换不重载。
-    const iosStandalone = window.navigator.standalone === true;
-    if (iosStandalone && effectiveMode(next) !== effectiveMode(cur)) {
-      try { localStorage.setItem(MODE_KEY, next); } catch(_){}
-      location.reload();
-    } else {
-      applyMode(next, true);                                 // PC/标签页,或生效主题没变(夜间→跟随系统且系统也深色):即时切换,不重载
-    }
+    // 纯主题切换,不重载 → 不闪。状态栏用 black-translucent(透明),顶部 .tabs 背景随主题即时变,
+    // iOS 液态玻璃按透出的内容自适应 → 顶部跟着变色(参照月度总出勤表的做法,见顶部 status-bar-style meta)。
+    applyMode(next, true);
   });
   applyMode(loadMode(), false);
   // 「跟随系统」时,OS 深/浅色切换 → 实时更新生效主题(偏好仍是 system,不覆盖持久化值)
