@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-20">
+<html lang="zh-CN" data-appver="2026-10-10-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2873,13 +2873,14 @@ const Pages = (() => {
 
   .line-head {
     height: 80px; flex-shrink: 0;
+    /* 基础就 sticky(不靠 @media 开启):iOS 横屏切走配置表再切回时会漏评估 min-width 媒体查询,
+       线头回落 static → 里面绝对定位的 .line-config(起始/切换)失去锚点、逃到整条线底部(统计栏处)。
+       sticky 同样是绝对定位的包含块,桌面无滚动祖先时等同原位定位,≤900 本就要 sticky → 全模式统一、不回归。 */
+    position: sticky; top: 0;
     padding: 5px 8px;
     background: var(--panel-solid);
     border-bottom: 1px solid var(--border-strong);
     display: flex; flex-direction: column; gap: 3px;
-  }
-  @media (min-width: 901px) {
-    .line-head { position: relative; }
   }
   /* 桌面端：line-config 绝对贴底；head-btns 走 flex 流，靠右且与 line-num 同行不重叠 */
   @media (min-width: 901px) {
