@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-3">
+<html lang="zh-CN" data-appver="2026-10-10-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -702,6 +702,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 :root[data-theme="light"] .copy-modal .row input[type=date]{background:#f4f1ec;color:var(--text);border-color:#e3ded7}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
+/* iPad 触控板修复:iframe 的「文档滚动」在 iPadOS 触控板下滚不动(手指 touch 正常)。
+   改成 body 作显式滚动容器(html 定高不滚、body overflow-y 滚),触控板即可滚动;sticky 顶栏模型不变。 */
+html{height:100%;overflow:hidden}
+body{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:none}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:8px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -8392,6 +8396,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   :root[data-theme="light"] .picker-modal,:root[data-theme="light"] #libModal .modal-card{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%)!important}
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
+  /* iPad 触控板修复:iframe 文档滚动在 iPadOS 触控板下滚不动(手指正常)→ 改 body 作显式滚动容器 */
+  html{height:100%;overflow:hidden}
+  body{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:none}
   #banner{display:none;padding:8px 12px;white-space:pre-wrap;font-family:monospace}
   #banner.show{display:block}
   #banner.ok{background:#14532d;color:#bbf7d0}
