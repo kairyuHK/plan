@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-09-14">
+<html lang="zh-CN" data-appver="2026-10-09-15">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1813,6 +1813,8 @@ const Pages = (() => {
     if(!currentDate) currentDate = Util.todayISO();
     // 排岗表只渲染真实生产线(过滤掉 virtual,如「短期」)
     const lines = s.lines.filter(l => !l.virtual);
+    // 重载(切昼夜/刷新)后恢复上次选中的线 tab;无/失效则回落首线
+    if(!currentTabLine){ try{ currentTabLine = sessionStorage.getItem('sched-line-v1') || null; }catch(_){} }
     if(!currentTabLine || !lines.find(l=>l.id===currentTabLine)) currentTabLine = lines[0].id;
     const day = Store.getDay(currentDate);
     const dayShifts = (s.shifts && s.shifts[currentDate]) || {};
@@ -1882,6 +1884,7 @@ const Pages = (() => {
     root.querySelectorAll('#line-tabs button').forEach(b => {
       b.addEventListener('click', () => {
         currentTabLine = b.dataset.line;
+        try{ sessionStorage.setItem('sched-line-v1', currentTabLine); }catch(_){}
         root.querySelectorAll('#line-tabs button').forEach(x => x.classList.toggle('active', x===b));
         root.querySelectorAll('.line-card').forEach(c => c.classList.toggle('mobile-active', c.dataset.line===currentTabLine));
       });
@@ -2248,6 +2251,9 @@ const Pages = (() => {
   function route(name){
     if(!pages.includes(name)) name='schedule';
     current = name;
+    // 记住当前子页(sessionStorage):切昼夜/点刷新会 location.reload 重建 iframe,
+    // 否则回落默认「排岗」。用 session 级:本次会话(含重载)保留,冷启动清空→仍默认开排岗。
+    try{ sessionStorage.setItem('sched-route-v1', name); }catch(_){}
     pages.forEach(p => document.getElementById('page-'+p).classList.toggle('hidden', p!==name));
     document.querySelectorAll('.nav button[data-route]').forEach(b => b.classList.toggle('active', b.dataset.route===name));
     if(location.hash !== '#/'+name) location.hash = '#/'+name;
@@ -2278,7 +2284,10 @@ const Pages = (() => {
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
   });
-  route((location.hash.match(/^#\/(\w+)/)||[])[1]);
+  let _initRoute = '';
+  try{ _initRoute = sessionStorage.getItem('sched-route-v1') || ''; }catch(_){}
+  if(!_initRoute) _initRoute = (location.hash.match(/^#\/(\w+)/)||[])[1];
+  route(_initRoute);
 })();
 <\/script>
 </body>
