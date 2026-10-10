@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-10">
+<html lang="zh-CN" data-appver="2026-10-10-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<!-- 状态栏:black-translucent(透明)折中款。顶部跟随昼夜(theme-color + 下方纯色顶条 #__sbfill 让毛玻璃采到干净实色 → 接近清晰);
-     底部安全区 --sab 缩到约 0.4 → 只留一点点空位、接近铺满(见 applySab)。
-     用户取舍(2026-10-10):要"顶部接近清晰且跟随 + 底部接近铺满"的折中,非全清晰 black、也非全透明大空位。 -->
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- 状态栏:不透明 black(顶部实色清晰;网页不全屏铺到底部安全区 → env(safe-area-inset-bottom)≈0 → 底部无空位、铺满)。
+     用户取舍(2026-10-10):要清晰+铺满,不要 black-translucent 透明带来的毛玻璃模糊(会把橙色激活标签糊成光晕)和底部空位;代价=顶部不随昼夜变色。
+     ⚠️ 已验证失败(-10):black-translucent + 纯色顶条「折中款」真机更糟——玻璃采样范围大过安全区,橙色标签被吸上去糊成橙晕。别再试折中。 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta id="metaThemeColor" name="theme-color" content="#14161d">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
@@ -31,11 +31,6 @@ html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -a
    输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
    导致「没父壳」+ 触摸坐标错位、起始/切换框点不动。钉死后键盘只会覆盖底部,布局不再位移。 */
 body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
-/* 状态栏纯色顶条:black-translucent 透明状态栏下,给顶部安全区铺一层跟随主题的纯色,
-   让 iOS 毛玻璃采到的是干净实色(压到最接近清晰),且随昼夜变色。z-index 盖住 .tabs 渐变顶部、
-   但只在安全区高度内,不遮挡下方按钮;低于弹窗/toast/boot。 */
-#__sbfill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#14161d;z-index:9;pointer-events:none}
-html[data-theme="light"] #__sbfill{background:#ffffff}
 .tabs{display:flex;height:calc(48px + env(safe-area-inset-top,0px));background:linear-gradient(180deg,#14161d 0%,#0a0b0e 100%);border-bottom:1px solid #1d2029;align-items:center;padding:env(safe-area-inset-top,0px) 12px 0;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;touch-action:manipulation;box-shadow:0 1px 0 rgba(255,255,255,.02) inset,0 4px 16px rgba(0,0,0,.4)}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{font:inherit;font-weight:500;color:#9ca0a8;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;flex:0 0 auto;letter-spacing:.2px}
@@ -612,7 +607,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 </head>
 <body>
 <div id="__boot"></div>
-<div id="__sbfill"></div>
 <div class="tabs">
   <button data-app="plan" class="active"><span class="tab-ico">🏭</span> 生产计划板</button>
   <button data-app="config"><span class="tab-ico">⚙</span> 配置表</button>
@@ -12695,8 +12689,7 @@ function measureSab(){
   return h;
 }
 function applySab(frame){
-  // 用户要「接近铺满,只留一点点空位」:安全区按 0.4 缩小后再注入(非全留 ~34px)。
-  var sab = Math.round(measureSab() * 0.4) + 'px';
+  var sab = measureSab() + 'px';
   var list = frame ? [frame] : frames;
   list.forEach(function(f){
     try { var d = f.contentDocument; if (d && d.documentElement) d.documentElement.style.setProperty('--sab', sab); } catch (_) {}
