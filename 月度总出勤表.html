@@ -6,7 +6,9 @@
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏/键盘上方的域名条(普通标签页里仍由 Safari 显示,无法用网页移除) -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- status-bar-style=default(非 black)+ theme-color 让独立模式状态栏跟随昼夜(black 会强制黑条、忽略 theme-color)。JS 在 applyThemePref 里动态改 theme-color。初始值=深色默认(与 #__boot 一致) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0a0a0b">
 <meta name="apple-mobile-web-app-title" content="出勤表">
 <link rel="apple-touch-icon" href="icon-attendance.png">
 <!-- 启动图:iOS 独立 App 启动时先显示与 App 底色一致的纯色,消除系统白屏(仅 430x932@3 iPhone 15/16 Plus·Max) -->
@@ -39,7 +41,7 @@
 /* touch-action:manipulation = 允许平移 + 双指捏合缩放,禁用双击放大。
    touch-action 不继承,所以广播到所有元素才能覆盖任意位置的双击。 */
 *{touch-action:manipulation}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;overscroll-behavior-x:none}
 button{font:inherit;color:inherit;background:transparent;border:1px solid var(--border);border-radius:var(--r-btn);padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
 button:hover{background:#1f1f23}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -2718,8 +2720,12 @@ const App = (() => {
       catch (e) { return 'dark'; }
     };
     const effLight = (pref) => pref === 'system' ? !themeMql.matches : pref === 'light';
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     const applyThemePref = (pref, persist) => {
-      document.documentElement.classList.toggle('theme-light', effLight(pref));
+      const light = effLight(pref);
+      document.documentElement.classList.toggle('theme-light', light);
+      // 状态栏颜色跟随主题(独立模式靠 theme-color,值与 nav 的 --bg 一致)
+      if (themeColorMeta) themeColorMeta.setAttribute('content', light ? '#f4f5f7' : '#0a0a0b');
       if (persist) { try { localStorage.setItem('app-theme', pref); } catch (e) {} }
       themeBtn.textContent = pref === 'light' ? '☀️' : pref === 'dark' ? '🌙' : '🖥️';
       themeBtn.title = pref === 'light' ? '白天 · 点击切夜间'
