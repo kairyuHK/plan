@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-10-8">
+<html lang="zh-CN" data-appver="2026-10-10-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <!-- 「添加到主屏幕」后以独立 App 方式全屏运行,去掉 Safari 地址栏 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<!-- 状态栏跟随主题实验:black-translucent(透明)+ 动态 theme-color(切昼夜时 JS 改 content)。
-     iOS26/27 若认 theme-color → 顶部跟随变色且不重载不闪;不认则回落「不跟随但不闪」。见 applyMode。 -->
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- 状态栏:不透明 black(顶部实色清晰;网页不全屏铺到底部安全区 → env(safe-area-inset-bottom)≈0 → 底部无空位、铺满)。
+     用户取舍(2026-10-10):要清晰+铺满,不要 black-translucent 透明带来的毛玻璃模糊和底部空位;代价=顶部不随昼夜变色。
+     保留动态 theme-color:iOS27 若认则顶部仍可能跟色,不认也是清晰深色条。见 applyMode。 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta id="metaThemeColor" name="theme-color" content="#14161d">
 <meta name="apple-mobile-web-app-title" content="生产管理">
 <link rel="apple-touch-icon" href="icon-production.png">
