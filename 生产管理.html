@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-12-1">
+<html lang="zh-CN" data-appver="2026-10-12-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -808,6 +808,8 @@ select option:checked{background:#2b2f3a}
    PC 直接键入时间即可。触屏设备(iPhone/iPad,pointer:coarse)保留原生选择器,不受影响。 */
 @media (pointer:fine){
   .shift-row input[type=time]::-webkit-calendar-picker-indicator{display:none}
+  /* 图标隐藏后原图标处会留空 → 收窄宽度并让时间居中,消除空荡感 */
+  .shift-row input[type=time]{width:58px;text-align:center}
 }
 
 @media (max-width: 1023px){
