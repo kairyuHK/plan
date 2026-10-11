@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-11-1">
+<html lang="zh-CN" data-appver="2026-10-11-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -909,11 +909,13 @@ select option:checked{background:#2b2f3a}
 :root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
 :root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
 :root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7;color-scheme:light}
+:root[data-theme="light"] .confirm-popover select.confirm-input option{background:#ffffff;color:#22201d}
 .confirm-popover button.primary{background:var(--accent);border-color:var(--accent);color:#14181f;box-shadow:0 2px 8px rgba(var(--accent-rgb),0.35)}
 .confirm-popover button.primary:hover{background:var(--accent-light);box-shadow:0 4px 12px rgba(var(--accent-rgb),0.45)}
 .confirm-popover button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text);font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s;color-scheme:dark}
+.confirm-popover select.confirm-input option{background:#1b1d23;color:#e8e8e8}
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -4168,6 +4170,7 @@ const Pages = (() => {
 :root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger){color:#22201d;border-color:#e3ded7}
 :root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
 :root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7;color-scheme:light}
+:root[data-theme="light"] .confirm-popover select.confirm-input option{background:#ffffff;color:#22201d}
 .confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
 .confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
 .confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
@@ -4179,6 +4182,7 @@ const Pages = (() => {
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s;color-scheme:dark}
+.confirm-popover select.confirm-input option{background:#1b1d23;color:#e8e8e8}
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -8856,6 +8860,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 .confirm-popover button.danger{background:#ef4444;border-color:#ef4444;color:#fff;box-shadow:0 2px 8px rgba(239,68,68,0.35)}
 .confirm-popover button.danger:hover{background:#dc2626;box-shadow:0 4px 12px rgba(239,68,68,0.45)}
 .confirm-popover input.confirm-input,.confirm-popover select.confirm-input{width:100%;margin-bottom:10px;padding:9px 11px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e8e8e8;font:inherit;font-size:13px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s;color-scheme:dark}
+.confirm-popover select.confirm-input option{background:#1b1d23;color:#e8e8e8}
 .confirm-popover input.confirm-input:focus,.confirm-popover select.confirm-input:focus{border-color:var(--accent);background:rgba(0,0,0,0.45);outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.18)}
 .confirm-popover button.confirm-extra{display:block;width:100%;margin-bottom:10px;padding:8px;font-size:12px;border-radius:8px}
 @keyframes confirmIn{from{opacity:0;transform:translateY(-6px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -8951,6 +8956,7 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 :root[data-theme="light"] .confirm-popover button{color:#22201d;border-color:#e3ded7}
 :root[data-theme="light"] .confirm-popover button:hover{background:#efece7}
 :root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7;color-scheme:light}
+:root[data-theme="light"] .confirm-popover select.confirm-input option{background:#ffffff;color:#22201d}
 /* 传送带/流水线条:夜间深色渐变 + 伪元素,白天换成柔灰(橙色箭头保留) */
 :root[data-theme="light"] .belt{background:linear-gradient(90deg,#d8d2c8 0,#bdb4a6 50%,#d8d2c8 100%)!important}
 :root[data-theme="light"] .line-grid.vertical::before{background:linear-gradient(180deg,#d8d2c8 0,#bdb4a6 50%,#d8d2c8 100%)!important}
