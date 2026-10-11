@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-11-2">
+<html lang="zh-CN" data-appver="2026-10-12-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -804,6 +804,11 @@ select option:checked{background:#2b2f3a}
 .shift-row .shift-who{color:var(--muted);min-width:2.6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:4.5em}
 .shift-row input[type=time]{flex:0 0 auto;width:74px;font-size:12px;padding:5px 4px;color:var(--text)}
 .shift-row .sh-sep{color:var(--muted)}
+/* PC(鼠标)端:去掉原生 <input type=time> 的时钟选择器图标——点击常弹不出、还会把界面顶下移;
+   PC 直接键入时间即可。触屏设备(iPhone/iPad,pointer:coarse)保留原生选择器,不受影响。 */
+@media (pointer:fine){
+  .shift-row input[type=time]::-webkit-calendar-picker-indicator{display:none}
+}
 
 @media (max-width: 1023px){
   .line-tabs{display:flex}
