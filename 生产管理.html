@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-3">
+<html lang="zh-CN" data-appver="2026-10-13-4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2311,11 +2311,11 @@ const Pages = (() => {
 /* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
    的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
    被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
-   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   原生,仅小增量(慢滑)才补。仅 any-pointer:coarse(有触摸能力=iPad,含 Safari 接触控板时)启用,无触摸的 PC 不介入;已被其它
    处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
 (function(){
   try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    if(!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return;
     function scroller(node){
       for(var el=node; el && el.nodeType===1; el=el.parentNode){
         var oy=getComputedStyle(el).overflowY;
@@ -3001,10 +3001,11 @@ const Pages = (() => {
 
   /* iPad 等触摸设备 + 桌面宽度(≥901):整块「单一滚动」,取代每列各自滚 + JS 同步 scrollTop。
      后者在触摸惯性下每次滚动都要写 6 个容器的 scrollTop → 严重卡顿;单一滚动走浏览器原生,顺滑。
-     仅 pointer:coarse(触摸主指针=iPad)命中,PC 鼠标 pointer:fine 保持原每列滚动不变;字号尺寸沿用桌面不缩。
+     用 any-pointer:coarse(只要设备有触摸能力就命中)——这样 iPad 不论在主屏独立 App 还是 Safari(接了触控板
+     会被报成 pointer:fine)都启用;无触摸的 PC 保持原每列滚动不变。字号尺寸沿用桌面不缩。
      时间轴列 sticky-left、线头/时间轴头 sticky-top、统计栏 sticky-bottom → 滚动时三者常驻可见。
      (getScrollContainer 自动改用 .main;cards-wrap 不再滚 → syncScroll 自然失效) */
-  @media (min-width: 901px) and (pointer: coarse) {
+  @media (min-width: 901px) and (any-pointer: coarse) {
     /* 不加 -webkit-overflow-scrolling:touch:它在 iPad 触控板下只认快速惯性滑、吞掉慢速精确滚动
        (现象:两指慢滑不动、快滑才动)。现代 iOS 原生滚动本就带惯性,去掉后触控板与手指都顺。 */
     .main { overflow: auto; align-items: flex-start; }
@@ -8393,11 +8394,11 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
 /* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
    的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
    被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
-   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   原生,仅小增量(慢滑)才补。仅 any-pointer:coarse(有触摸能力=iPad,含 Safari 接触控板时)启用,无触摸的 PC 不介入;已被其它
    处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
 (function(){
   try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    if(!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return;
     function scroller(node){
       for(var el=node; el && el.nodeType===1; el=el.parentNode){
         var oy=getComputedStyle(el).overflowY;
@@ -11950,11 +11951,11 @@ init();
 /* iPad 触控板「慢速精确滚动」补偿:iframe 内嵌套滚动容器在 iPadOS 下只接受快滑(动量)
    的触控板滚动,慢速两指平移被原生忽略 —— 对小增量的 wheel 事件手动补一点滚动。
    被动监听、从不 preventDefault:不影响已正常的快滑和手指触屏;大增量(快滑)一律交给
-   原生,仅小增量(慢滑)才补。仅 pointer:coarse(iPad)启用,PC 鼠标不介入;已被其它
+   原生,仅小增量(慢滑)才补。仅 any-pointer:coarse(有触摸能力=iPad,含 Safari 接触控板时)启用,无触摸的 PC 不介入;已被其它
    处理器接管(如 .line-wrap 横向滚动)的事件让行。 */
 (function(){
   try{
-    if(!window.matchMedia || !matchMedia('(pointer: coarse)').matches) return;
+    if(!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return;
     function scroller(node){
       for(var el=node; el && el.nodeType===1; el=el.parentNode){
         var oy=getComputedStyle(el).overflowY;
