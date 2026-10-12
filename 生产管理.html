@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-12-2">
+<html lang="zh-CN" data-appver="2026-10-13-1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6048,19 +6048,17 @@ function addJobCard(grid, libItem, savedData) {
         <span class="duration">耗时 —</span>
         <span class="range"><span class="t-start">—</span> → <span class="t-end">—</span></span>
       </div>
-      <button type="button" class="card-next-btn"><span class="ic">+</span> 下一个品名</button>
+      <button type="button" class="card-next-btn">完成</button>
     </div>
   `;
   wireCardEvents(node, 'job');
   grid.appendChild(node);
   recalc(grid.closest('.line'));
-  // 弹窗里"+ 下一个品名" — 关掉当前弹窗,直接为同一条线开品名选择器
+  // 弹窗里"完成" — 仅关掉当前弹窗(不再自动为同线开下一个品名选择器)
   const nextBtn = node.querySelector('.card-next-btn');
   if (nextBtn) nextBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const line = node.closest('.line') || (activeCard && activeCard.closest('.line'));
     setActiveCard(null);
-    if (line) openPicker(line);
   });
   // 弹窗里的便当名 — 已链接配置表便当库时可点,跳转到该便当
   // 同时把这张卡片所在的生产线 id 带过去,配置表会切到该线上下文(每条生产线一份独立配置)
