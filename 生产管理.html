@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-1">
+<html lang="zh-CN" data-appver="2026-10-13-2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -6376,6 +6376,18 @@ document.addEventListener('focusout', (e) => {
   }, 60);
 });
 
+// iPad:线头「起始」/线尾「实结」等原生 <input type=time> 的选择器关闭后,被它覆盖过的 sticky 线头
+// 偶尔不重绘 → 起始/切换框整块(.line-config)消失。time 输入失焦时让父壳强制整帧重绘,把它们逼回来。
+// 仅触屏设备(iPad/手机,pointer:coarse)需要;PC 无原生弹层、不受影响。
+if (window.matchMedia && matchMedia('(pointer:coarse)').matches) {
+  document.addEventListener('focusout', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type=time]')) {
+      try { window.parent && window.parent.postMessage({ type: 'repaint-active' }, '*'); } catch (_) {}
+    }
+  }, true);
+}
+
 
 function wireCardEvents(node, type) {
   const delBtn = node.querySelector('.card-del');
@@ -12249,6 +12261,8 @@ const requestToChange = {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   const t = e.data.type;
+  // iPad:子应用里原生时间选择器关闭后 sticky 线头不重绘(起始/切换框消失)→ 复用整帧重绘
+  if (t === 'repaint-active') { repaintActiveFrame(); return; }
   if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed') {
     snapshots[t] = e.data;
     frames.forEach(f => {
