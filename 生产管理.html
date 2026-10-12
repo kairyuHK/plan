@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-2">
+<html lang="zh-CN" data-appver="2026-10-13-3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3017,6 +3017,10 @@ const Pages = (() => {
     .line-head { position: sticky; top: 0; z-index: 5; }
     .line-foot { position: sticky; bottom: 0; z-index: 5; }
     .timeline-foot { position: sticky; bottom: 0; z-index: 7; }
+    /* iPad:.line-config(起始/切换)改走正常流 + margin-top:auto 贴底,替代 ≥901 的 position:absolute。
+       绝对定位在 sticky 线头里,遇原生时间选择器开关会被 iOS 重算、失去锚点而逃走→整块「消失」;
+       正常流无锚点可失,根除该问题。line-head 是 flex column,margin-top:auto 仍把它压到底部保持原观感。 */
+    .line-config { position: static; margin-top: auto; }
   }
   .cards-grid { position: relative; width: 100%; }
   /* 15 分格虚线:弄到几乎看不见(用户嫌乱);整点实线保留做结构参考。
@@ -6375,18 +6379,6 @@ document.addEventListener('focusout', (e) => {
     }
   }, 60);
 });
-
-// iPad:线头「起始」/线尾「实结」等原生 <input type=time> 的选择器关闭后,被它覆盖过的 sticky 线头
-// 偶尔不重绘 → 起始/切换框整块(.line-config)消失。time 输入失焦时让父壳强制整帧重绘,把它们逼回来。
-// 仅触屏设备(iPad/手机,pointer:coarse)需要;PC 无原生弹层、不受影响。
-if (window.matchMedia && matchMedia('(pointer:coarse)').matches) {
-  document.addEventListener('focusout', (e) => {
-    const t = e.target;
-    if (t && t.matches && t.matches('input[type=time]')) {
-      try { window.parent && window.parent.postMessage({ type: 'repaint-active' }, '*'); } catch (_) {}
-    }
-  }, true);
-}
 
 
 function wireCardEvents(node, type) {
@@ -12261,8 +12253,6 @@ const requestToChange = {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   const t = e.data.type;
-  // iPad:子应用里原生时间选择器关闭后 sticky 线头不重绘(起始/切换框消失)→ 复用整帧重绘
-  if (t === 'repaint-active') { repaintActiveFrame(); return; }
   if (t === 'bento-changed' || t === 'schedule-changed' || t === 'plan-date-changed') {
     snapshots[t] = e.data;
     frames.forEach(f => {
