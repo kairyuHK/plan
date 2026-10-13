@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-41">
+<html lang="zh-CN" data-appver="2026-10-13-42">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8888,26 +8888,25 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-screen td button.del{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px}
   .line-screen td button.del:hover{color:#ef4444}
   /* 生产线「左下右上 + 中间产线」布局(替代槽位表格) */
-  .line-layout{position:relative;max-width:520px;margin:0 auto;padding-top:2px}
-  .line-layout .ll-head{display:grid;grid-template-columns:1fr 54px 1fr;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .line-layout{position:relative;max-width:420px;margin:0 auto;padding-top:2px}
+  .line-layout .ll-head{display:grid;grid-template-columns:1fr 40px 1fr;font-size:12px;color:var(--muted);margin-bottom:8px}
   .line-layout .ll-head div{text-align:center}
-  .line-layout .ll-belt{position:absolute;top:54px;bottom:50px;left:50%;width:6px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
-  .line-layout .ll-belt::before{content:"";position:absolute;left:0;right:0;top:0;height:13px;background:var(--accent);border-radius:3px}
-  .line-layout .ll-row{display:grid;grid-template-columns:1fr 54px 1fr;align-items:center;margin-bottom:8px;position:relative;z-index:1}
-  .line-layout .ll-node{justify-self:center;width:30px;height:30px;border-radius:7px;background:#161a20;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
-  .line-layout .ll-node input{width:100%;height:100%;border:0;background:transparent;color:var(--fg);text-align:center;font:inherit;font-size:13px;padding:0}
+  .line-layout .ll-belt{position:absolute;top:52px;bottom:48px;left:50%;width:5px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
+  .line-layout .ll-belt::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:var(--accent);border-radius:3px}
+  .line-layout .ll-belt::after{content:"";position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid var(--accent)}
+  .line-layout .ll-row{display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;margin-bottom:7px;position:relative;z-index:1}
   .line-layout .ll-cell{min-width:0}
-  .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:6px 7px}
-  .line-layout .ll-card .r1{display:flex;align-items:center;gap:4px;margin-bottom:5px}
-  .line-layout .ll-card .pos{flex:1;min-width:0;height:28px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 8px}
-  .line-layout .ll-card .r2{display:flex;align-items:center;gap:4px;flex-wrap:wrap;row-gap:4px}
+  .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:5px 6px}
+  .line-layout .ll-card .r1{display:flex;align-items:center;gap:3px;margin-bottom:4px}
+  .line-layout .ll-card .pos{flex:1;min-width:0;height:26px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 8px}
+  .line-layout .ll-card .r2{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
   .line-layout .ll-card .r2 label{font-size:11px;color:var(--muted)}
-  .line-layout .ll-card .r2 .q{width:32px;height:24px;border-radius:5px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:12px;padding:0 3px;text-align:center}
+  .line-layout .ll-card .r2 .q{width:30px;height:23px;border-radius:5px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:12px;padding:0 2px;text-align:center}
   .line-layout .ll-card .r2 .ex{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap}
-  .line-layout .ll-ic{width:22px;height:22px;flex:0 0 22px;border:0;background:transparent;color:#8a93a3;cursor:pointer;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+  .line-layout .ll-ic{width:20px;height:20px;flex:0 0 20px;border:0;background:transparent;color:#8a93a3;cursor:pointer;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
   .line-layout .ll-ic:hover{color:var(--fg);background:rgba(255,255,255,.06)}
   .line-layout .ll-ic.del:hover{color:#ef4444}
-  .line-layout .ll-add{width:100%;min-height:52px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+  .line-layout .ll-add{width:100%;min-height:48px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
   .line-layout .ll-add:hover{border-color:var(--accent);color:var(--accent)}
   .line-layout .ll-addstation{width:100%;height:32px;margin-top:4px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
   .line-layout .ll-addstation:hover{border-color:var(--accent);color:var(--accent)}
@@ -8999,6 +8998,10 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     body{font-size:14px}
     /* 不换行:操作屏/便当库/材料库/线设置/Aa/输出 与搜索框保持一排,「输出」不掉到第二行 */
     header{padding:6px 8px;gap:4px;flex-wrap:nowrap}
+    /* 手机端生产线卡片:量1/量2/独立份 一排,去掉「独立份」文字只留勾选框 */
+    .line-layout .ll-card .ex-txt{display:none}
+    .line-layout .ll-card .r2{gap:3px}
+    .line-layout .ll-card .r2 label{font-size:10px}
     header input,header button,header select{padding:5px 7px;font-size:13px}
     header button,header select{flex:0 0 auto;white-space:nowrap}
     /* 搜索框可压缩,把宽度让给按钮,保证一排放下(「输出」在最右,下拉菜单往左展开不出屏) */
@@ -10127,7 +10130,7 @@ function renderLineLayout(host, line, opts) {
   host.innerHTML = "";
   const root = document.createElement("div"); root.className = "line-layout";
   const head = document.createElement("div"); head.className = "ll-head";
-  head.innerHTML = "<div>下</div><div>列号</div><div>上</div>";
+  head.innerHTML = "<div>下</div><div></div><div>上</div>";
   root.appendChild(head);
   const belt = document.createElement("div"); belt.className = "ll-belt"; root.appendChild(belt);
 
@@ -10137,7 +10140,7 @@ function renderLineLayout(host, line, opts) {
     const top = line.find(p => p.slot === s && p.row === "top");
     const row = document.createElement("div"); row.className = "ll-row";
     row.appendChild(sideCell(bottom, s, "bottom"));
-    row.appendChild(nodeCell(s, bottom, top));
+    const mid = document.createElement("div"); mid.className = "ll-mid"; row.appendChild(mid);
     row.appendChild(sideCell(top, s, "top"));
     root.appendChild(row);
   }
@@ -10165,18 +10168,9 @@ function renderLineLayout(host, line, opts) {
     const r1 = document.createElement("div"); r1.className = "r1";
     const pos = document.createElement("input"); pos.className = "pos"; pos.value = p.label; pos.placeholder = "位号/名";
     pos.onblur = () => { updateSlotPosition(line, p.id, { label: pos.value }); afterChange(); };
-    const mv = document.createElement("button"); mv.className = "ll-ic"; mv.title = "移到另一侧";
-    mv.textContent = rowKind === "bottom" ? "→" : "←";
-    mv.onclick = () => {
-      const other = rowKind === "bottom" ? "top" : "bottom";
-      const occ = line.find(x => x.slot === slot && x.row === other);
-      if (occ) updateSlotPosition(line, occ.id, { row: rowKind });
-      updateSlotPosition(line, p.id, { row: other });
-      rerender(); afterChange();
-    };
     const del = document.createElement("button"); del.className = "ll-ic del"; del.title = "删除"; del.textContent = "×";
     del.onclick = (e) => { e.stopPropagation(); opts.onDelete(p, del, () => { rerender(); afterChange(); }); };
-    r1.appendChild(pos); r1.appendChild(mv); r1.appendChild(del);
+    r1.appendChild(pos); r1.appendChild(del);
     card.appendChild(r1);
     if (withQty) {
       const r2 = document.createElement("div"); r2.className = "r2";
@@ -10186,7 +10180,9 @@ function renderLineLayout(host, line, opts) {
       const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.extra;
       cb.title = "勾选=这张卡算独立一份(额外计入用量);不勾=与同材料其它卡片同一份";
       cb.onchange = () => { updateSlotPosition(line, p.id, { extra: cb.checked }); afterChange(); };
-      ex.appendChild(cb); ex.appendChild(document.createTextNode("独立份"));
+      ex.appendChild(cb);
+      const exTxt = document.createElement("span"); exTxt.className = "ex-txt"; exTxt.textContent = "独立份";
+      ex.appendChild(exTxt);
       r2.appendChild(ex);
       card.appendChild(r2);
     }
@@ -10199,17 +10195,6 @@ function renderLineLayout(host, line, opts) {
     i.value = (p[field] != null ? p[field] : "");
     i.onblur = () => { updateSlotPosition(line, p.id, { [field]: i.value }); afterChange(); };
     w.appendChild(l); w.appendChild(i); return w;
-  }
-  function nodeCell(slot, bottom, top) {
-    const cell = document.createElement("div"); cell.className = "ll-node";
-    const inp = document.createElement("input"); inp.type = "number"; inp.min = "1"; inp.value = slot; inp.className = "no-spin"; inp.inputMode = "numeric";
-    inp.onchange = () => {
-      const n = parseInt(inp.value, 10);
-      if (!isFinite(n) || n < 1) { inp.value = slot; return; }
-      [bottom, top].forEach(p => { if (p) updateSlotPosition(line, p.id, { slot: n }); });
-      rerender(); afterChange();
-    };
-    cell.appendChild(inp); return cell;
   }
 }
 
