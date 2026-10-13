@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-26">
+<html lang="zh-CN" data-appver="2026-10-13-27">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2288,22 +2288,36 @@ const Pages = (() => {
   function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   setNavH();
   window.addEventListener('resize', setNavH);
-  // 手机端键盘避让:撑高底部留出上滚空间 + 给滚动容器(body)设 scroll-padding-bottom≈键盘高度。
-  // 这样浏览器自己的「把聚焦输入框滚进可视区」(iOS 原生 focusscroll / scrollIntoView)会自动把输入框停在键盘上方,
-  // 不用自定义 scrollTop(录像实证自定义瞬移会叠在原生滚动上=二次跳/上过头),也不会像纯原生那样把底部输入框漏在键盘下。
-  let _kbPadTimer = null;
+  // 手机端键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px。
+  // 关键:补正可上可下(iOS 会上过头到中央,这里要往下拉回来),否则就停在中央不动。等原生滚完再补,避免和它对打。
+  function _kbLift(el){
+    try{
+      const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop; if (kbH < 80) return; // 键盘没弹起不动
+      const visBottom = document.documentElement.clientHeight - kbH - 12;
+      const delta = el.getBoundingClientRect().bottom - visBottom; // 可正(被挡,要上滚)可负(被顶太高,要下滚)
+      if (Math.abs(delta) < 2) return;
+      const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; // 真正滚动容器是 body
+      se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
+    }catch(_){}
+  }
+  let _kbPadTimer = null, _kbEl = null;
+  const _kbVV = (window.top || window).visualViewport;
+  if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) { _kbLift(_kbEl); setTimeout(() => _kbLift(_kbEl), 200); } });
   document.addEventListener('focusin', e => {
-    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备;PC 不介入
     const el = e.target;
     if (!el.matches || !el.matches('input,textarea,select')) return;
-    if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
+    if (!el.closest('.page')) return;            // 只处理页面内流式输入
     clearTimeout(_kbPadTimer);
-    document.body.style.paddingBottom = '50vh';          // 给最底部输入框留出上滚空间
-    document.body.style.scrollPaddingBottom = '47vh';    // ≈键盘高度:告诉原生滚动「底部这块被键盘占了」,把输入框停到它上方
+    document.body.style.paddingBottom = '50vh';
+    _kbEl = el;
+    setTimeout(() => _kbLift(el), 350);          // 等 iOS 原生那下滚完再拉到位
+    setTimeout(() => _kbLift(el), 600);          // 兜底再补一刀
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; document.body.style.scrollPaddingBottom = ''; }, 250); // 延时撤:切到别的输入框会被 focusin 取消,避免高度跳动
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250);
     }
   });
   let _initRoute = '';
@@ -10481,21 +10495,35 @@ document.getElementById("materials-search").addEventListener("input", e => {
 // 固定弹层里的输入(改名模态 / 选色 popover / 材料库抽屉等)滚 body 顶不动,跳过以免背景乱滚——它们本就居中/锚定不挡。
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
-  // 键盘避让:撑高底部留出上滚空间 + 给滚动容器(body)设 scroll-padding-bottom≈键盘高度,
-  // 让浏览器自己的滚动把聚焦输入框停到键盘上方(不自定义 scrollTop,避免二次跳/上过头;也不会像纯原生那样漏在键盘下)。
-  let _kbPadTimer = null;
+  // 键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px(补正可上可下)。
+  function _kbLift(el){
+    try{
+      const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop; if (kbH < 80) return;
+      const visBottom = document.documentElement.clientHeight - kbH - 12;
+      const delta = el.getBoundingClientRect().bottom - visBottom; // 可正(被挡)可负(被顶太高)
+      if (Math.abs(delta) < 2) return;
+      const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body;
+      se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
+    }catch(_){}
+  }
+  let _kbPadTimer = null, _kbEl = null;
+  const _kbVV = (window.top || window).visualViewport;
+  if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) { _kbLift(_kbEl); setTimeout(() => _kbLift(_kbEl), 200); } });
   document.addEventListener('focusin', e => {
-    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备;PC 不介入
     const el = e.target;
     if (!el.matches || !el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),textarea,select')) return;
     if (inFixed(el)) return;
     clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';
-    document.body.style.scrollPaddingBottom = '47vh';    // ≈键盘高度:原生滚动把输入框停到键盘上方
+    _kbEl = el;
+    setTimeout(() => _kbLift(el), 350);          // 等 iOS 原生那下滚完再拉到位
+    setTimeout(() => _kbLift(el), 600);          // 兜底再补一刀
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; document.body.style.scrollPaddingBottom = ''; }, 250);
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250);
     }
   });
 })();
