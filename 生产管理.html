@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-43">
+<html lang="zh-CN" data-appver="2026-10-13-44">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8889,7 +8889,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-screen td button.del:hover{color:#ef4444}
   /* 生产线「左下右上 + 中间产线」布局(替代槽位表格) */
   .line-layout{position:relative;max-width:420px;margin:0 auto;padding-top:2px}
-  .line-layout.compact{max-width:230px}
+  .line-layout.compact{max-width:270px}
   .line-layout .ll-rows{position:relative;display:flex;flex-direction:column;gap:7px}
   .line-layout .ll-belt{position:absolute;top:0;bottom:0;left:50%;width:5px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
   .line-layout .ll-belt::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:var(--accent);border-radius:3px}
@@ -8900,11 +8900,12 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:5px 6px;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
   .line-layout .ll-card.dragging{opacity:.35}
   .line-layout .ll-card .r1{display:flex;align-items:center;gap:3px;margin-bottom:4px}
-  .line-layout .ll-card .pos{flex:1;min-width:0;height:26px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 8px}
+  .line-layout .ll-card .pos{flex:1;min-width:0;height:26px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 6px}
   .line-layout .ll-card .r2{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
   .line-layout .ll-card .r2 label{font-size:11px;color:var(--muted)}
   .line-layout .ll-card .r2 .q{width:30px;height:23px;border-radius:5px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:12px;padding:0 2px;text-align:center}
   .line-layout .ll-card .r2 .ex{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .line-layout .ll-card .r2 .ex input[type=checkbox]{width:15px;height:15px;flex:0 0 auto;margin:0;accent-color:var(--accent);cursor:pointer}
   .line-layout .ll-ic{width:20px;height:20px;flex:0 0 20px;border:0;background:transparent;color:#8a93a3;cursor:pointer;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
   .line-layout .ll-ic:hover{color:var(--fg);background:rgba(255,255,255,.06)}
   .line-layout .ll-ic.del:hover{color:#ef4444}
@@ -8912,6 +8913,11 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .ll-drag-ghost{position:fixed;z-index:9999;pointer-events:none;background:#15181d;border:1px solid var(--accent);border-radius:8px;padding:5px 6px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:.95}
   .line-layout .ll-addstation{width:100%;height:32px;margin-top:8px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
   .line-layout .ll-addstation:hover{border-color:var(--accent);color:var(--accent)}
+  :root[data-theme="light"] .line-layout .ll-belt{background:#d9d3ca}
+  :root[data-theme="light"] .line-layout .ll-card{background:#ffffff;box-shadow:0 1px 2px rgba(43,37,30,.06)}
+  :root[data-theme="light"] .line-layout .ll-card .pos,
+  :root[data-theme="light"] .line-layout .ll-card .r2 .q{background:#f4f1ec}
+  :root[data-theme="light"] .ll-drag-ghost{background:#ffffff;box-shadow:0 8px 24px rgba(43,37,30,.25)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
   .modal.show{display:flex}
   .modal .box{background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:18px;min-width:320px;max-width:90vw}
