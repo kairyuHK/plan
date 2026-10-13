@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-31">
+<html lang="zh-CN" data-appver="2026-10-13-32">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3810,7 +3810,10 @@ const Pages = (() => {
   body.mob-ls .head-btn .ic { font-size: 10px; font-weight: 700; }
 
   /* 起始 / 切换 框：放大字号 + 高度 + 圆角，视觉更舒展 */
-  body.mob-ls .line-config { position: absolute; left: 10px; right: 10px; bottom: 8px; gap: 5px; }
+  /* 原为 position:absolute 贴底,但绝对定位锚在 sticky 线头上 → iOS 开/关原生时间选择器(或点数字改值触发 sticky 重算)
+     时失锚,选择器依附的元素一动就被关掉(手机横屏「一点数字就自动关闭」)。改走正常流 + margin-top:auto 贴底,
+     无锚点可失,根除。与 iPad 分支(≥901 any-pointer:coarse)的同款修法一致。 */
+  body.mob-ls .line-config { position: static; margin-top: auto; gap: 5px; }
   body.mob-ls .cfg { padding: 3px 7px; border-radius: 5px; }
   body.mob-ls .cfg-label { font-size: 9px; letter-spacing: 0.5px; }
   body.mob-ls .cfg-input { height: 20px; font-size: 13px; }
