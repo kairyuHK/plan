@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-28">
+<html lang="zh-CN" data-appver="2026-10-13-29">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2291,7 +2291,7 @@ const Pages = (() => {
   // 手机端键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px。
   // 关键:补正可上可下(iOS 会上过头到中央,这里要往下拉回来),否则就停在中央不动。等原生滚完再补,避免和它对打。
   // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
-  const _kbDbgOn = (function(){ try{ return (window.top||window).location.hash.indexOf('kbdebug') >= 0; }catch(_){ return false; } })();
+  const _kbDbgOn = true; // 临时诊断:默认显示;拿到截图后改回 hash 门控或删除
   let _kbDbgEl = null;
   function _kbDbg(o){
     if (!_kbDbgOn) return;
@@ -10511,7 +10511,7 @@ document.getElementById("materials-search").addEventListener("input", e => {
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
   // 键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px(补正可上可下)。
   // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
-  const _kbDbgOn = (function(){ try{ return (window.top||window).location.hash.indexOf('kbdebug') >= 0; }catch(_){ return false; } })();
+  const _kbDbgOn = true; // 临时诊断:默认显示;拿到截图后改回 hash 门控或删除
   let _kbDbgEl = null;
   function _kbDbg(o){
     if (!_kbDbgOn) return;
