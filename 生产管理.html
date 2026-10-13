@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-10">
+<html lang="zh-CN" data-appver="2026-10-13-11">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2291,6 +2291,7 @@ const Pages = (() => {
   // 手机端:页面内输入框聚焦时临时撑高底部、把它滚到视口中部,避免被软键盘挡住
   // (iOS Safari 不支持 interactive-widget=resizes-content,键盘直接盖在布局上 → 底部「新岗位名」等输入框够不到)
   document.addEventListener('focusin', e => {
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做键盘避让;PC 鼠标无软键盘,避免聚焦输入框时误滚动
     const el = e.target;
     if (!el.matches || !el.matches('input,textarea,select')) return;
     if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
@@ -10477,6 +10478,7 @@ document.getElementById("materials-search").addEventListener("input", e => {
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
   document.addEventListener('focusin', e => {
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做键盘避让;PC 鼠标无软键盘,避免聚焦输入框时误把页面滚到中部
     const el = e.target;
     if (!el.matches || !el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),textarea,select')) return;
     if (inFixed(el)) return;
