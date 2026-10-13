@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-6">
+<html lang="zh-CN" data-appver="2026-10-13-7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7250,9 +7250,12 @@ function renderTemplatesMenu() {
       row.appendChild(use); row.appendChild(edit); row.appendChild(del); menu.appendChild(row);
     });
   }
-  const add = document.createElement('button'); add.className = 'tpl-add'; add.textContent = '＋ 新建整板模板';
-  add.addEventListener('click', (e) => { e.stopPropagation(); startNewTemplate(); });
-  menu.appendChild(add);
+  const addBoard = document.createElement('button'); addBoard.className = 'tpl-add'; addBoard.textContent = '＋ 新建整板模板';
+  addBoard.addEventListener('click', (e) => { e.stopPropagation(); startNewTemplate(); });
+  menu.appendChild(addBoard);
+  const addLine = document.createElement('button'); addLine.className = 'tpl-add'; addLine.textContent = '＋ 新建单线模板';
+  addLine.addEventListener('click', (e) => { e.stopPropagation(); startNewLineTemplate(); });
+  menu.appendChild(addLine);
 }
 
 // 新建整板模板:一步抓取当前计划板所有非空线 → 命名 → 存
@@ -7280,15 +7283,80 @@ function startNewTemplate() {
   });
 }
 
-// 编辑模板:改名(主按钮)/ 更新为当前整板(附加按钮)
+// 非空生产线的下拉选项(value=线号,label=名称+卡数)
+function nonEmptyLineOptions() {
+  const opts = [];
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    const el = lineElByNum(i);
+    const cntTotal = el ? el.querySelectorAll('.card').length : 0;       // 任何卡(含休息)都算「非空」
+    const cntJob = el ? [...el.querySelectorAll('.card[data-type="job"]')].filter(c => isCountableCardName(c.dataset.name)).length : 0;
+    if (cntTotal > 0) opts.push({ value: String(i), label: `${lineDisplayName(i)}（${cntJob}卡）` });
+  }
+  return opts;
+}
+
+// 新建单线模板:选来源线(仅非空) → 命名 → 存(cards 结构)
+function startNewLineTemplate() {
+  tplMenu.classList.remove('show');
+  const opts = nonEmptyLineOptions();
+  if (!opts.length) { showToast('没有可保存的生产线(都是空的)', 'error'); return; }
+  showConfirmPopover(tplBtn, {
+    text: '新建单线模板 · 选来源生产线',
+    input: { options: opts, value: opts[0].value },
+    confirmText: '下一步',
+    onConfirm: (v) => {
+      const lineNum = parseInt(v, 10);
+      const cards = captureLineCards(lineElByNum(lineNum) || document.createElement('div'));
+      if (!cards.length) { showToast('该生产线没有卡片', 'error'); return; }
+      showConfirmPopover(tplBtn, {
+        text: '模板名称',
+        sub: `来自「${lineDisplayName(lineNum)}」· ${cards.length} 张卡片`,
+        input: { type: 'text', placeholder: '模板名称', value: '' },
+        confirmText: '保存',
+        onConfirm: (name) => {
+          name = (name || '').trim();
+          if (!name) { showToast('请填模板名称', 'error'); return; }
+          const tpls = loadTemplates();
+          const exist = tpls.find(t => t.name === name);
+          if (exist) { exist.cards = cards; delete exist.lines; }     // 同名 → 覆盖,并降级为单线
+          else tpls.push({ id: 'tpl_' + Date.now().toString(36), name, cards });
+          saveTemplates(tpls);
+          showToast(`已保存单线模板「${name}」`);
+        }
+      });
+    }
+  });
+}
+
+// 把某单线模板的卡片内容更新为某条线的当前布局
+function pickLineToUpdate(tpl) {
+  const opts = nonEmptyLineOptions();
+  if (!opts.length) { showToast('没有可用的生产线(都是空的)', 'error'); return; }
+  showConfirmPopover(tplBtn, {
+    text: `把「${tpl.name}」更新为哪条线的布局?`,
+    input: { options: opts, value: opts[0].value },
+    confirmText: '更新',
+    onConfirm: (v) => {
+      const cards = captureLineCards(lineElByNum(parseInt(v, 10)) || document.createElement('div'));
+      if (!cards.length) return;
+      const tpls = loadTemplates();
+      const t = tpls.find(x => x.id === tpl.id);
+      if (t) { t.cards = cards; delete t.lines; saveTemplates(tpls); showToast(`已更新「${t.name}」(${cards.length}卡)`); }
+    }
+  });
+}
+
+// 编辑模板:改名(主按钮)/ 更新布局(附加按钮,整板→整板 / 单线→某条线)
 function editTemplate(tpl) {
   tplMenu.classList.remove('show');
+  const isBoard = !!tpl.lines;
   showConfirmPopover(tplBtn, {
     text: `编辑模板「${tpl.name}」`,
-    sub: `当前 ${tplLineCount(tpl)} 线 · ${tplCardCount(tpl)} 卡`,
+    sub: isBoard ? `整板 · 当前 ${tplLineCount(tpl)} 线 · ${tplCardCount(tpl)} 卡` : `单线 · 当前 ${tplCardCount(tpl)} 卡`,
     input: { type: 'text', value: tpl.name, placeholder: '模板名称' },
     confirmText: '改名',
-    extra: { text: '更新为当前整板…', onClick: () => updateTemplateToBoard(tpl) },
+    extra: isBoard ? { text: '更新为当前整板…', onClick: () => updateTemplateToBoard(tpl) }
+                   : { text: '更新布局为某条线…', onClick: () => pickLineToUpdate(tpl) },
     onConfirm: (name) => {
       name = (name || '').trim();
       if (!name) { showToast('名称不能为空', 'error'); return; }
