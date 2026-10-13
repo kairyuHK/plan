@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-34">
+<html lang="zh-CN" data-appver="2026-10-13-35">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8530,6 +8530,7 @@ const _tpLog = [];
 function _tpl(m){ try{ _tpLog.unshift(m); if(_tpLog.length>9) _tpLog.pop(); _tpDbg.textContent = 'mobls:'+document.body.classList.contains('mob-ls')+' '+window.innerWidth+'x'+window.innerHeight+'\n'+_tpLog.join('\n'); }catch(_){} }
 document.addEventListener('focusin', e => { const t=e.target; if(t&&t.matches&&t.matches('input,select,textarea')) _tpl('FIN '+String(t.className||t.tagName).slice(0,16)); });
 document.addEventListener('focusout', e => { const t=e.target; if(t&&t.matches&&t.matches('input,select,textarea')) _tpl('FOUT '+String(t.className||t.tagName).slice(0,14)); });
+document.addEventListener('pointerdown', e => { const t=e.target; _tpl('PD '+String((t&&t.tagName)||'')+'.'+String((t&&t.className)||'').slice(0,12)); }, true);
 let _lastWinW = window.innerWidth;
 window.addEventListener('resize', () => {
   // ⚠️ 打印模式下不要重排卡片!iOS Safari 切到打印模式时 viewport 会变,触发 resize,
