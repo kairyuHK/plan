@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-7">
+<html lang="zh-CN" data-appver="2026-10-13-8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2561,6 +2561,10 @@ const Pages = (() => {
   #tplMenu .tpl-line-cnt { flex: 0 0 auto; font-size: 11px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
   .tpl-empty { padding: 8px 14px; font-size: 11.5px; color: var(--text-mute); }
   .tpl-row { display: flex; align-items: stretch; }
+  .tpl-row.tpl-dragging { opacity: 0.9; background: rgba(255,255,255,0.08); box-shadow: 0 6px 16px rgba(0,0,0,0.35); border-radius: 7px; }
+  :root[data-theme="light"] .tpl-row.tpl-dragging { background: rgba(0,0,0,0.05); }
+  #tplMenu.tpl-reordering { touch-action: none; }
+  #tplMenu.tpl-reordering .tpl-use { cursor: grabbing; }
   .tpl-row .tpl-use { flex: 1 1 auto; min-width: 0; justify-content: center; gap: 6px; } /* 模板名+卡数在行内居中 */
   .tpl-row .tpl-edit, .tpl-row .tpl-del { flex: 0 0 auto; width: 34px; justify-content: center; padding: 9px 4px; gap: 0; color: var(--text-mute); }
   .tpl-row .tpl-edit:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
@@ -7238,16 +7242,17 @@ function renderTemplatesMenu() {
     const empty = document.createElement('div'); empty.className = 'tpl-empty'; empty.textContent = '还没有模板'; menu.appendChild(empty);
   } else {
     tpls.forEach(tpl => {
-      const row = document.createElement('div'); row.className = 'tpl-row';
-      const use = document.createElement('button'); use.className = 'tpl-use'; use.title = tpl.lines ? '一键套用整板' : '套用到某条线';
+      const row = document.createElement('div'); row.className = 'tpl-row'; row.dataset.tplId = tpl.id;
+      const use = document.createElement('button'); use.className = 'tpl-use'; use.title = tpl.lines ? '一键套用整板(按住名字可拖拽排序)' : '套用到某条线(按住名字可拖拽排序)';
       const _cntLabel = tpl.lines ? `${tplLineCount(tpl)}线·${tplCardCount(tpl)}卡` : `${tplCardCount(tpl)} 卡`;
       use.innerHTML = `<span class="tpl-line-name">${escapeHtml(tpl.name)}</span><span class="tpl-line-cnt">${_cntLabel}</span>`;
-      use.addEventListener('click', (e) => { e.stopPropagation(); startApplyTemplate(tpl); });
+      use.addEventListener('click', (e) => { e.stopPropagation(); if (use._dragged) return; startApplyTemplate(tpl); });
       const edit = document.createElement('button'); edit.className = 'tpl-edit'; edit.textContent = '✎'; edit.title = '改名 / 更新布局';
       edit.addEventListener('click', (e) => { e.stopPropagation(); editTemplate(tpl); });
       const del = document.createElement('button'); del.className = 'tpl-del'; del.textContent = '🗑'; del.title = '删除模板';
       del.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteTemplate(tpl); });
       row.appendChild(use); row.appendChild(edit); row.appendChild(del); menu.appendChild(row);
+      enableTplRowDrag(row, use);
     });
   }
   const addBoard = document.createElement('button'); addBoard.className = 'tpl-add'; addBoard.textContent = '＋ 新建整板模板';
@@ -7256,6 +7261,68 @@ function renderTemplatesMenu() {
   const addLine = document.createElement('button'); addLine.className = 'tpl-add'; addLine.textContent = '＋ 新建单线模板';
   addLine.addEventListener('click', (e) => { e.stopPropagation(); startNewLineTemplate(); });
   menu.appendChild(addLine);
+}
+
+// 按模板行在菜单里的当前 DOM 顺序持久化(拖拽后调用)
+function persistTplOrder() {
+  const ids = [...tplMenu.querySelectorAll('.tpl-row')].map(r => r.dataset.tplId);
+  const tpls = loadTemplates();
+  const byId = new Map(tpls.map(t => [t.id, t]));
+  const reordered = ids.map(id => byId.get(id)).filter(Boolean);
+  tpls.forEach(t => { if (!ids.includes(t.id)) reordered.push(t); }); // 兜底:DOM 里没有的仍保留
+  saveTemplates(reordered);
+}
+
+// 名字长按拖拽排序(指针事件,鼠标/触摸/触控板通用);不加拖拽把手图标。点一下仍是套用。
+function enableTplRowDrag(row, handle) {
+  let startY = 0, dragging = false, pid = null, holdTimer = null;
+  const HOLD = 280, THRESH = 6;
+  const cleanup = () => {
+    clearTimeout(holdTimer); holdTimer = null;
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', onUp);
+    handle.removeEventListener('pointercancel', onUp);
+  };
+  const begin = () => {
+    if (dragging) return; dragging = true;
+    clearTimeout(holdTimer); holdTimer = null;
+    row.classList.add('tpl-dragging'); tplMenu.classList.add('tpl-reordering');
+    try { handle.setPointerCapture(pid); } catch (_) {}
+  };
+  const reorder = (y) => {
+    const others = [...tplMenu.querySelectorAll('.tpl-row:not(.tpl-dragging)')];
+    let ref = null;
+    for (const s of others) { const r = s.getBoundingClientRect(); if (y < r.top + r.height / 2) { ref = s; break; } }
+    const firstAdd = tplMenu.querySelector('.tpl-add');
+    tplMenu.insertBefore(row, ref || firstAdd);
+  };
+  const onMove = (e) => {
+    if (!dragging) {
+      const moved = Math.abs(e.clientY - startY);
+      if (e.pointerType === 'mouse') { if (moved > THRESH) begin(); else return; }
+      else { if (moved > 12) { cleanup(); } return; } // 触摸未到长按就滑动=滚动意图,放手让原生滚动
+    }
+    e.preventDefault();
+    reorder(e.clientY);
+  };
+  const onUp = () => {
+    cleanup();
+    if (dragging) {
+      dragging = false;
+      row.classList.remove('tpl-dragging'); tplMenu.classList.remove('tpl-reordering');
+      try { handle.releasePointerCapture(pid); } catch (_) {}
+      handle._dragged = true;        // 抑制紧随其后的 click(避免误触发套用)
+      persistTplOrder();
+    }
+  };
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button != null && e.button !== 0) return;
+    pid = e.pointerId; startY = e.clientY; handle._dragged = false;
+    holdTimer = setTimeout(begin, HOLD); // 长按计时;鼠标移动超阈值也会提前触发
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+  });
 }
 
 // 新建整板模板:一步抓取当前计划板所有非空线 → 命名 → 存
