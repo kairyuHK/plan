@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-20">
+<html lang="zh-CN" data-appver="2026-10-13-21">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -12614,8 +12614,12 @@ document.getElementById('importAllBtn').addEventListener('click', importAll);
       document.body.scrollTop = 0;
     }
   };
-  vv.addEventListener('resize', () => { resetScroll(); setTimeout(resetScroll, 60); setTimeout(resetScroll, 320); });
-  // 键盘已关(视口高度基本恢复)却仍有残留滚动时,顺手归零;键盘打开时(高度差大)不动,以免把输入框滚出可视区
+  // 只在键盘「已关」(视口高度基本恢复)时归零残留滚动;键盘打开/弹起过程中(高度差大=编辑中)绝不归零,
+  // 否则会把 iOS 为「把聚焦输入框顶到键盘上方」做的滚动强行顶回去 → 输入框被推上去又弹回来、仍被键盘挡。
+  vv.addEventListener('resize', () => {
+    if (Math.abs(window.innerHeight - vv.height) >= 80) return; // 键盘开着,别动
+    resetScroll(); setTimeout(resetScroll, 60); setTimeout(resetScroll, 320);
+  });
   vv.addEventListener('scroll', () => { if (Math.abs(window.innerHeight - vv.height) < 80) resetScroll(); });
   window.addEventListener('orientationchange', () => setTimeout(resetScroll, 350));
 })();
