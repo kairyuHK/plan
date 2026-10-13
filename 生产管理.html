@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-32">
+<html lang="zh-CN" data-appver="2026-10-13-33">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8522,12 +8522,20 @@ function syncMobLayout() {
   document.body.classList.toggle('mob-ls', isLandscape);
 }
 
+let _lastWinW = window.innerWidth;
 window.addEventListener('resize', () => {
   // ⚠️ 打印模式下不要重排卡片!iOS Safari 切到打印模式时 viewport 会变,触发 resize,
   // 这里如果还跑 renderTimeline + cards-grid.height = getTotalPx() + recalc,
   // 会把 setupPrintLayout 通过 trimGridForExport 设置的 visH/translateY/--hour-px
   // 全部覆盖掉,实际打印用的就是默认 8:00-22:00 全范围、卡片缩小的样子。
   if (document.body.classList.contains('printing')) return;
+  // 宽度没变却触发 resize = 软键盘/原生时间选择器弹出引起的高度变化(主屏 PWA 会把选择器当键盘缩 content;
+  // Safari 不缩故无此 resize)。此时若正在编辑输入框,整屏重绘会把已打开的原生时间选择器挤关掉
+  // (手机横屏主屏 App「一点数字就自动关」的真凶)。编辑中且宽度没变就跳过重绘,等失焦后的 resize 再重排。
+  const _wChanged = window.innerWidth !== _lastWinW;
+  _lastWinW = window.innerWidth;
+  const _ae = document.activeElement;
+  if (!_wChanged && _ae && /^(INPUT|TEXTAREA)$/.test(_ae.tagName)) return;
   syncMobLayout();
   renderTimeline();
   document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
