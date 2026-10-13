@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-42">
+<html lang="zh-CN" data-appver="2026-10-13-43">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8889,14 +8889,16 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-screen td button.del:hover{color:#ef4444}
   /* 生产线「左下右上 + 中间产线」布局(替代槽位表格) */
   .line-layout{position:relative;max-width:420px;margin:0 auto;padding-top:2px}
-  .line-layout .ll-head{display:grid;grid-template-columns:1fr 40px 1fr;font-size:12px;color:var(--muted);margin-bottom:8px}
-  .line-layout .ll-head div{text-align:center}
-  .line-layout .ll-belt{position:absolute;top:52px;bottom:48px;left:50%;width:5px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
+  .line-layout.compact{max-width:230px}
+  .line-layout .ll-rows{position:relative;display:flex;flex-direction:column;gap:7px}
+  .line-layout .ll-belt{position:absolute;top:0;bottom:0;left:50%;width:5px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
   .line-layout .ll-belt::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:var(--accent);border-radius:3px}
-  .line-layout .ll-belt::after{content:"";position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid var(--accent)}
-  .line-layout .ll-row{display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;margin-bottom:7px;position:relative;z-index:1}
+  .line-layout .ll-belt::after{content:"";position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:12px solid var(--accent)}
+  .line-layout .ll-row{display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;position:relative;z-index:1}
   .line-layout .ll-cell{min-width:0}
-  .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:5px 6px}
+  .line-layout .ll-cell.empty{min-height:40px}
+  .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:5px 6px;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+  .line-layout .ll-card.dragging{opacity:.35}
   .line-layout .ll-card .r1{display:flex;align-items:center;gap:3px;margin-bottom:4px}
   .line-layout .ll-card .pos{flex:1;min-width:0;height:26px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 8px}
   .line-layout .ll-card .r2{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
@@ -8906,9 +8908,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-layout .ll-ic{width:20px;height:20px;flex:0 0 20px;border:0;background:transparent;color:#8a93a3;cursor:pointer;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
   .line-layout .ll-ic:hover{color:var(--fg);background:rgba(255,255,255,.06)}
   .line-layout .ll-ic.del:hover{color:#ef4444}
-  .line-layout .ll-add{width:100%;min-height:48px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
-  .line-layout .ll-add:hover{border-color:var(--accent);color:var(--accent)}
-  .line-layout .ll-addstation{width:100%;height:32px;margin-top:4px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+  .line-layout .ll-cell.drop-target{outline:2px dashed var(--accent);outline-offset:-2px;border-radius:8px}
+  .ll-drag-ghost{position:fixed;z-index:9999;pointer-events:none;background:#15181d;border:1px solid var(--accent);border-radius:8px;padding:5px 6px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:.95}
+  .line-layout .ll-addstation{width:100%;height:32px;margin-top:8px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
   .line-layout .ll-addstation:hover{border-color:var(--accent);color:var(--accent)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
   .modal.show{display:flex}
@@ -10128,11 +10130,11 @@ function renderLineLayout(host, line, opts) {
   const afterChange = opts.afterChange || function(){};
   const rerender = () => renderLineLayout(host, line, opts);
   host.innerHTML = "";
-  const root = document.createElement("div"); root.className = "line-layout";
-  const head = document.createElement("div"); head.className = "ll-head";
-  head.innerHTML = "<div>下</div><div></div><div>上</div>";
-  root.appendChild(head);
-  const belt = document.createElement("div"); belt.className = "ll-belt"; root.appendChild(belt);
+  const root = document.createElement("div");
+  root.className = "line-layout" + (withQty ? "" : " compact");
+
+  const rows = document.createElement("div"); rows.className = "ll-rows";
+  const belt = document.createElement("div"); belt.className = "ll-belt"; rows.appendChild(belt);
 
   const slots = [...new Set(line.map(p => p.slot))].sort((a,b) => a - b);
   for (const s of slots) {
@@ -10142,8 +10144,9 @@ function renderLineLayout(host, line, opts) {
     row.appendChild(sideCell(bottom, s, "bottom"));
     const mid = document.createElement("div"); mid.className = "ll-mid"; row.appendChild(mid);
     row.appendChild(sideCell(top, s, "top"));
-    root.appendChild(row);
+    rows.appendChild(row);
   }
+  root.appendChild(rows);
 
   if (opts.showAddStation !== false) {
     const addSt = document.createElement("button"); addSt.className = "ll-addstation";
@@ -10155,15 +10158,8 @@ function renderLineLayout(host, line, opts) {
 
   function sideCell(p, slot, rowKind) {
     const cell = document.createElement("div"); cell.className = "ll-cell";
-    if (!p) {
-      const add = document.createElement("button"); add.className = "ll-add";
-      add.textContent = "+ 添加" + (rowKind === "bottom" ? "下" : "上") + "槽";
-      add.onclick = () => {
-        line.push({ id: uid("pos"), slot: slot, row: rowKind, label: "" });
-        saveState(); rerender(); afterChange();
-      };
-      cell.appendChild(add); return cell;
-    }
+    cell.dataset.slot = slot; cell.dataset.row = rowKind; // 拖拽落点
+    if (!p) { cell.classList.add("empty"); return cell; } // 空位留白(可拖入)
     const card = document.createElement("div"); card.className = "ll-card";
     const r1 = document.createElement("div"); r1.className = "r1";
     const pos = document.createElement("input"); pos.className = "pos"; pos.value = p.label; pos.placeholder = "位号/名";
@@ -10186,8 +10182,66 @@ function renderLineLayout(host, line, opts) {
       r2.appendChild(ex);
       card.appendChild(r2);
     }
+    card.addEventListener("pointerdown", (e) => startCardDrag(e, card, p));
     cell.appendChild(card); return cell;
   }
+
+  // 长按卡片(300ms)拖拽到别的工位/侧;落点有卡则对调。点删除(×)不触发拖拽。
+  function startCardDrag(e, card, p) {
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.target.closest(".ll-ic")) return;
+    const origin = card.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false, ghost = null, overCell = null;
+    const blockTouch = (ev) => { if (dragging) ev.preventDefault(); };
+    document.addEventListener("touchmove", blockTouch, { passive: false });
+    const clearHi = () => { if (overCell) { overCell.classList.remove("drop-target"); overCell = null; } };
+    const cleanup = () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("touchmove", blockTouch);
+      if (ghost) { ghost.remove(); ghost = null; }
+      card.classList.remove("dragging");
+      clearHi();
+    };
+    const onMove = (ev) => {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) > 8 || Math.abs(ev.clientY - startY) > 8) clearTimeout(timer);
+        return;
+      }
+      ev.preventDefault();
+      ghost.style.left = (ev.clientX - origin.width / 2) + "px";
+      ghost.style.top = (ev.clientY - 16) + "px";
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const cell = el ? el.closest(".ll-cell") : null;
+      if (cell !== overCell) { clearHi(); if (cell && cell.dataset.slot != null) { cell.classList.add("drop-target"); overCell = cell; } }
+    };
+    const onUp = () => {
+      const target = dragging ? overCell : null;
+      cleanup();
+      if (target && target.dataset.slot != null) {
+        moveOrSwap(line, p.id, parseInt(target.dataset.slot, 10), target.dataset.row);
+        swallowNextClick();
+        rerender(); afterChange();
+      }
+    };
+    const timer = setTimeout(() => {
+      dragging = true;
+      card.classList.add("dragging");
+      try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch(_) {}
+      ghost = document.createElement("div"); ghost.className = "ll-drag-ghost";
+      ghost.style.width = origin.width + "px";
+      ghost.textContent = p.label || "(空位)";
+      ghost.style.left = (startX - origin.width / 2) + "px";
+      ghost.style.top = (startY - 16) + "px";
+      document.body.appendChild(ghost);
+      try { card.setPointerCapture(e.pointerId); } catch(_) {}
+    }, 300);
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
   function qtyField(labelText, field, p) {
     const w = document.createElement("span"); w.style.display = "inline-flex"; w.style.alignItems = "center"; w.style.gap = "3px";
     const l = document.createElement("label"); l.textContent = labelText;
