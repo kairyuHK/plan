@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-8">
+<html lang="zh-CN" data-appver="2026-10-13-9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7274,20 +7274,24 @@ function persistTplOrder() {
 }
 
 // 名字长按拖拽排序(指针事件,鼠标/触摸/触控板通用);不加拖拽把手图标。点一下仍是套用。
+// 监听挂在 window 上(不是按钮上),避免「capture 之前指针移出按钮就收不到 move、拖不起来」的 PC 坑。
 function enableTplRowDrag(row, handle) {
-  let startY = 0, dragging = false, pid = null, holdTimer = null;
+  let startY = 0, dragging = false, active = false, holdTimer = null;
   const HOLD = 280, THRESH = 6;
-  const cleanup = () => {
-    clearTimeout(holdTimer); holdTimer = null;
-    handle.removeEventListener('pointermove', onMove);
-    handle.removeEventListener('pointerup', onUp);
-    handle.removeEventListener('pointercancel', onUp);
+  const addWin = () => {
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+  const removeWin = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
   };
   const begin = () => {
     if (dragging) return; dragging = true;
     clearTimeout(holdTimer); holdTimer = null;
     row.classList.add('tpl-dragging'); tplMenu.classList.add('tpl-reordering');
-    try { handle.setPointerCapture(pid); } catch (_) {}
   };
   const reorder = (y) => {
     const others = [...tplMenu.querySelectorAll('.tpl-row:not(.tpl-dragging)')];
@@ -7296,32 +7300,32 @@ function enableTplRowDrag(row, handle) {
     const firstAdd = tplMenu.querySelector('.tpl-add');
     tplMenu.insertBefore(row, ref || firstAdd);
   };
+  const end = (commit) => {
+    clearTimeout(holdTimer); holdTimer = null;
+    removeWin(); active = false;
+    if (dragging) {
+      dragging = false;
+      row.classList.remove('tpl-dragging'); tplMenu.classList.remove('tpl-reordering');
+      handle._dragged = true;        // 抑制紧随其后的 click(避免误触发套用)
+      if (commit) persistTplOrder();
+    }
+  };
   const onMove = (e) => {
+    if (!active) return;
     if (!dragging) {
       const moved = Math.abs(e.clientY - startY);
       if (e.pointerType === 'mouse') { if (moved > THRESH) begin(); else return; }
-      else { if (moved > 12) { cleanup(); } return; } // 触摸未到长按就滑动=滚动意图,放手让原生滚动
+      else { if (moved > 12) end(false); return; } // 触摸未到长按就滑动=滚动意图,放手让原生滚动
     }
     e.preventDefault();
     reorder(e.clientY);
   };
-  const onUp = () => {
-    cleanup();
-    if (dragging) {
-      dragging = false;
-      row.classList.remove('tpl-dragging'); tplMenu.classList.remove('tpl-reordering');
-      try { handle.releasePointerCapture(pid); } catch (_) {}
-      handle._dragged = true;        // 抑制紧随其后的 click(避免误触发套用)
-      persistTplOrder();
-    }
-  };
+  const onUp = () => end(true);
   handle.addEventListener('pointerdown', (e) => {
     if (e.button != null && e.button !== 0) return;
-    pid = e.pointerId; startY = e.clientY; handle._dragged = false;
+    startY = e.clientY; handle._dragged = false; active = true;
     holdTimer = setTimeout(begin, HOLD); // 长按计时;鼠标移动超阈值也会提前触发
-    handle.addEventListener('pointermove', onMove);
-    handle.addEventListener('pointerup', onUp);
-    handle.addEventListener('pointercancel', onUp);
+    addWin();
   });
 }
 
