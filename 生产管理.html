@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-4">
+<html lang="zh-CN" data-appver="2026-10-13-5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4183,6 +4183,12 @@ const Pages = (() => {
 :root[data-theme="light"] .confirm-popover button:not(.primary):not(.danger):hover{background:#efece7}
 :root[data-theme="light"] .confirm-popover input.confirm-input,:root[data-theme="light"] .confirm-popover select.confirm-input{background:#f6f3ef;color:#22201d;border-color:#e3ded7;color-scheme:light}
 :root[data-theme="light"] .confirm-popover select.confirm-input option{background:#ffffff;color:#22201d}
+.confirm-popover .confirm-multi{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.confirm-popover .confirm-check{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:rgba(0,0,0,0.25);color:#e8e8e8;font-size:13px;cursor:pointer;user-select:none;transition:background .15s,border-color .15s}
+.confirm-popover .confirm-check input{display:none}
+.confirm-popover .confirm-check.on{background:rgba(var(--accent-rgb),0.2);border-color:var(--accent);color:var(--accent-light)}
+:root[data-theme="light"] .confirm-popover .confirm-check{background:#f6f3ef;border-color:#e3ded7;color:#22201d}
+:root[data-theme="light"] .confirm-popover .confirm-check.on{background:rgba(var(--accent-rgb),0.16);border-color:var(--accent);color:#22201d}
 .confirm-popover .confirm-text{font-weight:600;font-size:14px;margin-bottom:4px;line-height:1.4;letter-spacing:.01em}
 .confirm-popover .confirm-sub{color:#9ca0a8;font-size:12px;margin-bottom:12px;line-height:1.4}
 .confirm-popover .confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
@@ -4663,7 +4669,20 @@ function showConfirmPopover(anchor, opts) {
   if (opts.sub) { const s = document.createElement('div'); s.className = 'confirm-sub'; s.textContent = opts.sub; pop.appendChild(s); }
   let inputEl = null;
   if (opts.input) {
-    if (opts.input.options) {
+    if (opts.input.options && opts.input.multi) {       // 多选:渲染可勾选的线名 chip,inputEl.value 返回已勾选 value 数组
+      inputEl = document.createElement('div'); inputEl.className = 'confirm-multi';
+      const _checks = [];
+      const _preset = Array.isArray(opts.input.value) ? opts.input.value.map(String) : [];
+      for (const o of opts.input.options) {
+        const lab = document.createElement('label'); lab.className = 'confirm-check';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = o.value;
+        if (_preset.includes(String(o.value))) { cb.checked = true; lab.classList.add('on'); }
+        cb.addEventListener('change', () => lab.classList.toggle('on', cb.checked));
+        const sp = document.createElement('span'); sp.textContent = o.label;
+        lab.appendChild(cb); lab.appendChild(sp); inputEl.appendChild(lab); _checks.push(cb);
+      }
+      Object.defineProperty(inputEl, 'value', { get() { return _checks.filter(c => c.checked).map(c => c.value); } });
+    } else if (opts.input.options) {
       inputEl = document.createElement('select'); inputEl.className = 'confirm-input';
       for (const o of opts.input.options) { const op = document.createElement('option'); op.value = o.value; op.textContent = o.label; inputEl.appendChild(op); }
       if (opts.input.value != null) inputEl.value = opts.input.value;
@@ -7316,19 +7335,21 @@ function startApplyTemplate(tpl) {
   const opts = [];
   for (let i = 1; i <= LINE_COUNT; i++) opts.push({ value: String(i), label: lineDisplayName(i) });
   showConfirmPopover(tplBtn, {
-    text: `套用「${tpl.name}」到哪条线?`,
-    sub: `${(tpl.cards || []).length} 张卡片`,
-    input: { options: opts, value: '2' },
+    text: `套用「${tpl.name}」到哪些线?`,
+    sub: `${(tpl.cards || []).length} 张卡片 · 可多选`,
+    input: { options: opts, multi: true, value: [] },
     confirmText: '套用',
-    onConfirm: (v) => {
-      const lineNum = parseInt(v, 10);
-      const lineEl = lineElByNum(lineNum);
-      if (!lineEl) return;
-      const hasCards = lineEl.querySelectorAll('.card').length > 0;
-      const doApply = () => { applyTemplateCards(lineEl, tpl.cards, true); showToast(`已套用到「${lineDisplayName(lineNum)}」`); };
-      if (hasCards) {
-        showConfirmPopover(tplBtn, { text: `「${lineDisplayName(lineNum)}」已有卡片,覆盖?`, confirmText: '覆盖', danger: true, onConfirm: doApply });
-      } else doApply();
+    onConfirm: (vals) => {
+      const lineNums = (vals || []).map(v => parseInt(v, 10)).filter(n => n >= 1);
+      if (!lineNums.length) { showToast('请至少选一条线', 'error'); return; }
+      const doApplyAll = () => {
+        lineNums.forEach(n => { const el = lineElByNum(n); if (el) applyTemplateCards(el, tpl.cards, true); });
+        showToast(`已套用到 ${lineNums.length} 条线`);
+      };
+      const occupied = lineNums.filter(n => { const el = lineElByNum(n); return el && el.querySelectorAll('.card').length > 0; });
+      if (occupied.length) {
+        showConfirmPopover(tplBtn, { text: `${occupied.map(lineDisplayName).join('、')} 已有卡片,覆盖?`, confirmText: '覆盖', danger: true, onConfirm: doApplyAll });
+      } else doApplyAll();
     }
   });
 }
