@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-38">
+<html lang="zh-CN" data-appver="2026-10-13-39">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -940,9 +940,11 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important}
 .nav{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
-.nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.nav button{height:30px;padding:0 12px;font-size:13px;transition:all .2s cubic-bezier(.4,0,.2,1)}
-.nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
+.nav .brand{letter-spacing:.3px;display:inline-flex;align-items:center;gap:8px}
+.nav .brand::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 auto;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav button{height:30px;padding:0 12px;font-size:13px;background:transparent;border-color:transparent;border-radius:6px;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.nav button:hover{background:rgba(255,255,255,.05);border-color:transparent}
 .nav button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
 /* 白天模式:选中高亮提亮一档(与父壳标签、配置表内部导航统一),不含 color-mix,iOS 安全 */
 :root[data-theme="light"] .nav button.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 100%),var(--accent);color:#14181f;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.5),0 0 10px rgba(var(--accent-rgb),.45),0 3px 10px rgba(var(--accent-rgb),.3)}
@@ -9084,6 +9086,15 @@ header input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--ac
 header button:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:var(--fg)}
 header button:active{transform:scale(.97)}
 header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
+/* 工具栏按钮统一成计划板的 ghost 风:透明底/边,仅 hover 显底;选中态(.active)保持橙色。搜索框(input)仍保留填充。 */
+header button:not(.active){background:transparent;border-color:transparent}
+header button:not(.active):hover{background:rgba(255,255,255,.06);border-color:transparent;color:var(--fg)}
+/* 左侧「配置」标题 —— 与计划板「● 计划板」同款:脉动圆点 + 实色粗体 */
+header .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;white-space:nowrap;flex:0 0 auto;margin-right:2px;color:var(--fg)}
+header .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 auto;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* 手机端配置表工具栏控件密集,隐藏左侧「配置」标题腾出空间(桌面/平板仍显示,与计划板手机端收起副标题同理) */
+@media (max-width:720px){header .brand{display:none}}
 /* 操作屏单元格 — 微梯度 + 内高光 + hover 抬升 */
 .line-grid .cell{background:linear-gradient(180deg,#1f2329 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 1px 3px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
 .line-grid .cell:not(.empty):hover{border-color:rgba(255,255,255,.1);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 4px 12px rgba(0,0,0,.42)}
@@ -9131,6 +9142,7 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 /* === 白天模式:压过本表 !important 深色精修(置于样式表末尾) === */
 :root[data-theme="light"] header{background:linear-gradient(180deg,#ffffff 0%,#efece7 100%)!important;border-bottom:1px solid #e3ded7!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 4px 16px rgba(43,37,30,.08)!important}
 :root[data-theme="light"] header input,:root[data-theme="light"] header button,:root[data-theme="light"] header select{background:#f6f3ef!important;border-color:#e3ded7!important;color:var(--fg)}
+:root[data-theme="light"] header button:not(.active){background:transparent!important;border-color:transparent!important}
 :root[data-theme="light"] header input:focus{background:#ffffff!important}
 :root[data-theme="light"] header button:hover{background:#ece6df!important;border-color:#d4cec4!important;color:var(--fg)}
 /* 上一行的通用 header button 浅色覆盖会把「选中标签」的橙色高亮也盖成灰白 → 选中态消失。
@@ -9195,6 +9207,7 @@ header .btn-tab.active{background:linear-gradient(180deg,var(--accent) 0%,var(--
 <body>
 <div id="banner"></div>
 <header>
+  <div class="brand"><span class="dot"></span>配置</div>
   <input id="bento-search" placeholder="便当名…" autocomplete="off">
   <button class="btn-tab" data-screen="operate">操作屏</button>
   <button class="btn-tab" data-screen="bentos">便当库</button>
