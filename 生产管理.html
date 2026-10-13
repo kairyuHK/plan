@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-50">
+<html lang="zh-CN" data-appver="2026-10-14-51">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -27,6 +27,7 @@
 *::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important}
 html,body{margin:0;height:100%;background:#0a0b0e;color:#ececf1;font:14px/1.4 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;touch-action:pan-y pinch-zoom;overscroll-behavior:none}
+@media (any-pointer:coarse){html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}}
 /* iOS 修复:把父壳 body 钉成 position:fixed,使整页无法被滚动 —— 否则 iOS Safari 在 iframe 内
    输入框聚焦、键盘弹起时会无视 overflow:hidden 把整页(含顶部标签栏)顶上去,关闭后不归位,
    导致「没父壳」+ 触摸坐标错位、起始/切换框点不动。钉死后键盘只会覆盖底部,布局不再位移。 */
@@ -703,6 +704,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 :root[data-theme="light"] .copy-modal .row input[type=date]{background:#f4f1ec;color:var(--text);border-color:#e3ded7}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
+@media (any-pointer:coarse){html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}}
 /* iPad 触控板修复:iframe 的「文档滚动」在 iPadOS 触控板下滚不动(手指 touch 正常)。
    改成 body 作显式滚动容器(html 定高不滚、body overflow-y 滚),触控板即可滚动;sticky 顶栏模型不变。 */
 html{height:100%;overflow:hidden}
@@ -2464,6 +2466,7 @@ const Pages = (() => {
     background-size: auto, 22px 22px;
     background-attachment: fixed;
   }
+  @media (any-pointer:coarse){html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}}
   body {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -8654,6 +8657,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   :root[data-theme="light"] .picker-modal,:root[data-theme="light"] #libModal .modal-card{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%)!important}
   *{box-sizing:border-box}
   body{margin:0;font:15px/1.4 -apple-system,"PingFang SC","Microsoft Yahei",sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.022) 1px,transparent 0);background-size:22px 22px;background-attachment:fixed}
+  @media (any-pointer:coarse){html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}}
   /* iPad 触控板修复:iframe 文档滚动在 iPadOS 触控板下滚不动(手指正常)→ 改 body 作显式滚动容器 */
   html{height:100%;overflow:hidden}
   body{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:none}
