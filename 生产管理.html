@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-29">
+<html lang="zh-CN" data-appver="2026-10-13-30">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2303,19 +2303,21 @@ const Pages = (() => {
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      let kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      if (kbH > _kbMax) _kbMax = kbH;               // 记住稳定的全键盘高度
+      const kbUse = Math.max(kbH, _kbMax);           // 用稳定大值,躲开瞬态小值(否则顶不够→被挡)
       const clientH = document.documentElement.clientHeight;
-      const visBottom = clientH - kbH - 12;
+      const visBottom = clientH - kbUse - 6;
       const rectB = el.getBoundingClientRect().bottom;
       const delta = rectB - visBottom; // 可正(被挡,要上滚)可负(被顶太高,要下滚)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; // 真正滚动容器是 body
-      _kbDbg({pg:'排岗', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
-      if (kbH < 80) return; // 键盘没弹起不动
+      _kbDbg({pg:'排岗', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), kbUse:Math.round(kbUse), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
+      if (kbUse < 80) return; // 键盘没弹起不动
       if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
     }catch(_){}
   }
-  let _kbPadTimer = null, _kbEl = null;
+  let _kbPadTimer = null, _kbEl = null, _kbMax = 0;
   const _kbVV = (window.top || window).visualViewport;
   if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) { _kbLift(_kbEl); setTimeout(() => _kbLift(_kbEl), 200); } });
   document.addEventListener('focusin', e => {
@@ -2328,10 +2330,11 @@ const Pages = (() => {
     _kbEl = el;
     setTimeout(() => _kbLift(el), 350);          // 等 iOS 原生那下滚完再拉到位
     setTimeout(() => _kbLift(el), 600);          // 兜底再补一刀
+    setTimeout(() => _kbLift(el), 1000);         // 键盘+自动填充栏彻底稳定后再校一次
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250);
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; _kbMax = 0; document.body.style.paddingBottom = ''; }, 250);
     }
   });
   let _initRoute = '';
@@ -10523,19 +10526,21 @@ document.getElementById("materials-search").addEventListener("input", e => {
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      let kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      if (kbH > _kbMax) _kbMax = kbH;               // 记住稳定的全键盘高度
+      const kbUse = Math.max(kbH, _kbMax);           // 用稳定大值,躲开瞬态小值(否则顶不够→被挡)
       const clientH = document.documentElement.clientHeight;
-      const visBottom = clientH - kbH - 12;
+      const visBottom = clientH - kbUse - 6;
       const rectB = el.getBoundingClientRect().bottom;
       const delta = rectB - visBottom; // 可正(被挡)可负(被顶太高)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body;
-      _kbDbg({pg:'配置', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
-      if (kbH < 80) return;
+      _kbDbg({pg:'配置', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), kbUse:Math.round(kbUse), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
+      if (kbUse < 80) return;
       if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
     }catch(_){}
   }
-  let _kbPadTimer = null, _kbEl = null;
+  let _kbPadTimer = null, _kbEl = null, _kbMax = 0;
   const _kbVV = (window.top || window).visualViewport;
   if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) { _kbLift(_kbEl); setTimeout(() => _kbLift(_kbEl), 200); } });
   document.addEventListener('focusin', e => {
@@ -10548,10 +10553,11 @@ document.getElementById("materials-search").addEventListener("input", e => {
     _kbEl = el;
     setTimeout(() => _kbLift(el), 350);          // 等 iOS 原生那下滚完再拉到位
     setTimeout(() => _kbLift(el), 600);          // 兜底再补一刀
+    setTimeout(() => _kbLift(el), 1000);         // 键盘+自动填充栏彻底稳定后再校一次
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250);
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; _kbMax = 0; document.body.style.paddingBottom = ''; }, 250);
     }
   });
 })();
