@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-21">
+<html lang="zh-CN" data-appver="2026-10-13-22">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2297,7 +2297,7 @@ const Pages = (() => {
       if (kbH < 80) return;                                              // 键盘还没弹起(此刻测不到),先不滚
       const visBottom = document.documentElement.clientHeight - kbH - 12; // 键盘上方可视区底线(留 12px 缝)
       const over = el.getBoundingClientRect().bottom - visBottom;
-      if (over > 0){ const se = document.scrollingElement || document.documentElement; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); }
+      if (over > 0){ const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); } // 本页 html{overflow:hidden}body{overflow:auto},真正的滚动容器是 body,不是 scrollingElement(=html)
     }catch(_){}
   }
   let _kbPadTimer = null, _kbEl = null;
@@ -10502,7 +10502,7 @@ document.getElementById("materials-search").addEventListener("input", e => {
       if (kbH < 80) return;
       const visBottom = document.documentElement.clientHeight - kbH - 12;
       const over = el.getBoundingClientRect().bottom - visBottom;
-      if (over > 0){ const se = document.scrollingElement || document.documentElement; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); }
+      if (over > 0){ const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); } // 本页 html{overflow:hidden}body{overflow:auto},真正的滚动容器是 body,不是 scrollingElement(=html)
     }catch(_){}
   }
   let _kbPadTimer = null, _kbEl = null;
