@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-30">
+<html lang="zh-CN" data-appver="2026-10-13-31">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2288,18 +2288,8 @@ const Pages = (() => {
   function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   setNavH();
   window.addEventListener('resize', setNavH);
-  // 手机端键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px。
+  // 手机端键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 6px。
   // 关键:补正可上可下(iOS 会上过头到中央,这里要往下拉回来),否则就停在中央不动。等原生滚完再补,避免和它对打。
-  // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
-  const _kbDbgOn = true; // 临时诊断:默认显示;拿到截图后改回 hash 门控或删除
-  let _kbDbgEl = null;
-  function _kbDbg(o){
-    if (!_kbDbgOn) return;
-    try{
-      if (!_kbDbgEl){ _kbDbgEl = document.createElement('div'); _kbDbgEl.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.85);color:#3f3;font:11px ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.35;max-width:72vw'; document.body.appendChild(_kbDbgEl); }
-      _kbDbgEl.textContent = Object.keys(o).map(k => k + ':' + o[k]).join('\n');
-    }catch(_){}
-  }
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
@@ -2311,7 +2301,6 @@ const Pages = (() => {
       const rectB = el.getBoundingClientRect().bottom;
       const delta = rectB - visBottom; // 可正(被挡,要上滚)可负(被顶太高,要下滚)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; // 真正滚动容器是 body
-      _kbDbg({pg:'排岗', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), kbUse:Math.round(kbUse), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
       if (kbUse < 80) return; // 键盘没弹起不动
       if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
@@ -10512,17 +10501,7 @@ document.getElementById("materials-search").addEventListener("input", e => {
 // 固定弹层里的输入(改名模态 / 选色 popover / 材料库抽屉等)滚 body 顶不动,跳过以免背景乱滚——它们本就居中/锚定不挡。
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
-  // 键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px(补正可上可下)。
-  // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
-  const _kbDbgOn = true; // 临时诊断:默认显示;拿到截图后改回 hash 门控或删除
-  let _kbDbgEl = null;
-  function _kbDbg(o){
-    if (!_kbDbgOn) return;
-    try{
-      if (!_kbDbgEl){ _kbDbgEl = document.createElement('div'); _kbDbgEl.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.85);color:#3f3;font:11px ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.35;max-width:72vw'; document.body.appendChild(_kbDbgEl); }
-      _kbDbgEl.textContent = Object.keys(o).map(k => k + ':' + o[k]).join('\n');
-    }catch(_){}
-  }
+  // 键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 6px(补正可上可下)。
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
@@ -10534,7 +10513,6 @@ document.getElementById("materials-search").addEventListener("input", e => {
       const rectB = el.getBoundingClientRect().bottom;
       const delta = rectB - visBottom; // 可正(被挡)可负(被顶太高)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body;
-      _kbDbg({pg:'配置', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), kbUse:Math.round(kbUse), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
       if (kbUse < 80) return;
       if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
