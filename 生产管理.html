@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-37">
+<html lang="zh-CN" data-appver="2026-10-13-38">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -720,7 +720,7 @@ select option:checked{background:#2b2f3a}
 :root[data-theme="light"] select{color-scheme:light}
 :root[data-theme="light"] select option{background:#ffffff;color:var(--text)}
 .nav{display:flex;gap:8px;align-items:center;height:38px;padding:0 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
-.nav .brand{font-weight:600;margin-right:auto}
+.nav .brand{font-weight:600;margin-right:auto;font-size:13px}
 .nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .page{padding:16px;max-width:1400px;margin:0 auto}
 .hidden{display:none!important}
@@ -941,7 +941,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;f
 *{scrollbar-width:none!important;-ms-overflow-style:none!important}
 .nav{background:linear-gradient(180deg,rgba(26,29,38,.94) 0%,rgba(16,18,26,.97) 100%);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid #1d2029;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 18px rgba(0,0,0,.24)}
 .nav .brand{letter-spacing:.3px;background:linear-gradient(180deg,#fff 0%,#c8ccd4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.nav button{padding:6px 12px;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.nav button{height:30px;padding:0 12px;font-size:13px;transition:all .2s cubic-bezier(.4,0,.2,1)}
 .nav button:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08)}
 .nav button.active{background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);border-color:transparent;color:#14181f;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35),0 4px 14px rgba(var(--accent-rgb),.28),0 1px 0 rgba(255,255,255,.18) inset}
 /* 白天模式:选中高亮提亮一档(与父壳标签、配置表内部导航统一),不含 color-mix,iOS 安全 */
@@ -2517,7 +2517,7 @@ const Pages = (() => {
     border: 1px solid transparent;
     color: var(--text-dim);
     cursor: pointer;
-    font-size: 12.5px; font-weight: 500;
+    font-size: 13px; font-weight: 500;
     border-radius: 6px;
     transition: background 0.15s var(--ease), color 0.15s var(--ease);
     font-family: inherit;
@@ -8660,7 +8660,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   #banner.ok{background:#14532d;color:#bbf7d0}
   #banner.err{background:#7f1d1d;color:#fecaca}
   header{display:flex;gap:6px;height:38px;padding:0 16px;border-bottom:1px solid var(--line);background:#0a0c10;align-items:center;flex-wrap:wrap}
-  header input,header button,header select{font:inherit;padding:6px 12px;border:1px solid transparent;border-radius:6px;background:#15181d;color:var(--fg);transition:background .15s,border-color .15s}
+  header input,header button,header select{font:inherit;font-size:13px;height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:#15181d;color:var(--fg);transition:background .15s,border-color .15s}
   header input{min-width:220px;border-color:var(--line)}
   header input:focus{outline:none;border-color:var(--accent)}
   header button{cursor:pointer;background:transparent;color:#bbb}
