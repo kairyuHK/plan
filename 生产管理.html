@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-18">
+<html lang="zh-CN" data-appver="2026-10-13-19">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2288,18 +2288,33 @@ const Pages = (() => {
   function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   setNavH();
   window.addEventListener('resize', setNavH);
-  // 手机端:页面内输入框聚焦时临时撑高底部、把它滚到视口中部,避免被软键盘挡住
-  // (iOS Safari 不支持 interactive-widget=resizes-content,键盘直接盖在布局上 → 底部输入框够不到;原生托不起最底部,故仍自定义)
+  // 手机端键盘避让:读真实 visualViewport 得到键盘高度,只把被键盘挡住的输入框上滚「刚好露出所需」的最小距离(夹紧不过冲)。
+  // iOS Safari 不支持 interactive-widget,键盘直接盖在布局上;Safari/主屏 PWA 键盘高度不同,故运行时实测而非写死。
+  function _kbLift(el){
+    try{
+      const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop;              // 真实键盘高度(两种模式都准)
+      if (kbH < 80) return;                                              // 键盘还没弹起(此刻测不到),先不滚
+      const visBottom = document.documentElement.clientHeight - kbH - 12; // 键盘上方可视区底线(留 12px 缝)
+      const over = el.getBoundingClientRect().bottom - visBottom;
+      if (over > 0){ const se = document.scrollingElement || document.documentElement; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); }
+    }catch(_){}
+  }
+  let _kbPadTimer = null, _kbLiftTimer = null;
   document.addEventListener('focusin', e => {
-    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做键盘避让;PC 鼠标无软键盘,避免聚焦输入框时误滚动
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
     const el = e.target;
     if (!el.matches || !el.matches('input,textarea,select')) return;
     if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
-    document.body.style.paddingBottom = '50vh';  // 给最后一张卡的输入框留出上滚空间
-    requestAnimationFrame(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(_){} });
+    clearTimeout(_kbPadTimer);
+    document.body.style.paddingBottom = '50vh';  // 给最底部输入框留出上滚空间
+    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位(无动画,不滑)
+    clearTimeout(_kbLiftTimer); _kbLiftTimer = setTimeout(() => _kbLift(el), 320); // 首次聚焦等键盘弹完再精确就位
   });
   document.addEventListener('focusout', e => {
-    if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
+    if (e.target.matches && e.target.matches('input,textarea,select')) {
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; }, 250); // 延时撤:切到别的输入框会被 focusin 取消,避免高度跳动
+    }
   });
   let _initRoute = '';
   try{ _initRoute = sessionStorage.getItem('sched-route-v1') || ''; }catch(_){}
@@ -10476,16 +10491,32 @@ document.getElementById("materials-search").addEventListener("input", e => {
 // 固定弹层里的输入(改名模态 / 选色 popover / 材料库抽屉等)滚 body 顶不动,跳过以免背景乱滚——它们本就居中/锚定不挡。
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
+  // 键盘避让:读真实 visualViewport 得到键盘高度,只把被挡住的输入框上滚「刚好露出所需」的最小距离(夹紧不过冲);Safari/主屏 PWA 都准。
+  function _kbLift(el){
+    try{
+      const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      if (kbH < 80) return;
+      const visBottom = document.documentElement.clientHeight - kbH - 12;
+      const over = el.getBoundingClientRect().bottom - visBottom;
+      if (over > 0){ const se = document.scrollingElement || document.documentElement; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); }
+    }catch(_){}
+  }
+  let _kbPadTimer = null, _kbLiftTimer = null;
   document.addEventListener('focusin', e => {
-    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做键盘避让;PC 鼠标无软键盘,避免聚焦输入框时误把页面滚到中部
+    if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
     const el = e.target;
     if (!el.matches || !el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),textarea,select')) return;
     if (inFixed(el)) return;
+    clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';
-    requestAnimationFrame(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(_){} });
+    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位
+    clearTimeout(_kbLiftTimer); _kbLiftTimer = setTimeout(() => _kbLift(el), 320); // 首次聚焦等键盘弹完再精确就位
   });
   document.addEventListener('focusout', e => {
-    if (e.target.matches && e.target.matches('input,textarea,select')) document.body.style.paddingBottom = '';
+    if (e.target.matches && e.target.matches('input,textarea,select')) {
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; }, 250);
+    }
   });
 })();
 
