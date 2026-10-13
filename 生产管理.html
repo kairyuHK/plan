@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-45">
+<html lang="zh-CN" data-appver="2026-10-13-46">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10178,8 +10178,8 @@ function renderLineLayout(host, line, opts) {
     card.appendChild(r1);
     if (withQty) {
       const r2 = document.createElement("div"); r2.className = "r2";
-      r2.appendChild(qtyField("量1", "qty", p));
-      r2.appendChild(qtyField("量2", "qty2", p));
+      r2.appendChild(qtyField("上", "qty", p));
+      r2.appendChild(qtyField("下", "qty2", p));
       const ex = document.createElement("label"); ex.className = "ex";
       const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.extra;
       cb.title = "勾选=这张卡算独立一份(额外计入用量);不勾=与同材料其它卡片同一份";
