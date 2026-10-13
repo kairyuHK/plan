@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-24">
+<html lang="zh-CN" data-appver="2026-10-13-25">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2288,26 +2288,9 @@ const Pages = (() => {
   function setNavH(){ if(navEl) document.documentElement.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   setNavH();
   window.addEventListener('resize', setNavH);
-  // 手机端键盘避让:读真实 visualViewport 得到键盘高度,只把被键盘挡住的输入框上滚「刚好露出所需」的最小距离(夹紧不过冲)。
-  // iOS Safari 不支持 interactive-widget,键盘直接盖在布局上;Safari/主屏 PWA 键盘高度不同,故运行时实测而非写死。
-  let _lastKbH = 0;                               // 缓存上次实测键盘高度,供下次聚焦时「提前退避」用
-  function _kbLift(el, kbHForce){
-    try{
-      let kbH = kbHForce;
-      if (kbH == null){                           // 不传=读真实 visualViewport
-        const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-        kbH = tw.innerHeight - tv.height - tv.offsetTop;
-        if (kbH >= 80) _lastKbH = kbH; else return; // 键盘还没弹起就先不动(等 resize 再来)
-      }
-      if (kbH < 80) return;
-      const visBottom = document.documentElement.clientHeight - kbH - 12; // 键盘上方可视区底线(留 12px 缝)
-      const over = el.getBoundingClientRect().bottom - visBottom;
-      if (over > 0){ const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); } // 本页 html{overflow:hidden}body{overflow:auto},真正的滚动容器是 body,不是 scrollingElement(=html)
-    }catch(_){}
-  }
-  let _kbPadTimer = null, _kbEl = null;
-  const _kbVV = (window.top || window).visualViewport;
-  if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) _kbLift(_kbEl); }); // 键盘每次高度变化(弹起/收起/切换)都重新就位 → 不怕键盘弹得慢/首次IME加载慢
+  // 手机端键盘避让:只撑高底部(给最底部输入框留出上滚空间),滚动完全交给 iOS 原生平滑滚到键盘上方。
+  // 不再自定义 scrollTop——录像实证自定义瞬移会叠在原生滚动上=二次跳 + 上过头。父壳 resize 已改为键盘开时不归零,原生即可正常滚。
+  let _kbPadTimer = null;
   document.addEventListener('focusin', e => {
     if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
     const el = e.target;
@@ -2315,13 +2298,10 @@ const Pages = (() => {
     if (!el.closest('.page')) return;            // 只处理页面内流式输入,固定弹层(确认框/选人)自理
     clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';  // 给最底部输入框留出上滚空间
-    _kbEl = el;
-    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位
-    setTimeout(() => _kbLift(el), 500);          // 兜底:个别机型 resize 不触发时也补一刀
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250); // 延时撤:切到别的输入框会被 focusin 取消,避免高度跳动
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; }, 250); // 延时撤:切到别的输入框会被 focusin 取消,避免高度跳动
     }
   });
   let _initRoute = '';
@@ -10499,20 +10479,9 @@ document.getElementById("materials-search").addEventListener("input", e => {
 // 固定弹层里的输入(改名模态 / 选色 popover / 材料库抽屉等)滚 body 顶不动,跳过以免背景乱滚——它们本就居中/锚定不挡。
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
-  // 键盘避让:读真实 visualViewport 得到键盘高度,只把被挡住的输入框上滚「刚好露出所需」的最小距离(夹紧不过冲);Safari/主屏 PWA 都准。
-  function _kbLift(el){
-    try{
-      const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
-      if (kbH < 80) return;
-      const visBottom = document.documentElement.clientHeight - kbH - 12;
-      const over = el.getBoundingClientRect().bottom - visBottom;
-      if (over > 0){ const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; se.scrollTop = Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + over); } // 本页 html{overflow:hidden}body{overflow:auto},真正的滚动容器是 body,不是 scrollingElement(=html)
-    }catch(_){}
-  }
-  let _kbPadTimer = null, _kbEl = null;
-  const _kbVV = (window.top || window).visualViewport;
-  if (_kbVV) _kbVV.addEventListener('resize', () => { if (_kbEl) _kbLift(_kbEl); }); // 键盘每次高度变化都重新就位 → 不怕键盘弹得慢/首次IME加载慢
+  // 键盘避让:只撑高底部(给最底部输入框留出上滚空间),滚动完全交给 iOS 原生平滑滚到键盘上方。
+  // 不再自定义 scrollTop——录像实证自定义瞬移会叠在原生滚动上=二次跳 + 上过头。父壳 resize 已改为键盘开时不归零,原生即可正常滚。
+  let _kbPadTimer = null;
   document.addEventListener('focusin', e => {
     if (!window.matchMedia || !matchMedia('(any-pointer: coarse)').matches) return; // 仅触摸设备(有软键盘)才做;PC 无软键盘不介入
     const el = e.target;
@@ -10520,13 +10489,10 @@ document.getElementById("materials-search").addEventListener("input", e => {
     if (inFixed(el)) return;
     clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';
-    _kbEl = el;
-    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位
-    setTimeout(() => _kbLift(el), 500);          // 兜底:个别机型 resize 不触发时也补一刀
   });
   document.addEventListener('focusout', e => {
     if (e.target.matches && e.target.matches('input,textarea,select')) {
-      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { _kbEl = null; document.body.style.paddingBottom = ''; }, 250);
+      clearTimeout(_kbPadTimer); _kbPadTimer = setTimeout(() => { document.body.style.paddingBottom = ''; }, 250);
     }
   });
 })();
