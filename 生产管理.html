@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-27">
+<html lang="zh-CN" data-appver="2026-10-13-28">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2290,14 +2290,28 @@ const Pages = (() => {
   window.addEventListener('resize', setNavH);
   // 手机端键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px。
   // 关键:补正可上可下(iOS 会上过头到中央,这里要往下拉回来),否则就停在中央不动。等原生滚完再补,避免和它对打。
+  // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
+  const _kbDbgOn = (function(){ try{ return (window.top||window).location.hash.indexOf('kbdebug') >= 0; }catch(_){ return false; } })();
+  let _kbDbgEl = null;
+  function _kbDbg(o){
+    if (!_kbDbgOn) return;
+    try{
+      if (!_kbDbgEl){ _kbDbgEl = document.createElement('div'); _kbDbgEl.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.85);color:#3f3;font:11px ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.35;max-width:72vw'; document.body.appendChild(_kbDbgEl); }
+      _kbDbgEl.textContent = Object.keys(o).map(k => k + ':' + o[k]).join('\n');
+    }catch(_){}
+  }
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-      const kbH = tw.innerHeight - tv.height - tv.offsetTop; if (kbH < 80) return; // 键盘没弹起不动
-      const visBottom = document.documentElement.clientHeight - kbH - 12;
-      const delta = el.getBoundingClientRect().bottom - visBottom; // 可正(被挡,要上滚)可负(被顶太高,要下滚)
-      if (Math.abs(delta) < 2) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      const clientH = document.documentElement.clientHeight;
+      const visBottom = clientH - kbH - 12;
+      const rectB = el.getBoundingClientRect().bottom;
+      const delta = rectB - visBottom; // 可正(被挡,要上滚)可负(被顶太高,要下滚)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body; // 真正滚动容器是 body
+      _kbDbg({pg:'排岗', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
+      if (kbH < 80) return; // 键盘没弹起不动
+      if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
     }catch(_){}
   }
@@ -10496,14 +10510,28 @@ document.getElementById("materials-search").addEventListener("input", e => {
 (function(){
   function inFixed(el){ for (let n=el; n && n!==document.body; n=n.parentElement){ if (getComputedStyle(n).position === 'fixed') return true; } return false; }
   // 键盘避让:撑高底部留空间;等 iOS 原生把输入框滚到屏幕正中(偏高)后,再把它「拉回」到紧邻键盘上方 12px(补正可上可下)。
+  // 诊断:网址带 #kbdebug 时,屏幕左上角实时显示键盘避让的真实数值,截图发来即可定位;平时不显示、零影响。
+  const _kbDbgOn = (function(){ try{ return (window.top||window).location.hash.indexOf('kbdebug') >= 0; }catch(_){ return false; } })();
+  let _kbDbgEl = null;
+  function _kbDbg(o){
+    if (!_kbDbgOn) return;
+    try{
+      if (!_kbDbgEl){ _kbDbgEl = document.createElement('div'); _kbDbgEl.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.85);color:#3f3;font:11px ui-monospace,monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.35;max-width:72vw'; document.body.appendChild(_kbDbgEl); }
+      _kbDbgEl.textContent = Object.keys(o).map(k => k + ':' + o[k]).join('\n');
+    }catch(_){}
+  }
   function _kbLift(el){
     try{
       const tw = window.top || window, tv = tw.visualViewport; if (!tv) return;
-      const kbH = tw.innerHeight - tv.height - tv.offsetTop; if (kbH < 80) return;
-      const visBottom = document.documentElement.clientHeight - kbH - 12;
-      const delta = el.getBoundingClientRect().bottom - visBottom; // 可正(被挡)可负(被顶太高)
-      if (Math.abs(delta) < 2) return;
+      const kbH = tw.innerHeight - tv.height - tv.offsetTop;
+      const clientH = document.documentElement.clientHeight;
+      const visBottom = clientH - kbH - 12;
+      const rectB = el.getBoundingClientRect().bottom;
+      const delta = rectB - visBottom; // 可正(被挡)可负(被顶太高)
       const se = (document.scrollingElement && document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight) ? document.scrollingElement : document.body;
+      _kbDbg({pg:'配置', innerH:tw.innerHeight, vvH:Math.round(tv.height), vvTop:Math.round(tv.offsetTop), kbH:Math.round(kbH), clientH, rectB:Math.round(rectB), visBottom:Math.round(visBottom), delta:Math.round(delta), top:Math.round(se.scrollTop), max:Math.round(se.scrollHeight - se.clientHeight)});
+      if (kbH < 80) return;
+      if (Math.abs(delta) < 2) return;
       se.scrollTop = Math.max(0, Math.min(se.scrollHeight - se.clientHeight, se.scrollTop + delta));
     }catch(_){}
   }
