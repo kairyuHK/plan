@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-23">
+<html lang="zh-CN" data-appver="2026-10-13-24">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2316,8 +2316,7 @@ const Pages = (() => {
     clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';  // 给最底部输入框留出上滚空间
     _kbEl = el;
-    _kbLift(el, _lastKbH || Math.round(window.innerHeight * 0.45)); // 关键:聚焦瞬间就按「上次实测/预估」的键盘高度先把输入框顶到键盘上方 → 键盘升起时它已在上面,不会先被盖住再弹上来
-    _kbLift(el);                                 // 再按实测(切换输入框时键盘已在,这步精确就位)
+    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位
     setTimeout(() => _kbLift(el), 500);          // 兜底:个别机型 resize 不触发时也补一刀
   });
   document.addEventListener('focusout', e => {
@@ -10522,8 +10521,7 @@ document.getElementById("materials-search").addEventListener("input", e => {
     clearTimeout(_kbPadTimer);
     document.body.style.paddingBottom = '50vh';
     _kbEl = el;
-    _kbLift(el, _lastKbH || Math.round(window.innerHeight * 0.45)); // 关键:聚焦瞬间就按「上次实测/预估」的键盘高度先把输入框顶到键盘上方 → 键盘升起时它已在上面,不会先被盖住再弹上来
-    _kbLift(el);                                 // 再按实测(切换输入框时键盘已在,这步精确就位)
+    _kbLift(el);                                 // 切换输入框时键盘已在 → 立即就位
     setTimeout(() => _kbLift(el), 500);          // 兜底:个别机型 resize 不触发时也补一刀
   });
   document.addEventListener('focusout', e => {
