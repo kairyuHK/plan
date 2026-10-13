@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-35">
+<html lang="zh-CN" data-appver="2026-10-13-36">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8522,30 +8522,12 @@ function syncMobLayout() {
   document.body.classList.toggle('mob-ls', isLandscape);
 }
 
-// 临时诊断(主屏时间选择器自动关):左上角滚动日志,截图发来定位;拿到后删除。
-const _tpDbg = document.createElement('div');
-_tpDbg.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.85);color:#3f3;font:10px ui-monospace,monospace;padding:5px 7px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.3;max-width:82vw';
-document.body.appendChild(_tpDbg);
-const _tpLog = [];
-function _tpl(m){ try{ _tpLog.unshift(m); if(_tpLog.length>9) _tpLog.pop(); _tpDbg.textContent = 'mobls:'+document.body.classList.contains('mob-ls')+' '+window.innerWidth+'x'+window.innerHeight+'\n'+_tpLog.join('\n'); }catch(_){} }
-document.addEventListener('focusin', e => { const t=e.target; if(t&&t.matches&&t.matches('input,select,textarea')) _tpl('FIN '+String(t.className||t.tagName).slice(0,16)); });
-document.addEventListener('focusout', e => { const t=e.target; if(t&&t.matches&&t.matches('input,select,textarea')) _tpl('FOUT '+String(t.className||t.tagName).slice(0,14)); });
-document.addEventListener('pointerdown', e => { const t=e.target; _tpl('PD '+String((t&&t.tagName)||'')+'.'+String((t&&t.className)||'').slice(0,12)); }, true);
-let _lastWinW = window.innerWidth;
 window.addEventListener('resize', () => {
   // ⚠️ 打印模式下不要重排卡片!iOS Safari 切到打印模式时 viewport 会变,触发 resize,
   // 这里如果还跑 renderTimeline + cards-grid.height = getTotalPx() + recalc,
   // 会把 setupPrintLayout 通过 trimGridForExport 设置的 visH/translateY/--hour-px
   // 全部覆盖掉,实际打印用的就是默认 8:00-22:00 全范围、卡片缩小的样子。
   if (document.body.classList.contains('printing')) return;
-  // 宽度没变却触发 resize = 软键盘/原生时间选择器弹出引起的高度变化(主屏 PWA 会把选择器当键盘缩 content;
-  // Safari 不缩故无此 resize)。此时若正在编辑输入框,整屏重绘会把已打开的原生时间选择器挤关掉
-  // (手机横屏主屏 App「一点数字就自动关」的真凶)。编辑中且宽度没变就跳过重绘,等失焦后的 resize 再重排。
-  const _wChanged = window.innerWidth !== _lastWinW;
-  _lastWinW = window.innerWidth;
-  const _ae = document.activeElement;
-  if (!_wChanged && _ae && /^(INPUT|TEXTAREA)$/.test(_ae.tagName)) { _tpl('RS skip ae:'+_ae.tagName+'.'+String(_ae.className||'').slice(0,10)); return; }
-  _tpl('RS RENDER wc:'+_wChanged+' ae:'+(_ae?_ae.tagName:'-'));
   syncMobLayout();
   renderTimeline();
   document.querySelectorAll('.cards-grid').forEach(g => { g.style.height = (getTotalPx() + 16) + 'px'; renderGridLines(g); });
