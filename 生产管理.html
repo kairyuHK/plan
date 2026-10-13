@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-48">
+<html lang="zh-CN" data-appver="2026-10-13-49">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8912,6 +8912,8 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-layout .ll-ic:hover{color:var(--fg);background:rgba(255,255,255,.06)}
   .line-layout .ll-ic.del:hover{color:#ef4444}
   .line-layout .ll-cell.drop-target{outline:2px dashed var(--accent);outline-offset:-2px;border-radius:8px}
+  .line-layout .ll-insert{position:absolute;left:0;right:0;height:16px;z-index:3;pointer-events:auto}
+  .line-layout .ll-insert.ins-active::before{content:"";position:absolute;left:4%;right:4%;top:50%;height:3px;transform:translateY(-50%);background:var(--accent);border-radius:2px;box-shadow:0 0 6px var(--accent)}
   .ll-drag-ghost{position:fixed;z-index:9999;pointer-events:none;background:#15181d;border:1px solid var(--accent);border-radius:8px;padding:5px 6px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:.95}
   .line-layout .ll-addstation{width:100%;height:32px;margin-top:8px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
   .line-layout .ll-addstation:hover{border-color:var(--accent);color:var(--accent)}
@@ -10201,10 +10203,30 @@ function renderLineLayout(host, line, opts) {
     if (e.target.closest(".ll-ic")) return;
     const origin = card.getBoundingClientRect();
     const startX = e.clientX, startY = e.clientY;
-    let dragging = false, ghost = null, overCell = null;
+    let dragging = false, ghost = null, overCell = null, overIns = null, insZones = null;
     const blockTouch = (ev) => { if (dragging) ev.preventDefault(); };
     document.addEventListener("touchmove", blockTouch, { passive: false });
-    const clearHi = () => { if (overCell) { overCell.classList.remove("drop-target"); overCell = null; } };
+    const clearHi = () => {
+      if (overCell) { overCell.classList.remove("drop-target"); overCell = null; }
+      if (overIns) { overIns.classList.remove("ins-active"); overIns = null; }
+    };
+    // 行间隙(含首尾)生成绝对定位的插入热区——不改变布局/传送带长度,只在拖拽时存在。
+    const buildInsertZones = () => {
+      const rowEls = [...rows.querySelectorAll(".ll-row")];
+      if (!rowEls.length) return;
+      const rRect = rows.getBoundingClientRect();
+      insZones = [];
+      for (let i = 0; i <= rowEls.length; i++) {
+        const z = document.createElement("div"); z.className = "ll-insert";
+        let yc;
+        if (i === 0) yc = rowEls[0].getBoundingClientRect().top - rRect.top;
+        else if (i === rowEls.length) yc = rowEls[i - 1].getBoundingClientRect().bottom - rRect.top;
+        else yc = ((rowEls[i - 1].getBoundingClientRect().bottom + rowEls[i].getBoundingClientRect().top) / 2) - rRect.top;
+        z.style.top = (yc - 8) + "px";
+        z.dataset.insertAfter = (i === 0) ? 0 : slots[i - 1];
+        rows.appendChild(z); insZones.push(z);
+      }
+    };
     const cleanup = () => {
       clearTimeout(timer);
       document.removeEventListener("pointermove", onMove);
@@ -10213,6 +10235,7 @@ function renderLineLayout(host, line, opts) {
       if (ghost) { ghost.remove(); ghost = null; }
       card.classList.remove("dragging");
       clearHi();
+      if (insZones) { insZones.forEach(z => z.remove()); insZones = null; }
     };
     const onMove = (ev) => {
       if (!dragging) {
@@ -10223,16 +10246,24 @@ function renderLineLayout(host, line, opts) {
       ghost.style.left = (ev.clientX - origin.width / 2) + "px";
       ghost.style.top = (ev.clientY - 16) + "px";
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const cell = el ? el.closest(".ll-cell") : null;
-      if (cell !== overCell) { clearHi(); if (cell && cell.dataset.slot != null) { cell.classList.add("drop-target"); overCell = cell; } }
+      const ins = el ? el.closest(".ll-insert") : null;        // 优先:行间隙=插入
+      const cell = (!ins && el) ? el.closest(".ll-cell") : null; // 否则:卡/空位=换位
+      if (ins !== overIns || cell !== overCell) {
+        clearHi();
+        if (ins) { ins.classList.add("ins-active"); overIns = ins; }
+        else if (cell && cell.dataset.slot != null) { cell.classList.add("drop-target"); overCell = cell; }
+      }
     };
     const onUp = () => {
-      const target = dragging ? overCell : null;
+      const insTarget = dragging ? overIns : null;
+      const cellTarget = dragging ? overCell : null;
       cleanup();
-      if (target && target.dataset.slot != null) {
-        moveOrSwap(line, p.id, parseInt(target.dataset.slot, 10), target.dataset.row);
-        swallowNextClick();
-        rerender(); afterChange();
+      if (insTarget) {
+        insertSlotAfter(line, p.id, parseInt(insTarget.dataset.insertAfter, 10));
+        swallowNextClick(); rerender(); afterChange();
+      } else if (cellTarget && cellTarget.dataset.slot != null) {
+        moveOrSwap(line, p.id, parseInt(cellTarget.dataset.slot, 10), cellTarget.dataset.row);
+        swallowNextClick(); rerender(); afterChange();
       }
     };
     const timer = setTimeout(() => {
@@ -10245,6 +10276,7 @@ function renderLineLayout(host, line, opts) {
       ghost.style.left = (startX - origin.width / 2) + "px";
       ghost.style.top = (startY - 16) + "px";
       document.body.appendChild(ghost);
+      buildInsertZones();
       try { card.setPointerCapture(e.pointerId); } catch(_) {}
     }, 300);
     document.addEventListener("pointermove", onMove);
@@ -10737,6 +10769,16 @@ function moveOrSwap(line, posId, targetSlot, targetRow) {
   }
   pos.slot = targetSlot;
   pos.row = targetRow;
+  compactSlots(line);
+  saveState();
+}
+
+// 把卡片插到两列之间:afterSlot=0 插到最前,afterSlot=S 插到第 S 列之后。
+// 用分数 slot 占到两整数之间,再 compactSlots 重排回 1..N;卡片保留自己的上/下侧,新列另一侧留空。
+function insertSlotAfter(line, posId, afterSlot) {
+  const pos = line.find(p => p.id === posId);
+  if (!pos) return;
+  pos.slot = afterSlot + 0.5;
   compactSlots(line);
   saveState();
 }
