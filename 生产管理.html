@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-13-40">
+<html lang="zh-CN" data-appver="2026-10-13-41">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -8887,6 +8887,30 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-screen td label{display:inline-flex;align-items:center;gap:4px;margin-right:8px}
   .line-screen td button.del{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:18px}
   .line-screen td button.del:hover{color:#ef4444}
+  /* 生产线「左下右上 + 中间产线」布局(替代槽位表格) */
+  .line-layout{position:relative;max-width:520px;margin:0 auto;padding-top:2px}
+  .line-layout .ll-head{display:grid;grid-template-columns:1fr 54px 1fr;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .line-layout .ll-head div{text-align:center}
+  .line-layout .ll-belt{position:absolute;top:54px;bottom:50px;left:50%;width:6px;transform:translateX(-50%);background:#2a2f39;border-radius:3px;z-index:0}
+  .line-layout .ll-belt::before{content:"";position:absolute;left:0;right:0;top:0;height:13px;background:var(--accent);border-radius:3px}
+  .line-layout .ll-row{display:grid;grid-template-columns:1fr 54px 1fr;align-items:center;margin-bottom:8px;position:relative;z-index:1}
+  .line-layout .ll-node{justify-self:center;width:30px;height:30px;border-radius:7px;background:#161a20;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+  .line-layout .ll-node input{width:100%;height:100%;border:0;background:transparent;color:var(--fg);text-align:center;font:inherit;font-size:13px;padding:0}
+  .line-layout .ll-cell{min-width:0}
+  .line-layout .ll-card{background:#15181d;border:1px solid var(--line);border-radius:8px;padding:6px 7px}
+  .line-layout .ll-card .r1{display:flex;align-items:center;gap:4px;margin-bottom:5px}
+  .line-layout .ll-card .pos{flex:1;min-width:0;height:28px;border-radius:6px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:13px;padding:0 8px}
+  .line-layout .ll-card .r2{display:flex;align-items:center;gap:4px;flex-wrap:wrap;row-gap:4px}
+  .line-layout .ll-card .r2 label{font-size:11px;color:var(--muted)}
+  .line-layout .ll-card .r2 .q{width:32px;height:24px;border-radius:5px;background:#1a1d22;border:1px solid var(--line);color:var(--fg);font:inherit;font-size:12px;padding:0 3px;text-align:center}
+  .line-layout .ll-card .r2 .ex{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .line-layout .ll-ic{width:22px;height:22px;flex:0 0 22px;border:0;background:transparent;color:#8a93a3;cursor:pointer;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+  .line-layout .ll-ic:hover{color:var(--fg);background:rgba(255,255,255,.06)}
+  .line-layout .ll-ic.del:hover{color:#ef4444}
+  .line-layout .ll-add{width:100%;min-height:52px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+  .line-layout .ll-add:hover{border-color:var(--accent);color:var(--accent)}
+  .line-layout .ll-addstation{width:100%;height:32px;margin-top:4px;border:1px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+  .line-layout .ll-addstation:hover{border-color:var(--accent);color:var(--accent)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
   .modal.show{display:flex}
   .modal .box{background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:18px;min-width:320px;max-width:90vw}
@@ -10093,6 +10117,102 @@ function updateSlotPosition(line, posId, patch) {
   return true;
 }
 
+// 生产线「左下右上 + 中间产线」布局:按 slot 分组,每列号一排,左=下、右=上;替代原槽位表格。
+// opts: { withQty, showAddStation, afterChange, onDelete(p, anchorEl, done) }
+function renderLineLayout(host, line, opts) {
+  opts = opts || {};
+  const withQty = !!opts.withQty;
+  const afterChange = opts.afterChange || function(){};
+  const rerender = () => renderLineLayout(host, line, opts);
+  host.innerHTML = "";
+  const root = document.createElement("div"); root.className = "line-layout";
+  const head = document.createElement("div"); head.className = "ll-head";
+  head.innerHTML = "<div>下</div><div>列号</div><div>上</div>";
+  root.appendChild(head);
+  const belt = document.createElement("div"); belt.className = "ll-belt"; root.appendChild(belt);
+
+  const slots = [...new Set(line.map(p => p.slot))].sort((a,b) => a - b);
+  for (const s of slots) {
+    const bottom = line.find(p => p.slot === s && p.row === "bottom");
+    const top = line.find(p => p.slot === s && p.row === "top");
+    const row = document.createElement("div"); row.className = "ll-row";
+    row.appendChild(sideCell(bottom, s, "bottom"));
+    row.appendChild(nodeCell(s, bottom, top));
+    row.appendChild(sideCell(top, s, "top"));
+    root.appendChild(row);
+  }
+
+  if (opts.showAddStation !== false) {
+    const addSt = document.createElement("button"); addSt.className = "ll-addstation";
+    addSt.textContent = "+ 添加一列(工位)";
+    addSt.onclick = () => { addSlot(line); rerender(); afterChange(); };
+    root.appendChild(addSt);
+  }
+  host.appendChild(root);
+
+  function sideCell(p, slot, rowKind) {
+    const cell = document.createElement("div"); cell.className = "ll-cell";
+    if (!p) {
+      const add = document.createElement("button"); add.className = "ll-add";
+      add.textContent = "+ 添加" + (rowKind === "bottom" ? "下" : "上") + "槽";
+      add.onclick = () => {
+        line.push({ id: uid("pos"), slot: slot, row: rowKind, label: "" });
+        saveState(); rerender(); afterChange();
+      };
+      cell.appendChild(add); return cell;
+    }
+    const card = document.createElement("div"); card.className = "ll-card";
+    const r1 = document.createElement("div"); r1.className = "r1";
+    const pos = document.createElement("input"); pos.className = "pos"; pos.value = p.label; pos.placeholder = "位号/名";
+    pos.onblur = () => { updateSlotPosition(line, p.id, { label: pos.value }); afterChange(); };
+    const mv = document.createElement("button"); mv.className = "ll-ic"; mv.title = "移到另一侧";
+    mv.textContent = rowKind === "bottom" ? "→" : "←";
+    mv.onclick = () => {
+      const other = rowKind === "bottom" ? "top" : "bottom";
+      const occ = line.find(x => x.slot === slot && x.row === other);
+      if (occ) updateSlotPosition(line, occ.id, { row: rowKind });
+      updateSlotPosition(line, p.id, { row: other });
+      rerender(); afterChange();
+    };
+    const del = document.createElement("button"); del.className = "ll-ic del"; del.title = "删除"; del.textContent = "×";
+    del.onclick = (e) => { e.stopPropagation(); opts.onDelete(p, del, () => { rerender(); afterChange(); }); };
+    r1.appendChild(pos); r1.appendChild(mv); r1.appendChild(del);
+    card.appendChild(r1);
+    if (withQty) {
+      const r2 = document.createElement("div"); r2.className = "r2";
+      r2.appendChild(qtyField("量1", "qty", p));
+      r2.appendChild(qtyField("量2", "qty2", p));
+      const ex = document.createElement("label"); ex.className = "ex";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!p.extra;
+      cb.title = "勾选=这张卡算独立一份(额外计入用量);不勾=与同材料其它卡片同一份";
+      cb.onchange = () => { updateSlotPosition(line, p.id, { extra: cb.checked }); afterChange(); };
+      ex.appendChild(cb); ex.appendChild(document.createTextNode("独立份"));
+      r2.appendChild(ex);
+      card.appendChild(r2);
+    }
+    cell.appendChild(card); return cell;
+  }
+  function qtyField(labelText, field, p) {
+    const w = document.createElement("span"); w.style.display = "inline-flex"; w.style.alignItems = "center"; w.style.gap = "3px";
+    const l = document.createElement("label"); l.textContent = labelText;
+    const i = document.createElement("input"); i.className = "q no-spin"; i.type = "number"; i.min = "0"; i.step = "1"; i.inputMode = "numeric";
+    i.value = (p[field] != null ? p[field] : "");
+    i.onblur = () => { updateSlotPosition(line, p.id, { [field]: i.value }); afterChange(); };
+    w.appendChild(l); w.appendChild(i); return w;
+  }
+  function nodeCell(slot, bottom, top) {
+    const cell = document.createElement("div"); cell.className = "ll-node";
+    const inp = document.createElement("input"); inp.type = "number"; inp.min = "1"; inp.value = slot; inp.className = "no-spin"; inp.inputMode = "numeric";
+    inp.onchange = () => {
+      const n = parseInt(inp.value, 10);
+      if (!isFinite(n) || n < 1) { inp.value = slot; return; }
+      [bottom, top].forEach(p => { if (p) updateSlotPosition(line, p.id, { slot: n }); });
+      rerender(); afterChange();
+    };
+    cell.appendChild(inp); return cell;
+  }
+}
+
 // 重置模板（state.line）；不影响每个便当已有的 line
 function resetLineToSeed() {
   state.line = SEED_LINE.map(p => ({ id: uid("pos"), slot: p.slot, row: p.row, label: p.label }));
@@ -11256,62 +11376,25 @@ function renderLine() {
   note.textContent = `当前编辑「${activeLineName}」的默认布局。新便当在「便当编辑」页面里选这条生产线时会套用此布局,不影响其它已有便当。`;
   wrap.appendChild(note);
 
-  const table = document.createElement("table");
-  table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th></th></tr></thead>";
-  const tbody = document.createElement("tbody");
-  const sorted = tpl.slice().sort((a,b) => a.slot - b.slot || (a.row === "top" ? -1 : 1));
-  for (const p of sorted) {
-    const tr = document.createElement("tr");
-
-    const tdSlot = document.createElement("td");
-    const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot; slotInp.className = "no-spin"; slotInp.inputMode = "numeric";
-    slotInp.onchange = () => {
-      if (!updateSlotPosition(tpl, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
-      else { saveState(); renderLine(); }
-    };
-    tdSlot.appendChild(slotInp);
-
-    const tdRow = document.createElement("td");
-    for (const r of ["bottom","top"]) {
-      const label = document.createElement("label");
-      const rb = document.createElement("input"); rb.type = "radio"; rb.name = "row-" + p.id; rb.value = r;
-      if (p.row === r) rb.checked = true;
-      rb.onchange = () => { if (rb.checked) { updateSlotPosition(tpl, p.id, { row: r }); saveState(); renderLine(); } };
-      label.appendChild(rb); label.appendChild(document.createTextNode(r === "top" ? "上" : "下"));
-      tdRow.appendChild(label);
-    }
-
-    const tdLabel = document.createElement("td");
-    const labelInp = document.createElement("input"); labelInp.className = "label"; labelInp.value = p.label;
-    labelInp.onblur = () => { updateSlotPosition(tpl, p.id, { label: labelInp.value }); saveState(); };
-    tdLabel.appendChild(labelInp);
-
-    const tdDel = document.createElement("td");
-    const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
-    del.onclick = () => {
-      showConfirmPopover(del, {
+  const layoutHost = document.createElement("div");
+  renderLineLayout(layoutHost, tpl, {
+    withQty: false,
+    showAddStation: false, // 新增用上方「+ 添加槽位」按钮
+    onDelete: (p, anchor, done) => {
+      showConfirmPopover(anchor, {
         text: `删除位置「${p.label}」?`,
         sub: '从生产线模板移除(不影响已有便当)',
         confirmText: '删除',
         danger: true,
         onConfirm: () => {
           const idx = tpl.findIndex(x => x.id === p.id);
-          if (idx >= 0) {
-            tpl.splice(idx, 1);
-            compactSlots(tpl);
-            saveState();
-            renderLine();
-          }
+          if (idx >= 0) { tpl.splice(idx, 1); compactSlots(tpl); saveState(); }
+          done();
         }
       });
-    };
-    tdDel.appendChild(del);
-
-    tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdDel);
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  wrap.appendChild(table);
+    }
+  });
+  wrap.appendChild(layoutHost);
   c.appendChild(wrap);
 }
 
@@ -11510,93 +11593,19 @@ function renderEdit() {
     cardBtn.textContent = showing ? "管理卡片" : "收起卡片";
   };
   const renderCardPanel = () => {
-    cardPanel.innerHTML = "";
-    const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>列号</th><th>排</th><th>位号/名</th><th>量1</th><th>量2</th><th title=\"勾选=这张卡算便当里独立的一份(额外计入用量);不勾=与同材料其它卡片是同一份,只算一次\">独立份</th><th></th></tr></thead>";
-    const tbody = document.createElement("tbody");
-    const sorted = b.line.slice().sort((a,bb) => a.slot - bb.slot || (a.row === "top" ? -1 : 1));
-    for (const p of sorted) {
-      const tr = document.createElement("tr");
-
-      const tdSlot = document.createElement("td");
-      const slotInp = document.createElement("input"); slotInp.type = "number"; slotInp.min = "1"; slotInp.value = p.slot; slotInp.className = "no-spin"; slotInp.inputMode = "numeric";
-      slotInp.onchange = () => {
-        if (!updateSlotPosition(b.line, p.id, { slot: slotInp.value })) slotInp.value = p.slot;
-        else { renderCardPanel(); renderEditGrid(); }
-      };
-      tdSlot.appendChild(slotInp);
-
-      const tdRow = document.createElement("td");
-      for (const r of ["bottom","top"]) {
-        const lab = document.createElement("label");
-        const rb = document.createElement("input"); rb.type = "radio"; rb.name = "row-" + p.id; rb.value = r;
-        if (p.row === r) rb.checked = true;
-        rb.onchange = () => {
-          if (rb.checked) {
-            updateSlotPosition(b.line, p.id, { row: r });
-            renderCardPanel(); renderEditGrid();
-          }
-        };
-        lab.appendChild(rb); lab.appendChild(document.createTextNode(r === "top" ? "上" : "下"));
-        tdRow.appendChild(lab);
-      }
-
-      const tdLabel = document.createElement("td");
-      const labelInp = document.createElement("input"); labelInp.className = "label"; labelInp.value = p.label;
-      labelInp.onblur = () => {
-        updateSlotPosition(b.line, p.id, { label: labelInp.value });
-        renderEditGrid();
-      };
-      tdLabel.appendChild(labelInp);
-
-      // 量1 / 量2:分别对应卡片内第 1、2 行材料,填入后显示在材料名旁(克数)
-      const mkQtyCell = (field) => {
-        const td = document.createElement("td");
-        const inp = document.createElement("input");
-        inp.className = "label no-spin"; inp.type = "number"; inp.min = "0"; inp.step = "1"; inp.inputMode = "numeric";
-        inp.style.width = "56px"; inp.placeholder = "";
-        inp.value = (p[field] != null ? p[field] : "");
-        inp.onblur = () => {
-          updateSlotPosition(b.line, p.id, { [field]: inp.value });
-          renderEditGrid();
-        };
-        td.appendChild(inp);
-        return td;
-      };
-      const tdQty = mkQtyCell("qty");
-      const tdQty2 = mkQtyCell("qty2");
-
-      // 独立份:勾选后这张卡在用量计算里算作额外一份(默认不勾=与同材料其它卡片同一份)
-      const tdExtra = document.createElement("td");
-      tdExtra.style.textAlign = "center";
-      const extraCb = document.createElement("input");
-      extraCb.type = "checkbox";
-      extraCb.checked = !!p.extra;
-      extraCb.title = "勾选=这张卡算独立一份(额外计入用量);不勾=与同材料其它卡片同一份";
-      extraCb.onchange = () => { updateSlotPosition(b.line, p.id, { extra: extraCb.checked }); renderEditGrid(); };
-      tdExtra.appendChild(extraCb);
-
-      const tdDel = document.createElement("td");
-      const del = document.createElement("button"); del.className = "del"; del.textContent = "×";
-      del.onclick = (e) => {
-        e.stopPropagation();
-        showConfirmPopover(del, {
+    renderLineLayout(cardPanel, b.line, {
+      withQty: true,
+      showAddStation: true,
+      afterChange: () => renderEditGrid(),
+      onDelete: (p, anchor, done) => {
+        showConfirmPopover(anchor, {
           text: `删除位置「${p.label}」?`,
           confirmText: '删除',
           danger: true,
-          onConfirm: () => {
-            deleteSlotPositionFrom(b, p.id);
-            renderCardPanel(); renderEditGrid();
-          }
+          onConfirm: () => { deleteSlotPositionFrom(b, p.id); done(); }
         });
-      };
-      tdDel.appendChild(del);
-
-      tr.appendChild(tdSlot); tr.appendChild(tdRow); tr.appendChild(tdLabel); tr.appendChild(tdQty); tr.appendChild(tdQty2); tr.appendChild(tdExtra); tr.appendChild(tdDel);
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    cardPanel.appendChild(table);
+      }
+    });
   };
   renderCardPanel();
   c.appendChild(cardPanel);
