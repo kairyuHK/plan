@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-59">
+<html lang="zh-CN" data-appver="2026-10-14-60">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5313,6 +5313,31 @@ const SCHED_STORAGE_KEY = 'shift-schedule-data-v1';
 function readScheduleData() {
   try { return JSON.parse(localStorage.getItem(SCHED_STORAGE_KEY)) || {}; } catch (e) { return {}; }
 }
+// 从「数量」功能(数岗表)按便当名取当天数量:同名便当且该天有数字才返回,否则 null。
+// 计划板卡片数量「总是以数量为准」——有匹配就用它的值。
+function getQtyForBento(name, date) {
+  const target = (name || '').trim();
+  if (!target) return null;
+  const s = readScheduleData();
+  const qb = s.qtyBentos || {}, qv = s.qtyValues || {};
+  for (const lineId in qb) {
+    const bento = (qb[lineId] || []).find(b => b && (b.name || '').trim() === target);
+    if (bento) {
+      const v = qv[date] && qv[date][lineId] && qv[date][lineId][bento.id];
+      if (v != null) return v; // 继续找别的线直到找到有数字的
+    }
+  }
+  return null;
+}
+// 把同名便当+当天数字写进所有工作卡的数量框(调用方随后 recalc 重算耗时)
+function applyQtyFromQtyFeature() {
+  document.querySelectorAll('.card[data-type="job"]').forEach(card => {
+    const v = getQtyForBento(card.dataset.name, currentDate);
+    if (v == null) return;
+    const inp = card.querySelector('.qty');
+    if (inp && inp.value !== String(v)) inp.value = String(v);
+  });
+}
 // 当日某线所有岗位上去重后的已排岗人员 id(含借调进来的人)
 function schedLineAssignedIds(sched, lineId) {
   const set = new Set();
@@ -6266,7 +6291,9 @@ function addJobCard(grid, libItem, savedData) {
   // 流水线速度也按线解析:lineSpeedByLine[lineId] 优先,否则 item.lineSpeed 默认值
   const _resolvedLineSpeed = resolveItemLineSpeed(libItem, _lineId);
   const lineSpeedVal = savedData?.lineSpeed != null ? savedData.lineSpeed : (_resolvedLineSpeed > 0 ? _resolvedLineSpeed : '');
-  const qtyVal = savedData?.qty != null ? savedData.qty : '';
+  // 数量「总是以数量为准」:有同名便当+当天数字就用它,否则回落到卡片保存值
+  const _autoQty = getQtyForBento(libItem.name, currentDate);
+  const qtyVal = (_autoQty != null) ? _autoQty : (savedData?.qty != null ? savedData.qty : '');
   // 人数是 readonly、完全由配置表(便当布局)决定,不是每卡独立可编辑值 —— 所以始终按「当前配置」解析,
   // 不再优先用卡片旧快照。否则「以前建的卡」会一直显示和配置表对不上的旧人数(加载时不会被纠正)。
   // 品名库被删的卡:libItem 是 applyState 传入的兜底对象(带旧 people、无 peopleByLine),
@@ -8770,6 +8797,7 @@ updateUndoButtons();
 // recalcGlobal 只算顶部总计、不碰卡片颜色)。
 window.addEventListener('storage', (e) => {
   if (e.key === SCHED_STORAGE_KEY) {
+    try { applyQtyFromQtyFeature(); } catch (_) {} // 数量功能改了 → 同名卡片数量实时跟上
     try { document.querySelectorAll('.line').forEach(l => recalc(l)); } catch (_) {}
   }
 });
