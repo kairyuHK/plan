@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-51">
+<html lang="zh-CN" data-appver="2026-10-14-52">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -741,6 +741,20 @@ select option:checked{background:#2b2f3a}
 .pos-list button:disabled{opacity:.4;cursor:not-allowed}
 .add-pos{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
 .add-pos input{flex:1}
+/* 设置子导航(岗位 / 数量) */
+.set-subnav{display:flex;gap:6px;margin:-4px 0 14px}
+.set-subnav button{height:30px;padding:0 16px;font-size:13px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;cursor:pointer}
+.set-subnav button.active{background:var(--accent);border-color:var(--accent);color:#14181f;font-weight:600}
+/* 数量录入视图 */
+.q-list{list-style:none;margin:0;padding:8px 16px}
+.q-list li{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.q-list li:last-child{border-bottom:none}
+.q-list .b-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;-webkit-user-select:none;user-select:none}
+.q-list .qty{width:100%;height:32px;text-align:right;font-size:14px;padding:0 10px;border-radius:6px}
+.q-empty{padding:16px;color:var(--muted);font-size:13px;text-align:center;line-height:1.6}
+.total-row{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
+.total-row .t-label{font-weight:600}
+.total-row .t-value{text-align:right;font-weight:700;font-size:16px;color:var(--accent);padding-right:10px}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
 .toolbar input[type=search]{flex:1;max-width:320px}
 .people-list{list-style:none;margin:0;padding:8px 16px}
@@ -974,11 +988,13 @@ button.primary:hover{background:linear-gradient(180deg,var(--accent-light) 0%,va
 <body>
 <header class="nav">
   <div class="brand">排岗表</div>
+  <button data-route="qty">🔢 数量</button>
   <button data-route="schedule" class="active">📅 排岗</button>
   <button data-route="people">👥 人员</button>
   <button data-route="settings">⚙ 设置</button>
 </header>
 <main>
+  <section id="page-qty" class="page hidden"><h2>数量</h2></section>
   <section id="page-schedule" class="page"><h2>排岗</h2></section>
   <section id="page-people" class="page hidden"><h2>人员库</h2></section>
   <section id="page-settings" class="page hidden"><h2>设置</h2></section>
@@ -1161,7 +1177,8 @@ const Store = (() => {
   ];
   function emptyData(){
     const positions = {}; DEFAULT_LINES.forEach(l => positions[l.id]=[]);
-    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, people:[], schedules:{}, shifts:{}, lastExportAt:null, lastChangeAt:null };
+    const qtyBentos = {}; DEFAULT_LINES.forEach(l => qtyBentos[l.id]=[]);
+    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, qtyBentos, people:[], schedules:{}, shifts:{}, lastExportAt:null, lastChangeAt:null };
   }
   function sanitize(s){
     const d = emptyData();
@@ -1172,6 +1189,16 @@ const Store = (() => {
     d.lines.forEach(dl => { if(!_lineIds.has(dl.id)) s.lines.push(dl); });
     s.positions = (s.positions && typeof s.positions === 'object') ? s.positions : {};
     s.lines.forEach(l => { if(!Array.isArray(s.positions[l.id])) s.positions[l.id] = []; });
+    // 数量:每条线一组 {id,name,qty}(qty 可空)
+    s.qtyBentos = (s.qtyBentos && typeof s.qtyBentos === 'object') ? s.qtyBentos : {};
+    s.lines.forEach(l => {
+      if(!Array.isArray(s.qtyBentos[l.id])) s.qtyBentos[l.id] = [];
+      s.qtyBentos[l.id] = s.qtyBentos[l.id].filter(b => b && typeof b === 'object').map(b => ({
+        id: b.id || Util.uid('qb'),
+        name: String(b.name || ''),
+        qty: (b.qty == null || b.qty === '' || isNaN(b.qty)) ? null : Math.max(0, Math.round(+b.qty))
+      }));
+    });
     s.people = Array.isArray(s.people) ? s.people : [];
     s.schedules = (s.schedules && typeof s.schedules === 'object') ? s.schedules : {};
     for(const date in s.schedules){
@@ -1295,6 +1322,31 @@ const Store = (() => {
     save();
   }
 
+  // 数量(便当名 + 数量)
+  function addQtyBento(lineId, name){
+    if(!state.qtyBentos[lineId]) state.qtyBentos[lineId]=[];
+    state.qtyBentos[lineId].push({ id: Util.uid('qb'), name: name.trim(), qty: null }); save();
+  }
+  function renameQtyBento(lineId, id, newName){
+    const b = (state.qtyBentos[lineId]||[]).find(x=>x.id===id); if(b){ b.name = newName.trim(); save(); }
+  }
+  function deleteQtyBento(lineId, id){
+    state.qtyBentos[lineId] = (state.qtyBentos[lineId]||[]).filter(x=>x.id!==id); save();
+  }
+  function reorderQtyBentos(lineId, orderedIds){
+    const arr = state.qtyBentos[lineId]; if(!Array.isArray(arr)) return;
+    const byId = new Map(arr.map(x=>[x.id,x]));
+    const next = orderedIds.map(id=>byId.get(id)).filter(Boolean);
+    if(next.length === arr.length) { state.qtyBentos[lineId] = next; save(); }
+  }
+  // 数量值:只改数字、不触发整屏重渲(避免手机软键盘 resize→render 刷掉正在输入的框);页面手动更新合计/计数
+  function setQtyValueQuiet(lineId, id, qty){
+    const b = (state.qtyBentos[lineId]||[]).find(x=>x.id===id); if(!b) return;
+    const digits = String(qty==null?'':qty).replace(/[^\d]/g,'');
+    b.qty = digits === '' ? null : Math.max(0, parseInt(digits,10));
+    saveQuiet();
+  }
+
   // Schedules
   function realLines(){ return state.lines.filter(l => !l.virtual); }
   function ensureDay(date){
@@ -1384,6 +1436,7 @@ const Store = (() => {
     load, save, subscribe, get, replace, reset,
     addPerson, updatePerson, deletePerson, findPersonUsage, reorderPeople,
     addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
+    addQtyBento, renameQtyBento, deleteQtyBento, reorderQtyBentos, setQtyValueQuiet,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
     setShift, getShift,
     markExported, emptyData,
@@ -1395,35 +1448,68 @@ const Pages = (() => {
   const $ = sel => document.querySelector(sel);
 
   // ---- Settings ----
+  let settingsTab = 'pos';  // 设置子页:'pos'=岗位 / 'qty'=数量(便当名)
   function renderSettings(){
     const root = $('#page-settings');
     const s = Store.get();
-    const html = ['<h2>设置 — 岗位</h2>', '<div class="line-grid">'];
-    // 虚拟线(如「短期」)不参与排岗,所以不在此处配置岗位
-    s.lines.filter(l => !l.virtual).forEach(line => {
-      const positions = s.positions[line.id] || [];
-      html.push(`<div class="card" data-line="${line.id}">
-        <div class="card-head" style="border-top-color:var(--line-${line.id})">
-          <span class="line-name">${line.name}</span>
-          <span class="muted">${positions.length} 个岗位</span>
-        </div>
-        <ul class="pos-list">
-          ${positions.map((p,i)=>`
-            <li data-oi="${i}">
-              <span class="pos-name">${escapeHtml(p)}</span>
-              <button data-act="rename" data-i="${i}">改名</button>
-              <button data-act="del" data-i="${i}" class="danger">删</button>
-            </li>`).join('')}
-        </ul>
-        <form class="add-pos">
-          <input type="text" placeholder="新岗位名" required maxlength="40">
-          <button type="submit" class="primary">+ 新增</button>
-        </form>
-      </div>`);
-    });
+    const lines = s.lines.filter(l => !l.virtual); // 虚拟线(如「短期」)不参与
+    const html = [`<h2>设置</h2>
+      <div class="set-subnav">
+        <button data-sub="pos" class="${settingsTab==='pos'?'active':''}">岗位</button>
+        <button data-sub="qty" class="${settingsTab==='qty'?'active':''}">数量</button>
+      </div>`, '<div class="line-grid">'];
+    if(settingsTab === 'qty'){
+      lines.forEach(line => {
+        const bentos = s.qtyBentos[line.id] || [];
+        html.push(`<div class="card" data-line="${line.id}">
+          <div class="card-head" style="border-top-color:var(--line-${line.id})">
+            <span class="line-name">${line.name}</span>
+            <span class="muted">${bentos.length} 个便当</span>
+          </div>
+          <ul class="pos-list">
+            ${bentos.map(b=>`
+              <li data-qid="${b.id}">
+                <span class="pos-name">${escapeHtml(b.name)}</span>
+                <button data-act="rename" data-id="${b.id}">改名</button>
+                <button data-act="del" data-id="${b.id}" class="danger">删</button>
+              </li>`).join('')}
+          </ul>
+          <form class="add-pos">
+            <input type="text" placeholder="新便当名" required maxlength="40">
+            <button type="submit" class="primary">+ 新增</button>
+          </form>
+        </div>`);
+      });
+    } else {
+      lines.forEach(line => {
+        const positions = s.positions[line.id] || [];
+        html.push(`<div class="card" data-line="${line.id}">
+          <div class="card-head" style="border-top-color:var(--line-${line.id})">
+            <span class="line-name">${line.name}</span>
+            <span class="muted">${positions.length} 个岗位</span>
+          </div>
+          <ul class="pos-list">
+            ${positions.map((p,i)=>`
+              <li data-oi="${i}">
+                <span class="pos-name">${escapeHtml(p)}</span>
+                <button data-act="rename" data-i="${i}">改名</button>
+                <button data-act="del" data-i="${i}" class="danger">删</button>
+              </li>`).join('')}
+          </ul>
+          <form class="add-pos">
+            <input type="text" placeholder="新岗位名" required maxlength="40">
+            <button type="submit" class="primary">+ 新增</button>
+          </form>
+        </div>`);
+      });
+    }
     html.push('</div>');
     root.innerHTML = html.join('');
+    root.querySelectorAll('.set-subnav button').forEach(b => b.addEventListener('click', () => { settingsTab = b.dataset.sub; renderSettings(); }));
+    if(settingsTab === 'qty') wireQtyNames(root); else wirePositions(root);
+  }
 
+  function wirePositions(root){
     root.querySelectorAll('[data-line]').forEach(card => {
       const lineId = card.dataset.line;
       card.querySelectorAll('button[data-act]').forEach(btn => {
@@ -1432,36 +1518,106 @@ const Pages = (() => {
           const act = btn.dataset.act;
           const posName = Store.get().positions[lineId][i];
           if(act==='rename'){
-            showConfirmPopover(btn, {
-              text: '修改岗位名',
-              sub: posName,
-              input: { type: 'text', value: posName, placeholder: '岗位名' },
-              confirmText: '保存',
-              onConfirm: (v) => {
-                const t = (v || '').trim();
-                if (t && t !== posName) Store.renamePosition(lineId, i, t);
-              }
-            });
+            showConfirmPopover(btn, { text:'修改岗位名', sub:posName, input:{type:'text',value:posName,placeholder:'岗位名'}, confirmText:'保存',
+              onConfirm:(v)=>{ const t=(v||'').trim(); if(t && t!==posName) Store.renamePosition(lineId,i,t); } });
           } else if(act==='del'){
-            showConfirmPopover(btn, {
-              text: `删除岗位「${posName}」?`,
-              sub: '历史排岗保留原数据',
-              confirmText: '删除',
-              danger: true,
-              onConfirm: () => Store.deletePosition(lineId, i)
-            });
+            showConfirmPopover(btn, { text:`删除岗位「${posName}」?`, sub:'历史排岗保留原数据', confirmText:'删除', danger:true,
+              onConfirm:()=>Store.deletePosition(lineId,i) });
           }
         });
       });
       const form = card.querySelector('form.add-pos');
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        const input = form.querySelector('input');
-        const v = input.value.trim(); if(!v) return;
-        Store.addPosition(lineId, v); input.value='';
-      });
+      form.addEventListener('submit', e => { e.preventDefault(); const input=form.querySelector('input'); const v=input.value.trim(); if(!v) return; Store.addPosition(lineId,v); input.value=''; });
       enablePosDrag(card.querySelector('.pos-list'), lineId);
     });
+  }
+
+  function wireQtyNames(root){
+    root.querySelectorAll('[data-line]').forEach(card => {
+      const lineId = card.dataset.line;
+      card.querySelectorAll('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const act = btn.dataset.act;
+          const bento = (Store.get().qtyBentos[lineId]||[]).find(x=>x.id===id); if(!bento) return;
+          if(act==='rename'){
+            showConfirmPopover(btn, { text:'修改便当名', sub:bento.name, input:{type:'text',value:bento.name,placeholder:'便当名'}, confirmText:'保存',
+              onConfirm:(v)=>{ const t=(v||'').trim(); if(t && t!==bento.name) Store.renameQtyBento(lineId,id,t); } });
+          } else if(act==='del'){
+            showConfirmPopover(btn, { text:`删除便当「${bento.name}」?`, sub:'该便当的数量一并删除', confirmText:'删除', danger:true,
+              onConfirm:()=>Store.deleteQtyBento(lineId,id) });
+          }
+        });
+      });
+      const form = card.querySelector('form.add-pos');
+      form.addEventListener('submit', e => { e.preventDefault(); const input=form.querySelector('input'); const v=input.value.trim(); if(!v) return; Store.addQtyBento(lineId,v); input.value=''; });
+      enableQtyNameDrag(card.querySelector('.pos-list'), lineId);
+    });
+  }
+
+  function enableQtyNameDrag(ul, lineId){
+    enableRowLongPressDrag(ul, 'li', 'button, input', (list) => {
+      const order = [...list.querySelectorAll('li')].map(el => el.dataset.qid);
+      Store.reorderQtyBentos(lineId, order);
+    });
+  }
+
+  // 数量录入页:便当名只读(设置里编的),右侧手动输数量;卡头「有数量/总数」,底部合计(千分位)
+  function renderQty(){
+    const root = $('#page-qty');
+    const s = Store.get();
+    const fmt = n => (n==null ? '' : Number(n).toLocaleString('en-US'));
+    const html = ['<h2>数量</h2>', '<div class="line-grid">'];
+    s.lines.filter(l => !l.virtual).forEach(line => {
+      const bentos = s.qtyBentos[line.id] || [];
+      const filled = bentos.filter(b => b.qty != null).length;
+      const total = bentos.reduce((a,b)=> a + (b.qty!=null ? b.qty : 0), 0);
+      html.push(`<div class="card" data-line="${line.id}">
+        <div class="card-head" style="border-top-color:var(--line-${line.id})">
+          <span class="line-name">${line.name}</span>
+          <span class="muted"><span class="q-filled">${filled}</span>/${bentos.length}</span>
+        </div>`);
+      if(bentos.length === 0){
+        html.push(`<div class="q-empty">未配置便当<br>去「设置 → 数量」添加</div>`);
+      } else {
+        html.push(`<ul class="q-list">
+          ${bentos.map(b=>`
+            <li data-id="${b.id}">
+              <span class="b-name">${escapeHtml(b.name)}</span>
+              <input class="qty" inputmode="numeric" placeholder="—" value="${b.qty!=null?fmt(b.qty):''}">
+            </li>`).join('')}
+        </ul>
+        <div class="total-row"><span class="t-label">合计</span><span class="t-value">${fmt(total)||'0'}</span></div>`);
+      }
+      html.push('</div>');
+    });
+    html.push('</div>');
+    root.innerHTML = html.join('');
+    root.querySelectorAll('[data-line]').forEach(card => {
+      const lineId = card.dataset.line;
+      card.querySelectorAll('li[data-id]').forEach(li => {
+        const id = li.dataset.id;
+        const input = li.querySelector('.qty');
+        input.addEventListener('focus', () => { input.value = input.value.replace(/[^\d]/g,''); try{ input.select(); }catch(_){} });
+        input.addEventListener('input', () => {
+          const digits = input.value.replace(/[^\d]/g,'');
+          if(input.value !== digits) input.value = digits;
+          Store.setQtyValueQuiet(lineId, id, digits);
+          updateQtyCard(card);
+        });
+        input.addEventListener('blur', () => {
+          const digits = input.value.replace(/[^\d]/g,'');
+          input.value = digits ? Number(digits).toLocaleString('en-US') : '';
+        });
+      });
+    });
+  }
+  function updateQtyCard(card){
+    const bentos = Store.get().qtyBentos[card.dataset.line] || [];
+    const filled = bentos.filter(b => b.qty != null).length;
+    const total = bentos.reduce((a,b)=> a + (b.qty!=null ? b.qty : 0), 0);
+    const f = card.querySelector('.q-filled'); if(f) f.textContent = filled;
+    const t = card.querySelector('.t-value'); if(t) t.textContent = Number(total).toLocaleString('en-US');
   }
 
   // 拖拽时边缘自动滚动:手指靠近滚动容器上/下边缘就持续滚动,并按最新 Y 重定位插入点
@@ -2175,7 +2331,7 @@ const Pages = (() => {
     input.click();
   }
 
-  return { renderSettings, renderPeople, renderSchedule, openPicker, updateAutosaveStatus, doImport, doExport, escapeHtml };
+  return { renderSettings, renderPeople, renderSchedule, renderQty, openPicker, updateAutosaveStatus, doImport, doExport, escapeHtml };
 })();
 <\/script>
 <script>
@@ -2262,8 +2418,9 @@ const Pages = (() => {
 <script>
 (function(){
   Store.load();
-  const pages = ['schedule','people','settings'];
+  const pages = ['qty','schedule','people','settings'];
   const renderers = {
+    qty: Pages.renderQty,
     schedule: Pages.renderSchedule,
     people: Pages.renderPeople,
     settings: Pages.renderSettings,
