@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-55">
+<html lang="zh-CN" data-appver="2026-10-14-56">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -611,7 +611,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <div class="tabs">
   <button data-app="plan" class="active"><span class="tab-ico">🏭</span> 生产计划板</button>
   <button data-app="config"><span class="tab-ico">⚙</span> 配置表</button>
-  <button data-app="schedule"><span class="tab-ico">📅</span> 排岗表</button>
+  <button data-app="schedule"><span class="tab-ico">📅</span> 数岗表</button>
   <span class="spacer"></span>
   <button class="io-btn" id="importAllBtn" title="导入全部三个 app 的数据(覆盖现有)">导入</button>
   <button class="io-btn" id="exportAllBtn" title="导出全部三个 app 的数据到一个 JSON 文件">导出</button>
@@ -638,7 +638,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>排岗表</title>
+<title>数岗表</title>
 <script>
 // 主题色监听:父壳广播 theme-changed 时更新 --accent / --accent-rgb
 (function(){
@@ -904,12 +904,12 @@ select option:checked{background:#2b2f3a}
 .cal-day.sat{color:#3b82f6}
 .cal-day.sun{color:var(--danger)}
 .cal-day.today{border-color:rgba(var(--accent-rgb),.5)}
-.cal-day.selected{background:var(--accent);color:#fff!important;font-weight:700;border-color:var(--accent)}
+.cal-day.selected{background:var(--accent);color:#14181f!important;font-weight:700;border-color:var(--accent)}
 .cal-day .has-data{position:absolute;left:50%;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--ok);transform:translateX(-50%)}
 .cal-day.selected .has-data{background:#fff}
 .cal-foot{display:flex;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .cal-today-btn{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.3);padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,color .15s}
-.cal-today-btn:hover{background:var(--accent);color:#fff}
+.cal-today-btn:hover{background:var(--accent);color:#14181f}
 .cal-host .holiday-label{font-size:11px;color:var(--danger);text-align:center;margin-top:8px;min-height:14px;font-weight:600}
 .cal-host .holiday-label:empty{display:none}
 @media (max-width: 1023px){
@@ -989,7 +989,7 @@ button.primary:hover{background:linear-gradient(180deg,var(--accent-light) 0%,va
 </head>
 <body>
 <header class="nav">
-  <div class="brand">排岗表</div>
+  <div class="brand">数岗表</div>
   <button data-route="qty">🔢 数量</button>
   <button data-route="schedule" class="active">📅 排岗</button>
   <button data-route="people">👥 人员</button>
@@ -1977,7 +1977,7 @@ const Pages = (() => {
     host.innerHTML = `
       <div class="cal-head">
         <button class="cal-nav" data-cal="prev" type="button" aria-label="上一月">‹</button>
-        <div class="cal-title">${y}年${pad(m,2)}月</div>
+        <div class="cal-title">${y}年 ${pad(m,2)}月</div>
         <button class="cal-nav" data-cal="next" type="button" aria-label="下一月">›</button>
       </div>
       <div class="cal-dows">
