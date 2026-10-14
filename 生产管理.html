@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-53">
+<html lang="zh-CN" data-appver="2026-10-14-54">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -757,7 +757,8 @@ select option:checked{background:#2b2f3a}
 .total-row .t-label{font-weight:600}
 .total-row .t-value{text-align:right;font-weight:700;font-size:16px;color:var(--accent);padding-right:10px}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
-.toolbar input[type=search]{flex:1;max-width:320px}
+.toolbar input[type=search]{flex:1;max-width:320px;height:32px}
+.toolbar #people-add{flex:0 0 auto;height:32px;padding:0 12px;font-size:12px;border-radius:6px}
 .people-list{list-style:none;margin:0;padding:8px 16px}
 .people-list li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
 .people-list li:last-child{border-bottom:none}
@@ -1585,7 +1586,7 @@ const Pages = (() => {
           ${bentos.map(b=>`
             <li data-id="${b.id}">
               <span class="b-name">${escapeHtml(b.name)}</span>
-              <input class="qty" inputmode="numeric" placeholder="—" value="${b.qty!=null?fmt(b.qty):''}">
+              <input class="qty" inputmode="numeric" value="${b.qty!=null?fmt(b.qty):''}">
             </li>`).join('')}
         </ul>
         <div class="total-row"><span class="t-label">合计</span><span class="t-value">${fmt(total)||'0'}</span></div>`);
@@ -1594,6 +1595,7 @@ const Pages = (() => {
     });
     html.push('</div>');
     root.innerHTML = html.join('');
+    const allQty = [...root.querySelectorAll('.qty')]; // 回车跳下一个用
     root.querySelectorAll('[data-line]').forEach(card => {
       const lineId = card.dataset.line;
       card.querySelectorAll('li[data-id]').forEach(li => {
@@ -1609,6 +1611,13 @@ const Pages = (() => {
         input.addEventListener('blur', () => {
           const digits = input.value.replace(/[^\d]/g,'');
           input.value = digits ? Number(digits).toLocaleString('en-US') : '';
+        });
+        input.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            const next = allQty[allQty.indexOf(input) + 1];
+            if(next) next.focus(); else input.blur(); // 聚焦下一个会自动触发本框 blur 格式化
+          }
         });
       });
     });
