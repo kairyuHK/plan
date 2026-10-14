@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-62">
+<html lang="zh-CN" data-appver="2026-10-15-63">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3922,6 +3922,7 @@ const Pages = (() => {
   }
   .lib-item-row { display: flex; align-items: center; gap: 10px; }
   .lib-item:hover { background: rgba(255,255,255,0.04); border-color: var(--border-strong); border-left-color: var(--lib-color, var(--border-strong)); }
+  .lib-item.dragging { opacity: .9; box-shadow: 0 6px 18px rgba(0,0,0,.35); border-color: var(--border-strong); }
   /* 按线速度面板:折叠在每个品名条目下面 */
   .lib-per-line { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
   .lib-item.expanded .lib-per-line { display: block; }
@@ -5651,6 +5652,113 @@ function renderLibColorFilter() {
   // 按住圆点横向拖动即可改颜色顺序(与选择品名/品名管理调色板共用一套保存顺序)
   enableDotDragSort(libColorFilterEl, '.lib-cf-dot', (order) => { commitColorOrder(order); renderLibColorFilter(); });
 }
+
+// ===== 品名库长按拖拽排序(与排岗表 岗位/人员/数量 同一套交互;无握把图标,整行即热区)=====
+// 拖拽时边缘自动滚动(移植自排岗表 startDragAutoScroll,行为一致)
+function libStartDragAutoScroll(refEl, getY, reposition){
+  const doc = refEl.ownerDocument, win = doc.defaultView;
+  const docScroller = doc.scrollingElement || doc.documentElement;
+  let sc = refEl.parentElement;
+  while(sc){ const s = win.getComputedStyle(sc); if(/(auto|scroll)/.test(s.overflowY) && sc.scrollHeight > sc.clientHeight) break; sc = sc.parentElement; }
+  if(!sc) sc = docScroller;
+  const isDoc = (sc === docScroller || sc === doc.documentElement || sc === doc.body);
+  const EDGE = 72, MAX = 16;
+  let raf = null;
+  const tick = () => {
+    raf = win.requestAnimationFrame(tick);
+    const y = getY(); if(y == null) return;
+    let top, bottom;
+    if(isDoc){ top = 0; bottom = win.innerHeight; }
+    else { const r = sc.getBoundingClientRect(); top = r.top; bottom = r.bottom; }
+    let dy = 0;
+    if(y < top + EDGE) dy = -Math.ceil(MAX * Math.min(1, (top + EDGE - y) / EDGE));
+    else if(y > bottom - EDGE) dy = Math.ceil(MAX * Math.min(1, (y - (bottom - EDGE)) / EDGE));
+    if(dy){ const before = sc.scrollTop; sc.scrollTop = before + dy; if(sc.scrollTop !== before) reposition(y); }
+  };
+  raf = win.requestAnimationFrame(tick);
+  return () => { if(raf) win.cancelAnimationFrame(raf); raf = null; };
+}
+// 行长按拖拽(手机长按约 0.45s 进入;按到按钮/输入框不触发 — 移植自排岗表 enableRowLongPressDrag)
+function libRowLongPressDrag(ul, itemSel, skipSel, onDrop){
+  if(!ul) return;
+  const doc = ul.ownerDocument;
+  const HOLD = 450, MOVE = 8;
+  ul.querySelectorAll(itemSel).forEach(li => {
+    let holdTimer = null, holdReady = false, dragMode = false, startX = 0, startY = 0, lastY = 0, stopScroll = null;
+    const reposition = (y) => {
+      const sibs = [...ul.querySelectorAll(itemSel + ':not(.dragging)')];
+      let after = null;
+      for(const s of sibs){ const r = s.getBoundingClientRect(); if(y < r.top + r.height/2){ after = s; break; } }
+      if(after) ul.insertBefore(li, after); else ul.appendChild(li);
+    };
+    const begin = () => {
+      holdTimer = null; holdReady = true;
+      li.classList.add('dragging');
+      if(navigator.vibrate) try { navigator.vibrate(20); } catch(_){}
+      stopScroll = libStartDragAutoScroll(li, () => lastY, reposition);
+    };
+    const cleanup = () => {
+      if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+      if(stopScroll){ stopScroll(); stopScroll = null; }
+      lastY = null;
+    };
+    const end = () => {
+      cleanup();
+      if(holdReady || dragMode) li.classList.remove('dragging');
+      if(dragMode) onDrop(ul);
+      holdReady = false; dragMode = false;
+    };
+    li.addEventListener('touchstart', e => {
+      if(e.touches.length !== 1){ cleanup(); if(holdReady || dragMode) li.classList.remove('dragging'); holdReady = false; dragMode = false; return; }
+      if(e.target.closest(skipSel)) return;
+      const t = e.touches[0]; startX = t.clientX; startY = t.clientY; lastY = t.clientY;
+      holdReady = false; dragMode = false;
+      holdTimer = setTimeout(begin, HOLD);
+    }, { passive: true });
+    li.addEventListener('touchmove', e => {
+      if(!holdTimer && !holdReady) return;
+      const t = e.touches[0];
+      if(!holdReady){
+        if(Math.hypot(t.clientX - startX, t.clientY - startY) > MOVE){ clearTimeout(holdTimer); holdTimer = null; }
+        return;
+      }
+      e.preventDefault();
+      dragMode = true; lastY = t.clientY; reposition(lastY);
+    }, { passive: false });
+    li.addEventListener('touchend', end);
+    li.addEventListener('touchcancel', () => { cleanup(); if(holdReady || dragMode) li.classList.remove('dragging'); holdReady = false; dragMode = false; });
+    li.addEventListener('mousedown', e => {
+      if(e.button !== 0) return;
+      if(e.target.closest(skipSel)) return;
+      startX = e.clientX; startY = e.clientY; lastY = e.clientY;
+      holdReady = false; dragMode = false;
+      holdTimer = setTimeout(begin, HOLD);
+      const onMove = me => {
+        if(!holdReady){
+          if(Math.hypot(me.clientX - startX, me.clientY - startY) > MOVE){ clearTimeout(holdTimer); holdTimer = null; begin(); }
+          else return;
+        }
+        dragMode = true; lastY = me.clientY; reposition(lastY);
+      };
+      const onUp = () => { doc.removeEventListener('mousemove', onMove); doc.removeEventListener('mouseup', onUp); end(); };
+      doc.addEventListener('mousemove', onMove);
+      doc.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+  });
+}
+function enableLibDrag(ul){
+  libRowLongPressDrag(ul, '.lib-item', 'button, input', (list) => {
+    const orderedIds = [...list.querySelectorAll('.lib-item')].map(el => el.dataset.libId);
+    reorderLibrary(orderedIds);
+  });
+}
+function reorderLibrary(orderedIds){
+  orderedIds.forEach((id, i) => { const it = findLibItem(id); if (it) it.ord = i; });
+  saveLibrary();
+  renderLibList();
+}
+
 function renderLibList() {
   renderLibColorFilter();
   if (library.length === 0) {
@@ -5662,8 +5770,12 @@ function renderLibList() {
   library.forEach(it => {
     if (it && it.bentoId) linkCount.set(it.bentoId, (linkCount.get(it.bentoId) || 0) + 1);
   });
-  // 按颜色筛选(libColorFilter 为 null 时显示全部)
-  let items = [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+  // 排序:拖拽写的 item.ord 优先(升序);无 ord 的回落按名字(保持旧的字母序默认)
+  const _libOrd = v => (v && v.ord != null) ? v.ord : 1e9;
+  let items = [...library].sort((a, b) => {
+    const d = _libOrd(a) - _libOrd(b);
+    return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'zh-CN');
+  });
   if (libColorFilter) items = items.filter(it => it.color === libColorFilter);
   if (items.length === 0) {
     libList.innerHTML = '<div class="lib-empty">该颜色下没有品名</div>';
@@ -5673,6 +5785,7 @@ function renderLibList() {
   items.forEach(item => {
     const row = document.createElement('div');
     row.className = 'lib-item';
+    row.dataset.libId = item.id;
     row.style.setProperty('--lib-color', item.color);
     const peopleText = fmtPeople(item.people);
     // 信息列:优先显示「当天卡片快照」的速度/计量人数,没有卡片时回落到库默认值。
@@ -5822,6 +5935,8 @@ function renderLibList() {
     }
     libList.appendChild(row);
   });
+  // 无颜色筛选时整列表可长按拖拽排序;有筛选时子集重排会乱序,跟人员列表一致,不挂拖拽
+  if (!libColorFilter) enableLibDrag(libList);
 }
 
 function startEditLib(id) {
