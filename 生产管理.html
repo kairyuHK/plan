@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-52">
+<html lang="zh-CN" data-appver="2026-10-14-53">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -739,8 +739,9 @@ select option:checked{background:#2b2f3a}
 .pos-list button{padding:4px 10px;font-size:12px}
 .pos-list button.danger{border-color:var(--danger);color:var(--danger)}
 .pos-list button:disabled{opacity:.4;cursor:not-allowed}
-.add-pos{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
-.add-pos input{flex:1}
+.add-pos{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--border);align-items:center}
+.add-pos input{flex:1;height:32px;padding:0 10px}
+.add-pos button{flex:0 0 auto;height:32px;padding:0 12px;font-size:12px;border-radius:6px}
 /* 设置子导航(岗位 / 数量) */
 .set-subnav{display:flex;gap:6px;margin:-4px 0 14px}
 .set-subnav button{height:30px;padding:0 16px;font-size:13px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;cursor:pointer}
@@ -1455,8 +1456,8 @@ const Pages = (() => {
     const lines = s.lines.filter(l => !l.virtual); // 虚拟线(如「短期」)不参与
     const html = [`<h2>设置</h2>
       <div class="set-subnav">
-        <button data-sub="pos" class="${settingsTab==='pos'?'active':''}">岗位</button>
         <button data-sub="qty" class="${settingsTab==='qty'?'active':''}">数量</button>
+        <button data-sub="pos" class="${settingsTab==='pos'?'active':''}">岗位</button>
       </div>`, '<div class="line-grid">'];
     if(settingsTab === 'qty'){
       lines.forEach(line => {
