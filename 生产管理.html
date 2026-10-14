@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-54">
+<html lang="zh-CN" data-appver="2026-10-14-55">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1180,7 +1180,7 @@ const Store = (() => {
   function emptyData(){
     const positions = {}; DEFAULT_LINES.forEach(l => positions[l.id]=[]);
     const qtyBentos = {}; DEFAULT_LINES.forEach(l => qtyBentos[l.id]=[]);
-    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, qtyBentos, people:[], schedules:{}, shifts:{}, lastExportAt:null, lastChangeAt:null };
+    return { version:1, lines:Util.clone(DEFAULT_LINES), positions, qtyBentos, qtyValues:{}, people:[], schedules:{}, shifts:{}, lastExportAt:null, lastChangeAt:null };
   }
   function sanitize(s){
     const d = emptyData();
@@ -1191,16 +1191,31 @@ const Store = (() => {
     d.lines.forEach(dl => { if(!_lineIds.has(dl.id)) s.lines.push(dl); });
     s.positions = (s.positions && typeof s.positions === 'object') ? s.positions : {};
     s.lines.forEach(l => { if(!Array.isArray(s.positions[l.id])) s.positions[l.id] = []; });
-    // 数量:每条线一组 {id,name,qty}(qty 可空)
+    // 数量:便当名全局 {id,name};数量值按日期 qtyValues[date][lineId][id]
     s.qtyBentos = (s.qtyBentos && typeof s.qtyBentos === 'object') ? s.qtyBentos : {};
+    s.qtyValues = (s.qtyValues && typeof s.qtyValues === 'object') ? s.qtyValues : {};
+    const _today = (Util.todayISO ? Util.todayISO() : null);
     s.lines.forEach(l => {
       if(!Array.isArray(s.qtyBentos[l.id])) s.qtyBentos[l.id] = [];
-      s.qtyBentos[l.id] = s.qtyBentos[l.id].filter(b => b && typeof b === 'object').map(b => ({
-        id: b.id || Util.uid('qb'),
-        name: String(b.name || ''),
-        qty: (b.qty == null || b.qty === '' || isNaN(b.qty)) ? null : Math.max(0, Math.round(+b.qty))
-      }));
+      s.qtyBentos[l.id] = s.qtyBentos[l.id].filter(b => b && typeof b === 'object').map(b => {
+        const id = b.id || Util.uid('qb');
+        // 旧版把 qty 存便当对象里 → 迁移到 qtyValues[今天]
+        if(b.qty != null && b.qty !== '' && !isNaN(b.qty) && _today){
+          if(!s.qtyValues[_today]) s.qtyValues[_today] = {};
+          if(!s.qtyValues[_today][l.id]) s.qtyValues[_today][l.id] = {};
+          if(s.qtyValues[_today][l.id][id] == null) s.qtyValues[_today][l.id][id] = Math.max(0, Math.round(+b.qty));
+        }
+        return { id, name: String(b.name || '') };
+      });
     });
+    for(const date in s.qtyValues){
+      const byLine = s.qtyValues[date];
+      if(!byLine || typeof byLine !== 'object'){ delete s.qtyValues[date]; continue; }
+      for(const ln in byLine){
+        const m = byLine[ln]; if(!m || typeof m !== 'object'){ delete byLine[ln]; continue; }
+        for(const id in m){ const n = m[id]; if(n==null||n===''||isNaN(n)) delete m[id]; else m[id] = Math.max(0, Math.round(+n)); }
+      }
+    }
     s.people = Array.isArray(s.people) ? s.people : [];
     s.schedules = (s.schedules && typeof s.schedules === 'object') ? s.schedules : {};
     for(const date in s.schedules){
@@ -1324,16 +1339,18 @@ const Store = (() => {
     save();
   }
 
-  // 数量(便当名 + 数量)
+  // 数量:便当名(全局 {id,name})
   function addQtyBento(lineId, name){
     if(!state.qtyBentos[lineId]) state.qtyBentos[lineId]=[];
-    state.qtyBentos[lineId].push({ id: Util.uid('qb'), name: name.trim(), qty: null }); save();
+    state.qtyBentos[lineId].push({ id: Util.uid('qb'), name: name.trim() }); save();
   }
   function renameQtyBento(lineId, id, newName){
     const b = (state.qtyBentos[lineId]||[]).find(x=>x.id===id); if(b){ b.name = newName.trim(); save(); }
   }
   function deleteQtyBento(lineId, id){
-    state.qtyBentos[lineId] = (state.qtyBentos[lineId]||[]).filter(x=>x.id!==id); save();
+    state.qtyBentos[lineId] = (state.qtyBentos[lineId]||[]).filter(x=>x.id!==id);
+    for(const date in state.qtyValues){ if(state.qtyValues[date] && state.qtyValues[date][lineId]) delete state.qtyValues[date][lineId][id]; }
+    save();
   }
   function reorderQtyBentos(lineId, orderedIds){
     const arr = state.qtyBentos[lineId]; if(!Array.isArray(arr)) return;
@@ -1341,11 +1358,18 @@ const Store = (() => {
     const next = orderedIds.map(id=>byId.get(id)).filter(Boolean);
     if(next.length === arr.length) { state.qtyBentos[lineId] = next; save(); }
   }
-  // 数量值:只改数字、不触发整屏重渲(避免手机软键盘 resize→render 刷掉正在输入的框);页面手动更新合计/计数
-  function setQtyValueQuiet(lineId, id, qty){
-    const b = (state.qtyBentos[lineId]||[]).find(x=>x.id===id); if(!b) return;
+  // 数量值按日期存:qtyValues[date][lineId][id]
+  function getQtyValue(date, lineId, id){
+    const v = state.qtyValues && state.qtyValues[date] && state.qtyValues[date][lineId] && state.qtyValues[date][lineId][id];
+    return (v == null) ? null : v;
+  }
+  // 只改数字、不触发整屏重渲(避免软键盘 resize→render 刷掉输入框);页面手动更新合计/计数
+  function setQtyValueQuiet(date, lineId, id, qty){
     const digits = String(qty==null?'':qty).replace(/[^\d]/g,'');
-    b.qty = digits === '' ? null : Math.max(0, parseInt(digits,10));
+    if(!state.qtyValues[date]) state.qtyValues[date] = {};
+    if(!state.qtyValues[date][lineId]) state.qtyValues[date][lineId] = {};
+    if(digits === '') delete state.qtyValues[date][lineId][id];
+    else state.qtyValues[date][lineId][id] = Math.max(0, parseInt(digits,10));
     saveQuiet();
   }
 
@@ -1438,7 +1462,7 @@ const Store = (() => {
     load, save, subscribe, get, replace, reset,
     addPerson, updatePerson, deletePerson, findPersonUsage, reorderPeople,
     addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
-    addQtyBento, renameQtyBento, deleteQtyBento, reorderQtyBentos, setQtyValueQuiet,
+    addQtyBento, renameQtyBento, deleteQtyBento, reorderQtyBentos, getQtyValue, setQtyValueQuiet,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
     setShift, getShift,
     markExported, emptyData,
@@ -1568,12 +1592,23 @@ const Pages = (() => {
   function renderQty(){
     const root = $('#page-qty');
     const s = Store.get();
+    if(!currentDate) currentDate = Util.todayISO();
     const fmt = n => (n==null ? '' : Number(n).toLocaleString('en-US'));
-    const html = ['<h2>数量</h2>', '<div class="line-grid">'];
+    const html = [`
+      <div class="sched-header">
+        <div class="sched-bar">
+          <span class="date-wrap">
+            <button class="date-trigger" id="qty-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
+            <div class="cal-host hidden" id="qty-cal-host"></div>
+          </span>
+        </div>
+      </div>
+      <div class="line-grid">`];
     s.lines.filter(l => !l.virtual).forEach(line => {
       const bentos = s.qtyBentos[line.id] || [];
-      const filled = bentos.filter(b => b.qty != null).length;
-      const total = bentos.reduce((a,b)=> a + (b.qty!=null ? b.qty : 0), 0);
+      const vals = bentos.map(b => Store.getQtyValue(currentDate, line.id, b.id));
+      const filled = vals.filter(v => v != null).length;
+      const total = vals.reduce((a,v)=> a + (v!=null ? v : 0), 0);
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
           <span class="line-name">${line.name}</span>
@@ -1583,10 +1618,10 @@ const Pages = (() => {
         html.push(`<div class="q-empty">未配置便当<br>去「设置 → 数量」添加</div>`);
       } else {
         html.push(`<ul class="q-list">
-          ${bentos.map(b=>`
+          ${bentos.map((b,i)=>`
             <li data-id="${b.id}">
               <span class="b-name">${escapeHtml(b.name)}</span>
-              <input class="qty" inputmode="numeric" value="${b.qty!=null?fmt(b.qty):''}">
+              <input class="qty" inputmode="numeric" value="${vals[i]!=null?fmt(vals[i]):''}">
             </li>`).join('')}
         </ul>
         <div class="total-row"><span class="t-label">合计</span><span class="t-value">${fmt(total)||'0'}</span></div>`);
@@ -1595,6 +1630,13 @@ const Pages = (() => {
     });
     html.push('</div>');
     root.innerHTML = html.join('');
+    document.getElementById('qty-date-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      _calHostId = 'qty-cal-host'; _calBtnId = 'qty-date-btn'; _calRerender = () => renderQty();
+      const host = document.getElementById('qty-cal-host');
+      if(host.classList.contains('hidden')){ openCalendar(); } else { closeCalendar(); }
+    });
+    document.addEventListener('click', calOutsideListener);
     const allQty = [...root.querySelectorAll('.qty')]; // 回车跳下一个用
     root.querySelectorAll('[data-line]').forEach(card => {
       const lineId = card.dataset.line;
@@ -1605,7 +1647,7 @@ const Pages = (() => {
         input.addEventListener('input', () => {
           const digits = input.value.replace(/[^\d]/g,'');
           if(input.value !== digits) input.value = digits;
-          Store.setQtyValueQuiet(lineId, id, digits);
+          Store.setQtyValueQuiet(currentDate, lineId, id, digits);
           updateQtyCard(card);
         });
         input.addEventListener('blur', () => {
@@ -1623,9 +1665,11 @@ const Pages = (() => {
     });
   }
   function updateQtyCard(card){
-    const bentos = Store.get().qtyBentos[card.dataset.line] || [];
-    const filled = bentos.filter(b => b.qty != null).length;
-    const total = bentos.reduce((a,b)=> a + (b.qty!=null ? b.qty : 0), 0);
+    const lineId = card.dataset.line;
+    const bentos = Store.get().qtyBentos[lineId] || [];
+    const vals = bentos.map(b => Store.getQtyValue(currentDate, lineId, b.id));
+    const filled = vals.filter(v => v != null).length;
+    const total = vals.reduce((a,v)=> a + (v!=null ? v : 0), 0);
     const f = card.querySelector('.q-filled'); if(f) f.textContent = filled;
     const t = card.querySelector('.t-value'); if(t) t.textContent = Number(total).toLocaleString('en-US');
   }
@@ -1868,6 +1912,8 @@ const Pages = (() => {
   let currentTabLine = null;
   let calViewYear = null;
   let calViewMonth = null;
+  // 日历可服务「排岗」和「数量」两页:记住当前用的容器/按钮/选日期后的重渲函数
+  let _calHostId = 'cal-host', _calBtnId = 'sched-date-btn', _calRerender = () => renderSchedule();
 
   function fmtDateJp(iso){
     // 统一为 YYYY-MM-DD,和配置表顶部日期 chip 一致
@@ -1877,23 +1923,23 @@ const Pages = (() => {
   function openCalendar(){
     const [y,m] = currentDate.split('-').map(Number);
     calViewYear = y; calViewMonth = m;
-    document.getElementById('cal-host').classList.remove('hidden');
+    const host = document.getElementById(_calHostId); if(host) host.classList.remove('hidden');
     renderCalendar();
   }
   function closeCalendar(){
-    const host = document.getElementById('cal-host');
+    const host = document.getElementById(_calHostId);
     if(host) host.classList.add('hidden');
   }
   function calOutsideListener(e){
-    const host = document.getElementById('cal-host');
+    const host = document.getElementById(_calHostId);
     if(!host || host.classList.contains('hidden')) return;
     if(host.contains(e.target)) return;
-    if(e.target.id === 'sched-date-btn' || e.target.closest('#sched-date-btn')) return;
+    if(e.target.id === _calBtnId || e.target.closest('#'+_calBtnId)) return;
     closeCalendar();
   }
 
   function renderCalendar(){
-    const host = document.getElementById('cal-host'); if(!host) return;
+    const host = document.getElementById(_calHostId); if(!host) return;
     const y = calViewYear, m = calViewMonth;
     const firstDow = new Date(y, m-1, 1).getDay(); // 0=Sun
     const offset = firstDow; // 周日起首,和计划板一致
@@ -1949,7 +1995,7 @@ const Pages = (() => {
       e.stopPropagation();
       currentDate = Util.todayISO();
       closeCalendar();
-      renderSchedule();
+      _calRerender();
       broadcastDate();
     };
     host.querySelectorAll('.cal-day').forEach(el => {
@@ -1957,7 +2003,7 @@ const Pages = (() => {
         e.stopPropagation();
         currentDate = el.dataset.iso;
         closeCalendar();
-        renderSchedule();
+        _calRerender();
         broadcastDate();
       });
     });
@@ -1982,9 +2028,10 @@ const Pages = (() => {
       _suppressDateBroadcast = true;
       currentDate = d;
       _suppressDateBroadcast = false;
-      // 切到排岗 Tab 时才需要重渲;此时若在排岗页直接 render
-      const root = document.querySelector('#page-schedule');
-      if (root) renderSchedule();
+      // 重渲当前可见页(排岗或数量),让日期同步即时生效
+      const qtyPage = document.querySelector('#page-qty');
+      if (qtyPage && !qtyPage.classList.contains('hidden')) renderQty();
+      else if (document.querySelector('#page-schedule')) renderSchedule();
     }
   });
   // 启动时向父壳要一次共享日期
@@ -2064,6 +2111,7 @@ const Pages = (() => {
 
     document.getElementById('sched-date-btn').addEventListener('click', e => {
       e.stopPropagation();
+      _calHostId = 'cal-host'; _calBtnId = 'sched-date-btn'; _calRerender = () => renderSchedule();
       const host = document.getElementById('cal-host');
       if(host.classList.contains('hidden')){ openCalendar(); } else { closeCalendar(); }
     });
