@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-15-63">
+<html lang="zh-CN" data-appver="2026-10-15-64">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5753,8 +5753,18 @@ function enableLibDrag(ul){
     reorderLibrary(orderedIds);
   });
 }
+// orderedIds = 当前可见(可能是颜色筛选后的子集)列表的新顺序。
+// 把子集的新顺序合并回完整顺序:只替换「可见条目」占的那些位置,其它颜色条目原地不动。
 function reorderLibrary(orderedIds){
-  orderedIds.forEach((id, i) => { const it = findLibItem(id); if (it) it.ord = i; });
+  const _ord = v => (v && v.ord != null) ? v.ord : 1e9;
+  const fullOrder = [...library].sort((a, b) => {
+    const d = _ord(a) - _ord(b);
+    return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'zh-CN');
+  }).map(x => x.id);
+  const visSet = new Set(orderedIds);
+  let vi = 0;
+  const merged = fullOrder.map(id => (visSet.has(id) && vi < orderedIds.length) ? orderedIds[vi++] : id);
+  merged.forEach((id, i) => { const it = findLibItem(id); if (it) it.ord = i; });
   saveLibrary();
   renderLibList();
 }
@@ -5935,8 +5945,8 @@ function renderLibList() {
     }
     libList.appendChild(row);
   });
-  // 无颜色筛选时整列表可长按拖拽排序;有筛选时子集重排会乱序,跟人员列表一致,不挂拖拽
-  if (!libColorFilter) enableLibDrag(libList);
+  // 整列表可长按拖拽排序;颜色筛选时也能拖(只在同色子集内重排,其它颜色条目位置不动)
+  enableLibDrag(libList);
 }
 
 function startEditLib(id) {
