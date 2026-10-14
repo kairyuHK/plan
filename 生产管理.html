@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-61">
+<html lang="zh-CN" data-appver="2026-10-14-62">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -756,6 +756,8 @@ select option:checked{background:#2b2f3a}
 .total-row{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
 .total-row .t-label{font-weight:600}
 .total-row .t-value{text-align:right;font-weight:700;font-size:16px;color:var(--accent);padding-right:10px}
+.qty-grand{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
+.qty-grand b{color:var(--accent);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
 .toolbar input[type=search]{flex:1;max-width:320px;height:32px}
 .toolbar #people-add{flex:0 0 auto;height:32px;padding:0 12px;font-size:12px;border-radius:6px}
@@ -1597,6 +1599,9 @@ const Pages = (() => {
     const s = Store.get();
     if(!currentDate) currentDate = Util.todayISO();
     const fmt = n => (n==null ? '' : Number(n).toLocaleString('en-US'));
+    const lines = s.lines.filter(l => !l.virtual);
+    let grandTotal = 0;
+    lines.forEach(line => (s.qtyBentos[line.id]||[]).forEach(b => { const v = Store.getQtyValue(currentDate, line.id, b.id); if(v!=null) grandTotal += v; }));
     const html = [`
       <div class="sched-header">
         <div class="sched-bar">
@@ -1604,10 +1609,11 @@ const Pages = (() => {
             <button class="date-trigger" id="qty-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
             <div class="cal-host hidden" id="qty-cal-host"></div>
           </span>
+          <span class="qty-grand">全线合计 <b class="qty-grand-v">${fmt(grandTotal)||'0'}</b></span>
         </div>
       </div>
       <div class="line-grid">`];
-    s.lines.filter(l => !l.virtual).forEach(line => {
+    lines.forEach(line => {
       const bentos = s.qtyBentos[line.id] || [];
       const vals = bentos.map(b => Store.getQtyValue(currentDate, line.id, b.id));
       const filled = vals.filter(v => v != null).length;
@@ -1652,6 +1658,7 @@ const Pages = (() => {
           if(input.value !== digits) input.value = digits;
           Store.setQtyValueQuiet(currentDate, lineId, id, digits);
           updateQtyCard(card);
+          updateGrandTotal();
         });
         input.addEventListener('blur', () => {
           const digits = input.value.replace(/[^\d]/g,'');
@@ -1666,6 +1673,13 @@ const Pages = (() => {
         });
       });
     });
+  }
+  function updateGrandTotal(){
+    const s = Store.get();
+    let gt = 0;
+    s.lines.filter(l => !l.virtual).forEach(line => (s.qtyBentos[line.id]||[]).forEach(b => { const v = Store.getQtyValue(currentDate, line.id, b.id); if(v!=null) gt += v; }));
+    const el = document.querySelector('#page-qty .qty-grand-v');
+    if(el) el.textContent = Number(gt).toLocaleString('en-US');
   }
   function updateQtyCard(card){
     const lineId = card.dataset.line;
