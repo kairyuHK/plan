@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-57">
+<html lang="zh-CN" data-appver="2026-10-14-58">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1489,7 +1489,7 @@ const Pages = (() => {
         const bentos = s.qtyBentos[line.id] || [];
         html.push(`<div class="card" data-line="${line.id}">
           <div class="card-head" style="border-top-color:var(--line-${line.id})">
-            <span class="line-name">${line.name}</span>
+            <span class="line-name">${qtyLineName(line)}</span>
             <span class="muted">${bentos.length} 个便当</span>
           </div>
           <ul class="pos-list">
@@ -1588,6 +1588,9 @@ const Pages = (() => {
     });
   }
 
+  // 数量相关视图里把「値付け」(tsk)线显示成「成型」(仅数量,不影响排岗/配置)
+  function qtyLineName(line){ return line.id === 'tsk' ? '成型' : line.name; }
+
   // 数量录入页:便当名只读(设置里编的),右侧手动输数量;卡头「有数量/总数」,底部合计(千分位)
   function renderQty(){
     const root = $('#page-qty');
@@ -1611,7 +1614,7 @@ const Pages = (() => {
       const total = vals.reduce((a,v)=> a + (v!=null ? v : 0), 0);
       html.push(`<div class="card" data-line="${line.id}">
         <div class="card-head" style="border-top-color:var(--line-${line.id})">
-          <span class="line-name">${line.name}</span>
+          <span class="line-name">${qtyLineName(line)}</span>
           <span class="muted"><span class="q-filled">${filled}</span>/${bentos.length}</span>
         </div>`);
       if(bentos.length === 0){
