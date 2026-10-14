@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-14-60">
+<html lang="zh-CN" data-appver="2026-10-14-61">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3495,6 +3495,8 @@ const Pages = (() => {
   .field.name-spd .field-input { color: var(--accent); }
   .field-input[readonly] { color: var(--text-dim); cursor: default; }
   .field.name-spd .field-input[readonly] { color: var(--text-dim); }
+  /* 数量由「数量」功能同步锁定时:用主题色标明「已联动」,不可编辑 */
+  .field-input.qty[readonly] { color: var(--accent); cursor: default; }
   .field-input::placeholder { color: var(--text-mute); font-weight: 400; }
   .field-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 
@@ -5329,13 +5331,16 @@ function getQtyForBento(name, date) {
   }
   return null;
 }
-// 把同名便当+当天数字写进所有工作卡的数量框(调用方随后 recalc 重算耗时)
+// 把同名便当+当天数字写进所有工作卡的数量框并锁定(总是以数量为准,不让卡片里改出分歧);
+// 无匹配则解锁可编辑。调用方随后 recalc 重算耗时。
 function applyQtyFromQtyFeature() {
   document.querySelectorAll('.card[data-type="job"]').forEach(card => {
-    const v = getQtyForBento(card.dataset.name, currentDate);
-    if (v == null) return;
     const inp = card.querySelector('.qty');
-    if (inp && inp.value !== String(v)) inp.value = String(v);
+    if (!inp) return;
+    const v = getQtyForBento(card.dataset.name, currentDate);
+    if (v == null) { inp.readOnly = false; inp.removeAttribute('title'); return; }
+    if (inp.value !== String(v)) inp.value = String(v);
+    inp.readOnly = true; inp.title = '数量由「数量」页同步,改请到数量页';
   });
 }
 // 当日某线所有岗位上去重后的已排岗人员 id(含借调进来的人)
@@ -6324,7 +6329,7 @@ function addJobCard(grid, libItem, savedData) {
         </div>
         <div class="field">
           <span class="field-label">数量 个</span>
-          <input class="field-input qty" type="number" min="0" step="1" value="${qtyVal}" placeholder="0" inputmode="numeric">
+          <input class="field-input qty" type="number" min="0" step="1" value="${qtyVal}" placeholder="0" inputmode="numeric"${_autoQty != null ? ' readonly title="数量由「数量」页同步,改请到数量页"' : ''}>
         </div>
         <div class="field">
           <span class="field-label">人数</span>
