@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-16-66">
+<html lang="zh-CN" data-appver="2026-10-16-67">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9105,7 +9105,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .line-grid{display:flex;flex-direction:column;gap:10px;padding:16px 12px;width:100%;min-width:0;box-sizing:border-box}
   .line-grid .row{display:grid;gap:10px}
   .line-grid .cell{background:#1a1d22;border:1px solid var(--line);border-radius:8px;padding:10px;height:var(--cell-height,95px);min-height:var(--cell-height,95px);display:flex;flex-direction:column;position:relative;overflow:hidden;box-sizing:border-box}
-  .line-grid .cell.empty{background:transparent;border:1px solid transparent}
+  .line-grid .cell.empty{background:transparent;border:1px dashed #2a2d33}
   .line-grid .cell .lbl{position:absolute;top:4px;left:6px;font-size:12px;color:var(--muted);text-align:left;pointer-events:none}
   .line-grid .cell .person{position:absolute;bottom:4px;right:6px;font-size:10px;color:var(--muted);text-align:right;pointer-events:none;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px}
   .line-grid .cell .person .support-tag{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.3px;margin-right:4px}
@@ -9374,7 +9374,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     .line-grid .row{gap:8px !important}
     .belt{align-self:stretch !important;width:100% !important}
     .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:var(--cell-height,95px) !important;padding:10px !important;border-radius:8px !important;min-width:0 !important;overflow:hidden !important}
-    .line-grid .cell.empty{border:1.5px solid transparent !important;background:transparent !important}
+    .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
     .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
     .line-grid .cell .mats{color:#000;font-size:var(--mats-size,15px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.2px}
     /* 打印:材料名不换行(缩字号让长名一行放下,超长用省略号) */
@@ -9541,7 +9541,7 @@ header .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accen
 /* 操作屏单元格 — 微梯度 + 内高光 + hover 抬升 */
 .line-grid .cell{background:linear-gradient(180deg,#1f2329 0%,#181b21 100%);border-color:rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 1px 3px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s,border-color .18s}
 .line-grid .cell:not(.empty):hover{border-color:rgba(255,255,255,.1);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 4px 12px rgba(0,0,0,.42)}
-.line-grid .cell.empty{background:transparent;border-color:transparent;box-shadow:none}
+.line-grid .cell.empty{background:rgba(255,255,255,.015);border-color:rgba(255,255,255,.06)}
 .line-grid .cell .lbl{letter-spacing:.4px;font-weight:600;text-transform:uppercase;font-size:10px;opacity:.6}
 /* drawer 抽屉 — 边缘渐变,更柔和 */
 .drawer{background:linear-gradient(180deg,#13161b 0%,#0c0e12 100%)!important;border-left-color:rgba(255,255,255,.06)!important}
@@ -9592,7 +9592,7 @@ header .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accen
    这里用更高优先级把选中标签的橙色高亮补回来,让操作屏/便当库等标签的当前项清晰可辨。 */
 :root[data-theme="light"] header .btn-tab.active{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 100%),var(--accent)!important;border-color:transparent!important;color:#14181f!important;font-weight:600;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.5),0 0 10px rgba(var(--accent-rgb),.45),0 3px 10px rgba(var(--accent-rgb),.3)!important}
 :root[data-theme="light"] header .btn-tab.active:hover{background:var(--accent)!important;color:#14181f!important;box-shadow:0 0 0 1px rgba(var(--accent-rgb),.6),0 0 18px rgba(var(--accent-rgb),.65),0 4px 14px rgba(var(--accent-rgb),.4)!important}
-:root[data-theme="light"] .line-grid .cell.empty{background:transparent;border-color:transparent;box-shadow:none}
+:root[data-theme="light"] .line-grid .cell.empty{background:rgba(43,37,30,.03)}
 :root[data-theme="light"] .belt{background:#e7e2db;box-shadow:0 1px 2px rgba(43,37,30,.12) inset}
 :root[data-theme="light"] .chip{box-shadow:0 1px 3px rgba(43,37,30,.12),0 1px 0 rgba(255,255,255,.7) inset}
 :root[data-theme="light"] .bento-title{color:#22201d;-webkit-text-fill-color:#22201d;text-shadow:none}
