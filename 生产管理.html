@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-15-64">
+<html lang="zh-CN" data-appver="2026-10-15-65">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5769,6 +5769,17 @@ function reorderLibrary(orderedIds){
   renderLibList();
 }
 
+// 品名库 / 选择品名 统一排序:筛选某颜色时按拖拽自定义顺序(ord);无筛选时按字母序(原来的样子)
+function sortLibItems(colorFilter){
+  if (colorFilter) {
+    const _ord = v => (v && v.ord != null) ? v.ord : 1e9;
+    return [...library]
+      .sort((a, b) => { const d = _ord(a) - _ord(b); return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'zh-CN'); })
+      .filter(it => it.color === colorFilter);
+  }
+  return [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+}
+
 function renderLibList() {
   renderLibColorFilter();
   if (library.length === 0) {
@@ -5780,13 +5791,8 @@ function renderLibList() {
   library.forEach(it => {
     if (it && it.bentoId) linkCount.set(it.bentoId, (linkCount.get(it.bentoId) || 0) + 1);
   });
-  // 排序:拖拽写的 item.ord 优先(升序);无 ord 的回落按名字(保持旧的字母序默认)
-  const _libOrd = v => (v && v.ord != null) ? v.ord : 1e9;
-  let items = [...library].sort((a, b) => {
-    const d = _libOrd(a) - _libOrd(b);
-    return d !== 0 ? d : (a.name || '').localeCompare(b.name || '', 'zh-CN');
-  });
-  if (libColorFilter) items = items.filter(it => it.color === libColorFilter);
+  // 排序:颜色筛选时按拖拽自定义顺序;无筛选按字母序(与选择品名共用 sortLibItems)
+  let items = sortLibItems(libColorFilter);
   if (items.length === 0) {
     libList.innerHTML = '<div class="lib-empty">该颜色下没有品名</div>';
     return;
@@ -5945,8 +5951,8 @@ function renderLibList() {
     }
     libList.appendChild(row);
   });
-  // 整列表可长按拖拽排序;颜色筛选时也能拖(只在同色子集内重排,其它颜色条目位置不动)
-  enableLibDrag(libList);
+  // 仅颜色筛选时可长按拖拽排序(在同色子集内重排);无筛选时按字母序,不挂拖拽
+  if (libColorFilter) enableLibDrag(libList);
 }
 
 function startEditLib(id) {
@@ -6263,8 +6269,8 @@ function renderPickColorFilter() {
 // 渲染品名候选列表(按当前颜色筛选)
 function renderPickList() {
   const _targetLineId = getLineIdFromNode(currentPickTargetLine);
-  let items = [...library].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
-  if (pickColorFilter) items = items.filter(it => it.color === pickColorFilter);
+  // 与品名库同序:筛选颜色时按拖拽自定义顺序,无筛选按字母序
+  let items = sortLibItems(pickColorFilter);
   if (items.length === 0) {
     pickList.innerHTML = '<div class="pick-empty">该颜色下没有品名</div>';
     return;
