@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-17-72">
+<html lang="zh-CN" data-appver="2026-10-17-73">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9409,6 +9409,31 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     body { width: 210mm !important; margin: 0 !important; padding: 6mm !important; }
     #content { width: 285mm !important; zoom: var(--print-scale, .68); }
   }
+  /* === print-shot:把上面的 @media print 版面镜像成普通类,供手机端 html2canvas 截图用 ===
+     html2canvas 不走 @media print,只有把同样的版面规则落到普通类上,截出的图才和电脑端打印一致
+     (#content 285mm×186mm、便当名绝对定位 top:40mm、流水线上边距 60mm、卡片放大铺满、白底黑框)。 */
+  body.print-shot #content{padding:0;position:relative !important;display:flex;flex-direction:column;width:285mm !important;min-height:186mm !important;height:auto !important;overflow:visible !important}
+  body.print-shot header,body.print-shot .backdrop,body.print-shot .drawer,body.print-shot .picker,body.print-shot .autocomplete,body.print-shot .modal{display:none !important}
+  body.print-shot .line-grid .cell .person{display:none !important}
+  body.print-shot .info-bar{flex:0 0 auto;margin:2px 0 6px !important;gap:6px}
+  body.print-shot .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1;transform:translate(var(--print-title-dx,0mm),var(--print-title-dy,0mm))}
+  body.print-shot .bento-title .muted{color:#555 !important;font-size:14px !important}
+  body.print-shot .line-wrap{flex:0 0 auto;margin:60mm 0 0 !important;overflow:visible !important;width:100% !important;transform:translate(var(--print-grid-dx,0mm),var(--print-grid-dy,0mm))}
+  body.print-shot .line-grid{--cell-min:0 !important;width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
+  body.print-shot .line-grid .row{gap:8px !important}
+  body.print-shot .belt{align-self:stretch !important;width:100% !important;background:linear-gradient(90deg,#666,#999,#666) !important;height:10px !important;margin:6px 0 !important;border-radius:5px}
+  body.print-shot .belt::after{border-left-color:#000 !important}
+  body.print-shot .line-grid .cell{background:#fff !important;border:1.5px solid #000 !important;color:#000 !important;height:auto !important;min-height:var(--cell-height,95px) !important;padding:10px !important;border-radius:8px !important;min-width:0 !important;overflow:hidden !important}
+  body.print-shot .line-grid .cell.empty{border:1.5px dashed #999 !important;background:#fafafa !important}
+  body.print-shot .line-grid .cell .lbl{color:#666 !important;font-size:12px !important;top:4px !important;left:6px !important}
+  body.print-shot .line-grid .cell .mats{color:#000;font-size:var(--mats-size,15px) !important;font-weight:var(--mats-weight,500) !important;letter-spacing:.2px}
+  body.print-shot .line-grid .cell .mats>div{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important}
+  body.print-shot.mono .line-grid .cell .mats>div{color:#000 !important}
+  body.print-shot .chip{background:#fff !important;border-color:#000 !important;color:#000 !important;padding:3px 10px !important;font-size:12px !important}
+  body.print-shot .chip .k{color:#555 !important}
+  body.print-shot .chip .v{color:#000 !important;font-weight:700}
+  body.print-shot .chip input.v{color:#000 !important}
+  body.print-shot .chip.toggle{display:none !important}
   @media (max-width: 720px) {
     body{font-size:14px}
     /* 不换行:操作屏/便当库/材料库/线设置/Aa/输出 与搜索框保持一排,「输出」不掉到第二行 */
@@ -12661,21 +12686,24 @@ async function printOperateViaShare() {
   if (typeof html2canvas === 'undefined') { showToast('打印组件未加载,请刷新重试', 'error'); return; }
   const target = document.getElementById('content');
   if (!target) { showToast('操作屏未渲染', 'error'); return; }
-  // 切横版打印布局 + 同步缩字号(与 PC 打印一致),截完再还原屏幕
+  // 切横版 + 电脑端打印版面(print-shot 把 @media print 规则落到普通类,html2canvas 才能截出同样版面)+ 同步缩字号
   _forceHorizontal = true; _skipFitRaf = true;
   render();
-  document.body.classList.add('printing');
+  document.body.classList.add('print-shot');
   document.body.offsetHeight;
   fitAllCells(target, { sync: true, minSize: 15 });
+  // 固定按 285mm(≈1077px)宽度截图:避免手机 390px 视口触发窄屏 @media 规则,保证卡片铺满、版面=PC
+  const PRINT_W = Math.round(285 * 96 / 25.4);
+  const PRINT_H = Math.max(target.scrollHeight, Math.round(186 * 96 / 25.4));
   try {
     const canvas = await html2canvas(target, {
       scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
-      windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
-      // onclone 只给渲染副本强制浅色主题(白底黑字),实时页面不动
-      onclone: (doc) => { try { doc.documentElement.setAttribute('data-theme', 'light'); } catch (_) {} }
+      width: PRINT_W, height: PRINT_H, windowWidth: PRINT_W, windowHeight: PRINT_H,
+      // onclone 给渲染副本也套 print-shot + 浅色主题(实时页面已套,双保险)
+      onclone: (doc) => { try { doc.documentElement.setAttribute('data-theme', 'light'); doc.body.classList.add('print-shot'); } catch (_) {} }
     });
     // 还原屏幕布局
-    document.body.classList.remove('printing');
+    document.body.classList.remove('print-shot');
     _forceHorizontal = false; _skipFitRaf = false;
     render();
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
@@ -12693,7 +12721,7 @@ async function printOperateViaShare() {
       showToast('已生成图片,可从相册/文件打印', 'success');
     }
   } catch (e) {
-    document.body.classList.remove('printing');
+    document.body.classList.remove('print-shot');
     _forceHorizontal = false; _skipFitRaf = false;
     render();
     if (!(e && e.name === 'AbortError')) showToast('打印失败: ' + (e.message || e), 'error'); // AbortError=用户取消分享
