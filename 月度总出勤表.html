@@ -5802,11 +5802,12 @@ const Pages = (() => {
     if (btn) btn.disabled = true;
     await new Promise(r => setTimeout(r, 30));
     try {
-      const bg = document.documentElement.classList.contains('theme-light')
-        ? getComputedStyle(document.body).backgroundColor : '#0a0a0b';
+      // 打印图强制浅色主题(白底黑字):省墨、清晰、余白为白而非黑。
+      // 用 onclone 只给渲染副本加 .theme-light,不动实时页面 → 不闪屏。
       const canvas = await html2canvas(table, {
-        scale: 2, backgroundColor: bg, useCORS: true, logging: false,
-        windowWidth: table.scrollWidth, windowHeight: table.scrollHeight
+        scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+        windowWidth: table.scrollWidth, windowHeight: table.scrollHeight,
+        onclone: (doc) => { doc.documentElement.classList.add('theme-light'); }
       });
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       if (!blob) throw new Error('画像生成失败');
