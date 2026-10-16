@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-16-68">
+<html lang="zh-CN" data-appver="2026-10-16-69">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -12655,8 +12655,11 @@ async function exportImage() {
 }
 
 // 手机端打印:iframe 内 window.print() 在 iOS Safari 无效,改为把操作屏克隆到一个顶层新窗口再打印。
-// 新窗口是顶层文档(非 iframe),iOS 的 window.print() 有效;沿用本页全部 <style>(含 @media print)+ body.printing
-// 布局,版面与电脑端打印完全一致。若浏览器拦截自动打印,用户也能在新开的页面里手动打印,不至于「完全没反应」。
+// 新窗口是顶层文档(非 iframe),iOS 的 window.print() 有效;沿用本页全部 <style>(含 @media print),
+// 版面与电脑端打印完全一致。若浏览器拦截自动打印,用户也能在新开的页面里手动打印,不至于「完全没反应」。
+// 关键:新窗口 body 不带 'printing' 类 —— 旧的真实打印里 beforeprint 测完字号就移除该类,实际输出只靠
+// @media print(9356 起那套白底黑框 + 竖屏 zoom 分支)。带着 printing 类会多叠 body.printing 的非媒体
+// 布局规则,导致「打印样式变了」。printing 类只在 live 文档上短暂加,用于 fitAllCells 按打印版面测量缩字号。
 function printOperateNewWindow() {
   const win = window.open('', '_blank');
   if (!win) { showToast('请先允许本页弹窗,再点打印', 'error'); return; }
@@ -12666,11 +12669,11 @@ function printOperateNewWindow() {
     // 套用与 beforeprint 相同的横向打印布局,并同步缩放字号后再克隆(字号写进内联 style,克隆后保留)
     _forceHorizontal = true; _skipFitRaf = true;
     render();
+    const bodyClass = document.body.className; // 原始类(可能含 'mono');不含 printing,与旧打印实际输出一致
     document.body.classList.add('printing');
     document.body.offsetHeight; // 强制 reflow,让 printing 布局生效后再测量
     fitAllCells(document.getElementById('content'), { sync: true, minSize: 15 });
     const contentHTML = document.getElementById('content').outerHTML;
-    const bodyClass = document.body.className; // 含 'printing'(+ 可能的 'mono'),新窗口沿用
     const styles = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
     const htmlStyle = (document.documentElement.getAttribute('style') || '').replace(/"/g, '&quot;');
     const theme = document.documentElement.getAttribute('data-theme') || '';
@@ -12707,8 +12710,9 @@ exportMenu.onclick = (e) => {
   if (!act) return;
   exportMenu.classList.remove("show");
   if (act === "print") {
-    // 手机端(iOS Safari)iframe 内 window.print() 无效(完全没反应)→ 走顶层新窗口打印;PC 仍用原生打印
-    if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) printOperateNewWindow();
+    // 触摸设备(手机/平板,iOS Safari)iframe 内 window.print() 无效 → 走顶层新窗口打印;
+    // 用 any-pointer:coarse 判断而非视口宽度:手机横屏宽度可能 >900 会误判成 PC(横屏打不出)。PC(鼠标)仍用原生打印。
+    if (window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches) printOperateNewWindow();
     else window.print();
   }
   else if (act === "image") exportImage();
