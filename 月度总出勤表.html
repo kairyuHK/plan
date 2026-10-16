@@ -2700,7 +2700,17 @@ const App = (() => {
       }
     }
 
-    document.getElementById('btn-print').addEventListener('click', () => window.print());
+    document.getElementById('btn-print').addEventListener('click', () => {
+      // iOS 主屏 PWA(navigator.standalone)不支持 window.print() —— 点了完全没反应(系统限制)。
+      // 引导到浏览器视图(应用内 Safari 支持 分享→打印,复用现有 @media print 排版)。其余平台照常打印。
+      if (navigator.standalone) {
+        if (confirm('iOS 主屏 App 无法直接打印(系统限制)。是否在浏览器中打开本页以便打印?')) {
+          window.open(location.href, '_blank');
+        }
+        return;
+      }
+      window.print();
+    });
     document.getElementById('btn-refresh').addEventListener('click', () => location.reload());
     document.getElementById('btn-personal-export').addEventListener('click', (e) => {
       Pages.exportPersonalPNG(e.currentTarget);
