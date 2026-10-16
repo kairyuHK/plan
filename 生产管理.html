@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-17-71">
+<html lang="zh-CN" data-appver="2026-10-17-72">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10334,20 +10334,6 @@ function broadcastBentos() {
 window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type === 'bento-request') broadcastBentos();
-  else if (e.data.type === 'do-print') {
-    // 父壳在浏览器视图(?print=config)里加载完配置表后发来:自动唤起打印(真浏览器里 window.print 有效,版面=PC)。
-    // iOS 浏览器视图可能不触发 beforeprint → 这里先手动套横向打印布局 + 同步缩字号(与 beforeprint 同样处理),
-    // 保证版面和电脑端一致(横向),否则会退回竖屏布局。
-    try {
-      _forceHorizontal = true; _skipFitRaf = true;
-      render();
-      document.body.classList.add('printing');
-      document.body.offsetHeight;
-      fitAllCells(document.getElementById('content'), { sync: true, minSize: 15 });
-      document.body.classList.remove('printing');
-    } catch (_) {}
-    setTimeout(() => { try { window.print(); } catch (_) {} }, 250);
-  }
   else if (e.data.type === 'jump-to-bento') {
     // 从计划板弹窗点便当名跳过来:切到「便当库」并直接打开这条便当的编辑页
     const target = (e.data.bentoId && state.bentos.find(b => b.id === e.data.bentoId))
@@ -12668,6 +12654,52 @@ async function exportImage() {
   }
 }
 
+// iOS 主屏 PWA 打印:系统禁用 window.print()、且 open 真实 URL 会被关掉(闪一下)。
+// 与月度出勤表同方案:把操作屏渲染成「白底横版」PNG → navigator.share 走系统分享面板(里面有「打印/AirPrint」);
+// 不支持 share(files) 时兜底下载图片,用户从相册/文件 App 打印。横版 + 浅色主题让图片版面接近电脑端打印。
+async function printOperateViaShare() {
+  if (typeof html2canvas === 'undefined') { showToast('打印组件未加载,请刷新重试', 'error'); return; }
+  const target = document.getElementById('content');
+  if (!target) { showToast('操作屏未渲染', 'error'); return; }
+  // 切横版打印布局 + 同步缩字号(与 PC 打印一致),截完再还原屏幕
+  _forceHorizontal = true; _skipFitRaf = true;
+  render();
+  document.body.classList.add('printing');
+  document.body.offsetHeight;
+  fitAllCells(target, { sync: true, minSize: 15 });
+  try {
+    const canvas = await html2canvas(target, {
+      scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+      windowWidth: target.scrollWidth, windowHeight: target.scrollHeight,
+      // onclone 只给渲染副本强制浅色主题(白底黑字),实时页面不动
+      onclone: (doc) => { try { doc.documentElement.setAttribute('data-theme', 'light'); } catch (_) {} }
+    });
+    // 还原屏幕布局
+    document.body.classList.remove('printing');
+    _forceHorizontal = false; _skipFitRaf = false;
+    render();
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('图片生成失败');
+    const bento = state.current.bentoId && state.bentos.find(b => b.id === state.current.bentoId);
+    const name = (bento ? bento.name : '配置') + '.png';
+    const file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: name });   // 分享面板里选「打印」
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('已生成图片,可从相册/文件打印', 'success');
+    }
+  } catch (e) {
+    document.body.classList.remove('printing');
+    _forceHorizontal = false; _skipFitRaf = false;
+    render();
+    if (!(e && e.name === 'AbortError')) showToast('打印失败: ' + (e.message || e), 'error'); // AbortError=用户取消分享
+  }
+}
+
 const exportMenu = document.getElementById("export-menu");
 document.getElementById("btn-export").onclick = (e) => {
   e.stopPropagation();
@@ -12678,17 +12710,10 @@ exportMenu.onclick = (e) => {
   if (!act) return;
   exportMenu.classList.remove("show");
   if (act === "print") {
-    // iOS 主屏 PWA(navigator.standalone)下 window.print() 是哑操作(点了完全没反应,系统限制)。
-    // 在手势内直接打开「父壳真实 URL + ?print=config」的浏览器视图(应用内 Safari),那里 window.print() 正常、
-    // 版面=电脑端(@media print)。父壳加载后自动唤起打印。必须手势内直接 open,不能先 confirm/alert(会吃掉手势被拦)。
-    if (navigator.standalone) {
-      // 用 iframe 自己的 window.open(带本次点击手势)打开「父壳真实网址」,不能用 window.top.open
-      //(点击手势属于本 iframe 窗口,window.top 没有激活态 → 弹窗被拦,表现为「只闪一下」)。
-      let _ppath;
-      try { _ppath = window.top.location.pathname; } catch (_) { _ppath = location.pathname; }
-      try { window.open(_ppath + '?print=config', '_blank'); } catch (e) {}
-      return;
-    }
+    // iOS 主屏 PWA(navigator.standalone)下 window.print() 是哑操作,且 window.open 打开真实 URL 会被系统
+    // 关掉(只闪一下)。与月度出勤表同一方案:渲染成白底横版图片 → navigator.share 调系统分享面板(内含「打印/AirPrint」)。
+    // 普通浏览器(含 iOS Safari 标签页)/ PC 仍直接 window.print()。
+    if (navigator.standalone) { printOperateViaShare(); return; }
     window.print();
   }
   else if (act === "image") exportImage();
@@ -13058,11 +13083,6 @@ window.addEventListener('message', (e) => {
       try { configFrame.contentWindow.postMessage(pendingBentoJump, '*'); } catch (_) {}
       pendingBentoJump = null;
     }
-    if (_pendingPrintApp === 'config') {
-      _pendingPrintApp = null;
-      const cf = document.querySelector('iframe[data-app="config"]');
-      setTimeout(() => { try { cf.contentWindow.postMessage({ type: 'do-print' }, '*'); } catch (_) {} }, 300);
-    }
   } else if (t === 'theme-request') {
     // iframe 启动后回拉一次当前主题色
     try {
@@ -13074,7 +13094,6 @@ window.addEventListener('message', (e) => {
   }
 });
 let pendingBentoJump = null;
-let _pendingPrintApp = null; // 浏览器视图 ?print=<app>:该 app 的 iframe ready 后发 do-print 自动打印
 // plan/config 需要 html2canvas + jspdf 做 PDF/PNG 导出。
 // 库由父壳一份持有,构建 srcdoc 时注入到对应 iframe 的 <head> 末尾,
 // 这样每个 iframe 在自己的 window 上下文里跑(html2canvas 内部依赖 ownerDocument)。
@@ -13507,24 +13526,16 @@ window.addEventListener('hashchange', () => {
 (function init(){
   // 决定首屏激活的 Tab
   let firstApp = 'plan';
-  // 从主屏 App(standalone)点打印会 open(父壳URL?print=config) 到浏览器视图:这里(真浏览器,非 standalone)
-  // 检测标记 → 激活该 app → 它 ready 后自动唤起打印(见 config-ready 分支)。standalone 下 print 本就哑操作,不处理。
-  let printApp = null;
-  if(!navigator.standalone){
-    const pm = /[?&]print=(plan|config|schedule)\b/.exec(location.search || '');
-    if(pm){ printApp = pm[1]; firstApp = pm[1]; }
-  }
   const fromHash = location.hash.slice(1);
   if(['schedule','plan','config'].includes(fromHash)) firstApp = fromHash;
-  else if(!printApp){
+  else {
     try{
       const last = localStorage.getItem('workbench-last-app');
       if(['schedule','plan','config'].includes(last)) firstApp = last;
     }catch(_){}
   }
-  // 清掉网址里残留的标签 hash 和 ?print 标记(防重载再触发打印),保持地址栏干净
-  if(location.hash || printApp){ try{ history.replaceState(null, '', location.pathname); }catch(_){} }
-  if(printApp) _pendingPrintApp = printApp;
+  // 清掉网址里残留的标签 hash(如旧版留下的 #plan),保持地址栏干净
+  if(location.hash){ try{ history.replaceState(null, '', location.pathname + location.search); }catch(_){} }
   activate(firstApp, true); // 首次定位无动画
   // 预加载其余 iframe(隐藏运行,后台广播数据让跨 app 同步生效)
   setTimeout(() => {
