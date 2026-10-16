@@ -5807,7 +5807,15 @@ const Pages = (() => {
       const canvas = await html2canvas(table, {
         scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
         windowWidth: table.scrollWidth, windowHeight: table.scrollHeight,
-        onclone: (doc) => { doc.documentElement.classList.add('theme-light'); }
+        onclone: (doc) => {
+          doc.documentElement.classList.add('theme-light');
+          // 打印清晰度:屏幕上边框(浅灰)和〇(契休)太浅,打印看不清 → 副本里加黑加粗。
+          // 有/欠/早/値等有意义的彩色标记保持原色。
+          const s = doc.createElement('style');
+          s.textContent = 'table.schedule th,table.schedule td{border-color:#000 !important}'
+            + 'table.schedule td.day-cell.contractRest{color:#000 !important;font-weight:700}';
+          doc.head.appendChild(s);
+        }
       });
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       if (!blob) throw new Error('画像生成失败');
