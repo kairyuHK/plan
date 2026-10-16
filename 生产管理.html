@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-17-70">
+<html lang="zh-CN" data-appver="2026-10-17-71">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -10335,8 +10335,18 @@ window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type === 'bento-request') broadcastBentos();
   else if (e.data.type === 'do-print') {
-    // 父壳在浏览器视图(?print=config)里加载完配置表后发来:自动唤起打印(真浏览器里 window.print 有效,版面=PC)
-    setTimeout(() => { try { window.print(); } catch (_) {} }, 400);
+    // 父壳在浏览器视图(?print=config)里加载完配置表后发来:自动唤起打印(真浏览器里 window.print 有效,版面=PC)。
+    // iOS 浏览器视图可能不触发 beforeprint → 这里先手动套横向打印布局 + 同步缩字号(与 beforeprint 同样处理),
+    // 保证版面和电脑端一致(横向),否则会退回竖屏布局。
+    try {
+      _forceHorizontal = true; _skipFitRaf = true;
+      render();
+      document.body.classList.add('printing');
+      document.body.offsetHeight;
+      fitAllCells(document.getElementById('content'), { sync: true, minSize: 15 });
+      document.body.classList.remove('printing');
+    } catch (_) {}
+    setTimeout(() => { try { window.print(); } catch (_) {} }, 250);
   }
   else if (e.data.type === 'jump-to-bento') {
     // 从计划板弹窗点便当名跳过来:切到「便当库」并直接打开这条便当的编辑页
@@ -12672,8 +12682,11 @@ exportMenu.onclick = (e) => {
     // 在手势内直接打开「父壳真实 URL + ?print=config」的浏览器视图(应用内 Safari),那里 window.print() 正常、
     // 版面=电脑端(@media print)。父壳加载后自动唤起打印。必须手势内直接 open,不能先 confirm/alert(会吃掉手势被拦)。
     if (navigator.standalone) {
-      try { window.top.open(window.top.location.pathname + '?print=config', '_blank'); }
-      catch (_) { try { window.open(location.pathname + '?print=config', '_blank'); } catch (e) {} }
+      // 用 iframe 自己的 window.open(带本次点击手势)打开「父壳真实网址」,不能用 window.top.open
+      //(点击手势属于本 iframe 窗口,window.top 没有激活态 → 弹窗被拦,表现为「只闪一下」)。
+      let _ppath;
+      try { _ppath = window.top.location.pathname; } catch (_) { _ppath = location.pathname; }
+      try { window.open(_ppath + '?print=config', '_blank'); } catch (e) {}
       return;
     }
     window.print();
