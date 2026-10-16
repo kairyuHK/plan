@@ -5809,11 +5809,13 @@ const Pages = (() => {
         windowWidth: table.scrollWidth, windowHeight: table.scrollHeight,
         onclone: (doc) => {
           doc.documentElement.classList.add('theme-light');
-          // 打印清晰度:屏幕上边框(浅灰)和〇(契休)太浅,打印看不清 → 副本里加黑加粗。
-          // 有/欠/早/値等有意义的彩色标记保持原色。
+          // 打印:边框统一为均匀 1px 黑线 + 〇(契休)黑色(不加粗)。有/欠/早/値等彩色标记保持原色。
+          // 屏幕是 border-collapse:separate,固定列 name-col 的 border-left 会和邻格 border-right 叠成 2px 双线、粗细不均 →
+          // 副本改 collapse 合并共享边框得均匀 1px;position:static 去 sticky,避免 collapse 下定位单元格丢边框(静态截图无需冻结列)。
           const s = doc.createElement('style');
-          s.textContent = 'table.schedule th,table.schedule td{border-color:#000 !important}'
-            + 'table.schedule td.day-cell.contractRest{color:#000 !important;font-weight:700}';
+          s.textContent = 'table.schedule{border-collapse:collapse !important}'
+            + 'table.schedule th,table.schedule td{border:1px solid #000 !important;position:static !important}'
+            + 'table.schedule td.day-cell.contractRest{color:#000 !important}';
           doc.head.appendChild(s);
         }
       });
