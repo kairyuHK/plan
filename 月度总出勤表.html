@@ -5809,12 +5809,13 @@ const Pages = (() => {
         windowWidth: table.scrollWidth, windowHeight: table.scrollHeight,
         onclone: (doc) => {
           doc.documentElement.classList.add('theme-light');
-          // 打印:边框统一为均匀 1px 黑线 + 〇(契休)黑色(不加粗)。有/欠/早/値等彩色标记保持原色。
-          // 屏幕是 border-collapse:separate,固定列 name-col 的 border-left 会和邻格 border-right 叠成 2px 双线、粗细不均 →
-          // 副本改 collapse 合并共享边框得均匀 1px;position:static 去 sticky,避免 collapse 下定位单元格丢边框(静态截图无需冻结列)。
+          // 打印边框「单边框模型」:每条线只由一个格子画一次 → 全表均匀 1px(与最上方月份边框同粗)。
+          // collapse 下 html2canvas 会把内部共享线画成 2px(两格各画一次)显得粗;separate 每格只留「右+下」,
+          // 外框上/左由 table 提供,再清掉固定列(name-col/role-col)的 左/上 边框(双线来源)。〇黑色不加粗。
           const s = doc.createElement('style');
-          s.textContent = 'table.schedule{border-collapse:collapse !important}'
-            + 'table.schedule th,table.schedule td{border:1px solid #000 !important;position:static !important}'
+          s.textContent = 'table.schedule{border-collapse:separate !important;border-spacing:0 !important;border-top:1px solid #000 !important;border-left:1px solid #000 !important}'
+            + 'table.schedule th,table.schedule td{border:0 !important;border-right:1px solid #000 !important;border-bottom:1px solid #000 !important;position:static !important}'
+            + 'table.schedule th.name-col,table.schedule td.name-col,table.schedule th.role-col,table.schedule td.role-col{border-left:0 !important;border-top:0 !important}'
             + 'table.schedule td.day-cell.contractRest{color:#000 !important}';
           doc.head.appendChild(s);
         }
