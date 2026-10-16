@@ -2700,17 +2700,7 @@ const App = (() => {
       }
     }
 
-    document.getElementById('btn-print').addEventListener('click', () => {
-      // iOS 主屏 PWA(navigator.standalone)不支持 window.print() —— 点了完全没反应(系统限制)。
-      // 引导到浏览器视图(应用内 Safari 支持 分享→打印,复用现有 @media print 排版)。其余平台照常打印。
-      if (navigator.standalone) {
-        // 必须在用户手势内直接 open,绝不能先 confirm/alert(会吃掉手势→open 被拦)。
-        // 带 print 标记:浏览器视图加载后(非 standalone)自动唤起打印。
-        window.open(location.pathname + '?print=1', '_blank');
-        return;
-      }
-      window.print();
-    });
+    document.getElementById('btn-print').addEventListener('click', (e) => Pages.printSchedule(e.currentTarget));
     document.getElementById('btn-refresh').addEventListener('click', () => location.reload());
     document.getElementById('btn-personal-export').addEventListener('click', (e) => {
       Pages.exportPersonalPNG(e.currentTarget);
@@ -5801,6 +5791,44 @@ const Pages = (() => {
     buildHoursPage();
   }
 
+  // 打印:普通浏览器(含 iOS Safari 标签页)/PC 直接 window.print();
+  // iOS 主屏独立 App(navigator.standalone)系统禁用 window.print(),改渲染排班表为图片
+  // 走系统分享面板(里面有 打印/AirPrint)。方案 B:保留全屏沉浸,打印走分享图片。
+  async function printSchedule(btn) {
+    if (!navigator.standalone) { window.print(); return; }
+    if (typeof html2canvas === 'undefined') { showToast('打印组件未加载', 'error'); return; }
+    const table = document.querySelector('#page-schedule .schedule-wrap table.schedule');
+    if (!table) { showToast('排班表未渲染', 'error'); return; }
+    if (btn) btn.disabled = true;
+    await new Promise(r => setTimeout(r, 30));
+    try {
+      const bg = document.documentElement.classList.contains('theme-light')
+        ? getComputedStyle(document.body).backgroundColor : '#0a0a0b';
+      const canvas = await html2canvas(table, {
+        scale: 2, backgroundColor: bg, useCORS: true, logging: false,
+        windowWidth: table.scrollWidth, windowHeight: table.scrollHeight
+      });
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      if (!blob) throw new Error('画像生成失败');
+      const name = `月度出勤表${Store.get().ui.currentPeriod}.png`;
+      const file = new File([blob], name, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });   // 分享面板里选「打印」
+      } else {
+        // 兜底:下载图片,用户可从相册/文件 App 打印
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        showToast('已生成图片,可从相册/文件打印', 'success');
+      }
+    } catch (e) {
+      if (!(e && e.name === 'AbortError')) showToast('打印失败:' + (e.message || e), 'error');  // AbortError=用户取消分享,不提示
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function exportPersonalPNG(btn) {
     if (typeof html2canvas === 'undefined') {
       showToast('html2canvas が読み込めません', 'error');
@@ -5838,7 +5866,7 @@ const Pages = (() => {
     }
   }
 
-  return { renderSchedule, renderSettings, renderData, renderPersonal, renderHours, exportPersonalPNG };
+  return { renderSchedule, renderSettings, renderData, renderPersonal, renderHours, exportPersonalPNG, printSchedule };
 })();
 
 const Tests = (() => {
@@ -5933,13 +5961,6 @@ const Tests = (() => {
 
 window.addEventListener('DOMContentLoaded', () => {
   App.init(); Tests.render();
-  // 从主屏 App(standalone)点打印时会 window.open(?print=1) 到浏览器视图:
-  // 这里在真浏览器(非 standalone)里检测到标记 → 清掉标记(防重载再打印)→ 首屏稳定后自动唤起打印。
-  // standalone 下 window.print() 本就哑操作,故 !navigator.standalone 时才触发;escape 失败仍停 App 则自动跳过,无死循环。
-  if (!navigator.standalone && /[?&]print=1(\b|&|$)/.test(location.search)) {
-    history.replaceState(null, '', location.pathname);
-    setTimeout(() => { try { window.print(); } catch (e) {} }, 600);
-  }
   // 首屏渲染完成后淡出启动遮罩,消除表格 pop-in 的「刷新感」
   var __b = document.getElementById('__boot');
   if (__b) requestAnimationFrame(() => requestAnimationFrame(() => { __b.classList.add('hide'); setTimeout(() => __b.remove(), 260); }));
