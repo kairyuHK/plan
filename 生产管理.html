@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-74">
+<html lang="zh-CN" data-appver="2026-10-19-75">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -831,14 +831,11 @@ select option:checked{background:#2b2f3a}
 .shift-cell{display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
 .shift-row{display:flex;align-items:center;gap:3px;font-size:12px}
 .shift-row .shift-who{color:var(--muted);min-width:2.6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:4.5em}
-.shift-row input[type=time]{flex:0 0 auto;width:74px;font-size:12px;padding:5px 4px;color:var(--text)}
+.shift-row input{flex:0 0 auto;width:74px;font-size:12px;padding:5px 4px;color:var(--text)}
 .shift-row .sh-sep{color:var(--muted)}
-/* PC(鼠标)端:去掉原生 <input type=time> 的时钟选择器图标——点击常弹不出、还会把界面顶下移;
-   PC 直接键入时间即可。触屏设备(iPhone/iPad,pointer:coarse)保留原生选择器,不受影响。 */
+/* PC(鼠标)端:时间框收窄并让时间居中,外观更紧凑 */
 @media (pointer:fine){
-  .shift-row input[type=time]::-webkit-calendar-picker-indicator{display:none}
-  /* 图标隐藏后原图标处会留空 → 收窄宽度并让时间居中,消除空荡感 */
-  .shift-row input[type=time]{width:58px;text-align:center}
+  .shift-row input{width:58px;text-align:center}
 }
 
 @media (max-width: 1023px){
@@ -850,7 +847,7 @@ select option:checked{background:#2b2f3a}
   .assign-list{padding:4px 16px 10px}
   .assign-list li{padding:2px 0}
   .assign-btn{min-width:0;flex:1 1 0;min-height:32px;padding:4px 10px}
-  .shift-row input[type=time]{min-height:32px;width:72px;padding:3px 3px}
+  .shift-row input{min-height:32px;width:72px;padding:3px 3px}
   /* 手机端:排岗表顶栏(排岗/人员/设置)高度与配置表顶栏统一(原 padding 12px 偏高 → 60px,压到 ~43px) */
   .nav{padding:4px 8px;gap:4px}
   .nav button{padding:5px 7px;font-size:13px}
@@ -2117,7 +2114,7 @@ const Pages = (() => {
                     `<div class="shift-cell">${persons.map(p => {
                       const sh = dayShifts[p.id] || {};
                       const who = persons.length > 1 ? `<span class="shift-who">${escapeHtml(p.name)}</span>` : '';
-                      return `<span class="shift-row" data-pid="${p.id}">${who}<input type="time" class="sh-s" value="${sh.s||''}" aria-label="上班"><span class="sh-sep">~</span><input type="time" class="sh-e" value="${sh.e||''}" aria-label="下班"></span>`;
+                      return `<span class="shift-row" data-pid="${p.id}">${who}<input type="text" class="sh-s" inputmode="numeric" maxlength="5" placeholder="--:--" value="${sh.s||''}" aria-label="上班"><span class="sh-sep">~</span><input type="text" class="sh-e" inputmode="numeric" maxlength="5" placeholder="--:--" value="${sh.e||''}" aria-label="下班"></span>`;
                     }).join('')}</div>`;
                   return `<li data-pos="${escapeHtml(pos)}">
                     <span class="pos-name">${escapeHtml(pos)}</span>
@@ -2156,13 +2153,49 @@ const Pages = (() => {
     root.querySelectorAll('.assign-btn').forEach(b => {
       b.addEventListener('click', () => openPicker(b.dataset.line, b.dataset.pos));
     });
+    // 时间框:文本输入,支持手打/复制粘贴;change 时规整成 HH:MM(非法则还原到上次有效值)
+    const normTime = v => {
+      v = (v || '').trim();
+      if (!v) return '';
+      let h, m;
+      if (v.includes(':') || v.includes('：')) {
+        const parts = v.replace('：', ':').split(':');
+        h = parseInt(parts[0], 10); m = parseInt(parts[1], 10);
+      } else {
+        const d = v.replace(/\D/g, '');
+        if (!d) return null;
+        if (d.length <= 2) { h = parseInt(d, 10); m = 0; }
+        else { h = parseInt(d.slice(0, -2), 10); m = parseInt(d.slice(-2), 10); }
+      }
+      if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    };
     root.querySelectorAll('.shift-row').forEach(row => {
       const pid = row.dataset.pid;
       const sInp = row.querySelector('.sh-s');
       const eInp = row.querySelector('.sh-e');
-      const commit = () => Store.setShift(currentDate, pid, sInp.value, eInp.value);
-      sInp.addEventListener('change', commit);
-      eInp.addEventListener('change', commit);
+      [sInp, eInp].forEach(inp => {
+        inp.dataset.last = inp.value;
+        inp.addEventListener('change', () => {
+          const n = normTime(inp.value);
+          if (n === null) { inp.value = inp.dataset.last || ''; }
+          else { inp.value = n; inp.dataset.last = n; }
+          Store.setShift(currentDate, pid, sInp.value, eInp.value);
+        });
+      });
+    });
+    // 回车/Tab 在时间框之间移动(右→下一行左),跳过姓名,限当前线卡片内;到末尾则停并提交
+    root.querySelectorAll('.shift-cell input').forEach(inp => {
+      inp.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== 'Tab') return;
+        e.preventDefault();
+        const card = inp.closest('.line-card');
+        if (!card) return;
+        const list = [...card.querySelectorAll('.shift-cell input')];
+        const dir = (e.key === 'Tab' && e.shiftKey) ? -1 : 1;
+        const next = list[list.indexOf(inp) + dir];
+        if (next) { next.focus(); next.select(); } else { inp.blur(); }
+      });
     });
     updateAutosaveStatus();
   }
