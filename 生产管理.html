@@ -1,5 +1,11 @@
 <!doctype html>
-<html lang="zh-CN" data-appver="2026-10-17-73">
+<!--
+  生产管理 — © 2026 kairyu. 保留所有权利 (All rights reserved).
+  本应用由 kairyu 原创开发;未经授权禁止复制、分发或冒充原作者。
+  Originally created by kairyu. Unauthorized copying, distribution,
+  or false attribution is prohibited.
+-->
+<html lang="zh-CN" data-appver="2026-10-19-74">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -60,6 +66,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .theme-pop .row input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
 .theme-pop .row .reset{margin-left:auto;background:transparent;border:1px solid #2a2d33;color:#9ca0a8;padding:4px 10px;border-radius:5px;font:inherit;font-size:11px;cursor:pointer}
 .theme-pop .row .reset:hover{color:#e8e8e8;border-color:#3a3f47}
+.theme-pop .copyright{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:#6b6f77;text-align:center;letter-spacing:.3px}
 /* 转场风格选择器 */
 .anim-btn{width:28px;height:28px;padding:0;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.04);color:#9ca0a8;cursor:pointer;flex:0 0 auto;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,color .15s,border-color .15s}
 .anim-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.08);color:#e8e8e8;border-color:rgba(255,255,255,.2)}
@@ -89,6 +96,7 @@ html[data-theme="light"] .tabs .io-btn:hover{color:var(--accent);background:rgba
 html[data-theme="light"] .frame-wrap,html[data-theme="light"] iframe{background:#efece7}
 html[data-theme="light"] .theme-pop,html[data-theme="light"] .anim-pop{background:linear-gradient(180deg,#ffffff 0%,#f6f3ef 100%);border-color:#e3ded7;box-shadow:0 24px 56px rgba(43,37,30,.18)}
 html[data-theme="light"] .theme-pop .row{color:#6f6a62}
+html[data-theme="light"] .theme-pop .copyright{color:#9a938a;border-top-color:#ece7e0}
 html[data-theme="light"] .anim-pop .opt{color:#4a443c}
 html[data-theme="light"] .anim-pop .opt:hover{background:rgba(43,37,30,.05);color:#1a1612}
 html[data-theme="light"] .anim-btn,html[data-theme="light"] .mode-btn,html[data-theme="light"] .theme-btn{background:rgba(43,37,30,.04);border-color:rgba(43,37,30,.12);color:#6f6a62}
@@ -627,6 +635,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     <input type="color" id="themeCustom" value="#fb923c">
     <button class="reset" id="themeReset" type="button">重置</button>
   </div>
+  <div class="copyright">© 2026 kairyu</div>
 </div>
 <div class="frame-wrap">
   <iframe data-app="plan"></iframe>
