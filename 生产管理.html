@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-93">
+<html lang="zh-CN" data-appver="2026-10-19-94">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9546,7 +9546,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
     #content{padding:0;position:relative !important;display:flex;flex-direction:column;width:285mm !important;min-height:186mm !important;height:auto !important;overflow:visible !important}
     #content > *{break-inside:auto;page-break-inside:auto}
     .info-bar{flex:0 0 auto;margin:0 0 6px !important;gap:6px}
-    .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1}
+    .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;-webkit-text-fill-color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1}
     .bento-title .muted{color:#555 !important;font-size:14px !important}
     .line-wrap{flex:0 0 auto;margin:60mm 0 0 !important;overflow:visible !important;width:100% !important;break-inside:auto}
     /* 打印时:把 --cell-min 收到 0,允许列在 285mm 内压缩,
@@ -9598,7 +9598,7 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   body.print-shot header,body.print-shot .backdrop,body.print-shot .drawer,body.print-shot .picker,body.print-shot .autocomplete,body.print-shot .modal{display:none !important}
   body.print-shot .line-grid .cell .person{display:none !important}
   body.print-shot .info-bar{flex:0 0 auto;margin:2px 0 6px !important;gap:6px}
-  body.print-shot .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1;transform:translate(var(--print-title-dx,0mm),var(--print-title-dy,0mm))}
+  body.print-shot .bento-title{position:absolute !important;top:40mm;left:0;right:0;text-align:center;color:#000 !important;-webkit-text-fill-color:#000 !important;margin:0 !important;font-size:var(--bento-title-size,28px) !important;min-height:0 !important;letter-spacing:4px !important;font-weight:var(--bento-title-weight,800);line-height:1;transform:translate(var(--print-title-dx,0mm),var(--print-title-dy,0mm))}
   body.print-shot .bento-title .muted{color:#555 !important;font-size:14px !important}
   body.print-shot .line-wrap{flex:0 0 auto;margin:60mm 0 0 !important;overflow:visible !important;width:100% !important;transform:translate(var(--print-grid-dx,0mm),var(--print-grid-dy,0mm))}
   body.print-shot .line-grid{--cell-min:0 !important;width:100% !important;min-width:0 !important;padding:0 !important;gap:6px !important}
