@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-97">
+<html lang="zh-CN" data-appver="2026-10-19-98">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -7030,8 +7030,11 @@ function wireCardEvents(node, type) {
     if (activeCard === node) setActiveCard(null);
     node.remove(); recalc(line); scheduleSaveBoard();
   });
-  // 卡片内输入框按回车 → 先 blur 提交(数字/时间规整),再关掉弹窗
-  node.addEventListener('keydown', (e) => {
+  // 卡片内输入框按回车 → 先 blur 提交(数字/时间规整),再关掉弹窗。
+  // 监听挂在 popup(.card-expanded)上而非卡片节点:弹窗激活时会被 detachPopup 移到 body,
+  // 挂在卡片上收不到弹窗里的事件;挂在 popup 自身则随它一起移动。
+  const popup = node.querySelector('.card-expanded');
+  if (popup) popup.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     if (!(e.target instanceof HTMLInputElement)) return;
     e.preventDefault();
