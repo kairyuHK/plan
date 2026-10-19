@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-88">
+<html lang="zh-CN" data-appver="2026-10-19-89">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -769,7 +769,11 @@ select option:checked{background:#2b2f3a}
 .total-row.rate-row .t-value{font-size:14px;color:#f87171}
 .total-row .rate-unit{font-size:11px;font-weight:400;color:var(--muted)}
 .q-list input.qty.qty-locked{opacity:.35;pointer-events:none}
-.qty-grand{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
+.qty-grand{font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
+.qty-rate{font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
+.qty-rate[data-group="A"]{margin-left:auto}
+.qty-rate b{color:#f87171;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.qty-rate .qty-rate-u{font-size:11px;color:var(--muted)}
 .qty-grand b{color:var(--accent);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
 .toolbar input[type=search]{flex:1;max-width:320px;height:32px}
@@ -1619,6 +1623,8 @@ const Pages = (() => {
             <button class="date-trigger" id="qty-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
             <div class="cal-host hidden" id="qty-cal-host"></div>
           </span>
+          <span class="qty-rate" data-group="A">夕盛+01 <b>${groupRate(['夕盛','01'])}</b><span class="qty-rate-u">个/h</span></span>
+          <span class="qty-rate" data-group="B">02~05 <b>${groupRate(['02','03','04','05'])}</b><span class="qty-rate-u">个/h</span></span>
           <span class="qty-grand">全线合计 <b class="qty-grand-v">${fmt(grandTotal)||'0'}</b></span>
         </div>
       </div>
@@ -1720,6 +1726,25 @@ const Pages = (() => {
     s.lines.filter(l => !l.virtual).forEach(line => (s.qtyBentos[line.id]||[]).forEach(b => { const v = Store.getQtyValue(currentDate, line.id, b.id); if(v!=null) gt += v; }));
     const el = document.querySelector('#page-qty .qty-grand-v');
     if(el) el.textContent = Number(gt).toLocaleString('en-US');
+    updateGroupRates();
+  }
+  // 分组生产率:组内各线合计之和 / 组内各线总人时之和(线名硬编码,与业务固定分组一致)
+  function groupRate(names){
+    const s = Store.get();
+    const lines = s.lines.filter(l => !l.virtual && names.includes(l.name));
+    let total = 0, hours = 0;
+    lines.forEach(l => {
+      (s.qtyBentos[l.id]||[]).forEach(b => { const v = Store.getQtyValue(currentDate, l.id, b.id); if(v!=null) total += v; });
+      hours += lineWorkHours(l.id);
+    });
+    if(!(hours > 0)) return '—';
+    return Number(Math.round(total / hours)).toLocaleString('en-US');
+  }
+  function updateGroupRates(){
+    const a = document.querySelector('#page-qty .qty-rate[data-group="A"] b');
+    if(a) a.textContent = groupRate(['夕盛','01']);
+    const b = document.querySelector('#page-qty .qty-rate[data-group="B"] b');
+    if(b) b.textContent = groupRate(['02','03','04','05']);
   }
   function updateQtyCard(card){
     const lineId = card.dataset.line;
