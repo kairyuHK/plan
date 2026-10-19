@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-77">
+<html lang="zh-CN" data-appver="2026-10-19-78">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -3190,7 +3190,7 @@ const Pages = (() => {
     .cfg { padding: 2px 3px; border-radius: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden; }
     .cfg-label { font-size: 6px; flex-shrink: 0; white-space: nowrap; }
     .cfg-input { font-size: 8px; padding: 0; line-height: 1; width: 100%; min-width: 0; margin-top: auto; }
-    .cfg:last-child .cfg-input { text-align: right; }
+    .cfg-input { text-align: right; }
     .cfg-input[type=time]::-webkit-calendar-picker-indicator { display: none; }
 
     /* iOS 防自动缩放：聚焦时字号 ≥ 16px 不触发 Safari auto-zoom */
@@ -3299,7 +3299,7 @@ const Pages = (() => {
     font-family: inherit; outline: none; font-variant-numeric: tabular-nums;
   }
   .cfg-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
-  .cfg:last-child .cfg-input { text-align: right; }
+  .cfg-input { text-align: right; }
 
   .cards-wrap { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: none; }
   .cards-wrap::-webkit-scrollbar { width: 0; }
@@ -4098,7 +4098,7 @@ const Pages = (() => {
   body.mob-ls .line-config { position: static; margin-top: auto; gap: 5px; }
   body.mob-ls .cfg { padding: 3px 7px; border-radius: 5px; }
   body.mob-ls .cfg-label { font-size: 9px; letter-spacing: 0.5px; }
-  body.mob-ls .cfg-input { height: 20px; font-size: 13px; }
+  body.mob-ls .cfg-input { height: 20px; font-size: 13px; text-align: right; }
 
   /* 横屏：单一滚动容器 — 6 条线 + 时间轴一起滑动 */
   body.mob-ls .main { overflow: auto !important; -webkit-overflow-scrolling: touch; align-items: flex-start; height: calc(100vh - 48px); }
@@ -4631,6 +4631,7 @@ body.printing .line-num{
 .card.expanded,.card.active,.card-expanded{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(var(--accent-rgb),.22)!important}
 /* 输入框(卡片字段)— 聚焦光晕 */
 .field-input,.actual-finish{transition:border-color .15s,box-shadow .15s,background .15s}
+.foot-val.actual-finish.af-text{width:3.4em}
 .field-input:focus,.actual-finish:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18)!important}
 /* 用户反馈:编辑卡片字段时不要聚焦边框/光晕(尤其 iOS 上 accent-color:auto 取系统色显示的绿色高亮)。
    固定 accent-color 为橙色压掉系统绿,并去掉 outline / box-shadow / 彩色边框。覆盖上面的橙色光晕。 */
@@ -6460,7 +6461,10 @@ function buildLine(num) {
   line.querySelector('.actual-finish').addEventListener('input', () => { updateActualFinishEmpty(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('blur', () => updateActualFinishEmpty(line));
   bindTimeNorm(line.querySelector('.start-time'));
-  bindTimeNorm(line.querySelector('.actual-finish'));
+  const _af = line.querySelector('.actual-finish');
+  // 实结在底部:手机端文本框会被软键盘挡 → 手机保留原生 time 选择器(样式如旧、不弹键盘);PC 用文本(可复制粘贴)
+  if (matchMedia('(pointer:coarse)').matches) { _af.type = 'time'; }
+  else { _af.classList.add('af-text'); bindTimeNorm(_af); }
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
