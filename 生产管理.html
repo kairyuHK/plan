@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-92">
+<html lang="zh-CN" data-appver="2026-10-19-93">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9524,6 +9524,9 @@ window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return;
   .chip.toggle.on svg{color:#000}
   .chip.toggle.on .k,.chip.toggle.on .v{color:#000}
   body.mono .line-grid .cell .mats>div{color:var(--fg) !important}
+  /* 单色(mono)模式:便当名标题跟随「字体 彩色」开关一起变单色(与材料名同色);
+     限 @media screen,打印/print-shot 始终由各自的黑色规则接管,不受影响 */
+  @media screen { body.mono .bento-title{color:var(--fg) !important;-webkit-text-fill-color:var(--fg) !important;text-shadow:none !important} }
   /* 临时类:在屏幕上模拟打印布局,用于打印前同步测量与缩字号 */
   body.printing #content{width:285mm !important;padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important}
   body.printing .line-wrap{width:100% !important;overflow:visible !important;margin:0 !important}
