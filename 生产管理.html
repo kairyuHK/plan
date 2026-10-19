@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-84">
+<html lang="zh-CN" data-appver="2026-10-19-85">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -765,6 +765,9 @@ select option:checked{background:#2b2f3a}
 .total-row{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
 .total-row .t-label{font-weight:600}
 .total-row .t-value{text-align:right;font-weight:700;font-size:16px;color:var(--accent);padding-right:10px}
+.total-row.rate-row{border-top:none;padding-top:0}
+.total-row.rate-row .t-value{font-size:14px}
+.total-row .rate-unit{font-size:11px;font-weight:400;color:var(--muted)}
 .qty-grand{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
 .qty-grand b{color:var(--accent);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
@@ -1639,7 +1642,8 @@ const Pages = (() => {
               <input class="qty" inputmode="numeric" value="${vals[i]!=null?fmt(vals[i]):''}">
             </li>`).join('')}
         </ul>
-        <div class="total-row"><span class="t-label">合计</span><span class="t-value">${fmt(total)||'0'}</span></div>`);
+        <div class="total-row"><span class="t-label">合计</span><span class="t-value">${fmt(total)||'0'}</span></div>
+        <div class="total-row rate-row"><span class="t-label">生产率</span><span class="t-value rate-value">${rateText(total, line.id)}<span class="rate-unit"> 个/h</span></span></div>`);
       }
       html.push('</div>');
     });
@@ -1695,6 +1699,31 @@ const Pages = (() => {
     const total = vals.reduce((a,v)=> a + (v!=null ? v : 0), 0);
     const f = card.querySelector('.q-filled'); if(f) f.textContent = filled;
     const t = card.querySelector('.t-value'); if(t) t.textContent = Number(total).toLocaleString('en-US');
+    const r = card.querySelector('.rate-value'); if(r) r.innerHTML = rateText(total, lineId) + '<span class="rate-unit"> 个/h</span>';
+  }
+  // 该线总人时(小时):所有岗位分配的人,各自 shift(上班~下班)时长相加
+  function lineWorkHours(lineId){
+    const s = Store.get();
+    const day = Store.getDay(currentDate);
+    const positions = s.positions[lineId] || [];
+    const shifts = (s.shifts && s.shifts[currentDate]) || {};
+    const _p = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v||''); if(!m) return null; const h=+m[1], mi=+m[2]; if(h>23||mi>59) return null; return h*60+mi; };
+    let totalMin = 0;
+    positions.forEach(pos => {
+      const pids = (day[lineId] && day[lineId][pos]) || [];
+      pids.forEach(pid => {
+        const sh = shifts[pid]; if(!sh) return;
+        const st = _p(sh.s), en = _p(sh.e);
+        if(st != null && en != null && en > st) totalMin += (en - st);
+      });
+    });
+    return totalMin / 60;
+  }
+  // 生产率(个/小时)= 合计 / 总人时;无有效工时时显示 —
+  function rateText(total, lineId){
+    const h = lineWorkHours(lineId);
+    if(!(h > 0)) return '—';
+    return Number(Math.round(total / h)).toLocaleString('en-US');
   }
 
   // 拖拽时边缘自动滚动:手指靠近滚动容器上/下边缘就持续滚动,并按最新 Y 重定位插入点
