@@ -1,8 +1,14 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>現品票 一覧 10/14</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap">
 <style>
   /* Layout: sticky summary + machine filter chips over cards grouped by 機械番号; mobile-first. */
+  html{-webkit-text-size-adjust:100%}
+  html,body{margin:0}
   :root{
     --bg:#f5f6f9; --surface:#ffffff; --surface-2:#fbfcfe;
     --fg:#1b2430; --muted:#5d6775; --line:#e3e7ee;
@@ -46,9 +52,7 @@
   .count b{color:var(--accent);font-size:1rem}
 
   /* machine filter chips */
-  .chips{display:flex;gap:7px;margin-top:10px;overflow-x:auto;padding-bottom:3px;
-    scrollbar-width:none}
-  .chips::-webkit-scrollbar{display:none}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
   .fchip{flex:0 0 auto;font:inherit;font-size:.8rem;cursor:pointer;white-space:nowrap;
     padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
     color:var(--fg);display:flex;gap:6px;align-items:center}
@@ -86,6 +90,8 @@
   .empty{text-align:center;color:var(--muted);padding:36px 0;font-size:.9rem}
   mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
 </style>
+</head>
+<body>
 
 <header>
   <div class="wrap head-in">
@@ -278,3 +284,5 @@ renderChips();
 render();
 q.addEventListener('input',render);
 </script>
+</body>
+</html>
