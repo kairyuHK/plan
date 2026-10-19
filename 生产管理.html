@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-98">
+<html lang="zh-CN" data-appver="2026-10-19-99">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -13164,9 +13164,11 @@ function exportAll() {
   setTimeout(exportAllNow, 80);
   _exportReloadPending = true;
   _exportWentHidden = false;
-  // 静默下载(没切后台、不触发 visibilitychange)兜底:2.5s 后仍在前台且没切过后台 → 直接刷新。
+  // 没切过后台(静默下载,PC/部分安卓)就不会触发 iOS 那个「切前后台→下半截漏画」的合成 bug,
+  // 无需整页刷新 → 2.5s 后撤销待刷标志,避免 PC 端每次导出都 location.reload() 闪一下。
+  // (真·iOS 场景会在 a.click() 后弹存储/分享面板把页面切后台,早于 2.5s 置 _exportWentHidden,走 visibilitychange 刷新。)
   setTimeout(() => {
-    if (_exportReloadPending && !_exportWentHidden && document.visibilityState === 'visible') _doExportReload();
+    if (_exportReloadPending && !_exportWentHidden) _exportReloadPending = false;
   }, 2500);
 }
 function exportAllNow() {
