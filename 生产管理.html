@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-85">
+<html lang="zh-CN" data-appver="2026-10-19-86">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1701,7 +1701,8 @@ const Pages = (() => {
     const t = card.querySelector('.t-value'); if(t) t.textContent = Number(total).toLocaleString('en-US');
     const r = card.querySelector('.rate-value'); if(r) r.innerHTML = rateText(total, lineId) + '<span class="rate-unit"> 个/h</span>';
   }
-  // 该线总人时(小时):所有岗位分配的人,各自 shift(上班~下班)时长相加
+  // 该线总人时(小时):所有岗位分配的人各自 shift(上班~下班)时长相加;
+  // 单人在岗超过 6 小时(360 分)扣 1 小时休息,不到 6 小时不扣。
   function lineWorkHours(lineId){
     const s = Store.get();
     const day = Store.getDay(currentDate);
@@ -1714,7 +1715,11 @@ const Pages = (() => {
       pids.forEach(pid => {
         const sh = shifts[pid]; if(!sh) return;
         const st = _p(sh.s), en = _p(sh.e);
-        if(st != null && en != null && en > st) totalMin += (en - st);
+        if(st != null && en != null && en > st){
+          let dur = en - st;
+          if(dur > 360) dur -= 60; // 超过 6 小时扣 1 小时休息
+          totalMin += dur;
+        }
       });
     });
     return totalMin / 60;
