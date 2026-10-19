@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-79">
+<html lang="zh-CN" data-appver="2026-10-19-80">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4248,7 +4248,7 @@ const Pages = (() => {
     .line-foot .foot-val.time, .line-foot .foot-val.finish { color: #000 !important; }
 
     /* --- 顶栏 / 上下溢出修正 --- */
-    .topbar { height: 24px !important; padding: 0 8px !important; border-bottom: 1px solid #555 !important; }
+    .topbar { height: 24px !important; padding: 0 8px !important; border-bottom: 1px solid #000 !important; }
     .line { min-height: 0 !important; }
     /* 注意:cards-wrap / timeline-body 这里不能用 overflow: visible !important !
        trimGridForExport 用 inline overflow: hidden 把 22:00 之后的时间轴刻度裁掉,
@@ -4262,7 +4262,7 @@ const Pages = (() => {
   }
   body.printing .topbar, body.printing .main, body.printing .timeline, body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot,
   body.printing .line, body.printing .line-head, body.printing .line-foot, body.printing .cards-wrap, body.printing .cards-grid { background: #fff !important; }
-  body.printing .topbar { border-bottom: 1px solid #555 !important; }
+  body.printing .topbar { border-bottom: 1px solid #000 !important; }
   body.printing .brand, body.printing .brand-sub, body.printing .clock, body.printing .line-label, body.printing .foot-label, body.printing .foot-val,
   body.printing .tick, body.printing .tick .label { color: #000 !important; background: #fff !important; }
   body.printing .line-num, body.printing .foot-val.time { color:var(--accent-dark) !important; }
@@ -4282,25 +4282,25 @@ const Pages = (() => {
   body.printing .card.rest { background: #f7f3ff !important; }
   body.printing .board {
     gap: 1px !important;
-    background: #555 !important;
+    background: #000 !important;
     grid-template-columns: repeat(6, 1fr) !important;
   }
   body.printing .main {
     overflow: visible !important; height: auto !important; align-items: stretch !important;
-    flex: none !important; border: 1.5px solid #555 !important;
+    flex: none !important; border: 1.5px solid #000 !important;
   }
-  body.printing .timeline { position: static !important; border-right: 1.5px solid #555 !important; }
+  body.printing .timeline { position: static !important; border-right: 1.5px solid #000 !important; }
   body.printing .timeline-head, body.printing .timeline-body, body.printing .timeline-foot { position: static !important; }
-  body.printing .timeline-head { border-bottom: 1.5px solid #555 !important; }
-  body.printing .timeline-foot { border-top: 1.5px solid #555 !important; }
+  body.printing .timeline-head { border-bottom: 1.5px solid #000 !important; }
+  body.printing .timeline-foot { border-top: 1.5px solid #000 !important; }
   body.printing .board { min-width: 0 !important; flex: 1 1 0 !important; }
   body.printing .line {
     flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
     overflow: visible !important; min-height: 0 !important;
     border-right: none !important;
   }
-  body.printing .line-head { position: static !important; border-bottom: 1.5px solid #555 !important; }
-  body.printing .line-foot { position: static !important; border-top: 1.5px solid #555 !important; }
+  body.printing .line-head { position: static !important; border-bottom: 1.5px solid #000 !important; }
+  body.printing .line-foot { position: static !important; border-top: 1.5px solid #000 !important; }
   body.printing .grid-line:not(.hour):not(.hour-20),
   body.printing .tick:not(.hour):not(.hour-20) { display: none !important; }
 
@@ -8274,7 +8274,7 @@ function setupPrintLayout() {
   //   trimGridForExport 在 cards 预算上额外加 ~12px padding
   //   → 实际卡片区 = PAGE_H_FOR_CARDS + 12, 总计 = PAGE_H_FOR_CARDS + 175
   //   565 + 175 = 740, 留 8px buffer。
-  const PAGE_H_FOR_CARDS = 565;
+  const PAGE_H_FOR_CARDS = 525;
   let newHourPx = PRINT_BASELINE_HOUR_PX;
   if (cardRange > 0) {
     // 不管太密(>预算)还是太稀(<预算),都按比例缩放让 cardRange 精确等于 PAGE_H_FOR_CARDS,
