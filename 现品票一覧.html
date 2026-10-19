@@ -1,0 +1,280 @@
+<title>現品票 一覧 10/14</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap">
+<style>
+  /* Layout: sticky summary + machine filter chips over cards grouped by 機械番号; mobile-first. */
+  :root{
+    --bg:#f5f6f9; --surface:#ffffff; --surface-2:#fbfcfe;
+    --fg:#1b2430; --muted:#5d6775; --line:#e3e7ee;
+    --accent:#2f4b7c; --accent-soft:#eaf0fa; --warn:#8a5a1a; --warn-soft:#f6eede;
+    --font-body:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    --font-num:"Roboto Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#11141a; --surface:#1a1f29; --surface-2:#1f2530;
+    --fg:#e7ebf2; --muted:#9aa5b4; --line:#2a313d;
+    --accent:#90b2ec; --accent-soft:#223049; --warn:#d9b06a; --warn-soft:#3a3222;
+    color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#11141a; --surface:#1a1f29; --surface-2:#1f2530;
+    --fg:#e7ebf2; --muted:#9aa5b4; --line:#2a313d;
+    --accent:#90b2ec; --accent-soft:#223049; --warn:#d9b06a; --warn-soft:#3a3222;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.5;
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+
+  .wrap{max-width:720px;margin:0 auto;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));}
+
+  header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;
+    background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);}
+  .head-in{padding-block:13px 11px}
+  h1{margin:0;font-size:1.28rem;font-weight:700;letter-spacing:.01em}
+  .sub{margin-top:3px;color:var(--muted);font-size:.8rem;display:flex;flex-wrap:wrap;gap:3px 10px}
+  .sub b{color:var(--fg);font-weight:500}
+  .tools{display:flex;gap:8px;align-items:center;margin-top:11px}
+  #q{flex:1;min-width:0;font:inherit;font-size:.92rem;padding:9px 12px;border:1px solid var(--line);
+    border-radius:10px;background:var(--surface);color:var(--fg)}
+  #q::placeholder{color:var(--muted)}
+  #q:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .count{font-family:var(--font-num);font-size:.8rem;color:var(--muted);white-space:nowrap}
+  .count b{color:var(--accent);font-size:1rem}
+
+  /* machine filter chips */
+  .chips{display:flex;gap:7px;margin-top:10px;overflow-x:auto;padding-bottom:3px;
+    scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .fchip{flex:0 0 auto;font:inherit;font-size:.8rem;cursor:pointer;white-space:nowrap;
+    padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+    color:var(--fg);display:flex;gap:6px;align-items:center}
+  .fchip .c{font-family:var(--font-num);font-size:.72rem;color:var(--muted)}
+  .fchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .fchip[aria-pressed="true"] .c{color:#fff;opacity:.85}
+
+  main{padding-block:12px 32px}
+  .group{margin-top:18px}
+  .group:first-child{margin-top:4px}
+  .ghead{display:flex;align-items:baseline;gap:9px;margin:0 2px 9px;
+    position:sticky;top:calc(env(safe-area-inset-top,0px) + 2px);z-index:1}
+  .gname{font-size:1.02rem;font-weight:700;color:var(--accent);
+    background:var(--accent-soft);padding:3px 12px;border-radius:8px}
+  .gcount{font-family:var(--font-num);font-size:.78rem;color:var(--muted)}
+
+  ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:12px 15px 13px;display:flex;flex-direction:column;gap:10px}
+  .name{font-size:1rem;font-weight:600;line-height:1.45;text-wrap:balance;word-break:break-word}
+  .row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .qty{display:flex;align-items:baseline;gap:4px;background:var(--accent-soft);
+    color:var(--accent);padding:4px 12px;border-radius:10px}
+  .qty .num{font-family:var(--font-num);font-size:1.42rem;font-weight:500;letter-spacing:-.01em}
+  .qty .unit{font-size:.92rem;font-weight:600}
+  .meta{margin:0;display:flex;gap:16px}
+  .meta div{display:flex;flex-direction:column;gap:1px}
+  .meta dt{font-size:.64rem;color:var(--muted);letter-spacing:.06em}
+  .meta dd{margin:0;font-family:var(--font-num);font-size:.92rem;color:var(--fg)}
+  .foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+    border-top:1px dashed var(--line);padding-top:8px}
+  .chip{font-family:var(--font-num);font-size:.7rem;color:var(--muted);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .chip.alt{color:var(--warn);background:var(--warn-soft);border-color:transparent;font-family:var(--font-body)}
+  .empty{text-align:center;color:var(--muted);padding:36px 0;font-size:.9rem}
+  mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
+</style>
+
+<header>
+  <div class="wrap head-in">
+    <h1>現品票 一覧</h1>
+    <div class="sub">
+      <span>指示日 <b>2026/10/14</b></span>
+      <span>職場 <b>017 仕込</b></span>
+      <span>製造時間 <b>1</b></span>
+    </div>
+    <div class="tools">
+      <input id="q" type="search" placeholder="品名・注番・管理番号で検索" autocomplete="off" aria-label="検索">
+      <span class="count"><b id="n">90</b>/90 件</span>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="list"></div>
+  <p class="empty" id="empty" hidden>該当なし</p>
+</main>
+
+<script>
+// 現品票データ（指示日 2026/10/14・職場017 仕込）。src=元ファイル(現品表N)、line=機械番号
+const DATA = [
+  // ── 現品表1（機械番号：盛付行）──
+  {name:"開封・液切）すこぶるメンマ",qty:"9.78",unit:"Kg",order:"5090155",mng:"2080012442",seq:"56160",line:"盛付行",src:1,pages:"1/2"},
+  {name:"開封）おろししょうが（揚げ出し豆腐用）",qty:"3.00",unit:"Kg",order:"5090158",mng:"2080012447",seq:"56181",line:"盛付行",src:1},
+  {name:"開封）醤油ラーメンゼラチン1kg",qty:"151.20",unit:"Kg",order:"5090154",mng:"2080012441",seq:"56154",line:"盛付行",src:1},
+  {name:"パスタ用）熱加工行）舞茸カット",qty:"7.76",unit:"Kg",order:"5090149",mng:"2080012433",seq:"56088",line:"盛付行",src:1},
+  {name:"解凍・開封）盛付用）焼たらこばらこ",qty:"3.45",unit:"Kg",order:"5090148",mng:"2080012432",seq:"56091",line:"盛付行",src:1},
+  {name:"解凍・開封）熱加工用）焼たらこばらこ",qty:"3.97",unit:"Kg",order:"5090144",mng:"2080012427",seq:"56048",line:"盛付行",src:1},
+  {name:"開封）針生姜 盛付用",qty:"1.51",unit:"g",order:"5090141",mng:"2080012412",seq:"55806",line:"盛付行",src:1},
+  {name:"開封・おむすび成型行）国産青しそ広島菜（ザル1分静置）",qty:"3,686.00",unit:"g",order:"5090140",mng:"2080012410",seq:"55765",line:"盛付行",src:1},
+  {name:"開封）乾燥剤取除　アーモンド皮付ロースト3.5-5M(1kg*10P)",qty:"228.00",unit:"g",order:"5090139",mng:"2080012403",seq:"55854",line:"盛付行",src:1},
+  {name:"パック用開封）業務用きざみふじっ子（成型用）",qty:"2,789.00",unit:"g",order:"5090136",mng:"2080012399",seq:"55608",line:"盛付行",src:1},
+  {name:"開封）盛付用）半熟風れあとろたまごL(1kg*12P)",qty:"21.00",unit:"Kg",order:"5090135",mng:"2080012395",seq:"55550",line:"盛付行",src:1,jikan:"3"},
+  {name:"開封）カリカリ梅大根（成型用）（ザル1分静置）",qty:"5.91",unit:"Kg",order:"5090124",mng:"2080012346",seq:"55142",line:"盛付行",src:1},
+  {name:"（開封・撹拌）細巻用新香ゴマ混ぜ",qty:"531.00",unit:"本",order:"5090122",mng:"2080012328",seq:"54839",line:"盛付行",src:1},
+  {name:"パック用開封）紅鮭フレーク2021(1kg*12p)（成型用）",qty:"2,034.00",unit:"g",order:"5090121",mng:"2080012316",seq:"54734",line:"盛付行",src:1},
+  {name:"解凍・開封）撹拌用）かねふくつぶ明太",qty:"13.61",unit:"Kg",order:"5090118",mng:"2080012303",seq:"54494",line:"盛付行",src:1},
+  {name:"解凍・開封）撹拌用）明太子ばらこ加熱MA-1",qty:"6.69",unit:"Kg",order:"5090117",mng:"2080012302",seq:"54495",line:"盛付行",src:1},
+  {name:"開封）ちゃんぽん用）IQF　細切り蒲鉾R",qty:"10.57",unit:"Kg",order:"5090115",mng:"2080012296",seq:"54436",line:"盛付行",src:1},
+  {name:"解凍・開封）盛付用）明太子ばらこ加熱MA-1",qty:"4,682.35",unit:"g",order:"5090114",mng:"2080012291",seq:"54401",line:"盛付行",src:1},
+  {name:"中華春雨用）（開封）蒸し鶏ほぐし500g",qty:"8,295.00",unit:"g",order:"5090106",mng:"2080012270",seq:"54103",line:"盛付行",src:1},
+  {name:"開封）（素麺用）彩りフレーク",qty:"4.37",unit:"Kg",order:"5090103",mng:"2080012252",seq:"53801",line:"盛付行",src:1},
+  {name:"IQF　細切り　蒲鉾R（開封）",qty:"2.92",unit:"Kg",order:"5090102",mng:"2080012250",seq:"53789",line:"盛付行",src:1},
+  {name:"開封・水切）大根おろし（揚げ出し豆腐用）",qty:"5.00",unit:"Kg",order:"5090098",mng:"2080012210",seq:"53139",line:"盛付行",src:1},
+  {name:"開封）大丸食品）豪州産牛おにぎりの具",qty:"10.00",unit:"P",order:"5090095",mng:"2080012206",seq:"53106",line:"盛付行",src:1},
+  {name:"開封）成型用紀州南高梅種抜き白",qty:"25.00",unit:"P",order:"5090094",mng:"2080012205",seq:"53110",line:"盛付行",src:1},
+  // ── 現品表2 ──
+  {name:"開封）25年）粕汁ゼラチン1kg",qty:"291.00",unit:"Kg",order:"5090093",mng:"2080012190",seq:"52844",line:"盛付行",src:2},
+  {name:"盛付用）ポークプレスハム短冊",qty:"5.10",unit:"Kg",order:"5090087",mng:"2080012125",seq:"52198",line:"盛付行",src:2},
+  {name:"開封・盛付行）味わい大根",qty:"7,614.00",unit:"g",order:"5090092",mng:"2080012172",seq:"52672",line:"盛付行",src:2},
+  {name:"しっとりそぼろ卵（盛付行）",qty:"3.20",unit:"Kg",order:"5090091",mng:"2080012153",seq:"52457",line:"盛付行",src:2},
+  {name:"開封）肉じゃがゼラチン1kg",qty:"16.00",unit:"Kg",order:"5090083",mng:"2080012060",seq:"51511",line:"盛付行",src:2},
+  {name:"盛付用）IQF赤丸蒲鉾2.5小PH（R）",qty:"4,632.10",unit:"枚",order:"5090081",mng:"2080012055",seq:"51483",line:"盛付行",src:2},
+  {name:"成型行払出）国産ひきわり納豆(500g*30P)",qty:"21.00",unit:"Kg",order:"5090080",mng:"2080012022",seq:"51174",line:"盛付行",src:2},
+  {name:"盛付行）オムライス用玉子焼1/2カット",qty:"290.00",unit:"枚",order:"5090077",mng:"2080011985",seq:"50818",line:"盛付行",src:2},
+  {name:"開封）盛付行）オムライス用高リコピンケチャップ",qty:"14,200.00",unit:"g",order:"5090076",mng:"2080011984",seq:"50817",line:"盛付行",src:2},
+  {name:"開封・盛付行）国産青しそ広島菜",qty:"4,933.00",unit:"g",order:"5090072",mng:"2080011914",seq:"50140",line:"盛付行",src:2},
+  {name:"開封）そばゼラチン1kg",qty:"203.00",unit:"Kg",order:"5090064",mng:"2080011885",seq:"49971",line:"盛付行",src:2},
+  {name:"盛付行）ツナフレーク",qty:"5,103.00",unit:"g",order:"5090060",mng:"2080011848",seq:"49031",line:"盛付行",src:2},
+  {name:"開封）和だしうどんゼラチン1kg",qty:"670.00",unit:"Kg",order:"5090048",mng:"2080011749",seq:"48239",line:"盛付行",src:2},
+  {name:"キウイフルーツ開封",qty:"2,078.00",unit:"g",order:"5090043",mng:"2080011698",seq:"47768",line:"盛付行",src:2},
+  {name:"長芋千切り（解凍→開封）",qty:"4.00",unit:"Kg",order:"5090039",mng:"2080011601",seq:"28318",line:"盛付行",src:2},
+  {name:"オーシャン花咲ハーフカット　3F盛付用開封",qty:"8,036.00",unit:"g",order:"5090031",mng:"2080011374",seq:"21201",line:"盛付行",src:2},
+  {name:"みかん缶開封（3F盛付用）",qty:"2,263.00",unit:"g",order:"5090018",mng:"2080011068",seq:"11891",line:"盛付行",src:2},
+  {name:"開封）トリトンフーヅ　韓国産めかぶ",qty:"1,526.00",unit:"g",order:"5090010",mng:"2080010865",seq:"47471",line:"盛付行",src:2},
+  {name:"夜間）水煮なめこ開封・液切",qty:"3,052.00",unit:"g",order:"5090009",mng:"2080010864",seq:"47470",line:"盛付行",src:2},
+  {name:"開封）盛付用種抜き梅100粒(450g*12P)",qty:"4.00",unit:"P",order:"5090008",mng:"2080010857",seq:"47440",line:"盛付行",src:2},
+  {name:"開封）ちゃんぽんゼラチン1kg",qty:"216.00",unit:"Kg",order:"5089990",mng:"2080010592",seq:"44215",line:"盛付行",src:2},
+  {name:"新規行きRS用計量）玉葱スライス5mm",qty:"900.00",unit:"g",order:"5089988",mng:"2080010469",seq:"42387",line:"盛付行",src:2},
+  {name:"おばんざい用）豆腐ハンバーグ RN40g 和風あん絡め",qty:"281.00",unit:"個",order:"5090085",mng:"2080012112",seq:"52048",line:"タレ混ぜ",src:2},
+  {name:"ポテト3mmメッシュ3kgガゼット詰め",qty:"4.00",unit:"P",order:"5090071",mng:"2080011913",seq:"50126",line:"タレ混ぜ",src:2},
+  // ── 現品表3 ──
+  {name:"弁当用肉団子甘酢あん絡め",qty:"2,214.00",unit:"個",order:"5090068",mng:"2080011903",seq:"50096",line:"タレ混ぜ",src:3},
+  {name:"玉子マカ用）料亭風茹卵（プレーン味）20mmクラッシュカット",qty:"10.00",unit:"Kg",order:"5090134",mng:"2080012393",seq:"55540",line:"ゆで卵",src:3},
+  {name:"料亭風茹卵（しょうゆ味EX）1/2カット",qty:"1,310.00",unit:"個",order:"5090101",mng:"2080012240",seq:"53638",line:"ゆで卵",src:3},
+  {name:"前日開封・解凍）ノースイおひたし用中国産ほうれん草",qty:"66,039.00",unit:"g",order:"5090107",mng:"2080012272",seq:"54187",line:"サラダ攪拌",src:3},
+  {name:"開封）熱加工行）ソース用高リコピントマトケチャップ",qty:"4,452.00",unit:"g",order:"5090105",mng:"2080012261",seq:"53951",line:"サラダ攪拌",src:3},
+  {name:"開封）熱加工行）ナポリタン用高リコピントマトケチャップ",qty:"20,947.92",unit:"g",order:"5090104",mng:"2080012260",seq:"53954",line:"サラダ攪拌",src:3},
+  {name:"サラダ攪拌用）ポークプレスハム短冊",qty:"10.00",unit:"Kg",order:"5090086",mng:"2080012124",seq:"52192",line:"サラダ攪拌",src:3},
+  {name:"前日開封・解凍）胡麻和え用中国産ほうれん草",qty:"29,290.00",unit:"g",order:"5090061",mng:"2080011855",seq:"49080",line:"サラダ攪拌",src:3},
+  {name:"開封）熱加工行）ナポリタンソース",qty:"7,632.00",unit:"g",order:"5090006",mng:"2080010799",seq:"46943",line:"サラダ攪拌",src:3},
+  {name:"開封）熱加工行）ソース用トマトケチャップ",qty:"4,452.00",unit:"g",order:"5090004",mng:"2080010796",seq:"46938",line:"サラダ攪拌",src:3},
+  {name:"開封）（だしまきセット用）揚げ浸し用揚げ茄子乱切り",qty:"45.00",unit:"Kg",order:"5089995",mng:"2080010667",seq:"45075",line:"サラダ攪拌",src:3},
+  {name:"たこ2~3g 柚子果汁入酢の物調味液漬込み",qty:"8.80",unit:"Kg",order:"5089890",mng:"2050010502",seq:"55974",line:"サラダ攪拌",src:3},
+  {name:"盛付用）焼きサバほぐし身（フレッシュロン和え）",qty:"8,922.00",unit:"g",order:"5089880",mng:"2050010430",seq:"53278",line:"サラダ攪拌",src:3},
+  {name:"ごぼ天きしめん用）中国産皮付き斜め切り牛蒡",qty:"21.00",unit:"Kg",order:"5090123",mng:"2080012345",seq:"55133",line:"フライヤー",src:3},
+  {name:"開封）にら5cmカット",qty:"6,000.00",unit:"g",order:"5090100",mng:"2080012228",seq:"53412",line:"フライヤー",src:3},
+  {name:"開封）タレなし肉団子23",qty:"2,214.00",unit:"個",order:"5090096",mng:"2080012207",seq:"53127",line:"フライヤー",src:3},
+  {name:"開封）べに花　すしあげ(8枚*14p)やまみ",qty:"150.00",unit:"P",order:"5089989",mng:"2080010514",seq:"43189",line:"フライヤー",src:3},
+  {name:"開封）さつま芋（蒸し）南瓜サラダ用（蒸し庫100℃",qty:"7.00",unit:"Kg",order:"5089974",mng:"2080010111",seq:"32466",line:"フライヤー",src:3},
+  {name:"盛付用カボチャ10mmダイス(100℃3分スチーム)",qty:"4.00",unit:"Kg",order:"5089741",mng:"2040011342",seq:"24857",line:"フライヤー",src:3},
+  {name:"開封）炊飯行五目おこわ具用）若鶏むね肉切身（熱加工行）",qty:"400.00",unit:"g",order:"5090046",mng:"2080011719",seq:"47995",line:"鍋",src:3},
+  {name:"開封）盛付用ボイルもやし",qty:"68.00",unit:"Kg",order:"5090079",mng:"2080012020",seq:"51153",line:"鍋",src:3},
+  {name:"開封鶏五目用）森林ドリ　熱加工行）",qty:"2,100.00",unit:"g",order:"5090065",mng:"2080011891",seq:"50036",line:"鍋",src:3},
+  {name:"開封・熱加工用）盛付用カラピーマン赤ダイス",qty:"4,844.00",unit:"g",order:"5089986",mng:"2080010392",seq:"36510",line:"鍋",src:3},
+  {name:"開封・熱加工用）盛付用カラピーマン黄ダイス",qty:"4,844.00",unit:"g",order:"5089985",mng:"2080010390",seq:"36506",line:"鍋",src:3},
+  // ── 現品表4 ──
+  {name:"開封・緑黄色用）人参10mmダイス",qty:"19,957.00",unit:"g",order:"5089984",mng:"2080010329",seq:"35468",line:"鍋",src:4},
+  {name:"緑黄色用・開封）いんげん1インチ",qty:"16,500.00",unit:"g",order:"5089981",mng:"2080010314",seq:"35076",line:"鍋",src:4},
+  {name:"緑黄色用・開封）手間なしブロッコリ-SS",qty:"18,000.00",unit:"g",order:"5089980",mng:"2080010297",seq:"49634",line:"鍋",src:4},
+  {name:"開封）カレーうどん用讃岐うどん",qty:"126.31",unit:"Kg",order:"5090157",mng:"2080012446",seq:"56175",line:"蒸気",src:4},
+  {name:"開封）盛付用）ポークチョップドハムダイス",qty:"1.54",unit:"Kg",order:"5090151",mng:"2080012438",seq:"56145",line:"蒸気",src:4},
+  {name:"開封）撹拌用）ポークチョップドハムダイス",qty:"4.63",unit:"Kg",order:"5090150",mng:"2080012437",seq:"56144",line:"蒸気",src:4},
+  {name:"開封）冷凍国産ブロイラームネミンチ10*2P 1回25cs",qty:"6,720.00",unit:"g",order:"5090137",mng:"2080012401",seq:"55615",line:"蒸気",src:4},
+  {name:"焼うどん用）人参銀杏切り2mm",qty:"9.00",unit:"Kg",order:"5090127",mng:"2080012359",seq:"55235",line:"蒸気",src:4},
+  {name:"焼うどん用）キャベツ4*4cm（角切り）",qty:"36.00",unit:"Kg",order:"5090128",mng:"2080012360",seq:"55238",line:"蒸気",src:4},
+  {name:"開封）焼きうどん用麺始め讃岐うどん",qty:"67.00",unit:"Kg",order:"5090126",mng:"2080012358",seq:"55230",line:"蒸気",src:4},
+  {name:"開封）水煮蓮根チラシ1/4",qty:"5,165.00",unit:"g",order:"5090084",mng:"2080012074",seq:"51647",line:"蒸気",src:4},
+  {name:"（開封）熱加工行ビーフン",qty:"29.00",unit:"Kg",order:"5090059",mng:"2080011845",seq:"49680",line:"蒸気",src:4},
+  {name:"開封）玉葱微塵切り5kgマルマサ",qty:"5,832.00",unit:"g",order:"5089997",mng:"2080010714",seq:"45505",line:"蒸気",src:4},
+  {name:"トッピング用）釜揚げしらす1kg×12入り開封",qty:"5,032.00",unit:"g",order:"5089987",mng:"2080010418",seq:"36823",line:"蒸気",src:4},
+  {name:"開封）朝サラダ用刻みオクラ（500g*20p）",qty:"6,053.00",unit:"g",order:"5089994",mng:"2080010642",seq:"44707",line:"蒸気",src:4},
+  {name:"開封・緑黄色用）むきえだまめ",qty:"15,875.00",unit:"g",order:"5089983",mng:"2080010325",seq:"34909",line:"蒸気",src:4},
+  {name:"取分け）きくらげ戻し細切スライス（ちゃんぽん用）",qty:"16.00",unit:"Kg",order:"5089802",mng:"2040012002",seq:"55552",line:"蒸気",src:4},
+  {name:"三角こんにゃく煮　再沸15分",qty:"6,166.34",unit:"個",order:"5089782",mng:"2040011907",seq:"53439",line:"蒸気",src:4},
+];
+
+const ORDER = ["盛付行","タレ混ぜ","ゆで卵","サラダ攪拌","フライヤー","鍋","蒸気"];
+const list=document.getElementById('list');
+const q=document.getElementById('q');
+const n=document.getElementById('n');
+const empty=document.getElementById('empty');
+const chipsEl=document.getElementById('chips');
+let active="";
+
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hi(text,term){
+  const t=esc(String(text));
+  if(!term) return t;
+  const i=t.toLowerCase().indexOf(term.toLowerCase());
+  if(i<0) return t;
+  return t.slice(0,i)+'<mark>'+t.slice(i,i+term.length)+'</mark>'+t.slice(i+term.length);
+}
+
+// build filter chips
+const counts={};
+ORDER.forEach(l=>counts[l]=DATA.filter(d=>d.line===l).length);
+function renderChips(){
+  const all=`<button class="fchip" data-l="" aria-pressed="${active===""}">すべて<span class="c">${DATA.length}</span></button>`;
+  chipsEl.innerHTML=all+ORDER.map(l=>
+    `<button class="fchip" data-l="${l}" aria-pressed="${active===l}">${l}<span class="c">${counts[l]}</span></button>`
+  ).join("");
+}
+chipsEl.addEventListener('click',e=>{
+  const b=e.target.closest('.fchip'); if(!b) return;
+  active=b.dataset.l; renderChips(); render();
+});
+
+function render(){
+  const t=q.value.trim();
+  const tl=t.toLowerCase();
+  const rows=DATA.filter(d=>{
+    if(active && d.line!==active) return false;
+    if(t && !(d.name+d.order+d.mng+d.seq).toLowerCase().includes(tl)) return false;
+    return true;
+  });
+  n.textContent=rows.length;
+  empty.hidden=rows.length>0;
+  let html="";
+  for(const l of ORDER){
+    const g=rows.filter(d=>d.line===l);
+    if(!g.length) continue;
+    html+=`<section class="group"><div class="ghead"><span class="gname">${l}</span><span class="gcount">${g.length}件</span></div><ul>`;
+    html+=g.map(d=>`
+      <li class="card">
+        <div class="name">${hi(d.name,t)}</div>
+        <div class="row">
+          <div class="qty"><span class="num">${d.qty}</span><span class="unit">${d.unit}</span></div>
+          <dl class="meta">
+            <div><dt>注番</dt><dd>${hi(d.order,t)}</dd></div>
+            <div><dt>管理番号</dt><dd>${hi(d.mng,t)}</dd></div>
+          </dl>
+        </div>
+        <div class="foot">
+          <span class="chip">No.${d.seq}</span>
+          <span class="chip">表${d.src}</span>
+          ${d.pages?`<span class="chip">${d.pages}</span>`:""}
+          ${d.jikan?`<span class="chip alt">製造時間${d.jikan}</span>`:""}
+        </div>
+      </li>`).join("");
+    html+=`</ul></section>`;
+  }
+  list.innerHTML=html;
+}
+renderChips();
+render();
+q.addEventListener('input',render);
+</script>
