@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-90">
+<html lang="zh-CN" data-appver="2026-10-19-91">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -770,8 +770,8 @@ select option:checked{background:#2b2f3a}
 .total-row .rate-unit{font-size:11px;font-weight:400;color:var(--muted)}
 .q-list input.qty.qty-locked{opacity:.35;pointer-events:none}
 .qty-grand{font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
+.qty-rates{margin-left:auto;display:inline-flex;align-items:baseline;gap:12px}
 .qty-rate{font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
-.qty-rate[data-group="A"]{margin-left:auto}
 .qty-rate b{color:#f87171;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .qty-rate .qty-rate-u{font-size:11px;color:var(--muted)}
 .qty-grand b{color:var(--accent);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
@@ -870,6 +870,9 @@ select option:checked{background:#2b2f3a}
   }
   .sched-header .sched-bar{margin-bottom:8px}
   .sched-header .line-tabs{margin-bottom:0}
+  /* 手机端:全线合计跟日期同行靠右,两组生产率整组换到下一行靠右(全线合计在生产率上方) */
+  .sched-bar .qty-grand{margin-left:auto}
+  .sched-bar .qty-rates{order:1;flex-basis:100%;justify-content:flex-end;margin-left:0}
 }
 #picker-host{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
 #picker-host.hidden{display:none}
@@ -1624,8 +1627,10 @@ const Pages = (() => {
             <button class="date-trigger" id="qty-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
             <div class="cal-host hidden" id="qty-cal-host"></div>
           </span>
-          <span class="qty-rate" data-group="A">夕盛+01 <b>${groupRate(['夕盛','01'])}</b><span class="qty-rate-u">个/h</span></span>
-          <span class="qty-rate" data-group="B">02~05 <b>${groupRate(['02','03','04','05'])}</b><span class="qty-rate-u">个/h</span></span>
+          <span class="qty-rates">
+            <span class="qty-rate" data-group="A">夕盛+01 <b>${groupRate(['夕盛','01'])}</b><span class="qty-rate-u">个/h</span></span>
+            <span class="qty-rate" data-group="B">02~05 <b>${groupRate(['02','03','04','05'])}</b><span class="qty-rate-u">个/h</span></span>
+          </span>
           <span class="qty-grand">全线合计 <b class="qty-grand-v">${fmt(grandTotal)||'0'}</b></span>
         </div>
       </div>
