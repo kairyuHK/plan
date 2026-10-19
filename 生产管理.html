@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-91">
+<html lang="zh-CN" data-appver="2026-10-19-92">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -11954,10 +11954,12 @@ function renderOperate() {
   const title = document.createElement("div"); title.className = "bento-title";
   if (bento) {
     title.textContent = bento.name;
-    if (bento.color) {
+    // 标题颜色与便当库圆点保持一致:bentoSharedColor = 品名库关联色优先,其次便当自身色
+    const _titleColor = bentoSharedColor(bento);
+    if (_titleColor) {
       // 自定义色需要同时覆盖 color 和 -webkit-text-fill-color(避免被深色主题的 fill-color CSS 拦掉)
-      title.style.color = bento.color;
-      title.style.webkitTextFillColor = bento.color;
+      title.style.color = _titleColor;
+      title.style.webkitTextFillColor = _titleColor;
     }
   } else { title.innerHTML = '<span class="muted">(输入便当名或从便当库选)</span>'; }
   c.appendChild(title);
