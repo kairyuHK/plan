@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-86">
+<html lang="zh-CN" data-appver="2026-10-19-87">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -766,8 +766,9 @@ select option:checked{background:#2b2f3a}
 .total-row .t-label{font-weight:600}
 .total-row .t-value{text-align:right;font-weight:700;font-size:16px;color:var(--accent);padding-right:10px}
 .total-row.rate-row{border-top:none;padding-top:0}
-.total-row.rate-row .t-value{font-size:14px}
+.total-row.rate-row .t-value{font-size:14px;color:var(--red)}
 .total-row .rate-unit{font-size:11px;font-weight:400;color:var(--muted)}
+.q-list input.qty.qty-locked{opacity:.35;pointer-events:none}
 .qty-grand{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:baseline;gap:4px}
 .qty-grand b{color:var(--accent);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
@@ -1669,6 +1670,7 @@ const Pages = (() => {
           Store.setQtyValueQuiet(currentDate, lineId, id, digits);
           updateQtyCard(card);
           updateGrandTotal();
+          refreshBentoLocks();
         });
         input.addEventListener('blur', () => {
           const digits = input.value.replace(/[^\d]/g,'');
@@ -1677,10 +1679,38 @@ const Pages = (() => {
         input.addEventListener('keydown', (e) => {
           if(e.key === 'Enter'){
             e.preventDefault();
-            const next = allQty[allQty.indexOf(input) + 1];
+            let ni = allQty.indexOf(input) + 1;
+            while(ni < allQty.length && allQty[ni].readOnly) ni++; // 跳过被别线锁定的只读框
+            const next = allQty[ni];
             if(next) next.focus(); else input.blur(); // 聚焦下一个会自动触发本框 blur 格式化
           }
         });
+      });
+    });
+    refreshBentoLocks();
+  }
+  // 跨线互斥:同名便当只允许一条线填数量;某名已被别线填(当天非空),其他线该行锁定只读
+  function refreshBentoLocks(){
+    const s = Store.get();
+    const owner = {}; // 便当名 -> 第一个填了数量的 lineId
+    s.lines.filter(l=>!l.virtual).forEach(line => {
+      (s.qtyBentos[line.id]||[]).forEach(b => {
+        if(owner[b.name]) return;
+        const v = Store.getQtyValue(currentDate, line.id, b.id);
+        if(v != null) owner[b.name] = line.id;
+      });
+    });
+    document.querySelectorAll('#page-qty .card[data-line]').forEach(card => {
+      const lineId = card.dataset.line;
+      const bentos = s.qtyBentos[lineId] || [];
+      card.querySelectorAll('li[data-id]').forEach(li => {
+        const b = bentos.find(x => x.id === li.dataset.id);
+        if(!b) return;
+        const inp = li.querySelector('.qty');
+        if(!inp) return;
+        const lockedByOther = !!(owner[b.name] && owner[b.name] !== lineId);
+        inp.readOnly = lockedByOther;
+        inp.classList.toggle('qty-locked', lockedByOther);
       });
     });
   }
