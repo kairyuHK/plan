@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-95">
+<html lang="zh-CN" data-appver="2026-10-19-96">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -789,7 +789,7 @@ select option:checked{background:#2b2f3a}
 /* 线卡片栅格:窄屏自动单列,够宽时并排多列(min(320,100%) 防窄屏溢出;align-items:start 让矮卡保持自身高度) */
 .line-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px;align-items:start}
 .line-grid .card{margin-bottom:0}
-.sched-header{position:sticky;top:var(--nav-h,38px);z-index:20;background:var(--bg);box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.sched-header{position:sticky;top:var(--nav-h,38px);z-index:20;background:var(--bg);box-shadow:0 4px 12px rgba(0,0,0,.35);margin-top:-16px;padding-top:16px}
 .sched-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .sched-bar input[type=date]{font-family:var(--font-mono)}
 .sched-bar .danger-btn{border-color:var(--danger);color:var(--danger)}
