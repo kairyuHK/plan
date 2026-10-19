@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-76">
+<html lang="zh-CN" data-appver="2026-10-19-77">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5546,6 +5546,34 @@ function parseClock(str) {
   if (h > 23 || m > 59) return null;
   return h * 3600 + m * 60;
 }
+// 文本时间框:规整成 HH:MM(接受 8 / 830 / 8:5 / 全角：);非法返回 null,空返回 ''
+function normTime(v) {
+  v = (v || '').trim();
+  if (!v) return '';
+  let h, m;
+  if (v.includes(':') || v.includes('：')) {
+    const parts = v.replace('：', ':').split(':');
+    h = parseInt(parts[0], 10); m = parseInt(parts[1], 10);
+  } else {
+    const d = v.replace(/\D/g, '');
+    if (!d) return null;
+    if (d.length <= 2) { h = parseInt(d, 10); m = 0; }
+    else { h = parseInt(d.slice(0, -2), 10); m = parseInt(d.slice(-2), 10); }
+  }
+  if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+// 给文本时间框绑定失焦规整;规整后派发 input 事件,复用该框已有的 recalc/save 逻辑
+function bindTimeNorm(inp) {
+  if (!inp) return;
+  inp.dataset.last = inp.value;
+  inp.addEventListener('blur', () => {
+    const n = normTime(inp.value);
+    if (n === null) { inp.value = inp.dataset.last || ''; }
+    else { inp.value = n; inp.dataset.last = n; }
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
 function fmtClock(totalSec) {
   if (!isFinite(totalSec) || totalSec < 0) return '—';
   const dayOffset = Math.floor(totalSec / 86400);
@@ -6384,7 +6412,7 @@ function buildLine(num) {
       <div class="line-config">
         <div class="cfg">
           <span class="cfg-label">起始</span>
-          <input class="cfg-input start-time" type="time" value="08:00">
+          <input class="cfg-input start-time" type="text" inputmode="numeric" maxlength="5" placeholder="--:--" value="08:00">
         </div>
         <div class="cfg">
           <span class="cfg-label">切换</span>
@@ -6415,7 +6443,7 @@ function buildLine(num) {
       <div class="foot-row">
         <span class="foot-label">实结</span>
         <label class="actual-finish-wrap" title="点击选择实际结束时间">
-          <input class="foot-val actual-finish" type="time">
+          <input class="foot-val actual-finish" type="text" inputmode="numeric" maxlength="5" placeholder="--:--">
         </label>
       </div>
       <div class="foot-divider">0</div>
@@ -6431,6 +6459,8 @@ function buildLine(num) {
   line.querySelector('.actual-finish').addEventListener('focus', () => { const w = line.querySelector('.actual-finish-wrap'); if (w) w.classList.remove('af-empty'); });
   line.querySelector('.actual-finish').addEventListener('input', () => { updateActualFinishEmpty(line); scheduleSaveBoard(); });
   line.querySelector('.actual-finish').addEventListener('blur', () => updateActualFinishEmpty(line));
+  bindTimeNorm(line.querySelector('.start-time'));
+  bindTimeNorm(line.querySelector('.actual-finish'));
   const wrap = line.querySelector('.cards-wrap');
   wrap.addEventListener('scroll', () => syncScroll(wrap.scrollTop, wrap));
   return line;
@@ -6599,7 +6629,7 @@ function addRestCard(grid, savedData) {
         </div>
         <div class="field">
           <span class="field-label">指定开始</span>
-          <input class="field-input rest-fixed" type="time" value="${fixedVal}">
+          <input class="field-input rest-fixed" type="text" inputmode="numeric" maxlength="5" placeholder="--:--" value="${fixedVal}">
         </div>
       </div>
       <div class="card-meta">
@@ -6883,6 +6913,7 @@ function wireCardEvents(node, type) {
       scheduleSaveBoard();
     });
   });
+  bindTimeNorm(node.querySelector('.rest-fixed'));
   const meterInp = node.querySelector('.meter-people');
   if (meterInp) {
     meterInp.addEventListener('change', () => {
