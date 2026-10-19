@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-81">
+<html lang="zh-CN" data-appver="2026-10-19-82">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -4134,9 +4134,8 @@ const Pages = (() => {
   /* 打印 / PDF 导出 共用样式（body.printing 类触发） */
   body.printing .export-wrap, body.printing .head-btns, body.printing .card-del, body.printing .compact-del, body.printing .drag-handle, body.printing .pager, body.printing .modal-mask,
   body.printing .line-config, body.printing .top-btn, body.printing .date-back-today, body.printing .cal-popover, body.printing::before { display: none !important; }
-  /* 卡数行是屏幕统计栏专用;打印/导出底栏按 4 行(数量/耗时/结束/实结)预算,隐藏卡数行避免撑高破坏版面。
-     printing-compact 由 setupPrintLayout 添加(打印+导出都走),比 body.printing 更可靠地覆盖两条路径。 */
-  body.printing .card-count-row, body.printing-compact .card-count-row { display: none !important; }
+  /* 卡数行:打印/导出底栏也显示(统计栏 5 行:数量/卡数/耗时/结束/实结),
+     靠下面 foot-row margin 压紧,放进固定高度而不撑高版面(否则总高增→可能又两页)。 */
   body.printing .timeline-head { cursor: default !important; }
   body.printing #totalAll, body.printing .print-only { display: inline !important; color: #000 !important; font-size: 12px !important; font-weight: 700 !important; }
   body.printing #totalDur { color:var(--accent-dark) !important; }
@@ -4412,7 +4411,7 @@ const Pages = (() => {
      两边底栏(timeline-foot / line-foot)同高,视觉对齐。 */
   body.printing.printing-compact .line-foot,
   body.printing.printing-compact .timeline-foot { height: 68px !important; min-height: 68px !important; padding: 2px 6px !important; }
-  body.printing.printing-compact .line-foot .foot-row { margin-bottom: 1px !important; line-height: 1.1 !important; }
+  body.printing.printing-compact .line-foot .foot-row { margin-bottom: 0 !important; line-height: 1.1 !important; }
   body.printing.printing-compact .line-foot .foot-row:last-child { margin-bottom: 0 !important; }
 
   /* === 打印时:右上角的「耗时 / 结束 / 时钟」都隐藏,只保留「总计」 === */
