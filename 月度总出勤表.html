@@ -2134,12 +2134,14 @@ const Store = (() => {
     commit('cellText');
   }
 
-  function setRequired(deptId, ymd, n) {
+  function setRequired(deptId, ymd, n, silent) {
     const k = dispKey(deptId, ymd);
     const raw = String(n).trim();
-    if (raw === '') { delete state.requiredPerDay[k]; commit('required'); return; }
-    state.requiredPerDay[k] = Math.max(0, Number(n) || 0);
-    commit('required');
+    if (raw === '') delete state.requiredPerDay[k];
+    else state.requiredPerDay[k] = Math.max(0, Number(n) || 0);
+    // silent:只存不整表重渲(同 setDispatch);调用方负责局部更新過不足格。
+    if (silent) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} }
+    else commit('required');
   }
 
   // 契休手动覆盖(按周期)。返回数字或 undefined(未覆盖 → 调用方用自动 8/9)。
@@ -3796,7 +3798,14 @@ const Pages = (() => {
         min: '0',
         value: String(requireds[i]),
         readonly: editing ? null : true,
-        onchange: editing ? (e) => Store.setRequired(deptId, days[i].ymd, e.target.value) : null,
+        // silent + 本地更新過不足格(同派遣短期):非 silent 的整表重渲会在输入框正失焦时销毁它 → iOS 卡死工具栏。
+        onchange: editing ? (e) => {
+          const v = e.target.value;
+          if (v !== String(Store.requiredCount(deptId, days[i].ymd))) {
+            Store.setRequired(deptId, days[i].ymd, v, true);
+            updateExcessTd(days[i].ymd, Store.dispatchCount(deptId, days[i].ymd));
+          }
+        } : null,
         onfocus: editing ? (e) => e.target.select() : null
       });
       td.appendChild(input);
@@ -3870,7 +3879,10 @@ const Pages = (() => {
         onchange: editing ? (e) => {
           const v = e.target.value;
           if (v !== String(Store.dispatchCount(deptId, ymdCur))) {
-            Store.setDispatch(deptId, ymdCur, v);
+            // silent:只存不整表重渲 + 本地更新過不足格(与 jumpDispatch 一致)。
+            // 非 silent 的 commit 会在输入框正失焦时销毁整表 → iOS 卡死视口,工具栏点击被吞(手机端「死机」真凶)。
+            Store.setDispatch(deptId, ymdCur, v, true);
+            updateExcessTd(ymdCur, Number(v) || 0);
           }
         } : null,
         onfocus: editing ? (e) => e.target.select() : null,
