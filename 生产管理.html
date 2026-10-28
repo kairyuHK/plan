@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-100">
+<html lang="zh-CN" data-appver="2026-10-19-101">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -5536,7 +5536,8 @@ function schedLineAssignedIds(sched, lineId) {
   for (const key in lineSched) visit(lineSched[key]);
   return set;
 }
-// 卡片时段内「在岗人数」= 该线当日分配、且上班时段与本卡时段重叠的人数(含借调)。
+// 卡片「在岗人数」= 该线当日分配、且在「便当开始时刻」已在岗的人数(含借调)。
+// 以便当开始时间为准:便当开始时或更早到岗、且那一刻还没下班的人才算;晚于开始才到岗的不计。
 // 没填上班时间 = 全天在岗;草稿卡(cardStart/End 为 null)= 全部分配的人都算。
 // 没排岗 / 该线 0 人 → 0(卡片显示「(0)」、着色基准 0−1=−1 → 需要人的卡标红,不再显示白色)。
 // 卡片显示这个「在岗人数」;着色基准 = 在岗人数 − 1。
@@ -5551,7 +5552,7 @@ function schedOnlineCount(sched, lineId, cardStart, cardEnd) {
     if (cardStart == null || cardEnd == null) { n++; return; } // 草稿卡无时段 → 都算
     const ss = sh.s ? parseClock(sh.s) : -Infinity;
     const ee = sh.e ? parseClock(sh.e) : Infinity;
-    if (ss < cardEnd && ee > cardStart) n++;                  // 与卡片时段有重叠才算在岗
+    if (ss <= cardStart && ee > cardStart) n++;               // 便当开始时刻在岗才算(晚于开始到岗的不计)
   });
   return n;
 }
