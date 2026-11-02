@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-101">
+<html lang="zh-CN" data-appver="2026-10-19-102">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9192,6 +9192,12 @@ document.addEventListener('keydown', e => {
 window.skipAutoSave = false;
 window.addEventListener('pagehide', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
+// iOS 切后台/锁屏时 pagehide/beforeunload 常不触发(页面被冻结后直接被系统回收),未手动保存的编辑就丢了。
+// visibilitychange→hidden 是 iOS 唯一可靠的「离开」信号 → 在这里补一次落盘(captureState 直接读输入框当前值,
+// 连正在打字还没失焦的值也会一起存上),重开后 loadBoard 能恢复。
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && !window.skipAutoSave) { try { saveBoard(); } catch (e) {} }
+});
 
 <\/script>
 <script>
