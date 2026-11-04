@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-102">
+<html lang="zh-CN" data-appver="2026-10-19-103">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -9189,6 +9189,36 @@ document.addEventListener('keydown', e => {
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
   else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); doRedo(); }
 });
+// 方向键切换日期:← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪,如 1/31 +1月→2/28)。
+// 仅在「没聚焦输入框、没有弹层(卡片编辑/日历/模态框)、无修饰键」时生效 → 保住输入框里方向键的原生行为,
+// 也不和配置表下拉的 ↑↓ 选项冲突(那是另一个 iframe、仅下拉打开时)。
+(function () {
+  const z = n => String(n).padStart(2, '0');
+  function shiftDay(iso, delta) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + delta);
+    return `${dt.getFullYear()}-${z(dt.getMonth() + 1)}-${z(dt.getDate())}`;
+  }
+  function shiftMonth(iso, delta) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const first = new Date(y, m - 1 + delta, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    return `${first.getFullYear()}-${z(first.getMonth() + 1)}-${z(Math.min(d, last))}`;
+  }
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const k = e.key;
+    if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+    if (activeCard || calPopover || document.querySelector('.modal-mask.show')) return;
+    e.preventDefault();
+    if (k === 'ArrowLeft') switchDate(shiftDay(currentDate, -1));
+    else if (k === 'ArrowRight') switchDate(shiftDay(currentDate, 1));
+    else if (k === 'ArrowUp') switchDate(shiftMonth(currentDate, -1));
+    else if (k === 'ArrowDown') switchDate(shiftMonth(currentDate, 1));
+  });
+})();
 window.skipAutoSave = false;
 window.addEventListener('pagehide', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
 window.addEventListener('beforeunload', () => { if (window.skipAutoSave) return; try { saveBoard(); } catch (e) {} });
