@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-104">
+<html lang="zh-CN" data-appver="2026-10-19-105">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2177,9 +2177,10 @@ const Pages = (() => {
     }
   } catch (e) {}
 
-  // 方向键切换日期(排岗表/数量页):← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪)。
-  // 仅在「没聚焦输入框、没有日历/时间选择器/复制日弹层、无修饰键」时生效 → 保住输入框原生方向键行为。
-  // 与计划板同款;切换走和日历一样的 _calRerender()+broadcastDate(),跨 iframe 日期自动同步。
+  // 方向键切换日期(排岗表/数量页):← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪);
+  // 回车(Enter)= 跳回今日。仅在「没聚焦输入框、没有日历/时间选择器/复制日弹层、无修饰键」时生效
+  // → 保住输入框原生方向键与数量页「回车跳下一个框」的行为。切换后按当前可见页(排岗/数量)重渲,
+  // 不依赖 _calRerender(它只在点过日历后才指向当前页),并 broadcastDate() 跨 iframe 同步。
   (function () {
     const z = n => String(n).padStart(2, '0');
     function shiftDay(iso, delta) {
@@ -2193,12 +2194,19 @@ const Pages = (() => {
       const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
       return `${first.getFullYear()}-${z(first.getMonth() + 1)}-${z(Math.min(d, last))}`;
     }
+    function rerenderCurrent() {
+      const qtyPage = document.querySelector('#page-qty');
+      if (qtyPage && !qtyPage.classList.contains('hidden')) renderQty();
+      else renderSchedule();
+    }
     document.addEventListener('keydown', e => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
       const k = e.key;
-      if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+      const isArrow = k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown';
+      if (!isArrow && k !== 'Enter') return;
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+      if (k === 'Enter' && (tag === 'BUTTON' || tag === 'A' || tag === 'SELECT')) return; // 让回车正常激活按钮/链接
       if (document.querySelector('.cal-host:not(.hidden), #picker-host:not(.hidden), #copy-day-host:not(.hidden)')) return;
       if (!currentDate) currentDate = Util.todayISO();
       e.preventDefault();
@@ -2206,7 +2214,8 @@ const Pages = (() => {
       else if (k === 'ArrowRight') currentDate = shiftDay(currentDate, 1);
       else if (k === 'ArrowUp') currentDate = shiftMonth(currentDate, -1);
       else if (k === 'ArrowDown') currentDate = shiftMonth(currentDate, 1);
-      _calRerender();
+      else if (k === 'Enter') currentDate = Util.todayISO();
+      rerenderCurrent();
       broadcastDate();
     });
   })();
@@ -9223,9 +9232,9 @@ document.addEventListener('keydown', e => {
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
   else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); doRedo(); }
 });
-// 方向键切换日期:← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪,如 1/31 +1月→2/28)。
-// 仅在「没聚焦输入框、没有弹层(卡片编辑/日历/模态框)、无修饰键」时生效 → 保住输入框里方向键的原生行为,
-// 也不和配置表下拉的 ↑↓ 选项冲突(那是另一个 iframe、仅下拉打开时)。
+// 方向键切换日期:← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪,如 1/31 +1月→2/28);
+// 回车(Enter)= 跳回今日。仅在「没聚焦输入框、没有弹层(卡片编辑/日历/模态框)、无修饰键」时生效
+// → 保住输入框里方向键的原生行为,也不和配置表下拉的 ↑↓ 选项冲突(那是另一个 iframe、仅下拉打开时)。
 (function () {
   const z = n => String(n).padStart(2, '0');
   function shiftDay(iso, delta) {
@@ -9242,15 +9251,18 @@ document.addEventListener('keydown', e => {
   document.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
     const k = e.key;
-    if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+    const isArrow = k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown';
+    if (!isArrow && k !== 'Enter') return;
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+    if (k === 'Enter' && (tag === 'BUTTON' || tag === 'A' || tag === 'SELECT')) return; // 让回车正常激活按钮/链接
     if (activeCard || calPopover || document.querySelector('.modal-mask.show')) return;
     e.preventDefault();
     if (k === 'ArrowLeft') switchDate(shiftDay(currentDate, -1));
     else if (k === 'ArrowRight') switchDate(shiftDay(currentDate, 1));
     else if (k === 'ArrowUp') switchDate(shiftMonth(currentDate, -1));
     else if (k === 'ArrowDown') switchDate(shiftMonth(currentDate, 1));
+    else if (k === 'Enter') switchDate(todayStr()); // 回车 = 跳回今日
   });
 })();
 window.skipAutoSave = false;
