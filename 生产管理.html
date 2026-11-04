@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-103">
+<html lang="zh-CN" data-appver="2026-10-19-104">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -2176,6 +2176,40 @@ const Pages = (() => {
       window.parent.postMessage({ type: 'plan-date-request' }, '*');
     }
   } catch (e) {}
+
+  // 方向键切换日期(排岗表/数量页):← → 前/后一天,↑ ↓ 前/后一个月(月末日按目标月天数裁剪)。
+  // 仅在「没聚焦输入框、没有日历/时间选择器/复制日弹层、无修饰键」时生效 → 保住输入框原生方向键行为。
+  // 与计划板同款;切换走和日历一样的 _calRerender()+broadcastDate(),跨 iframe 日期自动同步。
+  (function () {
+    const z = n => String(n).padStart(2, '0');
+    function shiftDay(iso, delta) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + delta);
+      return `${dt.getFullYear()}-${z(dt.getMonth() + 1)}-${z(dt.getDate())}`;
+    }
+    function shiftMonth(iso, delta) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const first = new Date(y, m - 1 + delta, 1);
+      const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+      return `${first.getFullYear()}-${z(first.getMonth() + 1)}-${z(Math.min(d, last))}`;
+    }
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+      const k = e.key;
+      if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+      if (document.querySelector('.cal-host:not(.hidden), #picker-host:not(.hidden), #copy-day-host:not(.hidden)')) return;
+      if (!currentDate) currentDate = Util.todayISO();
+      e.preventDefault();
+      if (k === 'ArrowLeft') currentDate = shiftDay(currentDate, -1);
+      else if (k === 'ArrowRight') currentDate = shiftDay(currentDate, 1);
+      else if (k === 'ArrowUp') currentDate = shiftMonth(currentDate, -1);
+      else if (k === 'ArrowDown') currentDate = shiftMonth(currentDate, 1);
+      _calRerender();
+      broadcastDate();
+    });
+  })();
 
   function renderSchedule(){
     const root = document.querySelector('#page-schedule');
