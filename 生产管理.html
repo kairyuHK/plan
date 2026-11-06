@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-109">
+<html lang="zh-CN" data-appver="2026-10-19-110">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1964,7 +1964,7 @@ const Pages = (() => {
       const overwrite=mask.querySelector('#qi-overwrite').checked, alias=qiLoadAlias();
       let applied=0, skipped=0;
       shown.forEach((pl,li)=>{
-        [...lineEls[li].querySelectorAll('tr')].forEach(tr=>{
+        [...lineEls[li].querySelectorAll('tr:not(.qi-total)')].forEach(tr=>{
           const fi=+tr.querySelector('.qi-sel').value; if(fi<0) return;
           const f=pl.files[fi]; if(!f||f.qty==null) return;
           const bid=tr.dataset.bid, bname=tr.dataset.bname;
