@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-105">
+<html lang="zh-CN" data-appver="2026-10-19-106">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1640,6 +1640,7 @@ const Pages = (() => {
             <button class="date-trigger" id="qty-date-btn">${fmtDateJp(currentDate)}<span class="caret">▾</span></button>
             <div class="cal-host hidden" id="qty-cal-host"></div>
           </span>
+          <button class="qty-import-btn" id="qty-import-btn" title="从 xlsx 导入数量">导入</button>
           <span class="qty-rates">
             <span class="qty-rate" data-group="A">夕盛+01 <b>${groupRate(['夕盛','01'])}</b><span class="qty-rate-u">个/h</span></span>
             <span class="qty-rate" data-group="B">02~05 <b>${groupRate(['02','03','04','05'])}</b><span class="qty-rate-u">个/h</span></span>
@@ -1682,6 +1683,8 @@ const Pages = (() => {
       const host = document.getElementById('qty-cal-host');
       if(host.classList.contains('hidden')){ openCalendar(); } else { closeCalendar(); }
     });
+    const _qiBtn = document.getElementById('qty-import-btn');
+    if(_qiBtn) _qiBtn.addEventListener('click', openQtyImport);
     document.addEventListener('click', calOutsideListener);
     const allQty = [...root.querySelectorAll('.qty')]; // 回车跳下一个用
     root.querySelectorAll('[data-line]').forEach(card => {
@@ -1718,6 +1721,236 @@ const Pages = (() => {
     });
     refreshBentoLocks();
   }
+
+  // ========== 数量导入(离线读 xlsx,无依赖)==========
+  // 文件「线名」→ app lineId;按「线+名字」匹配(精确→别名→模糊 Dice),预览确认后填入。
+  // 安全点:只在「同一条线」内匹配,数量只会进到表里标的那条线,绝不窜线/重复计数。
+  const QI_LINE_MAP = { '夕盛':'xs','1号':'l01','2号':'l02','3号':'l03','4号':'l04','5号':'l05','成型':'tsk','値付け':'tsk','値付':'tsk' };
+  const QI_ALIAS_KEY = 'qtyImportAlias_v1';
+  function qiLoadAlias(){ try{ return JSON.parse(localStorage.getItem(QI_ALIAS_KEY)||'{}')||{}; }catch(_){ return {}; } }
+  function qiSaveAlias(a){ try{ localStorage.setItem(QI_ALIAS_KEY, JSON.stringify(a)); }catch(_){} }
+  function qiNorm(s){
+    s=String(s||'').normalize('NFKC').replace(/[\s　]/g,'');
+    s=s.replace(/[()（）\[\]【】「」『』、。・！!？?,，/／＆&＋+~〜ー\-－]/g,'');
+    s=s.replace(/弁当MD|畜産部向け|南港→?池田|南港|池田|三輪の神糸使用|ポテト内製|新商品シール|IZO関ス|レンジ\)?/g,'');
+    return s.replace(/\d+(?:g|kg|ｇ)/gi,'').replace(/各\d+/g,'');
+  }
+  function qiBigrams(s){ const a=new Set(); for(let i=0;i<s.length-1;i++)a.add(s.slice(i,i+2)); if(s.length===1)a.add(s); return a; }
+  function qiDice(a,b){ a=qiNorm(a); b=qiNorm(b); if(a&&a===b)return 1; const A=qiBigrams(a),B=qiBigrams(b); if(!A.size||!B.size)return 0; let x=0; for(const g of A)if(B.has(g))x++; return 2*x/(A.size+B.size); }
+  function qiDecode(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&'); }
+  async function qiInflateRaw(u8){
+    const stream = new Response(u8).body.pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  function qiReadZip(buf){
+    const u8=new Uint8Array(buf), dv=new DataView(buf);
+    let eocd=-1; for(let i=u8.length-22;i>=0;i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+    if(eocd<0) throw new Error('不是有效的 xlsx 文件');
+    const cnt=dv.getUint16(eocd+10,true), off=dv.getUint32(eocd+16,true);
+    const files={}; let p=off;
+    for(let n=0;n<cnt;n++){
+      if(dv.getUint32(p,true)!==0x02014b50) break;
+      const method=dv.getUint16(p+10,true), compSize=dv.getUint32(p+20,true);
+      const nL=dv.getUint16(p+28,true), eL=dv.getUint16(p+30,true), cL=dv.getUint16(p+32,true);
+      const lho=dv.getUint32(p+42,true);
+      files[new TextDecoder().decode(u8.subarray(p+46,p+46+nL))]={method,compSize,lho};
+      p+=46+nL+eL+cL;
+    }
+    return {u8,dv,files};
+  }
+  async function qiEntry(zip,name){
+    const e=zip.files[name]; if(!e) return null;
+    const dv=zip.dv, lho=e.lho;
+    if(dv.getUint32(lho,true)!==0x04034b50) throw new Error('xlsx 局部头损坏');
+    const start=lho+30+dv.getUint16(lho+26,true)+dv.getUint16(lho+28,true);
+    const comp=zip.u8.subarray(start,start+e.compSize);
+    if(e.method===0) return new TextDecoder().decode(comp);
+    if(e.method===8) return new TextDecoder().decode(await qiInflateRaw(comp));
+    throw new Error('不支持的压缩方式');
+  }
+  function qiSharedStrings(xml){
+    const ss=[]; if(!xml) return ss;
+    const si=/<si>([\s\S]*?)<\/si>/g; let m;
+    while((m=si.exec(xml))){ const tr=/<t[^>]*>([\s\S]*?)<\/t>/g; let t,s=''; while((t=tr.exec(m[1])))s+=t[1]; ss.push(qiDecode(s)); }
+    return ss;
+  }
+  function qiSheetRows(xml, ss){
+    const rows={};
+    const rr=/<row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g; let rm;
+    while((rm=rr.exec(xml))){
+      const ri=+rm[1], cells={};
+      const cr=/<c\s+r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g; let cm;
+      while((cm=cr.exec(rm[2]))){
+        const col=cm[1], attrs=cm[3]||'', body=cm[4];
+        if(body==null) continue;
+        const type=(/t="([^"]+)"/.exec(attrs)||[])[1]||'n';
+        const vm=/<v>([\s\S]*?)<\/v>/.exec(body); let val=vm?vm[1]:'';
+        if(type==='s') val=ss[parseInt(val)]||'';
+        else if(type==='inlineStr'){ const is=/<t[^>]*>([\s\S]*?)<\/t>/.exec(body); val=is?qiDecode(is[1]):''; }
+        else val=qiDecode(val);
+        if(val!=='') cells[col]=val;
+      }
+      rows[ri]=cells;
+    }
+    return rows;
+  }
+  async function qiFindSheetXml(zip){
+    const wb=await qiEntry(zip,'xl/workbook.xml'), rels=await qiEntry(zip,'xl/_rels/workbook.xml.rels');
+    let rid=null;
+    if(wb){ const sheets=[...wb.matchAll(/<sheet[^>]*?name="([^"]*)"[^>]*?r:id="([^"]+)"/g)]; const pick=sheets.find(m=>/数量表|ライン別/.test(m[1]))||sheets[0]; if(pick) rid=pick[2]; }
+    let target='worksheets/sheet1.xml';
+    if(rid && rels){ const rm=new RegExp('Id="'+rid+'"[^>]*?Target="([^"]+)"').exec(rels); if(rm) target=rm[1]; }
+    target=target.replace(/^\//,''); if(!/^xl\//.test(target)) target='xl/'+target;
+    return await qiEntry(zip,target);
+  }
+  function qiColNum(c){ let n=0; for(const ch of c)n=n*26+(ch.charCodeAt(0)-64); return n; }
+  function qiNumCol(n){ let s=''; while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26);} return s; }
+  // 从网格抽「每条线:名字→数量」。靠「品名」表头定位,右一列是线名,往下到「合計」止;
+  // 空名字 / 纯数字名字 跳过(孤儿);有名字但没数字 → qty=null(本次没填)。
+  function qiExtract(rows){
+    const cell=(c,r)=>(rows[r]&&rows[r][c]!=null)?String(rows[r][c]).trim():'';
+    const maxRow=Math.max(0,...Object.keys(rows).map(Number));
+    const out={};
+    for(let r=1;r<=maxRow;r++){
+      if(!rows[r]) continue;
+      for(const col in rows[r]){
+        if(cell(col,r)!=='品名') continue;
+        const qcol=qiNumCol(qiColNum(col)+1), tok=cell(qcol,r), lineId=QI_LINE_MAP[tok];
+        if(!lineId) continue;
+        const arr=[];
+        for(let rr=r+1; rr<=maxRow; rr++){
+          const nm=cell(col,rr);
+          if(nm==='合計') break;
+          if(!nm || /^\d+$/.test(nm)) continue;
+          const qt=cell(qcol,rr);
+          arr.push({ name:nm, qty: /^\d+$/.test(qt)?parseInt(qt,10):null });
+        }
+        out[lineId]=(out[lineId]||[]).concat(arr);
+      }
+    }
+    return out;
+  }
+  // 匹配:每条线 app 便当 vs 文件便当。贪心,先别名后模糊;同一文件项只分配给一个便当。
+  function qiMatch(fileData){
+    const s=Store.get(), alias=qiLoadAlias();
+    const AUTO=0.72, MAYBE=0.45;
+    return s.lines.filter(l=>!l.virtual).map(line=>{
+      const bentos=s.qtyBentos[line.id]||[];
+      const files=(fileData[line.id]||[]).slice();
+      const used=new Array(files.length).fill(false);
+      const rows=bentos.map(b=>{
+        let fi=-1, score=0, status='none';
+        const aKey=line.id+'|'+b.name, aVal=alias[aKey];
+        if(aVal){ const j=files.findIndex((f,i)=>!used[i]&&f.name===aVal); if(j>=0){ fi=j; score=1; status='auto'; } }
+        if(fi<0){
+          let best=-1,bs=-1;
+          files.forEach((f,i)=>{ if(used[i])return; const d=qiDice(b.name,f.name); if(d>bs){bs=d;best=i;} });
+          if(best>=0 && bs>=MAYBE){ fi=best; score=bs; status = bs>=AUTO?'auto':'maybe'; }
+        }
+        if(fi>=0) used[fi]=true;
+        return { bentoId:b.id, bentoName:b.name, status, fileIdx:fi, qty: fi>=0?files[fi].qty:null, score };
+      });
+      const leftover=files.map((f,i)=>({name:f.name,qty:f.qty,used:used[i]})).filter(f=>!f.used && f.qty!=null);
+      return { lineId:line.id, lineName:qtyLineName(line), bentos, files, rows, leftover };
+    });
+  }
+  function qiPickFile(cb){
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    inp.style.cssText='position:fixed;left:-9999px;top:0';
+    document.body.appendChild(inp);
+    inp.addEventListener('change', ()=>{ const f=inp.files&&inp.files[0]; setTimeout(()=>inp.remove(),0); if(f) cb(f); });
+    inp.click();
+  }
+  async function openQtyImport(){
+    if(typeof DecompressionStream==='undefined'){ showToast('此浏览器太旧,不支持直接读 xlsx(可改用 CSV)','warn'); return; }
+    qiPickFile(async (file)=>{
+      try{
+        const buf=await file.arrayBuffer();
+        const zip=qiReadZip(buf);
+        const ss=qiSharedStrings(await qiEntry(zip,'xl/sharedStrings.xml'));
+        const sheetXml=await qiFindSheetXml(zip);
+        if(!sheetXml) throw new Error('找不到工作表');
+        const fileData=qiExtract(qiSheetRows(sheetXml, ss));
+        if(!Object.keys(fileData).length) throw new Error('没识别到「品名/线」结构,请确认表格式');
+        qiOpenPreview(qiMatch(fileData));
+      }catch(err){ showToast('导入失败:'+((err&&err.message)||err),'warn'); }
+    });
+  }
+  function qiEnsureStyles(){
+    if(document.getElementById('qi-style')) return;
+    const st=document.createElement('style'); st.id='qi-style';
+    st.textContent='.qty-import-btn{margin-left:8px;padding:4px 10px;border:1px solid var(--border,#3a3f47);border-radius:8px;background:transparent;color:var(--text,#e8e6e3);font-size:13px;cursor:pointer}.qty-import-btn:hover{border-color:var(--accent);color:var(--accent)}'
+      +'.qi-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}'
+      +'.qi-modal{background:var(--bg,#16181d);border:1px solid var(--border,#3a3f47);border-radius:14px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5)}'
+      +'.qi-head{padding:14px 18px 4px;font-size:16px;font-weight:700}.qi-sub{padding:0 18px 10px;font-size:12px;color:var(--muted,#9aa0a6);border-bottom:1px solid var(--border,#2a2f37)}'
+      +'.qi-body{overflow:auto;padding:4px 18px;flex:1}.qi-line{margin:8px 0}.qi-line-h{font-weight:700;font-size:14px;margin:8px 0 2px;color:var(--accent)}'
+      +'.qi-tbl{width:100%;border-collapse:collapse}.qi-tbl td{padding:4px;border-bottom:1px solid var(--border,#23272e);font-size:13px;vertical-align:middle}'
+      +'.qi-bname{max-width:170px;word-break:break-all}.qi-sel{max-width:250px;width:100%;background:var(--bg,#16181d);color:var(--text,#e8e6e3);border:1px solid var(--border,#3a3f47);border-radius:6px;padding:3px 6px;font-size:12px}'
+      +'.qi-qty{text-align:right;font-variant-numeric:tabular-nums;min-width:50px;font-weight:700}.qi-maybe{background:rgba(255,180,0,.09)}.qi-maybe .qi-bname::after{content:" ❓"}'
+      +'.qi-none .qi-bname{color:var(--muted,#9aa0a6)}.qi-skip{opacity:.45}'
+      +'.qi-leftover{font-size:11px;color:var(--muted,#9aa0a6);margin:3px 0;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:6px}'
+      +'.qi-ow{display:flex;align-items:center;gap:6px;padding:8px 18px;font-size:12px;color:var(--muted,#9aa0a6)}'
+      +'.qi-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--border,#2a2f37)}'
+      +'.qi-foot button{padding:8px 18px;border-radius:8px;border:1px solid var(--border,#3a3f47);font-size:14px;cursor:pointer}'
+      +'.qi-cancel{background:transparent;color:var(--text,#e8e6e3)}.qi-confirm{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}';
+    document.head.appendChild(st);
+  }
+  function qiOpenPreview(perLine){
+    qiEnsureStyles();
+    const shown=perLine.filter(pl=>pl.bentos.length);
+    let nAuto=0,nMaybe=0;
+    const mask=document.createElement('div'); mask.className='qi-mask';
+    const body=shown.map(pl=>{
+      const opts='<option value="-1">— 跳过 —</option>'+pl.files.map((f,i)=>`<option value="${i}">${escapeHtml(f.name)}${f.qty!=null?('（'+f.qty+'）'):'（无数）'}</option>`).join('');
+      const rows=pl.rows.map(r=>{
+        if(r.status==='auto')nAuto++; else if(r.status==='maybe')nMaybe++;
+        const cls=r.status==='maybe'?'qi-maybe':(r.status==='none'?'qi-none':'');
+        return `<tr class="${cls}" data-bid="${r.bentoId}" data-bname="${escapeHtml(r.bentoName)}"><td class="qi-bname">${escapeHtml(r.bentoName)}</td><td><select class="qi-sel">${opts}</select></td><td class="qi-qty"></td></tr>`;
+      }).join('');
+      const left=pl.leftover.length?`<div class="qi-leftover">表里这条线还有没对上的数:${pl.leftover.map(f=>escapeHtml(f.name)+'='+f.qty).join('、')}</div>`:'';
+      return `<div class="qi-line"><div class="qi-line-h">${escapeHtml(pl.lineName)}</div><table class="qi-tbl">${rows}</table>${left}</div>`;
+    }).join('');
+    mask.innerHTML=`<div class="qi-modal"><div class="qi-head">导入数量预览 · ${fmtDateJp(currentDate)}</div>`
+      +`<div class="qi-sub">✅ 自动匹配 ${nAuto} · ❓ 疑似(请核对) ${nMaybe} · 下拉可改,「跳过」=不导入该项</div>`
+      +`<div class="qi-body">${body}</div>`
+      +`<label class="qi-ow"><input type="checkbox" id="qi-overwrite"> 覆盖已有数量(默认只填空白)</label>`
+      +`<div class="qi-foot"><button class="qi-cancel">取消</button><button class="qi-confirm">确认导入</button></div></div>`;
+    document.body.appendChild(mask);
+    const lineEls=[...mask.querySelectorAll('.qi-line')];
+    shown.forEach((pl,li)=>{
+      const trs=[...lineEls[li].querySelectorAll('tr')];
+      pl.rows.forEach((r,ri)=>{
+        const tr=trs[ri], sel=tr.querySelector('.qi-sel'), qc=tr.querySelector('.qi-qty');
+        sel.value=String(r.fileIdx);
+        const upd=()=>{ const fi=+sel.value, f=fi>=0?pl.files[fi]:null; qc.textContent=f?(f.qty!=null?f.qty:'(无数)'):'—'; tr.classList.toggle('qi-skip', fi<0||(f&&f.qty==null)); };
+        upd(); sel.addEventListener('change', upd);
+      });
+    });
+    mask.querySelector('.qi-cancel').addEventListener('click', ()=>mask.remove());
+    mask.addEventListener('click', e=>{ if(e.target===mask) mask.remove(); });
+    mask.querySelector('.qi-confirm').addEventListener('click', ()=>{
+      const overwrite=mask.querySelector('#qi-overwrite').checked, alias=qiLoadAlias();
+      let applied=0, skipped=0;
+      shown.forEach((pl,li)=>{
+        [...lineEls[li].querySelectorAll('tr')].forEach(tr=>{
+          const fi=+tr.querySelector('.qi-sel').value; if(fi<0) return;
+          const f=pl.files[fi]; if(!f||f.qty==null) return;
+          const bid=tr.dataset.bid, bname=tr.dataset.bname;
+          const cur=Store.getQtyValue(currentDate, pl.lineId, bid);
+          if(cur!=null && !overwrite){ skipped++; return; }
+          Store.setQtyValueQuiet(currentDate, pl.lineId, bid, f.qty);
+          applied++;
+          if(qiNorm(bname)!==qiNorm(f.name)) alias[pl.lineId+'|'+bname]=f.name; // 记住别名,下次自动命中
+        });
+      });
+      qiSaveAlias(alias);
+      mask.remove();
+      renderQty();
+      showToast(`已导入 ${applied} 项`+(skipped?`,跳过 ${skipped} 项(已有数量)`:''),'info');
+    });
+  }
+
   // 跨线互斥:同名便当只允许一条线填数量;某名已被别线填(当天非空),其他线该行锁定只读
   function refreshBentoLocks(){
     const s = Store.get();
