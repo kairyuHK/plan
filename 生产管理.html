@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-108">
+<html lang="zh-CN" data-appver="2026-10-19-109">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1915,6 +1915,7 @@ const Pages = (() => {
       +'.qi-bname{max-width:170px;word-break:break-all}.qi-sel{max-width:250px;width:100%;background:var(--bg,#16181d);color:var(--text,#e8e6e3);border:1px solid var(--border,#3a3f47);border-radius:6px;padding:3px 6px;font-size:12px}'
       +'.qi-qty{text-align:right;font-variant-numeric:tabular-nums;min-width:50px;font-weight:700}.qi-maybe{background:rgba(255,180,0,.09)}.qi-maybe .qi-bname::after{content:" ❓"}'
       +'.qi-none .qi-bname{color:var(--muted,#9aa0a6)}.qi-skip{opacity:.45}'
+      +'.qi-total td{border-top:2px solid var(--border,#3a3f47);border-bottom:none;color:var(--danger,#e5534b);font-weight:700}.qi-total .qi-total-qty{font-size:15px}'
       +'.qi-leftover{font-size:11px;color:var(--muted,#9aa0a6);margin:3px 0;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:6px}'
       +'.qi-ow{display:flex;align-items:center;gap:6px;padding:8px 18px;font-size:12px;color:var(--muted,#9aa0a6)}'
       +'.qi-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--border,#2a2f37)}'
@@ -1935,7 +1936,8 @@ const Pages = (() => {
         return `<tr class="${cls}" data-bid="${r.bentoId}" data-bname="${escapeHtml(r.bentoName)}"><td class="qi-bname">${escapeHtml(r.bentoName)}</td><td><select class="qi-sel">${opts}</select></td><td class="qi-qty"></td></tr>`;
       }).join('');
       const left=pl.leftover.length?`<div class="qi-leftover">表里这条线还有没对上的数:${pl.leftover.map(f=>escapeHtml(f.name)+'='+f.qty).join('、')}</div>`:'';
-      return `<div class="qi-line"><div class="qi-line-h">${escapeHtml(pl.lineName)}</div><table class="qi-tbl">${rows}</table>${left}</div>`;
+      const total=`<tr class="qi-total"><td class="qi-bname">合计</td><td></td><td class="qi-qty qi-total-qty"></td></tr>`;
+      return `<div class="qi-line"><div class="qi-line-h">${escapeHtml(pl.lineName)}</div><table class="qi-tbl">${rows}${total}</table>${left}</div>`;
     }).join('');
     mask.innerHTML=`<div class="qi-modal"><div class="qi-head">导入数量预览 · ${fmtDateJp(currentDate)}</div>`
       +`<div class="qi-sub">✅ 自动匹配 ${nAuto} · ❓ 疑似(请核对) ${nMaybe} · 下拉可改,「跳过」=不导入该项</div>`
@@ -1945,13 +1947,16 @@ const Pages = (() => {
     document.body.appendChild(mask);
     const lineEls=[...mask.querySelectorAll('.qi-line')];
     shown.forEach((pl,li)=>{
-      const trs=[...lineEls[li].querySelectorAll('tr')];
+      const totalCell=lineEls[li].querySelector('.qi-total-qty');
+      const trs=[...lineEls[li].querySelectorAll('tr:not(.qi-total)')];
+      const recalc=()=>{ let sum=0; pl.rows.forEach((r,ri)=>{ const fi=+trs[ri].querySelector('.qi-sel').value, f=fi>=0?pl.files[fi]:null; if(f&&f.qty!=null)sum+=f.qty; }); totalCell.textContent=sum; };
       pl.rows.forEach((r,ri)=>{
         const tr=trs[ri], sel=tr.querySelector('.qi-sel'), qc=tr.querySelector('.qi-qty');
         sel.value=String(r.fileIdx);
-        const upd=()=>{ const fi=+sel.value, f=fi>=0?pl.files[fi]:null; qc.textContent=f?(f.qty!=null?f.qty:'(无数)'):'—'; tr.classList.toggle('qi-skip', fi<0||(f&&f.qty==null)); };
+        const upd=()=>{ const fi=+sel.value, f=fi>=0?pl.files[fi]:null; qc.textContent=f?(f.qty!=null?f.qty:'(无数)'):'—'; tr.classList.toggle('qi-skip', fi<0||(f&&f.qty==null)); recalc(); };
         upd(); sel.addEventListener('change', upd);
       });
+      recalc();
     });
     mask.querySelector('.qi-cancel').addEventListener('click', ()=>mask.remove());
     // 不做「点遮罩关闭」:审查中误点外面会白费已确认的选择,只能靠「取消/确认导入」显式关闭。
