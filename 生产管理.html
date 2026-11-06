@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-107">
+<html lang="zh-CN" data-appver="2026-10-19-108">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1395,6 +1395,8 @@ const Store = (() => {
     else state.qtyValues[date][lineId][id] = Math.max(0, parseInt(digits,10));
     saveQuiet();
   }
+  // 清空某一天的全部数量(删掉 qtyValues[date] 整天)
+  function clearQtyDay(date){ if(state.qtyValues && state.qtyValues[date]){ delete state.qtyValues[date]; saveQuiet(); } }
   // 分线便当名单:名单里的便当名可在多条线各填各的份额(refreshBentoLocks 跳过它们,不锁)
   function isSplitName(name){ return !!(state.qtySplitNames && state.qtySplitNames.indexOf(name) !== -1); }
   function toggleSplitName(name){
@@ -1494,7 +1496,7 @@ const Store = (() => {
     load, save, subscribe, get, replace, reset,
     addPerson, updatePerson, deletePerson, findPersonUsage, reorderPeople,
     addPosition, renamePosition, deletePosition, movePosition, reorderPositions,
-    addQtyBento, renameQtyBento, deleteQtyBento, reorderQtyBentos, getQtyValue, setQtyValueQuiet,
+    addQtyBento, renameQtyBento, deleteQtyBento, reorderQtyBentos, getQtyValue, setQtyValueQuiet, clearQtyDay,
     isSplitName, toggleSplitName,
     ensureDay, getDay, assign, clearDay, copyDay, lastScheduledDate, assignedPeopleOnDay,
     setShift, getShift,
@@ -1641,6 +1643,7 @@ const Pages = (() => {
             <div class="cal-host hidden" id="qty-cal-host"></div>
           </span>
           <button class="qty-import-btn" id="qty-import-btn" title="从 xlsx 导入数量">导入</button>
+          <button class="qty-import-btn qty-clear-btn" id="qty-clear-btn" title="清空当天所有已填数量">清空</button>
           <span class="qty-rates">
             <span class="qty-rate" data-group="A">夕盛+01 <b>${groupRate(['夕盛','01'])}</b><span class="qty-rate-u">个/h</span></span>
             <span class="qty-rate" data-group="B">02~05 <b>${groupRate(['02','03','04','05'])}</b><span class="qty-rate-u">个/h</span></span>
@@ -1683,8 +1686,11 @@ const Pages = (() => {
       const host = document.getElementById('qty-cal-host');
       if(host.classList.contains('hidden')){ openCalendar(); } else { closeCalendar(); }
     });
+    qiEnsureStyles();
     const _qiBtn = document.getElementById('qty-import-btn');
     if(_qiBtn) _qiBtn.addEventListener('click', openQtyImport);
+    const _qcBtn = document.getElementById('qty-clear-btn');
+    if(_qcBtn) _qcBtn.addEventListener('click', clearQtyToday);
     document.addEventListener('click', calOutsideListener);
     const allQty = [...root.querySelectorAll('.qty')]; // 回车跳下一个用
     root.querySelectorAll('[data-line]').forEach(card => {
@@ -1877,10 +1883,30 @@ const Pages = (() => {
       }catch(err){ showToast('导入失败:'+((err&&err.message)||err),'warn'); }
     });
   }
+  // 清空当天全部已填数量(带确认,不可撤销)
+  function clearQtyToday(){
+    const s=Store.get();
+    let n=0;
+    s.lines.filter(l=>!l.virtual).forEach(line=>(s.qtyBentos[line.id]||[]).forEach(b=>{ if(Store.getQtyValue(currentDate,line.id,b.id)!=null) n++; }));
+    if(n===0){ showToast('当天没有已填数量','info'); return; }
+    qiEnsureStyles();
+    const mask=document.createElement('div'); mask.className='qi-mask';
+    mask.innerHTML='<div class="qi-modal" style="max-width:360px"><div class="qi-head">清空当天数量</div>'
+      +'<div class="qi-sub" style="border:none;padding:4px 18px 14px">确定清空 <b>'+fmtDateJp(currentDate)+'</b> 全部已填数量?共 <b>'+n+'</b> 项,清空后不可撤销。</div>'
+      +'<div class="qi-foot"><button class="qi-cancel">取消</button><button class="qi-confirm" style="background:var(--danger,#e5534b);border-color:var(--danger,#e5534b)">清空</button></div></div>';
+    document.body.appendChild(mask);
+    mask.querySelector('.qi-cancel').addEventListener('click',()=>mask.remove());
+    mask.querySelector('.qi-confirm').addEventListener('click',()=>{
+      Store.clearQtyDay(currentDate);
+      mask.remove();
+      renderQty();
+      showToast('已清空 '+n+' 项','info');
+    });
+  }
   function qiEnsureStyles(){
     if(document.getElementById('qi-style')) return;
     const st=document.createElement('style'); st.id='qi-style';
-    st.textContent='.qty-import-btn{margin-left:8px;padding:4px 10px;border:1px solid var(--border,#3a3f47);border-radius:8px;background:transparent;color:var(--text,#e8e6e3);font-size:13px;cursor:pointer}.qty-import-btn:hover{border-color:var(--accent);color:var(--accent)}'
+    st.textContent='.qty-import-btn{margin-left:8px;padding:4px 10px;border:1px solid var(--border,#3a3f47);border-radius:8px;background:transparent;color:var(--text,#e8e6e3);font-size:13px;cursor:pointer}.qty-import-btn:hover{border-color:var(--accent);color:var(--accent)}.qty-clear-btn:hover{border-color:var(--danger,#e5534b);color:var(--danger,#e5534b)}'
       +'.qi-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}'
       +'.qi-modal{background:var(--bg,#16181d);border:1px solid var(--border,#3a3f47);border-radius:14px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5)}'
       +'.qi-head{padding:14px 18px 4px;font-size:16px;font-weight:700}.qi-sub{padding:0 18px 10px;font-size:12px;color:var(--muted,#9aa0a6);border-bottom:1px solid var(--border,#2a2f37)}'
