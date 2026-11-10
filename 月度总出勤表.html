@@ -283,6 +283,8 @@ table.schedule th.sun{color:var(--sun)}
 }
 /* row / column highlight (click name-col / date-th to toggle) */
 table.schedule td.name-col{cursor:pointer}
+/* 「不计入合计」人员:氏名格右上角淡色「除」徽标(绝对定位,不占布局) */
+table.schedule tr.excluded td.name-col .excl-badge{position:absolute;top:0;right:1px;z-index:2;font-size:9px;line-height:1;padding:1px 2px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:3px;pointer-events:none}
 table.schedule thead tr.head-row th[data-ymd],table.schedule thead tr.weekday-row th[data-ymd]{cursor:pointer}
 table.schedule tr.hl-row td,table.schedule tr.hl-row th{background:rgba(94,234,212,0.10)}
 table.schedule td.hl-col,table.schedule th.hl-col{background:var(--today)}
@@ -2252,7 +2254,7 @@ const Store = (() => {
   function addPerson(deptId, person) {
     const { start } = Period.range(state.ui.currentPeriod);
     const defaultAddedOn = Util.ymd(start);
-    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 3, retiredOn: null, addedOn: defaultAddedOn, hoursDays: {}, noAnnualLeave: false, ...person };
+    const p = { id: Util.newId('p'), name: '', role: '', annualLeave: 20, leaveResetMonth: 3, retiredOn: null, addedOn: defaultAddedOn, hoursDays: {}, noAnnualLeave: false, excludeFromTotal: false, ...person };
     if (!p.hoursDays) p.hoursDays = {};
     (state.people[deptId] = state.people[deptId] || []).push(p);
     commit('people');
@@ -3581,6 +3583,7 @@ const Pages = (() => {
 
     for (const p of people) {
       const tr = Render.el('tr', { dataset: { personId: p.id } });
+      if (p.excludeFromTotal) tr.classList.add('excluded'); // 不计入合计 → 氏名格标「除」
       tr.appendChild(Render.el('td.role-col', p.role || ''));
       // 名字过长时自动缩字号完全显示。屏幕端用 canvas 实测真实字宽(不再靠全角/半角估算 —— 估算和实际字体
       // 有出入, 会误判"放得下"而漏裁尾字)。
@@ -3610,6 +3613,8 @@ const Pages = (() => {
       const rowHandle = Render.el('span.row-resize-handle', { title: '拖动调整所有人员行高(统一),双击重置' });
       wireResize(rowHandle, 'row-person', 'y', 'table.schedule tbody tr:not(.stat-row) > td.name-col');
       nameTd.appendChild(rowHandle);
+      // 不计入合计标记:氏名格右上角淡色「除」徽标(绝对定位,不占布局、不影响名字缩放测量)
+      if (p.excludeFromTotal) nameTd.appendChild(Render.el('span.excl-badge', { title: '该人员不计入 ライン合計' }, '除'));
       tr.appendChild(nameTd);
 
       const sums = computeSums(deptId, p, periodKey, days);
@@ -3929,6 +3934,7 @@ const Pages = (() => {
     let total = 0;
     const periodKey = Store.get().ui.currentPeriod;
     for (const p of Store.peopleInPeriod(deptId, periodKey)) {
+      if (p.excludeFromTotal) continue; // 该人员不计入合计(如常驻リーダー),出勤/休息都不数
       if (Store.cellStatus(deptId, p.id, ymd) !== 'work') continue;
       const ct = Store.cellText(deptId, p.id, ymd);
       // 带自定义文字 + 非班次标记 → 视为休息,不算上班
@@ -4416,6 +4422,17 @@ const Pages = (() => {
     noLeaveLabel.appendChild(noLeaveCb);
     noLeaveLabel.appendChild(Render.el('span', '无有休'));
     row.appendChild(noLeaveLabel);
+    // 不计入合计 复选框 — silent 持久化(同「无有休」);勾上=该人员出勤/休息都不进 ライン合計,氏名格标「除」。
+    // 回到排班页会按新值重算合计,无需在此重渲。
+    const exclLabel = Render.el('label.no-leave-cb', { title: '勾选 = 该人员(如常驻リーダー)不计入 ライン合計 / 過不足,氏名格显示「除」。仍正常显示、可编辑出勤。' });
+    const exclCb = Render.el('input', {
+      type: 'checkbox',
+      checked: !!p.excludeFromTotal,
+      onchange: (e) => Store.updatePerson(deptId, p.id, { excludeFromTotal: !!e.target.checked }, true)
+    });
+    exclLabel.appendChild(exclCb);
+    exclLabel.appendChild(Render.el('span', '不计入合计'));
+    row.appendChild(exclLabel);
     row.appendChild(Render.el('span', { style: { color: 'var(--muted)' } }, '重置月:'));
     row.appendChild(Render.el('input.num', {
       type: 'number', min: '1', max: '12', value: String(p.leaveResetMonth || 11),
