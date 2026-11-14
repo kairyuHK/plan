@@ -5,7 +5,7 @@
   Originally created by kairyu. Unauthorized copying, distribution,
   or false attribution is prohibited.
 -->
-<html lang="zh-CN" data-appver="2026-10-19-110">
+<html lang="zh-CN" data-appver="2026-10-19-111">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
@@ -1743,7 +1743,7 @@ const Pages = (() => {
   }
   function qiBigrams(s){ const a=new Set(); for(let i=0;i<s.length-1;i++)a.add(s.slice(i,i+2)); if(s.length===1)a.add(s); return a; }
   function qiDice(a,b){ a=qiNorm(a); b=qiNorm(b); if(a&&a===b)return 1; const A=qiBigrams(a),B=qiBigrams(b); if(!A.size||!B.size)return 0; let x=0; for(const g of A)if(B.has(g))x++; return 2*x/(A.size+B.size); }
-  function qiDecode(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&'); }
+  function qiDecode(s){ return String(s).replace(/&#x([0-9a-fA-F]+);/g,(_,h)=>String.fromCodePoint(parseInt(h,16))).replace(/&#(\d+);/g,(_,d)=>String.fromCodePoint(parseInt(d,10))).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&'); }
   async function qiInflateRaw(u8){
     const stream = new Response(u8).body.pipeThrough(new DecompressionStream('deflate-raw'));
     return new Uint8Array(await new Response(stream).arrayBuffer());
